@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Clock, Users, Instagram, MapPin, Youtube } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 import './CampaignList.css';
 
 const CampaignList = () => {
+    const { t } = useLanguage();
     const [activeTab, setActiveTab] = useState('all');
 
     // Dummy Data simulating Revu's structure
@@ -101,7 +103,7 @@ const CampaignList = () => {
         <section className="campaign-list-section">
             <div className="container">
                 <div className="campaign-header">
-                    <h2 className="section-title">주목해야 할 캠페인</h2>
+                    <h2 className="section-title">{t('campaigns.title')}</h2>
                     <div className="campaign-tabs">
                         {['all', 'premium', 'local', 'product', 'reporter'].map(tab => (
                             <button
@@ -109,10 +111,10 @@ const CampaignList = () => {
                                 className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
                                 onClick={() => setActiveTab(tab)}
                             >
-                                {tab === 'all' ? '전체' :
-                                    tab === 'premium' ? '프리미엄' :
-                                        tab === 'local' ? '지역' :
-                                            tab === 'product' ? '제품' : '기자단'}
+                                {tab === 'all' ? t('campaigns.tabAll') :
+                                    tab === 'premium' ? t('campaigns.tabPremium') :
+                                        tab === 'local' ? t('campaigns.tabLocal') :
+                                            tab === 'product' ? t('campaigns.tabProduct') : t('campaigns.tabReporter')}
                             </button>
                         ))}
                     </div>
@@ -130,7 +132,7 @@ const CampaignList = () => {
                                     </span>
                                 </div>
                                 <div className="card-overlay">
-                                    <button className="btn-apply">신청하기</button>
+                                    <button className="btn-apply">{t('campaigns.btnApply')}</button>
                                 </div>
                             </div>
 
