@@ -1,8 +1,10 @@
 import React from 'react';
 import { Star, Quote, ArrowRight } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 import './Reviews.css';
 
 const Reviews = () => {
+    const { t } = useLanguage();
     const reviews = [
         {
             id: 1,
@@ -37,8 +39,8 @@ const Reviews = () => {
         <section className="reviews section">
             <div className="container">
                 <div className="section-header">
-                    <h2 className="section-title">Success Cases</h2>
-                    <p className="section-subtitle">탐코리아와 함께 성장한 브랜드 이야기</p>
+                    <h2 className="section-title">{t('reviews.title')}</h2>
+                    <p className="section-subtitle">{t('reviews.subtitle')}</p>
                 </div>
 
                 <div className="reviews-grid">

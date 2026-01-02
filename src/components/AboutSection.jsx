@@ -1,9 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 import './AboutSection.css';
 
 const AboutSection = () => {
+    const { t } = useLanguage();
+
     return (
         <section className="about-section section-padding">
             <div className="container about-container">
@@ -15,15 +18,29 @@ const AboutSection = () => {
                     />
                     <div className="experience-badge">
                         <span className="years">20+</span>
-                        <span className="text">Years of<br />Experience</span>
+                        <span className="text">
+                            {t('aboutSection.badgeText').split('\n').map((line, i) => (
+                                <React.Fragment key={i}>
+                                    {line}
+                                    {i < t('aboutSection.badgeText').split('\n').length - 1 && <br />}
+                                </React.Fragment>
+                            ))}
+                        </span>
                     </div>
                 </div>
 
                 <div className="about-content">
-                    <span className="section-subtitle">Why Choose Us</span>
-                    <h2 className="section-title">중화권 광고는 <br />탐코리아가 제일 잘합니다!</h2>
+                    <span className="section-subtitle">{t('aboutSection.subtitle')}</span>
+                    <h2 className="section-title">
+                        {t('aboutSection.title').split('\n').map((line, i) => (
+                            <React.Fragment key={i}>
+                                {line}
+                                {i < t('aboutSection.title').split('\n').length - 1 && <br />}
+                            </React.Fragment>
+                        ))}
+                    </h2>
                     <p className="about-desc">
-                        탐코리아는 단순한 마케팅 대행사가 아닙니다. 우리는 한국과 중국의 복잡한 디지털 환경을 항해하는 여러분의 전략적 파트너입니다.
+                        {t('aboutSection.desc')}
                     </p>
 
                     <br />
@@ -31,28 +48,25 @@ const AboutSection = () => {
                         <li className="feature-item">
                             <CheckCircle className="feature-icon" size={20} />
                             <div>
-                                <h4 className="feature-title">현지 전문가</h4>
-                                <p className="feature-text">한국과 중국 문화를 깊이 이해하는 한중언어에 능통한 전문가 팀이 함께합니다.</p>
+                                <h4 className="feature-title">{t('aboutSection.feature1Title')}</h4>
+                                <p className="feature-text">{t('aboutSection.feature1Text')}</p>
                             </div>
                         </li>
                         <li className="feature-item">
                             <CheckCircle className="feature-icon" size={20} />
                             <div>
-                                <h4 className="feature-title">데이터 기반 전략</h4>
-                                <p className="feature-text">단순한 추측이 아닌, 실제 데이터와 시장 트렌드 분석에 기반한 캠페인을 진행합니다.</p>
+                                <h4 className="feature-title">{t('aboutSection.feature2Title')}</h4>
+                                <p className="feature-text">{t('aboutSection.feature2Text')}</p>
                             </div>
                         </li>
                         <li className="feature-item">
                             <CheckCircle className="feature-icon" size={20} />
                             <div>
-                                <h4 className="feature-title">검증된 성과</h4>
-                                <p className="feature-text">다양한 산업 분야에서 300개 이상의 성공적인 캠페인을 수행했습니다.</p>
+                                <h4 className="feature-title">{t('aboutSection.feature3Title')}</h4>
+                                <p className="feature-text">{t('aboutSection.feature3Text')}</p>
                             </div>
                         </li>
                     </ul>
-
-                    {/* Partners Placeholder */}
-                    {/* Partners Carousel */}
                 </div>
             </div>
 
@@ -60,7 +74,9 @@ const AboutSection = () => {
             {/* Partners Carousel (Aligned) */}
             <div className="partners-carousel-section">
                 <div className="container">
-                    <h3 className="section-subtitle" style={{ marginBottom: '40px', display: 'block', textAlign: 'center' }}>함께한 파트너</h3>
+                    <h3 className="section-subtitle" style={{ marginBottom: '40px', display: 'block', textAlign: 'center' }}>
+                        {t('aboutSection.partnersTitle')}
+                    </h3>
                     <div className="carousel-container">
                         <div className="carousel-track">
                             {/* 2 Sets of 10 images for infinite scroll */}

@@ -42,6 +42,29 @@ export const translations = {
             value3Title: '연결 (Connection):',
             value3Text: '브랜드와 소비자를 진정성 있게 연결합니다.'
         },
+        services: {
+            title: 'Core Technology',
+            subtitle: '탐코리아만의 3가지 핵심 엔진',
+            card1Title: 'Relevance Matching',
+            card1Sub: '정교한 타겟 매칭',
+            card1Desc: '누적 300여개 가맹점 데이터와 인플루언서의 성향(푸드/뷰티/여행)을 분석하여 구매 전환율이 가장 높은 크리에이터를 매칭합니다.',
+            card2Title: 'Content Inspection',
+            card2Sub: '자동화된 검수 시스템',
+            card2Desc: '샤오홍슈/인스타그램의 게시물 누락 여부, 필수 해시태그 포함 여부를 24시간 모니터링하여 마케팅 누수를 방지합니다.',
+            card3Title: 'Cross-Border Reporting',
+            card3Sub: '글로벌 성과 분석',
+            card3Desc: '중국 플랫폼(Dianping, XHS)의 성과(조회수, 댓글, 저장)를 한국어 리포트로 변환하여 제공합니다. 복잡한 외국어 데이터도 한눈에 파악하세요.'
+        },
+        contact: {
+            title: '브랜드를 성장시킬 준비가 되셨나요?',
+            desc: '한국과 중국의 타겟 고객에게 도달하는 방법을 논의해보세요.\n지금 바로 무료 상담을 받아보세요.',
+            btnStart: '시작하기',
+            btnContact: '문의하기'
+        },
+        globalMap: {
+            title: '다양한 중화권 인플루언서, 바로 만나보세요.',
+            subtitle: '탐코리아의 맞춤형 네트워크로 연결됩니다.'
+        },
         campaigns: {
             title: '주목해야 할 캠페인',
             tabAll: '전체',
@@ -49,8 +72,36 @@ export const translations = {
             tabLocal: '지역',
             tabProduct: '제품',
             tabReporter: '기자단',
-            btnApply: '신청하기',
-            btnMore: '캠페인 더보기'
+            btnApply: '신청하기'
+        },
+        reviews: {
+            title: 'Success Cases',
+            subtitle: '탐코리아와 함께 성장한 브랜드 이야기',
+            btnMore: '자세히 보기'
+        },
+        footer: {
+            companyName: '탐코리아',
+            ceo: '대표이사: 김은련',
+            bizNum: '사업자등록번호: 675-21-02142',
+            address: '주소: 제주특별자치도 제주시 연동 272-33 514호',
+            cs: '고객센터: 010-9345-5567',
+            email: '이메일: tamkorea888@gmail.com',
+            copyright: 'Copyright © TamKorea. All rights reserved.',
+            familySite: 'Family Site',
+            comingSoon: '현재 서비스 준비 중입니다.'
+        },
+        aboutSection: {
+            subtitle: 'Why Choose Us',
+            title: '중화권 광고는 \n탐코리아가 제일 잘합니다!',
+            desc: '탐코리아는 단순한 마케팅 대행사가 아닙니다. 우리는 한국과 중국의 복잡한 디지털 환경을 항해하는 여러분의 전략적 파트너입니다.',
+            feature1Title: '현지 전문가',
+            feature1Text: '한국과 중국 문화를 깊이 이해하는 한중언어에 능통한 전문가 팀이 함께합니다.',
+            feature2Title: '데이터 기반 전략',
+            feature2Text: '단순한 추측이 아닌, 실제 데이터와 시장 트렌드 분석에 기반한 캠페인을 진행합니다.',
+            feature3Title: '검증된 성과',
+            feature3Text: '다양한 산업 분야에서 300개 이상의 성공적인 캠페인을 수행했습니다.',
+            partnersTitle: '함께한 파트너',
+            badgeText: 'Years of\nExperience'
         }
     },
     en: {
@@ -96,6 +147,29 @@ export const translations = {
             value3Title: 'Connection:',
             value3Text: 'Authentically connecting brands and consumers.'
         },
+        services: {
+            title: 'Core Technology',
+            subtitle: 'TamKorea\'s 3 Core Engines',
+            card1Title: 'Relevance Matching',
+            card1Sub: 'Precise Target Matching',
+            card1Desc: 'We analyze data from 300+ merchants and influencer tendencies (Food/Beauty/Travel) to match creators with the highest conversion rates.',
+            card2Title: 'Content Inspection',
+            card2Sub: 'Automated Inspection System',
+            card2Desc: 'We monitor Xiaohongshu/Instagram posts 24/7 for omissions and mandatory hashtags to prevent marketing leakage.',
+            card3Title: 'Cross-Border Reporting',
+            card3Sub: 'Global Performance Analysis',
+            card3Desc: 'We convert Chinese platform performance (Views, Comments, Saves) into Korean reports. Grasp complex foreign data at a glance.'
+        },
+        contact: {
+            title: 'Ready to Grow Your Brand?',
+            desc: 'Discuss how to reach target customers in Korea and China.\nGet a free consultation now.',
+            btnStart: 'Get Started',
+            btnContact: 'Contact Us'
+        },
+        globalMap: {
+            title: 'Meet Diverse Greater China Influencers Now.',
+            subtitle: 'Connected through TamKorea\'s customized network.'
+        },
         campaigns: {
             title: 'Featured Campaigns',
             tabAll: 'All',
@@ -103,8 +177,36 @@ export const translations = {
             tabLocal: 'Local',
             tabProduct: 'Product',
             tabReporter: 'Reporter',
-            btnApply: 'Apply',
-            btnMore: 'View More'
+            btnApply: 'Apply'
+        },
+        reviews: {
+            title: 'Success Cases',
+            subtitle: 'Stories of brands that grew with TamKorea',
+            btnMore: 'View Details'
+        },
+        footer: {
+            companyName: 'TamKorea',
+            ceo: 'CEO: Eunryun Kim',
+            bizNum: 'Business License: 675-21-02142',
+            address: 'Addr: #514, 272-33, Yeondong, Jeju-si, Jeju-do',
+            cs: 'CS: 010-9345-5567',
+            email: 'Email: tamkorea888@gmail.com',
+            copyright: 'Copyright © TamKorea. All rights reserved.',
+            familySite: 'Family Site',
+            comingSoon: 'Service currently under preparation.'
+        },
+        aboutSection: {
+            subtitle: 'Why Choose Us',
+            title: 'Greater China Marketing,\nTamKorea Does It Best!',
+            desc: 'TamKorea is not just a marketing agency. We are your strategic partner navigating the complex digital environments of Korea and China.',
+            feature1Title: 'Local Experts',
+            feature1Text: 'A team of experts fluent in Korean and Chinese languages and deep cultural understanding.',
+            feature2Title: 'Data-Driven Strategy',
+            feature2Text: 'Campaigns based on real data and market trend analysis, not guesswork.',
+            feature3Title: 'Proven Results',
+            feature3Text: 'Executed over 300 successful campaigns across various industries.',
+            partnersTitle: 'Trusted Partners',
+            badgeText: 'Years of\nExperience'
         }
     },
     cn: {
@@ -150,15 +252,66 @@ export const translations = {
             value3Title: '连接 (Connection):',
             value3Text: '真诚连接品牌与消费者。'
         },
+        services: {
+            title: 'Core Technology',
+            subtitle: 'TamKorea 的三大核心引擎',
+            card1Title: 'Relevance Matching',
+            card1Sub: '精准目标匹配',
+            card1Desc: '分析累计 300 多家加盟店数据和网红倾向（美食/美容/旅游），匹配购买转化率最高的创作者。',
+            card2Title: 'Content Inspection',
+            card2Sub: '自动化验收系统',
+            card2Desc: '24小时监控小红书/Instagram 帖子是否遗漏、是否包含必要标签，防止营销流失。',
+            card3Title: 'Cross-Border Reporting',
+            card3Sub: '全球成果分析',
+            card3Desc: '将中国平台（点评、小红书）的成果（浏览、评论、收藏）转换为韩语报告。一目了然地掌握复杂的外国数据。'
+        },
+        contact: {
+            title: '准备好扩展您的品牌了吗？',
+            desc: '讨论如何触达韩中两国的目标客户。\n立即申请免费咨询。',
+            btnStart: '开始使用',
+            btnContact: '联系我们'
+        },
+        globalMap: {
+            title: '立即连接多样化的中华区网红。',
+            subtitle: '通过 TamKorea 的定制网络进行连接。'
+        },
         campaigns: {
-            title: '推荐营销活动',
+            title: '精选营销活动',
             tabAll: '全部',
-            tabPremium: '优质',
-            tabLocal: '探店',
+            tabPremium: '优选',
+            tabLocal: '本地',
             tabProduct: '产品',
             tabReporter: '记者团',
-            btnApply: '立即申请',
-            btnMore: '查看更多'
+            btnApply: '申请'
+        },
+        reviews: {
+            title: 'Success Cases',
+            subtitle: '与 TamKorea 共同成长的品牌故事',
+            btnMore: '查看详情'
+        },
+        footer: {
+            companyName: 'TamKorea',
+            ceo: 'CEO: Kim Eunryun',
+            bizNum: '商业登记号: 675-21-02142',
+            address: '地址: 济州特别自治道济州市莲洞 272-33 514号',
+            cs: '客服中心: 010-9345-5567',
+            email: '邮箱: tamkorea888@gmail.com',
+            copyright: 'Copyright © TamKorea. All rights reserved.',
+            familySite: 'Family Site',
+            comingSoon: '服务准备中。'
+        },
+        aboutSection: {
+            subtitle: 'Why Choose Us',
+            title: '大中华区营销，\nTamKorea 做得最好！',
+            desc: 'TamKorea 不仅仅是营销代理商。我们是您在复杂的韩中数字环境中航行的战略合作伙伴。',
+            feature1Title: '本地专家',
+            feature1Text: '精通韩中语言并深刻理解两国文化的专家团队与您同在。',
+            feature2Title: '基于数据的战略',
+            feature2Text: '基于真实数据和市场趋势分析进行的营销活动，而非单纯猜测。',
+            feature3Title: '验证的成果',
+            feature3Text: '在各行各业成功执行了 300 多个营销活动。',
+            partnersTitle: '合作伙伴',
+            badgeText: 'Years of\nExperience'
         }
     }
 };

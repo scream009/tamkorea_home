@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 import './GlobalMap.css';
 
 const GlobalMap = () => {
+    const { t } = useLanguage();
     const [animated, setAnimated] = useState(false);
 
     useEffect(() => {
@@ -20,8 +22,8 @@ const GlobalMap = () => {
         <section className="global-map-section section">
             <div className="container">
                 <div className="section-header text-center">
-                    <h2 className="section-title">다양한 중화권 인플루언서, 바로 만나보세요.</h2>
-                    <p className="section-subtitle">탐코리아의 맞춤형 네트워크로 연결됩니다.</p>
+                    <h2 className="section-title">{t('globalMap.title')}</h2>
+                    <p className="section-subtitle">{t('globalMap.subtitle')}</p>
                 </div>
 
                 <div className={`map-container ${animated ? 'animate' : ''}`}>

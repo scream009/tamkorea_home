@@ -1,27 +1,30 @@
 import React from 'react';
 import { Target, ShieldCheck, BarChart2 } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 import './Services.css';
 
 const Services = () => {
+    const { t } = useLanguage();
+
     const services = [
         {
-            title: "Relevance Matching",
-            subtitle: "정교한 타겟 매칭",
-            description: "누적 300여개 가맹점 데이터와 인플루언서의 성향(푸드/뷰티/여행)을 분석하여 구매 전환율이 가장 높은 크리에이터를 매칭합니다.",
+            title: t('services.card1Title'),
+            subtitle: t('services.card1Sub'),
+            description: t('services.card1Desc'),
             icon: <Target size={40} strokeWidth={1.5} />,
             color: "blue"
         },
         {
-            title: "Content Inspection",
-            subtitle: "자동화된 검수 시스템",
-            description: "샤오홍슈/인스타그램의 게시물 누락 여부, 필수 해시태그 포함 여부를 24시간 모니터링하여 마케팅 누수를 방지합니다.",
+            title: t('services.card2Title'),
+            subtitle: t('services.card2Sub'),
+            description: t('services.card2Desc'),
             icon: <ShieldCheck size={40} strokeWidth={1.5} />,
             color: "green"
         },
         {
-            title: "Cross-Border Reporting",
-            subtitle: "글로벌 성과 분석",
-            description: "중국 플랫폼(Dianping, XHS)의 성과(조회수, 댓글, 저장)를 한국어 리포트로 변환하여 제공합니다. 복잡한 외국어 데이터도 한눈에 파악하세요.",
+            title: t('services.card3Title'),
+            subtitle: t('services.card3Sub'),
+            description: t('services.card3Desc'),
             icon: <BarChart2 size={40} strokeWidth={1.5} />,
             color: "purple"
         }
@@ -31,8 +34,8 @@ const Services = () => {
         <section className="services section">
             <div className="container">
                 <div className="section-header text-center">
-                    <h2 className="section-title">Core Technology</h2>
-                    <p className="section-subtitle">탐코리아만의 3가지 핵심 엔진</p>
+                    <h2 className="section-title">{t('services.title')}</h2>
+                    <p className="section-subtitle">{t('services.subtitle')}</p>
                 </div>
                 <div className="services-grid">
                     {services.map((service, index) => (
