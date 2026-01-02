@@ -291,7 +291,7 @@ export const translations = {
         },
         footer: {
             companyName: 'TamKorea',
-            ceo: 'CEO: Kim Eunryun',
+            ceo: 'CEO: Jin Yin Lian',
             bizNum: '商业登记号: 675-21-02142',
             address: '地址: 济州特别自治道济州市莲洞 272-33 514号',
             cs: '客服中心: 010-9345-5567',
