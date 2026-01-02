@@ -26,7 +26,8 @@
     border-radius: 50%;
     filter: blur(80px);
     opacity: 0.6;
-    animation: blob-float 20s infinite ease-in-out alternate;
+    animation: blob-float 7s infinite ease-in-out alternate;
+    will-change: transform;
 }
 
 .blob-1 {
@@ -63,11 +64,11 @@
     }
 
     33% {
-        transform: translate(30px, -50px) scale(1.1);
+        transform: translate(50px, -80px) scale(1.2);
     }
 
     66% {
-        transform: translate(-20px, 20px) scale(0.9);
+        transform: translate(-40px, 40px) scale(0.8);
     }
 
     100% {
