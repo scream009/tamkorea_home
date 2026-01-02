@@ -35,7 +35,7 @@ const Header = () => {
         <div className="container header-container">
           <div className="logo">
             <Link to="/">
-              <img src="/images/tam-korea-icon.png" alt="Tam Korea" className="logo-icon" />
+              <img src="/images/tam-korea-icon.png" alt="Tam Korea (탐코리아) 로고" className="logo-icon" />
               <span className="logo-text">TamKorea</span>
             </Link>
           </div>
