@@ -22,6 +22,10 @@ export const translations = {
             badge2: '1:1 전담 매니저',
             badge3: '결과 보고서 제공'
         },
+        corporateHero: {
+            title: 'Global Marketing Partner',
+            subtitle: '모든 비즈니스를 중화권과 연결합니다'
+        },
         stats: {
             influencers: '등록 인플루언서',
             partners: '누적 파트너사',
@@ -127,6 +131,10 @@ export const translations = {
             badge2: 'Dedicated Manager',
             badge3: 'Performance Report'
         },
+        corporateHero: {
+            title: 'Global Marketing Partner',
+            subtitle: 'Connecting all businesses to Greater China'
+        },
         stats: {
             influencers: 'Influencers',
             partners: 'Partners',
@@ -231,6 +239,10 @@ export const translations = {
             badge1: '验证网红',
             badge2: '1对1 专属经理',
             badge3: '提供结案报告'
+        },
+        corporateHero: {
+            title: '全球营销合作伙伴',
+            subtitle: '连接所有业务与大中华区'
         },
         stats: {
             influencers: '注册网红',

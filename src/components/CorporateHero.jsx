@@ -1,19 +1,22 @@
 import React from 'react';
+import { useLanguage } from '../context/LanguageContext';
 import './CorporateHero.css';
 
 const CorporateHero = () => {
+    const { t } = useLanguage();
+
     return (
         <section className="corporate-hero">
             <div className="container">
                 <div className="hero-content">
                     <h1 className="corporate-title">
-                        <div className="title-line">Global Marketing Partner</div>
+                        <div className="title-line">{t('corporateHero.title')}</div>
                         <div className="title-highlight-wrapper">
                             <span className="highlight">Tam Korea</span>
                         </div>
                     </h1>
                     <p className="corporate-subtitle">
-                        모든 비즈니스를 중화권과 연결합니다
+                        {t('corporateHero.subtitle')}
                     </p>
                 </div>
             </div>

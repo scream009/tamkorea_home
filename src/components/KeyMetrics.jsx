@@ -3,12 +3,13 @@ import { useLanguage } from '../context/LanguageContext'; // If you want to loca
 import './KeyMetrics.css';
 
 const KeyMetrics = () => {
-    // Labels could be pulled from translations if needed
+    const { t } = useLanguage();
+
     const metrics = [
-        { id: 1, label: '등록 인플루언서', value: '10,000+', subLabel: 'Active Creators' },
-        { id: 2, label: '누적 파트너사', value: '300+', subLabel: 'Partner Clients' },
-        { id: 3, label: '진행 캠페인', value: '1,200+', subLabel: 'Total Campaigns' },
-        { id: 4, label: '누적 콘텐츠', value: '9,000+', subLabel: 'Total Content' }
+        { id: 1, label: t('stats.influencers'), value: '10,000+', subLabel: 'Active Creators' },
+        { id: 2, label: t('stats.partners'), value: '300+', subLabel: 'Partner Clients' },
+        { id: 3, label: t('stats.campaigns'), value: '1,200+', subLabel: 'Total Campaigns' },
+        { id: 4, label: t('stats.contents'), value: '9,000+', subLabel: 'Total Content' }
     ];
 
     return (
