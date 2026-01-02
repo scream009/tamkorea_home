@@ -186,7 +186,7 @@ export const translations = {
         },
         footer: {
             companyName: 'TamKorea',
-            ceo: 'CEO: Eunryun Kim',
+            ceo: 'CEO: Jin Yin Lian',
             bizNum: 'Business License: 675-21-02142',
             address: 'Addr: #514, 272-33, Yeondong, Jeju-si, Jeju-do',
             cs: 'CS: 010-9345-5567',

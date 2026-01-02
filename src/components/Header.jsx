@@ -42,7 +42,7 @@ const Header = () => {
 
           <nav className="nav-menu">
             <ul className="nav-list">
-              <li><Link to="/about" className="nav-link">회사소개</Link></li>
+              <li><Link to="/about" className="nav-link">{t('nav.about')}</Link></li>
               <li><Link to="/biz" className="nav-link">{t('nav.bizCenter')}</Link></li>
               <li><Link to="/campaigns" className="nav-link">{t('nav.campaigns')}</Link></li>
             </ul>
