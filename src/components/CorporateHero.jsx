@@ -7,6 +7,11 @@ const CorporateHero = () => {
 
     return (
         <section className="corporate-hero">
+            <div className="hero-bg-animate">
+                <div className="blob blob-1"></div>
+                <div className="blob blob-2"></div>
+                <div className="blob blob-3"></div>
+            </div>
             <div className="container">
                 <div className="hero-content">
                     <h1 className="corporate-title">
