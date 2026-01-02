@@ -1,0 +1,199 @@
+.about-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: center;
+}
+
+.about-image-wrapper {
+    position: relative;
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+}
+
+.about-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    transition: transform var(--transition-normal);
+}
+
+.about-image-wrapper:hover .about-image {
+    transform: scale(1.05);
+}
+
+.experience-badge {
+    position: absolute;
+    bottom: 2rem;
+    right: 2rem;
+    background-color: var(--color-primary);
+    color: white;
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+}
+
+.experience-badge .years {
+    display: block;
+    font-size: 2.5rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+}
+
+.experience-badge .text {
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.about-content {
+    padding-right: var(--spacing-xl);
+}
+
+.about-desc {
+    color: var(--color-text-muted);
+    font-size: 1.125rem;
+    line-height: 1.7;
+    margin-bottom: var(--spacing-xl);
+}
+
+.about-features {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-bottom: var(--spacing-2xl);
+}
+
+.feature-item {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.feature-icon {
+    color: var(--color-secondary);
+    flex-shrink: 0;
+    margin-top: 0.25rem;
+}
+
+.feature-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+    margin-bottom: 0.25rem;
+}
+
+.feature-text {
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+@media (max-width: 968px) {
+    .about-container {
+        grid-template-columns: 1fr;
+        gap: 3rem;
+    }
+
+    .about-content {
+        padding-right: 0;
+    }
+
+    .about-image-wrapper {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+}
+
+/* Partners Carousel */
+/* Partners Carousel */
+.partners-carousel-section {
+    margin-top: 60px;
+    border-top: 1px solid #eee;
+    padding-top: 60px;
+    overflow: hidden;
+    position: relative;
+    padding-bottom: 20px;
+}
+
+.partners-carousel-section .section-subtitle {
+    margin-bottom: 50px;
+    color: #666;
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.carousel-container {
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+    /* Gradient Mask for Natural Edges */
+    mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+
+/* Remove old gradient overlays since we use mask now */
+.carousel-container::before,
+.carousel-container::after {
+    display: none;
+}
+
+.carousel-track {
+    display: flex;
+    gap: 40px;
+    width: max-content;
+    animation: scroll 40s linear infinite;
+    padding: 10px 0;
+}
+
+.partner-logo-item {
+    flex-shrink: 0;
+    width: 180px;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease;
+}
+
+.partner-logo-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(92, 25, 221, 0.15);
+}
+
+.partner-logo-item img {
+    max-width: 85%;
+    max-height: 85%;
+    object-fit: contain;
+    /* Full Color as requested */
+    filter: none;
+    opacity: 1;
+    transition: transform 0.3s ease;
+    /* Soften edges to hide capture box */
+    mask-image: radial-gradient(ellipse at center, black 65%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse at center, black 65%, transparent 100%);
+}
+
+.partner-logo-item:hover img {
+    transform: scale(1.05);
+}
+
+@keyframes scroll {
+    0% {
+        transform: translateX(0);
+    }
+
+    /* Scroll by half the track width (one full set of images) */
+    /* 10 images * (180px + 40px gap) = 2200px */
+    100% {
+        transform: translateX(calc(-1 * (180px + 40px) * 10));
+    }
+}

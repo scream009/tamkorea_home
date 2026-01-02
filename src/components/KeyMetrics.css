@@ -1,0 +1,101 @@
+.key-metrics-section {
+    padding: 80px 0;
+    background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 40px;
+    text-align: center;
+}
+
+.metric-item {
+    padding: 30px 20px;
+    position: relative;
+    transition: transform 0.3s ease;
+}
+
+.metric-item:hover {
+    transform: translateY(-5px);
+}
+
+/* Add separator lines between items except the last one */
+.metric-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 60px;
+    width: 1px;
+    background: linear-gradient(to bottom, transparent, #e5e7eb, transparent);
+}
+
+.metric-value {
+    font-size: 3.5rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+    font-family: 'Montserrat', 'Pretendard', sans-serif;
+    line-height: 1;
+}
+
+.metric-label {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
+}
+
+.metric-sub {
+    font-size: 0.875rem;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+@media (max-width: 968px) {
+    .key-metrics-section {
+        padding: 60px 0;
+    }
+
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 40px 24px;
+    }
+
+    .metric-item:nth-child(2)::after,
+    .metric-item:nth-child(4)::after {
+        display: none;
+    }
+
+    .metric-value {
+        font-size: 2.75rem;
+    }
+
+    .metric-label {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .metrics-grid {
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+
+    .metric-item::after {
+        display: none !important;
+    }
+
+    .metric-value {
+        font-size: 2.5rem;
+    }
+}

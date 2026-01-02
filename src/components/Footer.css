@@ -1,0 +1,168 @@
+/* Footer.css */
+.footer {
+    background-color: #f9f9f9;
+    border-top: 1px solid #eee;
+    padding: 60px 0 80px;
+    font-size: 13px;
+    color: #888;
+}
+
+.footer-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 24px;
+    margin-bottom: 32px;
+}
+
+.footer-links-group {
+    display: flex;
+    gap: 30px;
+}
+
+.footer-link-item {
+    color: #555;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.footer-link-item.bold {
+    font-weight: 700;
+    color: #333;
+}
+
+.footer-link-item:hover {
+    color: var(--revu-purple);
+}
+
+.family-site-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border: 1px solid #ddd;
+    background: white;
+    color: #555;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+/* Main Footer */
+.footer-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.footer-logo {
+    display: block;
+    font-size: 20px;
+    font-weight: 800;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.company-info p {
+    margin-bottom: 8px;
+    line-height: 1.6;
+}
+
+.company-info span {
+    position: relative;
+    padding-right: 12px;
+    margin-right: 12px;
+}
+
+.company-info span::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 3px;
+    width: 1px;
+    height: 10px;
+    background-color: #ddd;
+}
+
+.company-info span:last-child::after {
+    display: none;
+}
+
+.contact-row span {
+    color: #555;
+    font-weight: 500;
+}
+
+.copyright {
+    margin-top: 24px;
+    font-size: 12px;
+    color: #999;
+}
+
+/* SNS Icons */
+.footer-sns {
+    display: flex;
+    gap: 12px;
+}
+
+.sns-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: #eee;
+    color: #555;
+    transition: all 0.2s;
+}
+
+.sns-icon:hover {
+    background-color: var(--revu-purple);
+    color: white;
+}
+
+.sns-icon.blog {
+    font-weight: 800;
+    font-family: serif;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .footer-top {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+    }
+
+    .footer-links-group {
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .footer-main {
+        flex-direction: column-reverse;
+        /* Put content above info on mobile if desired, or standard column */
+        /* Actually user wants standard column usually. Let's stick to column */
+        flex-direction: column;
+        gap: 40px;
+    }
+
+    .footer-right {
+        align-items: flex-start;
+        width: 100%;
+    }
+
+    .company-info span {
+        display: inline-block;
+        margin-bottom: 4px;
+    }
+}
+
+.footer-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 16px;
+}

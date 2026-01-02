@@ -1,0 +1,128 @@
+.login-page {
+    padding: 100px 0;
+    min-height: calc(100vh - 300px);
+    display: flex;
+    align-items: center;
+    background-color: #f9f9f9;
+}
+
+.login-box {
+    background: white;
+    max-width: 440px;
+    margin: 0 auto;
+    padding: 50px 40px;
+    border-radius: 12px;
+    border: 1px solid #eee;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.login-title {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 800;
+    margin-bottom: 40px;
+    color: #111;
+}
+
+.login-form .form-group {
+    margin-bottom: 16px;
+}
+
+.login-form input {
+    width: 100%;
+    height: 50px;
+    padding: 0 16px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 15px;
+    transition: all 0.2s;
+    box-sizing: border-box;
+    /* ensure padding doesn't affect width */
+}
+
+.login-form input:focus {
+    border-color: var(--revu-purple);
+    outline: none;
+}
+
+.btn-login-submit {
+    width: 100%;
+    height: 52px;
+    background-color: var(--revu-purple);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 700;
+    margin-top: 10px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-login-submit:hover {
+    background-color: #5c19dd;
+}
+
+.login-options {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 14px;
+    color: #888;
+}
+
+.login-options a {
+    color: #666;
+    text-decoration: none;
+}
+
+.login-options .divider {
+    margin: 0 12px;
+    color: #ddd;
+}
+
+.social-login {
+    margin-top: 50px;
+    border-top: 1px solid #eee;
+    padding-top: 30px;
+    text-align: center;
+}
+
+.social-login p {
+    font-size: 13px;
+    color: #999;
+    margin-bottom: 16px;
+}
+
+.social-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+.social-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: none;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.social-btn.kakao {
+    background-color: #FEE500;
+    color: #3C1E1E;
+}
+
+.social-btn.naver {
+    background-color: #03C75A;
+    color: white;
+}
+
+.social-btn.google {
+    background-color: white;
+    border: 1px solid #ddd;
+    color: #333;
+}

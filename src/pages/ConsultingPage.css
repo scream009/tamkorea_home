@@ -1,0 +1,125 @@
+.consulting-page {
+    padding-top: 60px;
+    padding-bottom: 100px;
+    background-color: #f8f9fa;
+    min-height: 100vh;
+}
+
+.consulting-header {
+    text-align: center;
+    margin-bottom: 50px;
+}
+
+.consulting-header h2 {
+    font-size: 36px;
+    font-weight: 800;
+    color: #1a1a1a;
+    margin-bottom: 16px;
+}
+
+.consulting-header p {
+    font-size: 18px;
+    color: #666;
+    line-height: 1.6;
+}
+
+.form-container {
+    max-width: 700px;
+    margin: 0 auto 80px;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    min-height: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.form-placeholder {
+    padding: 40px;
+    text-align: center;
+    width: 100%;
+}
+
+.placeholder-content {
+    border: 2px dashed #e0e0e0;
+    border-radius: 12px;
+    padding: 40px;
+    background-color: #fafafa;
+}
+
+.placeholder-content h3 {
+    margin-bottom: 16px;
+    color: #333;
+}
+
+.code-snippet {
+    background: #eee;
+    padding: 12px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 14px;
+    color: #555;
+    margin: 20px 0;
+    word-break: break-all;
+}
+
+/* Process Guide */
+.process-guide {
+    max-width: 900px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.process-guide h3 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 40px;
+    color: #333;
+}
+
+.steps-grid {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.step-item {
+    flex: 1;
+    background: white;
+    padding: 30px;
+    border-radius: 16px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+    position: relative;
+}
+
+.step-number {
+    display: inline-block;
+    background: var(--revu-purple);
+    color: white;
+    font-weight: 800;
+    font-size: 14px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-bottom: 16px;
+}
+
+.step-item h4 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: #333;
+}
+
+.step-item p {
+    font-size: 15px;
+    color: #666;
+    line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+    .steps-grid {
+        flex-direction: column;
+    }
+}

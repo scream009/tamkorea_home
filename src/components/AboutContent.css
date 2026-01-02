@@ -1,0 +1,137 @@
+.about-section {
+    padding: 100px 0;
+    background: linear-gradient(180deg, #ffffff 0%, #f8f7ff 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.about-header {
+    text-align: center;
+    margin-bottom: 70px;
+    position: relative;
+    z-index: 1;
+}
+
+.about-title {
+    font-size: 2.75rem;
+    font-weight: 900;
+    color: #1f2937;
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #1f2937 0%, #4b5563 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+}
+
+.about-subtitle {
+    font-size: 1.25rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.about-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    max-width: 1000px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+}
+
+.about-card {
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 50px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+    border: 1px solid rgba(0, 0, 0, 0.02);
+}
+
+.about-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(92, 25, 221, 0.08);
+}
+
+.card-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #1f2937;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.card-title::before {
+    content: '';
+    display: block;
+    width: 6px;
+    height: 24px;
+    background: #5c19dd;
+    border-radius: 3px;
+}
+
+.bg-mission {
+    background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
+}
+
+.bg-values {
+    background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
+}
+
+.card-text {
+    color: #4b5563;
+    line-height: 1.8;
+    font-size: 1.05rem;
+}
+
+.values-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.values-item {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.check-icon {
+    min-width: 20px;
+    height: 20px;
+    background: #5c19dd;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 4px;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.value-title {
+    font-weight: 700;
+    color: #1f2937;
+    margin-right: 6px;
+}
+
+@media (max-width: 768px) {
+    .about-grid {
+        grid-template-columns: 1fr;
+        padding: 0 20px;
+    }
+
+    .about-title {
+        font-size: 2.5rem;
+    }
+
+    .about-card {
+        padding: 30px;
+    }
+}

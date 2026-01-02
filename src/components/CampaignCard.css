@@ -1,0 +1,146 @@
+.campaign-card {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid #e1e2e3;
+    /* Subtle border */
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.campaign-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 20px rgba(0, 0, 0, 0.08);
+    /* Soft lift shadow */
+    border-color: #d1d1d1;
+}
+
+.campaign-link-wrapper {
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.campaign-image-wrapper {
+    position: relative;
+    width: 100%;
+    padding-top: 100%;
+    /* 1:1 Aspect Ratio for nice grid */
+    background-color: #f0f0f0;
+    overflow: hidden;
+}
+
+.campaign-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+}
+
+.campaign-card:hover .campaign-image {
+    transform: scale(1.05);
+    /* Zoom effect */
+}
+
+.platform-badges-container {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    display: flex;
+    gap: 6px;
+    z-index: 2;
+}
+
+.platform-logo-badge {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    object-fit: contain;
+}
+
+.status-badge {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.status-badge.recruiting {
+    background-color: var(--revu-purple);
+}
+
+.campaign-content {
+    padding: 16px;
+    /* reduced padding */
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.campaign-title {
+    font-size: 16px;
+    /* Better hierarchy */
+    font-weight: 700;
+    margin-bottom: 8px;
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    /* Standard property */
+    -webkit-box-orient: vertical;
+    color: #222;
+}
+
+.campaign-meta {
+    border-top: 1px solid #f0f0f0;
+    padding-top: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: #666;
+}
+
+.applicant-count .highlight {
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+.campaign-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+    /* Add some spacing from title */
+    font-size: 13px;
+    color: #666;
+}
+
+.campaign-info .location {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.campaign-info .applicants {
+    color: #888;
+    font-size: 12px;
+}

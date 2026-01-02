@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Tam Korea 웹사이트 배포 통합 가이드</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        h1 {
+            border-bottom: 3px solid #333;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #2563eb;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #4b5563;
+            margin-top: 25px;
+        }
+
+        code {
+            background-color: #f3f4f6;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: #e11d48;
+        }
+
+        pre {
+            background-color: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+
+        pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+        }
+
+        .note {
+            background-color: #eff6ff;
+            border-left: 4px solid #2563eb;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .warning {
+            background-color: #fef2f2;
+            border-left: 4px solid #ef4444;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Tam Korea 웹사이트 배포 통합 가이드</h1>
+    <p>이 파일은 <strong>Chrome</strong>이나 <strong>Edge</strong> 같은 웹 브라우저에서 바로 열립니다.</p>
+
+    <div class="note">
+        <strong>진행 순서 요약:</strong><br>
+        1. <strong>GitHub Desktop 설치 및 코드를 GitHub에 올리기</strong> (가장 중요)<br>
+        2. <strong>Vercel 사이트에서 GitHub 코드를 가져와서 배포하기</strong><br>
+        3. <strong>Vercel 배포 주소에 가비아 도메인 연결하기</strong>
+    </div>
+
+    <hr>
+
+    <h2>1단계: 코드 GitHub에 올리기 (GitHub Desktop 사용)</h2>
+    <p>현재 컴퓨터에 있는 코드를 GitHub 저장소로 보내는 과정입니다.</p>
+
+    <h3>1. 설치 및 로그인</h3>
+    <ol>
+        <li><a href="https://desktop.github.com/" target="_blank">GitHub Desktop 다운로드</a> 후 설치합니다.</li>
+        <li>실행 후 본인의 GitHub 아이디로 <strong>로그인(Sign in)</strong> 합니다.</li>
+    </ol>
+
+    <h3>2. 내 코드를 저장소로 만들기</h3>
+    <ol>
+        <li>GitHub Desktop 메뉴에서 <strong>File</strong> -> <strong>Add local repository...</strong> 클릭</li>
+        <li><strong>Local path</strong>의 <code>Choose...</code> 버튼 누르고 <code>d:\01 work\gravity</code> 폴더 선택</li>
+        <li>경고창이 뜨면 파란색 <strong>"create a repository"</strong> 클릭</li>
+        <li><strong>Create a New Repository</strong> 창에서:
+            <ul>
+                <li><strong>Name</strong>: <code>gravity</code> (자동 입력됨)</li>
+                <li><strong>Git ignore</strong>: 목록에서 <strong>Node</strong> 선택 (필수)</li>
+                <li><strong>Create repository</strong> 버튼 클릭</li>
+            </ul>
+        </li>
+    </ol>
+
+    <h3>3. GitHub에 올리기 (Publish)</h3>
+    <ol>
+        <li>상단의 파란색 <strong>Publish repository</strong> 버튼 클릭</li>
+        <li><strong>Publish Repository</strong> 버튼 클릭 (비공개/공개 여부 선택)</li>
+        <li>로딩이 끝나면 업로드 완료!</li>
+    </ol>
+
+    <hr>
+
+    <h2>2단계: Vercel 배포하기</h2>
+    <p>GitHub에 올라간 코드를 실제 웹사이트로 만드는 과정입니다.</p>
+
+    <ol>
+        <li><a href="https://vercel.com" target="_blank">Vercel.com</a> 로그인 (GitHub 아이디로 계속하기)</li>
+        <li>대시보드 우측 상단 <strong>"Add New..."</strong> -> <strong>"Project"</strong></li>
+        <li><strong>"Import Git Repository"</strong> 목록에서 방금 올린 <code>gravity</code> 연결 (<strong>Import</strong> 클릭)
+        </li>
+        <li><strong>Deploy</strong> 버튼 클릭 (설정 건드릴 필요 없음)</li>
+        <li>폭죽이 터지면 배포 완료!</li>
+    </ol>
+
+    <hr>
+
+    <h2>3단계: 가비아 도메인 연결하기</h2>
+    <p><code>www.tamkorea.com</code> 주소를 연결하는 과정입니다.</p>
+
+    <h3>1. Vercel 설정</h3>
+    <ol>
+        <li>Vercel 대시보드 -> 해당 프로젝트 -> <strong>Settings</strong> -> <strong>Domains</strong></li>
+        <li>입력창에 <code>www.tamkorea.com</code> 입력 후 <strong>Add</strong></li>
+        <li>나타나는 <strong>Value</strong> 값 확인 (보통 <code>cname.vercel-dns.com</code>)</li>
+    </ol>
+
+    <h3>2. 가비아 설정</h3>
+    <ol>
+        <li><a href="https://www.gabia.com" target="_blank">가비아 홈페이지</a> -> 도메인 관리 -> DNS 정보 -> <strong>DNS 설정</strong>
+        </li>
+        <li><strong>레코드 추가/수정</strong>:
+            <ul>
+                <li>타입: <strong>CNAME</strong> / 호스트: <code>www</code> / 값: <code>cname.vercel-dns.com.</code></li>
+                <li>타입: <strong>A</strong> / 호스트: <code>@</code> / 값: <code>76.76.21.21</code> (Vercel 권장 IP)</li>
+            </ul>
+        </li>
+        <li>저장 후 30분~1시간 대기</li>
+    </ol>
+
+    <div class="warning">
+        <strong>참고:</strong> 도메인 연결은 전 세계 네트워크에 반영되기까지 시간이 조금 걸립니다. 설정 후 바로 안 떠도 기다려보세요!
+    </div>
+
+    <hr>
+
+    <h2>문제 해결 (Troubleshooting)</h2>
+    <div class="warning">
+        <h3>🚨 배포는 성공했는데(Congratulations) 화면에 404 에러가 떠요!</h3>
+        <p><strong>원인:</strong> Vercel이 결과물 폴더인 <code>dist</code>를 찾지 못해 빈 화면을 보여주는 것입니다. (GitHub 비공개 설정 문제가 아닙니다!)</p>
+
+        <p><strong>해결 방법 (1분 컷):</strong></p>
+        <ol>
+            <li>Vercel 대시보드 -> <strong>Settings</strong> -> <strong>Build & Development Settings</strong></li>
+            <li><strong>Output Directory</strong> 항목의 <strong>Override</strong> 스위치 켜기</li>
+            <li>입력칸에 <strong><code>dist</code></strong> 입력하고 <strong>Save</strong></li>
+            <li>상단 <strong>Deployments</strong> 탭 이동 -> 가장 위 항목의 점 3개(...) -> <strong>Redeploy</strong> 클릭 (재배포해야 적용됨!)
+            </li>
+        </ol>
+    </div>
+
+</body>
+
+</html>

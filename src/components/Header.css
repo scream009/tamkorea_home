@@ -1,0 +1,268 @@
+/* Header.css */
+.header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    background-color: #fff;
+    border-bottom: 1px solid #eee;
+    transition: all 0.3s ease;
+}
+
+/* Utility Bar (Top) */
+.header-utility-bar {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #eee;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+    color: #666;
+}
+
+.utility-container {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.utility-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.utility-btn {
+    background: none;
+    border: none;
+    font-size: 12px;
+    color: #888;
+    cursor: pointer;
+    padding: 0;
+    font-weight: 500;
+}
+
+.utility-btn.active {
+    color: var(--revu-purple);
+    font-weight: 700;
+}
+
+.utility-left .divider {
+    color: #ddd;
+    font-size: 10px;
+}
+
+.utility-right {
+    display: flex;
+    gap: 16px;
+}
+
+.utility-right a {
+    color: #888;
+    transition: color 0.2s;
+    font-size: 12px;
+}
+
+.utility-right a:hover {
+    color: #333;
+}
+
+
+/* Main Header Content */
+.header-main {
+    height: 64px;
+    display: flex;
+    align-items: center;
+}
+
+.header-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.logo a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.logo-icon {
+    width: 38px;
+    height: 38px;
+    object-fit: cover;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    filter: hue-rotate(230deg) brightness(0.95);
+}
+
+.logo-text {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--revu-purple);
+    letter-spacing: -0.5px;
+}
+
+/* Main Nav */
+.nav-menu {
+    margin-left: 48px;
+    flex: 1;
+}
+
+.nav-list {
+    display: flex;
+    gap: 48px;
+}
+
+.nav-link {
+    font-size: 18px;
+    font-weight: 700;
+    color: #333;
+    transition: color 0.2s;
+    padding: 8px 0;
+}
+
+.nav-link:hover {
+    color: var(--revu-purple);
+}
+
+/* Header Actions */
+.header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 16px;
+    min-width: 120px;
+    /* Ensure space for dropdown */
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    color: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.icon-btn:hover {
+    background: #f5f5f5;
+}
+
+.auth-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 8px;
+}
+
+.btn-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: #666;
+    padding: 8px 12px;
+}
+
+.btn-text:hover {
+    color: #333;
+}
+
+.btn-pill {
+    border-radius: 20px;
+    padding: 8px 24px;
+    font-size: 14px;
+    font-weight: 700;
+    background-color: var(--revu-purple);
+    color: white;
+    transition: background-color 0.2s;
+}
+
+.btn-pill:hover {
+    background-color: #4a14b3;
+}
+
+/* Sticky State */
+.header.scrolled {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Language Dropdown - Revu Style */
+.language-dropdown-container {
+    position: relative;
+    margin-left: 20px;
+}
+
+.language-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: white;
+    border: 1px solid #e1e1e1;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    height: 32px;
+}
+
+.language-btn:hover {
+    border-color: #333;
+}
+
+.lang-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    line-height: 1;
+}
+
+.lang-arrow {
+    color: #888;
+    transition: transform 0.2s;
+}
+
+.lang-arrow.open {
+    transform: rotate(180deg);
+}
+
+.language-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    background: white;
+    border: 1px solid #e1e1e1;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    min-width: 80px;
+    overflow: hidden;
+    z-index: 1001;
+}
+
+.lang-option {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 8px 12px;
+    background: none;
+    border: none;
+    font-size: 13px;
+    color: #666;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.lang-option:hover {
+    background: #f8f9fa;
+    color: var(--revu-purple);
+}
+
+.lang-option.active {
+    font-weight: 700;
+    color: var(--revu-purple);
+}

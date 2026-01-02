@@ -1,0 +1,36 @@
+.toast-container {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    z-index: 10000;
+    animation: slideUpFade 0.3s ease forwards;
+}
+
+.toast-content {
+    background-color: rgba(30, 30, 30, 0.95);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 50px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    font-size: 14px;
+    font-weight: 500;
+    backdrop-filter: blur(4px);
+    min-width: 300px;
+    justify-content: center;
+}
+
+.toast-icon {
+    color: #a78bfa;
+    /* Light purple for Revu theme match */
+}
+
+@keyframes slideUpFade {
+    to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+    }
+}

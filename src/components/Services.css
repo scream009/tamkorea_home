@@ -1,0 +1,176 @@
+/* Services.css */
+.services {
+    background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+    padding: 120px 0;
+    position: relative;
+}
+
+/* Decorative background */
+.services::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 400px;
+    background: radial-gradient(ellipse at bottom, rgba(118, 75, 162, 0.06), transparent);
+    pointer-events: none;
+}
+
+.section-header {
+    text-align: center;
+    margin-bottom: 70px;
+    position: relative;
+    z-index: 1;
+}
+
+.section-title {
+    font-size: 2.75rem;
+    font-weight: 800;
+    color: #1f2937;
+    margin-bottom: 16px;
+    letter-spacing: -0.02em;
+}
+
+.section-subtitle {
+    font-size: 1.25rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.services-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px;
+    position: relative;
+    z-index: 1;
+}
+
+@media (max-width: 900px) {
+    .services-grid {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+}
+
+.service-card {
+    background: white;
+    padding: 50px 40px;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Gradient overlay on hover */
+.service-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.03), rgba(118, 75, 162, 0.03));
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+.service-card:hover::before {
+    opacity: 1;
+}
+
+.service-card:hover {
+    transform: translateY(-12px);
+    box-shadow: 0 24px 60px rgba(102, 126, 234, 0.15);
+    border-color: rgba(102, 126, 234, 0.2);
+}
+
+.service-icon-wrapper {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background-color: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 28px;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    z-index: 1;
+}
+
+.service-card:hover .service-icon-wrapper {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    transform: scale(1.1);
+}
+
+/* Specific Colors if not hovering */
+.service-icon-wrapper.blue {
+    color: #667eea;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(102, 126, 234, 0.05));
+}
+
+.service-icon-wrapper.green {
+    color: #34c759;
+    background: linear-gradient(135deg, rgba(52, 199, 89, 0.1), rgba(52, 199, 89, 0.05));
+}
+
+.service-icon-wrapper.purple {
+    color: #764ba2;
+    background: linear-gradient(135deg, rgba(118, 75, 162, 0.1), rgba(118, 75, 162, 0.05));
+}
+
+.service-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 10px;
+    position: relative;
+    z-index: 1;
+}
+
+.service-subtitle {
+    font-size: 0.95rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 18px;
+    position: relative;
+    z-index: 1;
+}
+
+.service-desc {
+    font-size: 1rem;
+    color: #6b7280;
+    line-height: 1.7;
+    word-break: keep-all;
+    position: relative;
+    z-index: 1;
+}
+
+@media (max-width: 900px) {
+    .services {
+        padding: 80px 0;
+    }
+
+    .section-title {
+        font-size: 2.2rem;
+    }
+
+    .section-subtitle {
+        font-size: 1.1rem;
+    }
+
+    .service-card {
+        padding: 40px 30px;
+    }
+}

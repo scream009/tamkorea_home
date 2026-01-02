@@ -1,0 +1,471 @@
+/* Hero.css */
+.hero {
+    position: relative;
+    background-color: #f8f9fa;
+    padding-top: 60px;
+    /* Space from header */
+    padding-bottom: 0;
+    overflow: hidden;
+}
+
+.hero-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 600px;
+    position: relative;
+    z-index: 2;
+}
+
+.hero-content {
+    flex: 1;
+    max-width: 540px;
+    padding-right: 40px;
+}
+
+.hero-badge {
+    display: inline-block;
+    background-color: rgba(92, 25, 221, 0.1);
+    color: var(--revu-purple);
+    font-size: 14px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 4px;
+    margin-bottom: 24px;
+}
+
+.hero-title {
+    font-size: 48px;
+    /* Adjusted from 56px */
+    font-weight: 800;
+    line-height: 1.3;
+    color: #111;
+    margin-bottom: 24px;
+    letter-spacing: -0.5px;
+    word-break: keep-all;
+}
+
+.text-gradient {
+    background: linear-gradient(135deg, var(--revu-purple) 0%, #8a2be2 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hero-desc {
+    font-size: 18px;
+    color: #555;
+    line-height: 1.6;
+    margin-bottom: 40px;
+}
+
+.hero-desc strong {
+    color: #111;
+    font-weight: 600;
+}
+
+.hero-actions {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.btn-hero-primary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: var(--revu-purple);
+    color: white;
+    font-size: 17px;
+    font-weight: 700;
+    padding: 16px 32px;
+    border-radius: 50px;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 20px rgba(92, 25, 221, 0.2);
+}
+
+.btn-hero-primary:hover {
+    background-color: #4a14b3;
+    transform: translateY(-2px);
+    box-shadow: 0 15px 30px rgba(92, 25, 221, 0.3);
+}
+
+.btn-hero-secondary {
+    display: flex;
+    align-items: center;
+    background-color: white;
+    color: #333;
+    font-size: 17px;
+    font-weight: 600;
+    padding: 16px 32px;
+    border-radius: 50px;
+    border: 1px solid #ddd;
+    transition: all 0.3s ease;
+}
+
+.btn-hero-secondary:hover {
+    border-color: #999;
+    background-color: #f9f9f9;
+}
+
+.hero-trust-badges {
+    display: flex;
+    gap: 20px;
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+}
+
+.badge-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.badge-item svg {
+    color: var(--revu-purple);
+}
+
+
+/* Hero Visual (Dashboard) */
+.hero-visual {
+    flex: 1;
+    position: relative;
+    height: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card-main {
+    background: white;
+    width: 480px;
+    height: 320px;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+    position: relative;
+    z-index: 10;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.card-header {
+    height: 40px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 8px;
+}
+
+.dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.red {
+    background-color: #ff5f56;
+}
+
+.yellow {
+    background-color: #ffbd2e;
+}
+
+.green {
+    background-color: #27c93f;
+}
+
+.card-body {
+    padding: 30px;
+}
+
+.chart-area {
+    height: 160px;
+    background-color: #f9f9fc;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    position: relative;
+    padding: 0 30px 20px 30px;
+    /* Padding for bars */
+    overflow: hidden;
+}
+
+.chart-visual,
+.chart-svg {
+    display: none;
+}
+
+.chart-icon-floating {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    color: var(--revu-purple);
+    background: white;
+    padding: 8px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(92, 25, 221, 0.15);
+    z-index: 5;
+    animation: float 4s ease-in-out infinite;
+}
+
+.graph-bars {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    width: 100%;
+    /* Fill width */
+    height: 110px;
+    gap: 8px;
+}
+
+.bar {
+    flex: 1;
+    /* Distribute width */
+    background: linear-gradient(180deg, var(--revu-purple) 0%, rgba(92, 25, 221, 0.2) 100%);
+    border-radius: 6px 6px 0 0;
+    opacity: 0.85;
+    transform-origin: bottom;
+    box-shadow: 0 -4px 10px rgba(92, 25, 221, 0.1);
+}
+
+/* Initial Growth + Continuous Pulse */
+.bar-1 {
+    height: 35%;
+    animation: growBar 1s ease-out forwards, pulseBar 3s ease-in-out infinite 1s;
+}
+
+.bar-2 {
+    height: 55%;
+    animation: growBar 1s ease-out forwards 0.1s, pulseBar 2.5s ease-in-out infinite 1.1s;
+}
+
+.bar-3 {
+    height: 45%;
+    animation: growBar 1s ease-out forwards 0.2s, pulseBar 3.2s ease-in-out infinite 1.2s;
+}
+
+.bar-4 {
+    height: 70%;
+    animation: growBar 1s ease-out forwards 0.3s, pulseBar 2.8s ease-in-out infinite 1.3s;
+}
+
+.bar-5 {
+    height: 60%;
+    animation: growBar 1s ease-out forwards 0.4s, pulseBar 3.5s ease-in-out infinite 1.4s;
+}
+
+.bar-6 {
+    height: 85%;
+    animation: growBar 1s ease-out forwards 0.5s, pulseBar 3.0s ease-in-out infinite 1.5s;
+}
+
+.bar-7 {
+    height: 50%;
+    animation: growBar 1s ease-out forwards 0.6s, pulseBar 2.7s ease-in-out infinite 1.6s;
+}
+
+@keyframes growBar {
+    from {
+        transform: scaleY(0);
+    }
+
+    to {
+        transform: scaleY(1);
+    }
+}
+
+@keyframes pulseBar {
+
+    0%,
+    100% {
+        transform: scaleY(1);
+    }
+
+    50% {
+        transform: scaleY(1.08);
+    }
+
+    /* Subtle breathing effect */
+}
+
+.stats-row {
+    display: flex;
+    justify-content: space-between;
+}
+
+.mini-stat {
+    display: flex;
+    flex-direction: column;
+}
+
+.mini-stat .label {
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 4px;
+}
+
+.mini-stat .value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #333;
+}
+
+/* Floating Elements */
+.floating-card {
+    position: absolute;
+    background: white;
+    padding: 16px 20px;
+    border-radius: 12px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 12;
+    animation: float 6s ease-in-out infinite;
+}
+
+.float-icon {
+    color: var(--revu-purple);
+    background-color: rgba(92, 25, 221, 0.1);
+    padding: 8px;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    box-sizing: content-box;
+}
+
+.float-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.float-label {
+    font-size: 12px;
+    color: #888;
+}
+
+.float-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #333;
+}
+
+.float-1 {
+    top: 60px;
+    left: -20px;
+    animation-delay: 0s;
+}
+
+.float-2 {
+    bottom: 80px;
+    right: -20px;
+    animation-delay: 3s;
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-15px);
+    }
+
+    100% {
+        transform: translateY(0px);
+    }
+}
+
+
+/* Stats Bar */
+.stats-bar {
+    background: white;
+    border-top: 1px solid #eee;
+    padding: 40px 0;
+}
+
+.stats-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 0 60px;
+}
+
+.stat-number {
+    display: block;
+    font-size: 36px;
+    font-weight: 800;
+    color: #111;
+    margin-bottom: 8px;
+}
+
+.stat-label {
+    font-size: 16px;
+    color: #666;
+    font-weight: 500;
+}
+
+.stat-divider {
+    width: 1px;
+    height: 60px;
+    background-color: #eee;
+}
+
+/* Mobile */
+@media (max-width: 900px) {
+    .hero-container {
+        flex-direction: column;
+        text-align: center;
+        padding-top: 40px;
+    }
+
+    .hero-content {
+        max-width: 100%;
+        padding-right: 0;
+        margin-bottom: 60px;
+        align-items: center;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .hero-title {
+        font-size: 36px;
+    }
+
+    .hero-actions {
+        justify-content: center;
+        flex-direction: column;
+    }
+
+    .hero-visual {
+        width: 100%;
+        transform: scale(0.9);
+    }
+
+    .stats-container {
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        /* Center horizontally */
+        gap: 30px;
+        padding: 0 20px;
+    }
+
+    .stat-item {
+        padding: 0;
+        width: 45%;
+        /* Make stats 2 per row */
+    }
+
+    .stat-divider {
+        display: none;
+    }
+}

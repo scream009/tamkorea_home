@@ -1,0 +1,117 @@
+.signup-selection-page {
+    padding: 100px 0;
+    min-height: calc(100vh - 300px);
+    /* Adjust based on header/footer */
+    display: flex;
+    align-items: center;
+    background-color: #f9f9f9;
+}
+
+.selection-header {
+    text-align: center;
+    margin-bottom: 60px;
+}
+
+.selection-header h2 {
+    font-size: 32px;
+    font-weight: 800;
+    margin-bottom: 16px;
+    color: #111;
+}
+
+.selection-header p {
+    font-size: 16px;
+    color: #666;
+    line-height: 1.6;
+}
+
+.selection-cards {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 30px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.selection-card {
+    background: white;
+    padding: 60px 40px;
+    border-radius: 20px;
+    text-align: center;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border: 1px solid #eee;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+}
+
+.selection-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+    border-color: var(--revu-purple);
+}
+
+.card-icon {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: #f5f5f7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    transition: all 0.3s ease;
+}
+
+.selection-card:hover .card-icon {
+    background: rgba(124, 58, 237, 0.1);
+    /* Light purple bg */
+    color: var(--revu-purple);
+}
+
+.card-content h3 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #222;
+    margin-bottom: 8px;
+}
+
+.card-content p {
+    font-size: 15px;
+    color: #888;
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+
+.card-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: var(--revu-purple);
+    font-size: 16px;
+}
+
+.login-link {
+    text-align: center;
+    margin-top: 50px;
+    color: #666;
+    font-size: 15px;
+}
+
+.login-link a {
+    color: var(--revu-purple);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    margin-left: 8px;
+}
+
+@media (max-width: 768px) {
+    .selection-cards {
+        grid-template-columns: 1fr;
+        padding: 0 20px;
+    }
+}
