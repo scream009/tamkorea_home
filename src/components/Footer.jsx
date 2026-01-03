@@ -22,12 +22,18 @@ const Footer = () => {
                             <span className="footer-logo">{t('footer.companyName')}</span>
                         </div>
                         <address className="company-info">
-                            <div className="info-row">{t('footer.companyNameLocal')}</div>
-                            <div className="info-row">{t('footer.ceo')}</div>
-                            <div className="info-row">{t('footer.bizNum')}</div>
-                            <div className="info-row">{t('footer.address')}</div>
-                            <div className="info-row">{t('footer.cs')}</div>
-                            <div className="info-row">{t('footer.email')}</div>
+                            <div className="info-group">
+                                <span className="info-item">{t('footer.companyNameLocal')}</span>
+                                <span className="info-item">{t('footer.ceo')}</span>
+                                <span className="info-item">{t('footer.bizNum')}</span>
+                            </div>
+                            <div className="info-group">
+                                <span className="info-item">{t('footer.address')}</span>
+                            </div>
+                            <div className="info-group">
+                                <span className="info-item">{t('footer.cs')}</span>
+                                <span className="info-item">{t('footer.email')}</span>
+                            </div>
                             <p className="copyright">
                                 {t('footer.copyright')}
                             </p>
