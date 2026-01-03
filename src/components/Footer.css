@@ -164,34 +164,17 @@
 
     .company-info {
         display: block;
-        margin-top: 12px;
+        margin-top: 20px;
         text-align: left;
     }
 
-    .company-info p {
+    .info-row {
         display: block;
-        margin-bottom: 20px;
-        /* Separator between logical blocks */
+        margin-bottom: 6px;
         font-size: 13px;
-        line-height: 1.6;
-        color: #666;
-    }
-
-    .company-info p:last-child {
-        margin-bottom: 0;
-    }
-
-    /* Just standard block behavior for spans, maybe with a break if needed. 
-       Actually, standard spans are inline. To stack them, use block. */
-    .company-info span {
-        display: block;
-        margin-bottom: 4px;
+        color: #777;
+        line-height: 1.5;
         word-break: break-all;
-        /* Allow breaking anywhere to prevent overflow/shift */
-    }
-
-    .company-info span::after {
-        display: none;
     }
 
     .contact-row {
@@ -199,7 +182,7 @@
     }
 
     .copyright {
-        margin-top: 40px;
+        margin-top: 32px;
         color: #bbb;
         font-size: 12px;
     }
