@@ -165,8 +165,9 @@
     .company-info {
         display: flex;
         flex-direction: column;
-        gap: 12px;
-        /* Gap between paragraphs */
+        gap: 8px;
+        /* Reduced gap further */
+        margin-top: 8px;
     }
 
     .company-info p {
@@ -174,9 +175,10 @@
         display: flex;
         flex-direction: column;
         gap: 2px;
-        /* Tighter gap between lines in same paragraph */
-        font-size: 13px;
-        line-height: 1.4;
+        font-size: 12px;
+        /* Slightly smaller font for neatness */
+        line-height: 1.5;
+        color: #888;
     }
 
     /* Stack spans vertically and remove pipes */
@@ -184,8 +186,7 @@
         display: block;
         padding-right: 0;
         margin-right: 0;
-        color: #777;
-        /* Slightly lighter for less visual weight */
+        color: #888;
     }
 
     .company-info span::after {

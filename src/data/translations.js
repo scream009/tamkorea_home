@@ -84,7 +84,7 @@ export const translations = {
             btnMore: '자세히 보기'
         },
         footer: {
-            companyName: '탐코리아',
+            companyName: 'TamKorea',
             ceo: '대표이사: 김은련',
             bizNum: '사업자등록번호: 675-21-02142',
             address: '주소: 제주특별자치도 제주시 연동 272-33 514호',
