@@ -268,7 +268,7 @@ const BizPage = () => {
             <section className="biz-bottom-cta">
                 <div className="container">
                     <div className="cta-box">
-                        <h2>업계 유일의 믿을 수 있는 마케팅,<br />지금 바로 시작하세요.</h2>
+                        <h2>믿을 수 있는 마케팅<br />탐코리아와 함께 지금 바로 시작하세요.</h2>
                         <div className="cta-form-preview">
                             <Link to="/contact" className="btn btn-white btn-xl">무료 상담 신청하기</Link>
                             <p className="cta-sub">상담만 받아도 마케팅 인사이트 리포트를 드립니다.</p>
