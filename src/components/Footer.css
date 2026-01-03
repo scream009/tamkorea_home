@@ -165,14 +165,18 @@
     .company-info {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 12px;
+        /* Gap between paragraphs */
     }
 
     .company-info p {
-        margin-bottom: 8px;
+        margin-bottom: 0;
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 2px;
+        /* Tighter gap between lines in same paragraph */
+        font-size: 13px;
+        line-height: 1.4;
     }
 
     /* Stack spans vertically and remove pipes */
@@ -180,16 +184,22 @@
         display: block;
         padding-right: 0;
         margin-right: 0;
-        color: #666;
+        color: #777;
+        /* Slightly lighter for less visual weight */
     }
 
     .company-info span::after {
         display: none;
     }
 
+    .contact-row {
+        margin-top: 4px;
+    }
+
     .copyright {
-        margin-top: 32px;
+        margin-top: 24px;
         color: #aaa;
+        font-size: 11px;
     }
 }
 
