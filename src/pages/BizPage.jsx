@@ -14,8 +14,8 @@ const BizPage = () => {
             <section className="biz-hero">
                 <div className="container">
                     <div className="biz-hero-content">
-                        <span className="biz-label">소상공인부터 글로벌 기업까지</span>
-                        <h1>지역 랜드마크 매장,<br />3곳 중 2곳은 탐코리아가 만듭니다</h1>
+                        <span className="biz-label">중화권 유치로 로컬 매장 활성화에서부터, 글로벌 진출까지</span>
+                        <h1>성공한 지역 랜드마크 매장,<br />탐코리아와 함께 완성되었습니다.</h1>
                         <p>단순한 노출이 아닌, 실제 매출로 이어지는 마케팅 솔루션.<br />탐코리아가 귀사의 든든한 성장 파트너가 되어드리겠습니다.</p>
                         <div className="biz-hero-actions">
                             <Link to="/contact" className="btn btn-primary btn-lg">무료 맞춤 컨설팅 신청</Link>
