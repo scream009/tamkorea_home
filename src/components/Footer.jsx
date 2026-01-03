@@ -23,7 +23,7 @@ const Footer = () => {
                         </div>
                         <address className="company-info">
                             <p>
-                                <span>{t('footer.companyName')}</span>
+                                <span>{t('footer.companyNameLocal')}</span>
                                 <span>{t('footer.ceo')}</span>
                                 <span>{t('footer.bizNum')}</span>
                             </p>

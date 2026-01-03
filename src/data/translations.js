@@ -85,6 +85,7 @@ export const translations = {
         },
         footer: {
             companyName: 'TamKorea',
+            companyNameLocal: '탐코리아',
             ceo: '대표이사: 김은련',
             bizNum: '사업자등록번호: 675-21-02142',
             address: '주소: 제주특별자치도 제주시 연동 272-33 514호',
@@ -194,6 +195,7 @@ export const translations = {
         },
         footer: {
             companyName: 'TamKorea',
+            companyNameLocal: 'TamKorea',
             ceo: 'CEO: Jin Yin Lian',
             bizNum: 'Business License: 675-21-02142',
             address: 'Addr: #514, 272-33, Yeondong, Jeju-si, Jeju-do',
@@ -303,6 +305,7 @@ export const translations = {
         },
         footer: {
             companyName: 'TamKorea',
+            companyNameLocal: 'TamKorea',
             ceo: 'CEO: Jin Yin Lian',
             bizNum: '商业登记号: 675-21-02142',
             address: '地址: 济州特别自治道济州市莲洞 272-33 514号',

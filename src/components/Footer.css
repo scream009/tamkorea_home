@@ -165,28 +165,32 @@
     .company-info {
         display: flex;
         flex-direction: column;
-        gap: 8px;
-        /* Reduced gap further */
-        margin-top: 8px;
+        gap: 20px;
+        /* Distinct separation between logical blocks */
+        margin-top: 12px;
+        text-align: left;
     }
 
     .company-info p {
         margin-bottom: 0;
         display: flex;
         flex-direction: column;
-        gap: 2px;
-        font-size: 12px;
-        /* Slightly smaller font for neatness */
+        gap: 6px;
+        /* Space between lines within a block */
+        font-size: 14px;
+        /* Readable font size */
         line-height: 1.5;
-        color: #888;
+        color: #666;
     }
 
-    /* Stack spans vertically and remove pipes */
+    /* Remove any weird flex/inline behaviors from spans */
     .company-info span {
         display: block;
-        padding-right: 0;
-        margin-right: 0;
-        color: #888;
+        padding: 0;
+        margin: 0;
+        color: #666;
+        word-break: keep-all;
+        /* Prevent awkward word breaking */
     }
 
     .company-info span::after {
@@ -194,13 +198,13 @@
     }
 
     .contact-row {
-        margin-top: 4px;
+        margin-top: 0;
     }
 
     .copyright {
-        margin-top: 24px;
-        color: #aaa;
-        font-size: 11px;
+        margin-top: 40px;
+        color: #bbb;
+        font-size: 12px;
     }
 }
 
