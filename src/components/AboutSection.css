@@ -5,6 +5,11 @@
     align-items: center;
 }
 
+/* Specific override for this section's title as requested */
+.about-content .section-title {
+    color: var(--revu-purple);
+}
+
 .about-image-wrapper {
     position: relative;
     border-radius: var(--radius-xl);
