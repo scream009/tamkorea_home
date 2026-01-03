@@ -130,6 +130,10 @@
 
 /* Mobile */
 @media (max-width: 768px) {
+    .footer {
+        padding: 40px 0 60px;
+    }
+
     .footer-top {
         flex-direction: column;
         align-items: flex-start;
@@ -138,13 +142,10 @@
 
     .footer-links-group {
         flex-wrap: wrap;
-        gap: 15px;
+        gap: 12px 20px;
     }
 
     .footer-main {
-        flex-direction: column-reverse;
-        /* Put content above info on mobile if desired, or standard column */
-        /* Actually user wants standard column usually. Let's stick to column */
         flex-direction: column;
         gap: 40px;
     }
@@ -152,11 +153,43 @@
     .footer-right {
         align-items: flex-start;
         width: 100%;
+        order: 2;
+        /* Ensure links/SNS are below info or above? User image implies info is top. Let's keep info top (order 1 default) */
+        margin-top: 0;
     }
 
+    .footer-logo {
+        margin-bottom: 16px;
+    }
+
+    .company-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .company-info p {
+        margin-bottom: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    /* Stack spans vertically and remove pipes */
     .company-info span {
-        display: inline-block;
-        margin-bottom: 4px;
+        display: block;
+        padding-right: 0;
+        margin-right: 0;
+        color: #666;
+    }
+
+    .company-info span::after {
+        display: none;
+    }
+
+    .copyright {
+        margin-top: 32px;
+        color: #aaa;
     }
 }
 
