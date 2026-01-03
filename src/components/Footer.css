@@ -186,7 +186,8 @@
     .company-info span {
         display: block;
         margin-bottom: 4px;
-        word-break: keep-all;
+        word-break: break-all;
+        /* Allow breaking anywhere to prevent overflow/shift */
     }
 
     .company-info span::after {
