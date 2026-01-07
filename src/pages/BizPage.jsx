@@ -59,7 +59,7 @@ const BizPage = () => {
                             </div>
                             <h3>글로벌 마케팅</h3>
                             <p>해외 관광객 유치나<br />현지 진출이 필요할 때?</p>
-                            <a href="#global-section" className="service-link">자세히 보기 <ArrowRight size={14} /></a>
+                            <Link to="/contact" className="service-link">문의하기 <ArrowRight size={14} /></Link>
                         </div>
                         <div className="service-card">
                             <div className="service-icon-wrapper casting">
@@ -67,7 +67,7 @@ const BizPage = () => {
                             </div>
                             <h3>맞춤형 섭외 (캐스팅)</h3>
                             <p>특정 타겟/컨셉의<br />인플루언서가 필요할 때?</p>
-                            <a href="#casting-section" className="service-link">문의하기 <ArrowRight size={14} /></a>
+                            <Link to="/contact" className="service-link">문의하기 <ArrowRight size={14} /></Link>
                         </div>
                         <div className="service-card">
                             <div className="service-icon-wrapper local">
@@ -75,7 +75,7 @@ const BizPage = () => {
                             </div>
                             <h3>따종디엔핑 입점/관리</h3>
                             <p>중국판 네이버 지도<br />매장 등록이 필요할 때?</p>
-                            <a href="#dianping-section" className="service-link">바로가기 <ArrowRight size={14} /></a>
+                            <Link to="/contact" className="service-link">바로가기 <ArrowRight size={14} /></Link>
                         </div>
                         <div className="service-card">
                             <div className="service-icon-wrapper agency">
@@ -83,7 +83,7 @@ const BizPage = () => {
                             </div>
                             <h3>에이전시 제휴</h3>
                             <p>성과를 높이고 싶은<br />마케팅 대행사라면?</p>
-                            <a href="#agency-section" className="service-link">제휴 문의 <ArrowRight size={14} /></a>
+                            <Link to="/contact" className="service-link">제휴 문의 <ArrowRight size={14} /></Link>
                         </div>
                     </div>
                 </div>
