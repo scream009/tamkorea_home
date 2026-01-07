@@ -449,56 +449,88 @@
     animation: spin 20s linear infinite;
 }
 
-.casting-bg {
-    background-color: #f0fdfa;
+/* Xiaohongshu Section */
+.xiaohongshu-bg {
+    background-color: #fff0f0;
+    /* Very light red/pink */
 }
 
-.text-teal {
-    color: #14b8a6;
+.text-red {
+    color: #ff2741;
 }
 
-.casting-img {
-    background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+/* Xiaohongshu Brand Red */
+
+.xiaohongshu-img {
+    background: linear-gradient(135deg, #ff2741 0%, #ff6b81 100%);
     position: relative;
+    overflow: hidden;
 }
 
-/* Floating Profile Cards */
-.profile-cards-visual {
+/* Floating XHS Cards */
+.xhs-cards-visual {
     width: 100%;
     height: 100%;
     position: relative;
 }
 
-.profile-card {
-    width: 120px;
-    height: 160px;
-    background: rgba(255, 255, 255, 0.9);
+.xhs-card {
+    background: white;
     border-radius: 12px;
     position: absolute;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
-.profile-card.p1 {
-    top: 20%;
-    left: 20%;
-    transform: rotate(-5deg);
-    animation: float 5s ease-in-out infinite;
+.xhs-card .xhs-img {
+    background: #eee;
+    border-radius: 8px;
+    flex-grow: 1;
 }
 
-.profile-card.p2 {
-    top: 40%;
-    left: 50%;
+.xhs-card .xhs-text {
+    height: 6px;
+    background: #f1f5f9;
+    border-radius: 3px;
+}
+
+.xhs-text.line1 {
+    width: 80%;
+}
+
+.xhs-text.line2 {
+    width: 50%;
+}
+
+.xhs-card .xhs-like {
+    font-size: 10px;
+    color: #ff2741;
+    font-weight: bold;
+    text-align: right;
+}
+
+/* Card Positioning */
+.xhs-card.card1 {
     width: 140px;
-    height: 180px;
-    z-index: 2;
-    animation: float 5s ease-in-out infinite 1s;
+    height: 190px;
+    top: 15%;
+    left: 20%;
+    transform: rotate(-6deg);
+    animation: float 5s ease-in-out infinite;
+    z-index: 1;
 }
 
-.profile-card.p3 {
-    top: 25%;
-    left: 65%;
-    transform: rotate(5deg);
-    animation: float 5s ease-in-out infinite 2s;
+.xhs-card.card2 {
+    width: 150px;
+    height: 200px;
+    top: 30%;
+    left: 45%;
+    transform: rotate(8deg);
+    animation: float 5s ease-in-out infinite 1s;
+    z-index: 2;
 }
 
 .agency-bg {

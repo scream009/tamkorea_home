@@ -65,8 +65,8 @@ const BizPage = () => {
                             <div className="service-icon-wrapper casting">
                                 <Users size={32} />
                             </div>
-                            <h3>맞춤형 섭외 (캐스팅)</h3>
-                            <p>특정 타겟/컨셉의<br />인플루언서가 필요할 때?</p>
+                            <h3>샤오홍슈 체험단</h3>
+                            <p>구매력 높은 2030 중국 여성에게<br />우리 브랜드를 알리고 싶다면?</p>
                             <Link to="/contact" className="service-link">문의하기 <ArrowRight size={14} /></Link>
                         </div>
                         <div className="service-card">
@@ -130,37 +130,45 @@ const BizPage = () => {
                 </div>
             </section>
 
-            {/* 2. Casting Section */}
-            <section id="casting-section" className="biz-section casting-bg">
+            {/* 2. Xiaohongshu Influencer Section */}
+            <section id="casting-section" className="biz-section xiaohongshu-bg">
                 <div className="container">
                     <div className="biz-content-row reverse">
                         <div className="biz-text">
-                            <span className="section-tag text-teal">PREMIUM CASTING</span>
-                            <h2>원하는 인플루언서를<br />콕 집어 섭외하세요</h2>
+                            <span className="section-tag text-red">XIAOHONGSHU INFLUENCER</span>
+                            <h2>2030 중국 여성의 필수 앱,<br />샤오홍슈 체험단 마케팅</h2>
                             <p className="main-desc">
-                                팔로워 수만 많은 계정은 거릅니다.<br />
-                                <strong>진짜 영향력(Engagement)</strong>이 있는 프리미엄 크리에이터를 섭외합니다.
+                                단순 노출이 아닌, <strong>'심고(Seeding) 퍼트리는'</strong> 바이럴 마케팅.<br />
+                                구매 결정에 강력한 영향을 미치는 <strong>리얼 후기 콘텐츠</strong>를 생산합니다.
                             </p>
                             <ul className="biz-features-list">
                                 <li>
-                                    <CheckCircle size={20} className="check-icon text-teal" />
-                                    <span><strong>유튜버/방송인/셀럽</strong> 섭외 및 PPL 진행</span>
+                                    <CheckCircle size={20} className="check-icon text-red" />
+                                    <span><strong>K-뷰티/패션/여행</strong>에 관심 많은 2030 여성 타겟</span>
                                 </li>
                                 <li>
-                                    <CheckCircle size={20} className="check-icon text-teal" />
-                                    <span>뷰티/IT/푸드 등 <strong>전문 카테고리별 탑티어</strong> 매칭</span>
+                                    <CheckCircle size={20} className="check-icon text-red" />
+                                    <span>구매 전환율이 높은 <strong>진정성 있는 '내돈내산' 스타일</strong> 리뷰</span>
                                 </li>
                                 <li>
-                                    <CheckCircle size={20} className="check-icon text-teal" />
-                                    <span>모델 라이선스 및 초상권 계약 대행</span>
+                                    <CheckCircle size={20} className="check-icon text-red" />
+                                    <span>인기 검색어/해시태그 상위 노출을 통한 <strong>자연스러운 유입</strong></span>
                                 </li>
                             </ul>
                         </div>
-                        <div className="biz-image-placeholder casting-img">
-                            <div className="profile-cards-visual">
-                                <div className="profile-card p1"></div>
-                                <div className="profile-card p2"></div>
-                                <div className="profile-card p3"></div>
+                        <div className="biz-image-placeholder xiaohongshu-img">
+                            <div className="xhs-cards-visual">
+                                <div className="xhs-card card1">
+                                    <div className="xhs-img"></div>
+                                    <div className="xhs-text line1"></div>
+                                    <div className="xhs-text line2"></div>
+                                    <div className="xhs-like">♥ 1.2w</div>
+                                </div>
+                                <div className="xhs-card card2">
+                                    <div className="xhs-img"></div>
+                                    <div className="xhs-text line1"></div>
+                                    <div className="xhs-like">♥ 8.5k</div>
+                                </div>
                             </div>
                         </div>
                     </div>
