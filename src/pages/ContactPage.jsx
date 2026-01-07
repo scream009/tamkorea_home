@@ -160,7 +160,7 @@ const ContactPage = () => {
                                 </div>
                                 <div>
                                     <h4 style={{ fontWeight: '600', marginBottom: '0.25rem' }}>이메일</h4>
-                                    <p style={{ color: 'var(--color-text-muted)' }}>contact@tamkorea.com</p>
+                                    <p style={{ color: 'var(--color-text-muted)' }}>tamkorea888@gmail.com</p>
                                 </div>
                             </div>
 
@@ -170,8 +170,7 @@ const ContactPage = () => {
                                 </div>
                                 <div>
                                     <h4 style={{ fontWeight: '600', marginBottom: '0.25rem' }}>오시는 길</h4>
-                                    <p style={{ color: 'var(--color-text-muted)' }}>제주특별자치도 제주시 신대로 123</p>
-                                    <p style={{ color: 'var(--color-text-muted)' }}>탐코리아 빌딩 508호</p>
+                                    <p style={{ color: 'var(--color-text-muted)' }}>제주 제주시 신대로12길 51 514호</p>
                                 </div>
                             </div>
                         </div>
