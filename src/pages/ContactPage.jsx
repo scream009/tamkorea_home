@@ -5,7 +5,7 @@ import './ContactPage.css';
 import './ContactForm.css'; // New styles
 
 const ContactPage = () => {
-    const { t } = useLanguage();
+    // const { t } = useLanguage(); // Not used
 
     // Form State
     const [formData, setFormData] = useState({
