@@ -57,9 +57,9 @@ const BizPage = () => {
                             <div className="service-icon-wrapper local">
                                 <MapPin size={32} />
                             </div>
-                            <h3>브랜드(제품) 마케팅</h3>
-                            <p>신제품 런칭이나<br />메뉴 홍보가 필요할 때?</p>
-                            <a href="#brand-section" className="service-link">바로가기 <ArrowRight size={14} /></a>
+                            <h3>따종디엔핑 입점/관리</h3>
+                            <p>중국판 네이버 지도<br />매장 등록이 필요할 때?</p>
+                            <a href="#dianping-section" className="service-link">바로가기 <ArrowRight size={14} /></a>
                         </div>
                         <div className="service-card">
                             <div className="service-icon-wrapper global">
@@ -89,34 +89,34 @@ const BizPage = () => {
                 </div>
             </section>
 
-            {/* 1. Brand Marketing Section */}
-            <section id="brand-section" className="biz-section brand-bg">
+            {/* 1. Dazhong Dianping Section */}
+            <section id="dianping-section" className="biz-section brand-bg">
                 <div className="container">
                     <div className="biz-content-row">
                         <div className="biz-text">
-                            <span className="section-tag text-blue">BRAND MARKETING</span>
-                            <h2>소비자의 지갑을 여는<br />매력적인 브랜드 스토리</h2>
+                            <span className="section-tag text-blue">DAZHONG DIANPING</span>
+                            <h2>중국인 관광객이 검색할 때,<br />따종디엔핑 상단에 노출됩니다.</h2>
                             <p className="main-desc">
-                                단순 배포형 리뷰가 아닙니다. <br />
-                                <strong>구매 전환</strong>을 유도하는 기획형 콘텐츠로 브랜드 가치를 높입니다.
+                                중국판 네이버 스마트플레이스, 선택이 아닌 필수입니다.<br />
+                                <strong>매장 등록</strong>부터 <strong>리뷰 관리</strong>까지 한 번에 해결해 드립니다.
                             </p>
                             <ul className="biz-features-list">
                                 <li>
                                     <CheckCircle size={20} className="check-icon text-blue" />
-                                    <span><strong>네이버 스마트블록 상위노출</strong> 최적화 원고 작성</span>
+                                    <span><strong>무료 매장 등록</strong> 및 공식 계정(V마크) 인증 지원</span>
                                 </li>
                                 <li>
                                     <CheckCircle size={20} className="check-icon text-blue" />
-                                    <span><strong>숏폼(릴스/틱톡) 챌린지</strong> 기획 및 배포</span>
+                                    <span><strong>고퀄리티 리뷰어(왕홍)</strong> 체험단 파견 및 콘텐츠 배포</span>
                                 </li>
                                 <li>
                                     <CheckCircle size={20} className="check-icon text-blue" />
-                                    <span>제품 촬영 및 상세페이지 기획/제작 지원</span>
+                                    <span>단기간 내 <strong>리뷰 수 증가</strong> 및 실질적 방문 유도</span>
                                 </li>
                             </ul>
                         </div>
-                        <div className="biz-image-placeholder brand-img">
-                            <div className="placeholder-text">Brand & Product</div>
+                        <div className="biz-image-placeholder dianping-img">
+                            <div className="placeholder-text">Dianping App Screen</div>
                         </div>
                     </div>
                 </div>
