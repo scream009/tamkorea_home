@@ -88,9 +88,9 @@ export const translations = {
             companyNameLocal: '탐코리아',
             ceo: '대표이사: 김은련',
             bizNum: '사업자등록번호: 675-21-02142',
-            address: '주소: 제주특별자치도 제주시 연동 272-33 508호',
+            address: '제주 제주시 신대로12길 51 514호',
             cs: '고객센터: 010-9430-5567',
-            email: '이메일: tamkorea888@gmail.com',
+            email: '이메일\u00A0\u00A0|\u00A0\u00A0tamkorea888@gmail.com',
             copyright: 'Copyright © TamKorea. All rights reserved.',
             familySite: 'Family Site',
             comingSoon: '현재 서비스 준비 중입니다.'
