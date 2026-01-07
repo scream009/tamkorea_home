@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Phone, MapPin, Send, CheckCircle, AlertCircle } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
-import './ContactPage.css';
 import './ContactForm.css'; // New styles
 
 const ContactPage = () => {
