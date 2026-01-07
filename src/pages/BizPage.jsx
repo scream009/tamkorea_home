@@ -75,7 +75,7 @@ const BizPage = () => {
                             </div>
                             <h3>따종디엔핑 입점/관리</h3>
                             <p>중국판 네이버 지도<br />매장 등록이 필요할 때?</p>
-                            <Link to="/contact" className="service-link">바로가기 <ArrowRight size={14} /></Link>
+                            <Link to="/contact" className="service-link">문의하기 <ArrowRight size={14} /></Link>
                         </div>
                         <div className="service-card">
                             <div className="service-icon-wrapper agency">
