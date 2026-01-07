@@ -98,7 +98,7 @@ const BizPage = () => {
                             <h2>국경 없는 비즈니스,<br />탐코리아 글로벌 마케팅</h2>
                             <p className="main-desc">
                                 <strong>인바운드(방한 관광객)</strong>부터 <strong>아웃바운드(해외 수출)</strong>까지.<br />
-                                미국, 일본, 중국, 동남아 현지 메가 인플루언서와 직접 연결합니다.
+                                중국 및 아시아 중화권 메가 인플루언서와 직접 연결합니다.
                             </p>
 
                             <ul className="biz-features-list">
@@ -108,7 +108,7 @@ const BizPage = () => {
                                 </li>
                                 <li>
                                     <CheckCircle size={20} className="check-icon text-purple" />
-                                    <span><strong>정부 지원 바우처(수출바우처)</strong> 공식 수행기관</span>
+                                    <span><strong>현지 트렌드</strong>를 반영한 네이티브 콘텐츠 기획</span>
                                 </li>
                                 <li>
                                     <CheckCircle size={20} className="check-icon text-purple" />
