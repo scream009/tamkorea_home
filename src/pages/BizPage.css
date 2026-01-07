@@ -98,85 +98,132 @@
 .service-card {
     background: white;
     padding: 40px 30px;
-    border-radius: 20px;
+    border-radius: 24px;
     text-align: center;
     border: 1px solid #e2e8f0;
-    transition: all 0.3s ease;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
     align-items: center;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
+.service-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: #e2e8f0;
+    transition: all 0.4s ease;
+}
+
+/* Individual Card Accents */
+.service-card:nth-child(1)::before {
+    background: linear-gradient(90deg, #c084fc, #a855f7);
+}
+
+/* Global - Purple */
+.service-card:nth-child(2)::before {
+    background: linear-gradient(90deg, #2dd4bf, #14b8a6);
+}
+
+/* Casting - Teal */
+.service-card:nth-child(3)::before {
+    background: linear-gradient(90deg, #fbbf24, #f59e0b);
+}
+
+/* Dianping - Orange */
+.service-card:nth-child(4)::before {
+    background: linear-gradient(90deg, #fb923c, #f97316);
+}
+
+/* Agency - RedOrange */
+
 .service-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
-    border-color: #d8b4fe;
+    transform: translateY(-12px);
+    box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.1);
+    border-color: transparent;
 }
 
 .service-icon-wrapper {
     width: 80px;
     height: 80px;
-    border-radius: 50%;
+    border-radius: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 24px;
-    background: #f1f5f9;
+    background: #f8fafc;
     color: #475569;
+    transition: all 0.4s ease;
+    position: relative;
+    z-index: 1;
 }
 
-.service-card:hover .service-icon-wrapper.local {
-    background: #dbeafe;
-    color: #3b82f6;
-}
-
+/* Icon Hover States */
 .service-card:hover .service-icon-wrapper.global {
-    background: #fae8ff;
-    color: #a855f7;
+    background: #f3e8ff;
+    color: #9333ea;
+    transform: rotate(-10deg) scale(1.1);
 }
 
 .service-card:hover .service-icon-wrapper.casting {
     background: #ccfbf1;
-    color: #14b8a6;
+    color: #0d9488;
+    transform: rotate(10deg) scale(1.1);
+}
+
+.service-card:hover .service-icon-wrapper.local {
+    background: #fef3c7;
+    color: #d97706;
+    transform: rotate(-10deg) scale(1.1);
 }
 
 .service-card:hover .service-icon-wrapper.agency {
     background: #ffedd5;
-    color: #f97316;
+    color: #ea580c;
+    transform: rotate(10deg) scale(1.1);
 }
 
 .service-card h3 {
-    font-size: 20px;
-    font-weight: 700;
+    font-size: 22px;
+    font-weight: 800;
     margin-bottom: 12px;
     color: #1e293b;
+    letter-spacing: -0.5px;
 }
 
 .service-card p {
-    font-size: 15px;
+    font-size: 16px;
     color: #64748b;
-    margin-bottom: 24px;
-    line-height: 1.5;
+    margin-bottom: 28px;
+    line-height: 1.6;
     flex-grow: 1;
+    padding: 0 10px;
 }
 
 .service-link {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    font-size: 14px;
-    font-weight: 600;
-    color: #475569;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #64748b;
     text-decoration: none;
-    padding: 8px 16px;
-    border-radius: 20px;
+    padding: 12px 24px;
+    border-radius: 99px;
     background: #f1f5f9;
-    transition: all 0.2s;
+    transition: all 0.3s ease;
 }
 
 .service-card:hover .service-link {
-    background: var(--revu-purple);
+    background: #1e293b;
     color: white;
+    padding-right: 20px;
 }
 
 /* Unified Section Styles */
