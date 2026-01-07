@@ -104,7 +104,7 @@ const BizPage = () => {
                             <ul className="biz-features-list">
                                 <li>
                                     <CheckCircle size={20} className="check-icon text-purple" />
-                                    <span><strong>샤오홍슈(중국) / 인스타그램(글로벌)</strong> 체험단 운영</span>
+                                    <span><strong>샤오홍슈 / 도우인(중국 틱톡) / 인스타그램(글로벌)</strong> 체험단 운영</span>
                                 </li>
                                 <li>
                                     <CheckCircle size={20} className="check-icon text-purple" />
