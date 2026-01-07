@@ -54,14 +54,6 @@ const BizPage = () => {
 
                     <div className="service-cards-grid">
                         <div className="service-card">
-                            <div className="service-icon-wrapper local">
-                                <MapPin size={32} />
-                            </div>
-                            <h3>따종디엔핑 입점/관리</h3>
-                            <p>중국판 네이버 지도<br />매장 등록이 필요할 때?</p>
-                            <a href="#dianping-section" className="service-link">바로가기 <ArrowRight size={14} /></a>
-                        </div>
-                        <div className="service-card">
                             <div className="service-icon-wrapper global">
                                 <Globe size={32} />
                             </div>
@@ -78,6 +70,14 @@ const BizPage = () => {
                             <a href="#casting-section" className="service-link">문의하기 <ArrowRight size={14} /></a>
                         </div>
                         <div className="service-card">
+                            <div className="service-icon-wrapper local">
+                                <MapPin size={32} />
+                            </div>
+                            <h3>따종디엔핑 입점/관리</h3>
+                            <p>중국판 네이버 지도<br />매장 등록이 필요할 때?</p>
+                            <a href="#dianping-section" className="service-link">바로가기 <ArrowRight size={14} /></a>
+                        </div>
+                        <div className="service-card">
                             <div className="service-icon-wrapper agency">
                                 <Building2 size={32} />
                             </div>
@@ -89,43 +89,10 @@ const BizPage = () => {
                 </div>
             </section>
 
-            {/* 1. Dazhong Dianping Section */}
-            <section id="dianping-section" className="biz-section brand-bg">
-                <div className="container">
-                    <div className="biz-content-row">
-                        <div className="biz-text">
-                            <span className="section-tag text-blue">DAZHONG DIANPING</span>
-                            <h2>중국인 관광객이 검색할 때,<br />따종디엔핑 상단에 노출됩니다.</h2>
-                            <p className="main-desc">
-                                중국판 네이버 스마트플레이스, 선택이 아닌 필수입니다.<br />
-                                <strong>매장 등록</strong>부터 <strong>리뷰 관리</strong>까지 한 번에 해결해 드립니다.
-                            </p>
-                            <ul className="biz-features-list">
-                                <li>
-                                    <CheckCircle size={20} className="check-icon text-blue" />
-                                    <span><strong>무료 매장 등록</strong> 및 공식 계정(V마크) 인증 지원</span>
-                                </li>
-                                <li>
-                                    <CheckCircle size={20} className="check-icon text-blue" />
-                                    <span><strong>고퀄리티 리뷰어(왕홍)</strong> 체험단 파견 및 콘텐츠 배포</span>
-                                </li>
-                                <li>
-                                    <CheckCircle size={20} className="check-icon text-blue" />
-                                    <span>단기간 내 <strong>리뷰 수 증가</strong> 및 실질적 방문 유도</span>
-                                </li>
-                            </ul>
-                        </div>
-                        <div className="biz-image-placeholder dianping-img">
-                            <div className="placeholder-text">Dianping App Screen</div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* 2. Global Marketing Deep Dive */}
+            {/* 1. Global Marketing Deep Dive */}
             <section id="global-section" className="biz-section global-bg">
                 <div className="container">
-                    <div className="biz-content-row reverse">
+                    <div className="biz-content-row">
                         <div className="biz-text">
                             <span className="section-tag text-purple">GLOBAL MARKETING</span>
                             <h2>국경 없는 비즈니스,<br />탐코리아 글로벌 마케팅</h2>
@@ -155,16 +122,18 @@ const BizPage = () => {
                                 <div className="map-point jp" title="Japan"></div>
                                 <div className="map-point cn" title="China"></div>
                                 <div className="map-point vn" title="Vietnam"></div>
+                                <div className="map-point kr" title="Korea"></div>
+                                <div className="orbit-ring"></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* 3. Casting Section */}
+            {/* 2. Casting Section */}
             <section id="casting-section" className="biz-section casting-bg">
                 <div className="container">
-                    <div className="biz-content-row">
+                    <div className="biz-content-row reverse">
                         <div className="biz-text">
                             <span className="section-tag text-teal">PREMIUM CASTING</span>
                             <h2>원하는 인플루언서를<br />콕 집어 섭외하세요</h2>
@@ -188,7 +157,52 @@ const BizPage = () => {
                             </ul>
                         </div>
                         <div className="biz-image-placeholder casting-img">
-                            <div className="placeholder-text">Premium Creator</div>
+                            <div className="profile-cards-visual">
+                                <div className="profile-card p1"></div>
+                                <div className="profile-card p2"></div>
+                                <div className="profile-card p3"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* 3. Dazhong Dianping Section */}
+            <section id="dianping-section" className="biz-section brand-bg">
+                <div className="container">
+                    <div className="biz-content-row">
+                        <div className="biz-text">
+                            <span className="section-tag text-blue">DAZHONG DIANPING</span>
+                            <h2>중국인 관광객이 검색할 때,<br />따종디엔핑 상단에 노출됩니다.</h2>
+                            <p className="main-desc">
+                                중국판 네이버 스마트플레이스, 선택이 아닌 필수입니다.<br />
+                                <strong>매장 등록</strong>부터 <strong>리뷰 관리</strong>까지 한 번에 해결해 드립니다.
+                            </p>
+                            <ul className="biz-features-list">
+                                <li>
+                                    <CheckCircle size={20} className="check-icon text-blue" />
+                                    <span><strong>무료 매장 등록</strong> 및 공식 계정(V마크) 인증 지원</span>
+                                </li>
+                                <li>
+                                    <CheckCircle size={20} className="check-icon text-blue" />
+                                    <span><strong>고퀄리티 리뷰어(왕홍)</strong> 체험단 파견 및 콘텐츠 배포</span>
+                                </li>
+                                <li>
+                                    <CheckCircle size={20} className="check-icon text-blue" />
+                                    <span>단기간 내 <strong>리뷰 수 증가</strong> 및 실질적 방문 유도</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <div className="biz-image-placeholder dianping-img">
+                            <div className="phone-mockup">
+                                <div className="notch"></div>
+                                <div className="screen-content">
+                                    <div className="app-header"></div>
+                                    <div className="app-list-item"></div>
+                                    <div className="app-list-item"></div>
+                                    <div className="app-list-item active"></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -208,7 +222,7 @@ const BizPage = () => {
                             <ul className="biz-features-list">
                                 <li>
                                     <CheckCircle size={20} className="check-icon text-orange" />
-                                    <span><strong>대항사 전용 단가(B2B)</strong> 적용 및 세금계산서 발행</span>
+                                    <span><strong>대행사 전용 단가(B2B)</strong> 적용 및 세금계산서 발행</span>
                                 </li>
                                 <li>
                                     <CheckCircle size={20} className="check-icon text-orange" />
@@ -221,7 +235,13 @@ const BizPage = () => {
                             </ul>
                         </div>
                         <div className="biz-image-placeholder agency-img">
-                            <div className="placeholder-text">B2B Partnership</div>
+                            <div className="network-nodes-visual">
+                                <div className="node n1"></div>
+                                <div className="node n2"></div>
+                                <div className="node n3"></div>
+                                <div className="connection c1"></div>
+                                <div className="connection c2"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
