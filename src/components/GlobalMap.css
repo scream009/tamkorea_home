@@ -95,6 +95,7 @@
     height: 110px;
     border: 8px solid #fff;
     box-shadow: 0 12px 40px rgba(102, 126, 234, 0.25);
+    background-size: 120%;
 }
 
 /* China flag is larger than other countries */
