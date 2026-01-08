@@ -98,9 +98,7 @@
     display: none;
 }
 
-.contact-row span {
-    /* Legacy override if needed, but we used info-item now */
-}
+
 
 .copyright {
     margin-top: 24px;
@@ -140,15 +138,26 @@
     background-color: #03c75a;
 }
 
-.sns-icon.kakao {
-    font-weight: 900;
-    font-family: sans-serif;
-    font-size: 14px;
+/* Custom Icon Overrides */
+.sns-icon.naver-icon-btn,
+.sns-icon.kakao-icon-btn {
+    background: none;
+    padding: 0;
+    overflow: hidden;
+    border-radius: 8px;
+    /* Square with rounded corners for these specific brand icons */
 }
 
-.sns-icon.kakao:hover {
-    background-color: #fee500;
-    color: #3c1e1e;
+.sns-icon.naver-icon-btn svg,
+.sns-icon.kakao-icon-btn svg {
+    display: block;
+    border-radius: 8px;
+}
+
+.sns-icon.naver-icon-btn:hover,
+.sns-icon.kakao-icon-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* Mobile */

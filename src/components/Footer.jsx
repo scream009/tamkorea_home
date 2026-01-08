@@ -4,6 +4,7 @@ import { Instagram, Youtube, Facebook, ChevronDown } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import './Footer.css';
 import Toast from './Toast';
+import { NaverBlogIcon, KakaoChannelIcon } from './CustomIcons';
 
 const Footer = () => {
     const { t } = useLanguage();
@@ -49,8 +50,8 @@ const Footer = () => {
                         <div className="footer-sns">
                             <a href="https://www.instagram.com/tamkorea8888?igsh=MzJmOXBrcW8wZDdq&utm_source=qr" target="_blank" rel="noopener noreferrer" className="sns-icon" aria-label="Instagram"><Instagram size={20} /></a>
                             <a href="https://www.youtube.com/channel/UCT0SNdQIY2Oso2X5WOWfdwA" target="_blank" rel="noopener noreferrer" className="sns-icon" aria-label="Youtube"><Youtube size={20} /></a>
-                            <a href="https://blog.naver.com/tamkorea888" target="_blank" rel="noopener noreferrer" className="sns-icon naver" aria-label="Naver Blog">N</a>
-                            <a href="#" className="sns-icon kakao" aria-label="Kakao Channel" onClick={handleComingSoon}>Ch</a>
+                            <a href="https://blog.naver.com/tamkorea888" target="_blank" rel="noopener noreferrer" className="sns-icon naver-icon-btn" aria-label="Naver Blog"><NaverBlogIcon size={36} /></a>
+                            <a href="https://www.kakaocorp.com/page/service/service/KakaoTalkChannel" target="_blank" rel="noopener noreferrer" className="sns-icon kakao-icon-btn" aria-label="Kakao Channel"><KakaoChannelIcon size={36} /></a>
                         </div>
                     </div>
                 </div>
