@@ -91,8 +91,8 @@
 
 /* Korea flag is MUCH larger */
 .node-korea .flag-circle {
-    width: 140px;
-    height: 140px;
+    width: 110px;
+    height: 110px;
     border: 8px solid #fff;
     box-shadow: 0 12px 40px rgba(102, 126, 234, 0.25);
 }
@@ -158,7 +158,7 @@
 /* KOREA: Upper center-left - LARGE */
 .node-korea {
     top: 3%;
-    left: 40%;
+    left: 35%;
     transform: translate(-50%, -50%);
 }
 
@@ -204,8 +204,8 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 140px;
-    height: 140px;
+    width: 110px;
+    height: 110px;
     border-radius: 50%;
     background: radial-gradient(circle, rgba(102, 126, 234, 0.15), transparent 70%);
     animation: rippleEffect 3s cubic-bezier(0.16, 1, 0.3, 1) infinite;
