@@ -131,9 +131,24 @@
     color: white;
 }
 
-.sns-icon.blog {
-    font-weight: 800;
-    font-family: serif;
+.sns-icon.naver {
+    font-weight: 900;
+    font-family: sans-serif;
+}
+
+.sns-icon.naver:hover {
+    background-color: #03c75a;
+}
+
+.sns-icon.kakao {
+    font-weight: 900;
+    font-family: sans-serif;
+    font-size: 14px;
+}
+
+.sns-icon.kakao:hover {
+    background-color: #fee500;
+    color: #3c1e1e;
 }
 
 /* Mobile */
