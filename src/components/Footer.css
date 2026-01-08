@@ -141,11 +141,20 @@
 /* Custom Icon Overrides */
 .sns-icon.naver-icon-btn,
 .sns-icon.kakao-icon-btn {
-    background: none;
+    background: transparent;
+    /* Allow image to be the background */
     padding: 0;
     overflow: hidden;
-    border-radius: 8px;
-    /* Square with rounded corners for these specific brand icons */
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    /* Prevent shrinking */
+    border-radius: 50%;
+    /* Force circle */
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .sns-icon.naver-icon-btn img,
@@ -155,13 +164,13 @@
     object-fit: cover;
     display: block;
     border-radius: 50%;
-    /* Make them circular to match other icons if requested, or square with radius */
 }
 
-/* User asked for consistent styling with Insta/YouTube which are circles in this design */
-.sns-icon.naver-icon-btn,
-.sns-icon.kakao-icon-btn {
-    border-radius: 50%;
+.sns-icon.naver-icon-btn:hover,
+.sns-icon.kakao-icon-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    opacity: 0.9;
 }
 
 .sns-icon.naver-icon-btn:hover,
