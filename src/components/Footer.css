@@ -148,10 +148,20 @@
     /* Square with rounded corners for these specific brand icons */
 }
 
-.sns-icon.naver-icon-btn svg,
-.sns-icon.kakao-icon-btn svg {
+.sns-icon.naver-icon-btn img,
+.sns-icon.kakao-icon-btn img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
     display: block;
-    border-radius: 8px;
+    border-radius: 50%;
+    /* Make them circular to match other icons if requested, or square with radius */
+}
+
+/* User asked for consistent styling with Insta/YouTube which are circles in this design */
+.sns-icon.naver-icon-btn,
+.sns-icon.kakao-icon-btn {
+    border-radius: 50%;
 }
 
 .sns-icon.naver-icon-btn:hover,
