@@ -140,17 +140,16 @@
 
 /* Custom Icon Overrides */
 .sns-icon.naver-icon-btn,
-.sns-icon.kakao-icon-btn {
+.sns-icon.kakao-icon-btn,
+.sns-icon.insta-icon-btn,
+.sns-icon.youtube-icon-btn {
     background: transparent;
-    /* Allow image to be the background */
     padding: 0;
     overflow: hidden;
     width: 36px;
     height: 36px;
     min-width: 36px;
-    /* Prevent shrinking */
     border-radius: 50%;
-    /* Force circle */
     border: none;
     display: flex;
     align-items: center;
