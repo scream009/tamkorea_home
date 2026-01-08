@@ -164,7 +164,7 @@
 
 /* CHINA: Upper left (moved further left) - LARGER than other countries */
 .node-china {
-    top: 18%;
+    top: 11%;
     left: 5%;
     transition-delay: 0.1s;
 }
