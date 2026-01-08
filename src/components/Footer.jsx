@@ -47,7 +47,7 @@ const Footer = () => {
                             </button>
                         </div>
                         <div className="footer-sns">
-                            <a href="#" className="sns-icon" aria-label="Instagram" onClick={handleComingSoon}><Instagram size={20} /></a>
+                            <a href="https://www.instagram.com/tamkorea8888?igsh=MzJmOXBrcW8wZDdq&utm_source=qr" target="_blank" rel="noopener noreferrer" className="sns-icon" aria-label="Instagram"><Instagram size={20} /></a>
                             <a href="https://www.youtube.com/channel/UCT0SNdQIY2Oso2X5WOWfdwA" target="_blank" rel="noopener noreferrer" className="sns-icon" aria-label="Youtube"><Youtube size={20} /></a>
                             <a href="#" className="sns-icon" aria-label="Facebook" onClick={handleComingSoon}><Facebook size={20} /></a>
                             <a href="#" className="sns-icon blog" aria-label="Blog" onClick={handleComingSoon}>B</a>
