@@ -66,7 +66,7 @@ const BizPage = () => {
                                 <Users size={32} />
                             </div>
                             <h3>샤오홍슈 체험단</h3>
-                            <p>구매력 높은 2030 중국 여성에게<br />우리 브랜드를 알리고 싶다면?</p>
+                            <p>구매력 높은 중국 트렌드 리더에게<br />우리 브랜드를 알리고 싶다면?</p>
                             <Link to="/contact" className="service-link">문의하기 <ArrowRight size={14} /></Link>
                         </div>
                         <div className="service-card">
@@ -136,7 +136,7 @@ const BizPage = () => {
                     <div className="biz-content-row reverse">
                         <div className="biz-text">
                             <span className="section-tag text-red">XIAOHONGSHU INFLUENCER</span>
-                            <h2>2030 중국 여성의 필수 앱,<br />샤오홍슈 체험단 마케팅</h2>
+                            <h2>소셜과 커머스가 결합된 중국 No.1 플랫폼,<br />샤오홍슈 체험단 마케팅</h2>
                             <p className="main-desc">
                                 단순 노출이 아닌, <strong>'심고(Seeding) 퍼트리는'</strong> 바이럴 마케팅.<br />
                                 구매 결정에 강력한 영향을 미치는 <strong>리얼 후기 콘텐츠</strong>를 생산합니다.
@@ -144,7 +144,7 @@ const BizPage = () => {
                             <ul className="biz-features-list">
                                 <li>
                                     <CheckCircle size={20} className="check-icon text-red" />
-                                    <span><strong>K-뷰티/패션/여행</strong>에 관심 많은 2030 여성 타겟</span>
+                                    <span><strong>K-뷰티/미식/여행</strong>에 관심 많은 구매력 높은 유저 타겟</span>
                                 </li>
                                 <li>
                                     <CheckCircle size={20} className="check-icon text-red" />
