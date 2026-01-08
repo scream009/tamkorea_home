@@ -136,7 +136,7 @@ const BizPage = () => {
                     <div className="biz-content-row reverse">
                         <div className="biz-text">
                             <span className="section-tag text-red">XIAOHONGSHU INFLUENCER</span>
-                            <h2>소셜과 커머스가 결합된 중국 No.1 플랫폼,<br />샤오홍슈 체험단 마케팅</h2>
+                            <h2>소셜과 커머스가 결합된 중국 No.1 플랫폼,<br />샤오홍슈 인플루언서 마케팅</h2>
                             <p className="main-desc">
                                 단순 노출이 아닌, <strong>'심고(Seeding) 퍼트리는'</strong> 바이럴 마케팅.<br />
                                 구매 결정에 강력한 영향을 미치는 <strong>리얼 후기 콘텐츠</strong>를 생산합니다.
