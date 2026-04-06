@@ -119,12 +119,38 @@ const BizPage = () => {
                         </div>
                         <div className="biz-image-placeholder global-img">
                             <div className="globe-graphic">
-                                <div className="map-point us" title="USA"></div>
-                                <div className="map-point jp" title="Japan"></div>
-                                <div className="map-point cn" title="China"></div>
-                                <div className="map-point vn" title="Vietnam"></div>
-                                <div className="map-point kr" title="Korea"></div>
-                                <div className="orbit-ring"></div>
+                                {/* Base map background (CSS stylized) */}
+                                <div className="world-map-bg"></div>
+                                
+                                {/* Floating Data Nodes */}
+                                <div className="data-node us"><div className="pulse"></div></div>
+                                <div className="data-node jp"><div className="pulse"></div></div>
+                                <div className="data-node cn"><div className="pulse"></div></div>
+                                <div className="data-node vn"><div className="pulse"></div></div>
+                                <div className="data-node kr"><div className="pulse"></div></div>
+                                
+                                {/* Glassmorphic Overlay Card */}
+                                <div className="glass-stats-card">
+                                    <div className="glass-header">
+                                        <div className="dot red"></div>
+                                        <div className="dot yellow"></div>
+                                        <div className="dot green"></div>
+                                        <span className="glass-title">LIVE TRAFFIC</span>
+                                    </div>
+                                    <div className="glass-body">
+                                        <div className="stat-row">
+                                            <span className="stat-label">Global Reach</span>
+                                            <span className="stat-value">45M+</span>
+                                        </div>
+                                        <div className="stat-row">
+                                            <span className="stat-label">Active Campaigns</span>
+                                            <span className="stat-value text-purple">1,240</span>
+                                        </div>
+                                        <div className="trend-bar">
+                                            <div className="trend-fill"></div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -160,15 +186,37 @@ const BizPage = () => {
                         <div className="biz-image-placeholder xiaohongshu-img">
                             <div className="xhs-cards-visual">
                                 <div className="xhs-card card1">
-                                    <div className="xhs-img"></div>
-                                    <div className="xhs-text line1"></div>
-                                    <div className="xhs-text line2"></div>
-                                    <div className="xhs-like">♥ 1.2w</div>
+                                    <div className="xhs-img bg-jeju1"></div>
+                                    <div className="xhs-card-body">
+                                        <h4 className="xhs-title">제주도 핫플 투어 완벽 정리✨</h4>
+                                        <div className="xhs-footer">
+                                            <div className="xhs-user">
+                                                <div className="xhs-avatar a1"></div>
+                                                <span>WangHong_kr</span>
+                                            </div>
+                                            <div className="xhs-like">♥ 1.2w</div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div className="xhs-card card2">
-                                    <div className="xhs-img"></div>
-                                    <div className="xhs-text line1"></div>
-                                    <div className="xhs-like">♥ 8.5k</div>
+                                    <div className="xhs-img bg-jeju2"></div>
+                                    <div className="xhs-card-body">
+                                        <h4 className="xhs-title">요즘 뜨는 뷰티 브랜드 추천템</h4>
+                                        <div className="xhs-footer">
+                                            <div className="xhs-user">
+                                                <div className="xhs-avatar a2"></div>
+                                                <span>Xiao_Beauty</span>
+                                            </div>
+                                            <div className="xhs-like">♥ 8.5k</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="xhs-float-badge">
+                                    <span className="emoji">🔥</span>
+                                    <div>
+                                        <strong>Top Trending</strong>
+                                        <p>#한국여행 #제주도</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -205,11 +253,39 @@ const BizPage = () => {
                         <div className="biz-image-placeholder dianping-img">
                             <div className="phone-mockup">
                                 <div className="notch"></div>
-                                <div className="screen-content">
-                                    <div className="app-header"></div>
-                                    <div className="app-list-item"></div>
-                                    <div className="app-list-item"></div>
-                                    <div className="app-list-item active"></div>
+                                <div className="screen-content dianping-ui">
+                                    <div className="dp-header">
+                                        <div className="dp-back">&lt;</div>
+                                        <div className="dp-search-bar">🔍 제주 맛집 검색...</div>
+                                    </div>
+                                    <div className="dp-hero-img"></div>
+                                    <div className="dp-info-section">
+                                        <h3 className="dp-shop-name">제주 프리미엄 흑돼지</h3>
+                                        <div className="dp-rating">
+                                            <span className="stars">★★★★★</span>
+                                            <span className="score">5.0</span>
+                                        </div>
+                                        <div className="dp-tags">
+                                            <span className="dp-tag">MUST 방문</span>
+                                            <span className="dp-tag">가성비</span>
+                                        </div>
+                                    </div>
+                                    <div className="dp-review-list">
+                                        <div className="dp-review-item">
+                                            <div className="dp-r-avatar"></div>
+                                            <div className="dp-r-lines">
+                                                <div className="line full"></div>
+                                                <div className="line half"></div>
+                                            </div>
+                                        </div>
+                                        <div className="dp-review-item">
+                                            <div className="dp-r-avatar"></div>
+                                            <div className="dp-r-lines">
+                                                <div className="line full"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="dp-bottom-cta">예약하기</div>
                                 </div>
                             </div>
                         </div>
@@ -244,12 +320,40 @@ const BizPage = () => {
                             </ul>
                         </div>
                         <div className="biz-image-placeholder agency-img">
-                            <div className="network-nodes-visual">
-                                <div className="node n1"></div>
-                                <div className="node n2"></div>
-                                <div className="node n3"></div>
-                                <div className="connection c1"></div>
-                                <div className="connection c2"></div>
+                            <div className="dashboard-visual">
+                                <div className="db-sidebar">
+                                    <div className="db-logo"></div>
+                                    <div className="db-menu-item active"></div>
+                                    <div className="db-menu-item"></div>
+                                    <div className="db-menu-item"></div>
+                                </div>
+                                <div className="db-main">
+                                    <div className="db-topbar">
+                                        <h4>White-Label Report</h4>
+                                        <div className="db-user"></div>
+                                    </div>
+                                    <div className="db-cards">
+                                        <div className="db-card">
+                                            <span>Total ROI</span>
+                                            <strong>+324%</strong>
+                                            <div className="db-chart-mini green"></div>
+                                        </div>
+                                        <div className="db-card">
+                                            <span>Reach</span>
+                                            <strong>1.2M</strong>
+                                            <div className="db-chart-mini blue"></div>
+                                        </div>
+                                    </div>
+                                    <div className="db-chart-main">
+                                        <div className="db-bar b1"></div>
+                                        <div className="db-bar b2"></div>
+                                        <div className="db-bar b3"></div>
+                                        <div className="db-bar b4"></div>
+                                        <div className="db-bar b5"></div>
+                                        <div className="db-bar b6"></div>
+                                    </div>
+                                </div>
+                                <div className="agency-badge">💼 B2B Partner</div>
                             </div>
                         </div>
                     </div>
