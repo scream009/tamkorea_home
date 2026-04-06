@@ -8,8 +8,8 @@ const KeyMetrics = () => {
     const metrics = [
         { id: 1, label: t('stats.influencers'), value: '10,000+', subLabel: 'Active Creators' },
         { id: 2, label: t('stats.partners'), value: '300+', subLabel: 'Partner Clients' },
-        { id: 3, label: t('stats.campaigns'), value: '1,200+', subLabel: 'Total Campaigns' },
-        { id: 4, label: t('stats.contents'), value: '9,000+', subLabel: 'Total Content' }
+        { id: 3, label: t('stats.campaigns'), value: '2,000+', subLabel: 'Total Campaigns' },
+        { id: 4, label: t('stats.contents'), value: '50,000+', subLabel: 'Total Content' }
     ];
 
     return (

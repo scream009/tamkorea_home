@@ -15,7 +15,7 @@ export const translations = {
         hero: {
             badge: 'Global Influencer Marketing',
             title: '데이터로 증명하는\n중화권 No.1 마케팅',
-            subtitle: '탐코리아는 9천 건 이상의 캠페인 데이터를 기반으로\n가장 확실한 마케팅 성과를 약속합니다.',
+            subtitle: '탐코리아는 50,000 건 이상의 캠페인 데이터를 기반으로\n가장 확실한 마케팅 성과를 약속합니다.',
             btnPrimary: '무료 상담 신청하기',
             btnSecondary: '서비스 소개서 다운로드',
             badge1: '검증된 인플루언서',
@@ -125,7 +125,7 @@ export const translations = {
         hero: {
             badge: 'Global Influencer Marketing',
             title: 'Greater China No.1 Marketing\nProven by Data',
-            subtitle: 'TamKorea promises the most certain marketing results\nbased on over 9,000 campaign data points.',
+            subtitle: 'TamKorea promises the most certain marketing results\nbased on over 50,000 campaign data points.',
             btnPrimary: 'Free Consultation',
             btnSecondary: 'Download Guide',
             badge1: 'Verified Influencers',
@@ -235,7 +235,7 @@ export const translations = {
         hero: {
             badge: 'Global Influencer Marketing',
             title: '用数据证明的\n大中华区 No.1 营销',
-            subtitle: 'TamKorea 基于 9,000 多次活动数据\n为您承诺最确切的营销成果。',
+            subtitle: 'TamKorea 基于 50,000 多次活动数据\n为您承诺最确切的营销成果。',
             btnPrimary: '申请免费咨询',
             btnSecondary: '下载服务介绍',
             badge1: '验证网红',
