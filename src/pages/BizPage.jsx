@@ -184,14 +184,26 @@ const BizPage = () => {
                             </ul>
                         </div>
                         <div className="biz-image-placeholder xiaohongshu-img">
-                            <div className="xhs-cards-visual">
-                                <div className="xhs-card card1" style={{backgroundImage: "url('/images/xhs-1.png')"}}></div>
-                                <div className="xhs-card card2" style={{backgroundImage: "url('/images/xhs-2.png')"}}></div>
-                                <div className="xhs-float-badge">
-                                    <span className="emoji">🔥</span>
-                                    <div>
-                                        <strong>Top Trending</strong>
-                                        <p>#한국여행 #제주도</p>
+                            <div className="xhs-analysis-container">
+                                <div className="xhs-desktop-mockup">
+                                    <img src="/images/xhs-full-1.png" alt="Xiaohongshu" className="xhs-full-img" />
+                                    
+                                    {/* Left Pointer (Image Area) */}
+                                    <div className="xhs-pointer ptr-left">
+                                        <div className="ptr-dot"></div>
+                                        <div className="ptr-card">
+                                            <strong>고해상도 비주얼</strong>
+                                            <p>시선을 사로잡는 썸네일로<br/>초기 트래픽(유입) 극대화</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Right Pointer (Comments Area) */}
+                                    <div className="xhs-pointer ptr-right">
+                                        <div className="ptr-dot"></div>
+                                        <div className="ptr-card">
+                                            <strong>리얼한 찐후기</strong>
+                                            <p>중화권 MZ세대의 즉각적인<br/>반응과 전환율(CVR) 상승</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -227,9 +239,15 @@ const BizPage = () => {
                             </ul>
                         </div>
                         <div className="biz-image-placeholder dianping-img">
-                            <div className="phone-mockup">
-                                <div className="notch"></div>
-                                <div className="screen-content dp-screenshot" style={{backgroundImage: "url('/images/dp-1.png')"}}>
+                            <div className="dp-gallery">
+                                <div className="dp-full-card pos-left">
+                                    <img src="/images/dp-full-1.png" alt="Dianping 1" />
+                                </div>
+                                <div className="dp-full-card pos-center">
+                                    <img src="/images/dp-full-2.png" alt="Dianping 2" />
+                                </div>
+                                <div className="dp-full-card pos-right">
+                                    <img src="/images/dp-full-3.png" alt="Dianping 3" />
                                 </div>
                             </div>
                         </div>
