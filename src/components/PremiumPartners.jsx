@@ -7,7 +7,7 @@ const PremiumPartners = () => {
             <div className="container">
                 <div className="pp-header">
                     <h2 className="pp-title">TRUSTED PARTNERS</h2>
-                    <p className="pp-subtitle">제주의 랜드마크부터 로컬 핫플레이스까지, 서울&middot;부산 전역 <span style={{color: '#8b5cf6', fontWeight: 700}}>100여 개 탑 브랜드</span>가 탐코리아와 함께 성장하고 있습니다.</p>
+                    <p className="pp-subtitle">대한민국 전역의 프리미엄 랜드마크부터 로컬 핫플레이스 등 <span style={{color: '#8b5cf6', fontWeight: 700}}>100여 개 탑 브랜드</span>가 탐코리아와 함께 폭발적인 성장을 이루고 있습니다.</p>
                 </div>
             </div>
 
@@ -17,7 +17,7 @@ const PremiumPartners = () => {
                     <div className="pp-pill">서귀포잠수함</div>
                     <div className="pp-pill">9.81파크</div>
                     <div className="pp-pill">에코랜드</div>
-                    <div className="pp-pill">제주제트</div>
+                    <div className="pp-pill">해운대 블루라인파크</div>
                     <div className="pp-pill">드르쿰다</div>
                     <div className="pp-pill">메종글래드</div>
                     <div className="pp-pill">박물관은살아있다</div>
@@ -31,7 +31,7 @@ const PremiumPartners = () => {
                     <div className="pp-pill">서귀포잠수함</div>
                     <div className="pp-pill">9.81파크</div>
                     <div className="pp-pill">에코랜드</div>
-                    <div className="pp-pill">제주제트</div>
+                    <div className="pp-pill">시그니엘 서울</div>
                     <div className="pp-pill">드르쿰다</div>
                     <div className="pp-pill">메종글래드</div>
                     <div className="pp-pill">박물관은살아있다</div>

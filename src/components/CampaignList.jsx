@@ -11,8 +11,8 @@ const CampaignList = () => {
     const campaigns = [
         {
             id: 1,
-            title: "숙성도 중문점 - 흑돼지 프리미엄 체험단",
-            location: "제주 서귀포",
+            title: "명동교자 본점 - 프리미엄 세트 체험단",
+            location: "서울 중구",
             type: "visit", // 'visit' or 'shipping'
             platform: "instagram",
             category: "food",
@@ -50,8 +50,8 @@ const CampaignList = () => {
         },
         {
             id: 4,
-            title: "제주 아르떼뮤지엄 미디어아트",
-            location: "제주 제주시",
+            title: "여의도 더현대 서울 - 팝업스토어 초청",
+            location: "서울 영등포구",
             type: "visit",
             platform: "xhs", // Xiaohongshu
             category: "culture",
@@ -76,8 +76,8 @@ const CampaignList = () => {
         },
         {
             id: 6,
-            title: "그랜드 하얏트 제주 - 킹룸 숙박권",
-            location: "제주 제주시",
+            title: "시그니엘 서울 - 프리미어룸 조식 포함",
+            location: "서울 송파구",
             type: "visit",
             platform: "instagram",
             category: "travel",

@@ -17,7 +17,7 @@ const Reviews = () => {
         },
         {
             id: 2,
-            brand: "그랜드 하얏트 제주",
+            brand: "파라다이스 호텔 부산",
             category: "호텔/숙박",
             title: "호캉스 패키지 홍보",
             metric: "예약률 +30%",
