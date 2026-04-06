@@ -866,6 +866,25 @@
     z-index: 2;
 }
 
+.xhs-premium-badge.badge-dp-1 {
+    top: 60%;
+    left: 4%;
+    animation: float1 6s infinite 0.5s;
+    z-index: 10;
+}
+
+.xhs-premium-badge.badge-dp-2 {
+    top: 10%;
+    right: 2%;
+    animation: float3 6s infinite 2s;
+    z-index: 10;
+}
+
+.xhs-premium-badge.badge-dp-1 strong,
+.xhs-premium-badge.badge-dp-2 strong {
+    color: #f97316;
+}
+
 .dp-gallery:hover .dp-phone {
     transform: scale(0.95) rotate(0);
 }

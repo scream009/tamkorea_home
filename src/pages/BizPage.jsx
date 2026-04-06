@@ -261,6 +261,21 @@ const BizPage = () => {
                                         <img src="/images/dp-full-3.png" alt="Dianping 3" />
                                     </div>
                                 </div>
+
+                                <div className="xhs-premium-badge badge-dp-1">
+                                    <span className="emoji">🏅</span>
+                                    <div>
+                                        <strong>공식 V마크 획득 & 최상단 위치</strong>
+                                        <p>관광객 신뢰도와 방문 랭킹 선점</p>
+                                    </div>
+                                </div>
+                                <div className="xhs-premium-badge badge-dp-2">
+                                    <span className="emoji">📌</span>
+                                    <div>
+                                        <strong>무제한 로컬 리뷰 배포</strong>
+                                        <p>제주 방문 필수 코스로 브랜딩</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
