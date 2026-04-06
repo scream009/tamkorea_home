@@ -63,7 +63,7 @@ const Hero = () => {
                             <div className="stats-row">
                                 <div className="mini-stat">
                                     <span className="label">Total Reach</span>
-                                    <span className="value">9,000+</span>
+                                    <span className="value">50,000+</span>
                                 </div>
                                 <div className="mini-stat">
                                     <span className="label">Engagement</span>
@@ -106,12 +106,12 @@ const Hero = () => {
                     </div>
                     <div className="stat-divider"></div>
                     <div className="stat-item">
-                        <strong className="stat-number">1,200+</strong>
+                        <strong className="stat-number">2,000+</strong>
                         <span className="stat-label">{t('stats.campaigns')}</span>
                     </div>
                     <div className="stat-divider"></div>
                     <div className="stat-item">
-                        <strong className="stat-number">9,000+</strong>
+                        <strong className="stat-number">50,000+</strong>
                         <span className="stat-label">{t('stats.contents')}</span>
                     </div>
                 </div>

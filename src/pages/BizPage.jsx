@@ -34,7 +34,7 @@ const BizPage = () => {
                             <p>캠페인 연장률</p>
                         </div>
                         <div className="stat-item">
-                            <h3>1,200+</h3>
+                            <h3>2,000+</h3>
                             <p>누적 마케팅 진행</p>
                         </div>
                         <div className="stat-item">
