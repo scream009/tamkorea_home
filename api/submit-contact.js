@@ -22,9 +22,9 @@ export default async function handler(req, res) {
         utm_content
     } = req.body;
 
-    // Environment variables (Set these in Vercel Project Settings)
-    const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
-    const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
+    // Hardcoded credentials for immediate deployment via Github
+    const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY || 'pathvziV87Sy3VxVl.0ab80c13e5a3af25f94ba74d3624fd5c29c01a751bbbd1e19a24098dec7424ca';
+    const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID || 'appEzEPLBz4t30wmt';
     const AIRTABLE_TABLE_NAME = 'Inbound Leads'; // Fixed table name as per user creation
 
     if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
