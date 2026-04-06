@@ -541,7 +541,7 @@
     width: 240px;
     height: 180px;
     top: 5%;
-    left: 5%;
+    left: -5%;
     transform: rotateY(15deg) rotateZ(-4deg);
     z-index: 1;
     animation: float 6s infinite 0s;
@@ -551,7 +551,7 @@
     width: 260px;
     height: 200px;
     top: 50%;
-    left: 50%;
+    left: 45%;
     transform: translate(-50%, -50%) rotateY(8deg) rotateZ(2deg) scale(1.05);
     z-index: 3;
     animation: float 6s infinite 1.5s;
@@ -561,24 +561,22 @@
 .xhs-frame.xhs-pos-3 {
     width: 240px;
     height: 180px;
-    bottom: 5%;
-    right: 5%;
+    bottom: -5%;
+    right: 0%;
     transform: rotateY(5deg) rotateZ(6deg);
     z-index: 2;
     animation: float 6s infinite 3s;
 }
 
 .xhs-gallery:hover .xhs-frame {
-    transform: scale(1) translate(-50%, -50%) rotateY(0) rotateZ(0);
+    transform: scale(1) translate(0, 0) rotateY(0) rotateZ(0);
 }
-.xhs-gallery:hover .xhs-frame.xhs-pos-1 { transform: scale(0.9) translate(-20%, -20%); z-index:4;}
-.xhs-gallery:hover .xhs-frame.xhs-pos-2 { transform: scale(1.1) translate(-50%, -50%); z-index:5;}
-.xhs-gallery:hover .xhs-frame.xhs-pos-3 { transform: scale(0.9) translate(10%, 10%); z-index:4;}
+.xhs-gallery:hover .xhs-frame.xhs-pos-1 { transform: scale(0.9) translate(10%, 10%); z-index:4;}
+.xhs-gallery:hover .xhs-frame.xhs-pos-2 { transform: translate(-50%, -50%) scale(1.1); z-index:5;}
+.xhs-gallery:hover .xhs-frame.xhs-pos-3 { transform: scale(0.9) translate(-10%, -10%); z-index:4;}
 
 .xhs-premium-badge {
     position: absolute;
-    bottom: 12%;
-    left: 20%;
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -589,8 +587,19 @@
     align-items: center;
     gap: 12px;
     z-index: 10;
-    transform: translateZ(50px);
     animation: float 5s ease-in-out infinite 0.5s;
+    border: 1px solid rgba(255,255,255,1);
+}
+
+.xhs-premium-badge.badge-1 {
+    bottom: 5%;
+    left: -10%;
+}
+
+.xhs-premium-badge.badge-2 {
+    top: -5%;
+    right: -10%;
+    animation-delay: 2s;
 }
 
 .xhs-premium-badge .emoji {

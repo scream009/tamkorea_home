@@ -188,17 +188,25 @@ const BizPage = () => {
                                 <div className="xhs-frame xhs-pos-1">
                                     <img src="/images/xhs-new-1.png" alt="XHS 1" />
                                 </div>
-                                <div className="xhs-frame xhs-pos-2">
-                                    <img src="/images/xhs-new-2.png" alt="XHS 2" />
-                                </div>
                                 <div className="xhs-frame xhs-pos-3">
                                     <img src="/images/xhs-new-3.png" alt="XHS 3" />
                                 </div>
-                                <div className="xhs-premium-badge">
+                                <div className="xhs-frame xhs-pos-2">
+                                    <img src="/images/xhs-new-2.png" alt="XHS 2" />
+                                </div>
+                                
+                                <div className="xhs-premium-badge badge-1">
                                     <span className="emoji">🔥</span>
                                     <div>
                                         <strong>리얼 찐후기 확산</strong>
                                         <p>시각적 썸네일과 폭발적 반응</p>
+                                    </div>
+                                </div>
+                                <div className="xhs-premium-badge badge-2">
+                                    <span className="emoji">📈</span>
+                                    <div>
+                                        <strong>초기 트래픽 & 전환율(CVR) 극대화</strong>
+                                        <p>현지 감성의 리뷰로 구매 유도</p>
                                     </div>
                                 </div>
                             </div>
