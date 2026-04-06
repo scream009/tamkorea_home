@@ -54,7 +54,7 @@ const Footer = () => {
                             <a href="https://www.instagram.com/tamkorea8888?igsh=MzJmOXBrcW8wZDdq&utm_source=qr" target="_blank" rel="noopener noreferrer" className="sns-icon insta-icon-btn" aria-label="Instagram"><img src={InstagramIcon} alt="Instagram" /></a>
                             <a href="https://www.youtube.com/channel/UCT0SNdQIY2Oso2X5WOWfdwA" target="_blank" rel="noopener noreferrer" className="sns-icon youtube-icon-btn" aria-label="Youtube"><img src={YoutubeIcon} alt="Youtube" /></a>
                             <a href="https://blog.naver.com/tamkorea888" target="_blank" rel="noopener noreferrer" className="sns-icon naver-icon-btn" aria-label="Naver Blog"><img src={NaverIcon} alt="Naver Blog" /></a>
-                            <a href="https://www.kakaocorp.com/page/service/service/KakaoTalkChannel" target="_blank" rel="noopener noreferrer" className="sns-icon kakao-icon-btn" aria-label="Kakao Channel"><img src={KakaoIcon} alt="Kakao Channel" /></a>
+                            <a href="https://pf.kakao.com/_xkxhZzX" target="_blank" rel="noopener noreferrer" className="sns-icon kakao-icon-btn" aria-label="Kakao Channel"><img src={KakaoIcon} alt="Kakao Channel" /></a>
                         </div>
                     </div>
                 </div>
