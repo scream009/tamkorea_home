@@ -185,32 +185,8 @@ const BizPage = () => {
                         </div>
                         <div className="biz-image-placeholder xiaohongshu-img">
                             <div className="xhs-cards-visual">
-                                <div className="xhs-card card1">
-                                    <div className="xhs-img bg-jeju1"></div>
-                                    <div className="xhs-card-body">
-                                        <h4 className="xhs-title">제주도 핫플 투어 완벽 정리✨</h4>
-                                        <div className="xhs-footer">
-                                            <div className="xhs-user">
-                                                <div className="xhs-avatar a1"></div>
-                                                <span>WangHong_kr</span>
-                                            </div>
-                                            <div className="xhs-like">♥ 1.2w</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="xhs-card card2">
-                                    <div className="xhs-img bg-jeju2"></div>
-                                    <div className="xhs-card-body">
-                                        <h4 className="xhs-title">요즘 뜨는 뷰티 브랜드 추천템</h4>
-                                        <div className="xhs-footer">
-                                            <div className="xhs-user">
-                                                <div className="xhs-avatar a2"></div>
-                                                <span>Xiao_Beauty</span>
-                                            </div>
-                                            <div className="xhs-like">♥ 8.5k</div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <div className="xhs-card card1" style={{backgroundImage: "url('/images/xhs-1.png')"}}></div>
+                                <div className="xhs-card card2" style={{backgroundImage: "url('/images/xhs-2.png')"}}></div>
                                 <div className="xhs-float-badge">
                                     <span className="emoji">🔥</span>
                                     <div>
@@ -253,39 +229,7 @@ const BizPage = () => {
                         <div className="biz-image-placeholder dianping-img">
                             <div className="phone-mockup">
                                 <div className="notch"></div>
-                                <div className="screen-content dianping-ui">
-                                    <div className="dp-header">
-                                        <div className="dp-back">&lt;</div>
-                                        <div className="dp-search-bar">🔍 제주 맛집 검색...</div>
-                                    </div>
-                                    <div className="dp-hero-img"></div>
-                                    <div className="dp-info-section">
-                                        <h3 className="dp-shop-name">제주 프리미엄 흑돼지</h3>
-                                        <div className="dp-rating">
-                                            <span className="stars">★★★★★</span>
-                                            <span className="score">5.0</span>
-                                        </div>
-                                        <div className="dp-tags">
-                                            <span className="dp-tag">MUST 방문</span>
-                                            <span className="dp-tag">가성비</span>
-                                        </div>
-                                    </div>
-                                    <div className="dp-review-list">
-                                        <div className="dp-review-item">
-                                            <div className="dp-r-avatar"></div>
-                                            <div className="dp-r-lines">
-                                                <div className="line full"></div>
-                                                <div className="line half"></div>
-                                            </div>
-                                        </div>
-                                        <div className="dp-review-item">
-                                            <div className="dp-r-avatar"></div>
-                                            <div className="dp-r-lines">
-                                                <div className="line full"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="dp-bottom-cta">예약하기</div>
+                                <div className="screen-content dp-screenshot" style={{backgroundImage: "url('/images/dp-1.png')"}}>
                                 </div>
                             </div>
                         </div>

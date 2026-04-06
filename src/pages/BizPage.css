@@ -517,13 +517,14 @@
 }
 
 .xhs-card {
-    background: white;
+    background: transparent;
     border-radius: 12px;
     position: absolute;
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
-    display: flex;
-    flex-direction: column;
     overflow: hidden;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 .xhs-img {
@@ -606,21 +607,25 @@
 
 /* Card Positioning */
 .xhs-card.card1 {
-    width: 200px;
+    width: 170px;
+    height: 240px;
     top: 5%;
     left: 5%;
     transform: rotate(-4deg);
     animation: float 6s ease-in-out infinite;
     z-index: 2;
+    border: 3px solid white;
 }
 
 .xhs-card.card2 {
-    width: 190px;
-    top: 20%;
+    width: 160px;
+    height: 230px;
+    top: 15%;
     right: 5%;
     transform: rotate(6deg);
     animation: float 6s ease-in-out infinite 1s;
     z-index: 1;
+    border: 3px solid white;
 }
 
 .xhs-float-badge {
@@ -770,30 +775,15 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     height: 100%;
 }
-.dp-header { display: flex; align-items: center; padding: 12px; gap: 10px; border-bottom: 1px solid #ebebeb; }
-.dp-back { font-size: 14px; color: #333; font-weight: 700; width: 10px; text-align: center; }
-.dp-search-bar { flex: 1; background: #f2f2f2; border-radius: 20px; padding: 6px 12px; font-size: 0.75rem; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
-
-.dp-hero-img { width: 100%; height: 110px; background-image: url('/images/udae_ribs.jpg'); background-color: #eee; background-size: cover; background-position: center; border-bottom: 2px solid #fff; }
-
-.dp-info-section { padding: 12px; border-bottom: 8px solid #f5f5f5; }
-.dp-shop-name { font-size: 0.95rem; font-weight: 800; margin-bottom: 6px; color: #111; line-height: 1.2; }
-.dp-rating { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 0.75rem; }
-.dp-rating .score { font-weight: bold; color: #f59e0b; }
-.dp-rating .stars { color: #f59e0b; letter-spacing: -2px;}
-.dp-tags { display: flex; gap: 6px; flex-wrap: wrap; }
-.dp-tag { background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; padding: 3px 6px; border-radius: 4px; font-size: 0.6rem; font-weight: 600; white-space: nowrap; }
-
-.dp-review-list { padding: 12px; flex: 1; }
-.dp-review-item { display: flex; gap: 10px; margin-bottom: 12px; }
-.dp-r-avatar { width: 24px; height: 24px; border-radius: 50%; background: #ddd; flex-shrink: 0; }
-.dp-r-lines { flex: 1; display: flex; flex-direction: column; gap: 6px; padding-top: 5px; }
-.dp-r-lines .line { height: 4px; background: #eaecf0; border-radius: 2px; }
-.dp-r-lines .line.full { width: 100%; }
-.dp-r-lines .line.half { width: 60%; }
-
-.dp-bottom-cta { margin: 0 auto 15px; background: #f59e0b; color: white; border-radius: 20px; padding: 10px 0; text-align: center; font-size: 0.85rem; font-weight: 700; width: 80%; box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3); flex-shrink: 0; cursor: pointer; transition: all 0.2s;}
-.dp-bottom-cta:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(245, 158, 11, 0.4); }
+/* Dianping Faux UI */
+.dp-screenshot {
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: top center;
+    background-repeat: no-repeat;
+    border-radius: 0 0 12px 12px;
+}
 
 @keyframes pulse {
     0% {
