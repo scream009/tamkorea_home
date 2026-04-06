@@ -184,26 +184,21 @@ const BizPage = () => {
                             </ul>
                         </div>
                         <div className="biz-image-placeholder xiaohongshu-img">
-                            <div className="xhs-analysis-container">
-                                <div className="xhs-desktop-mockup">
-                                    <img src="/images/xhs-full-1.png" alt="Xiaohongshu" className="xhs-full-img" />
-                                    
-                                    {/* Left Pointer (Image Area) */}
-                                    <div className="xhs-pointer ptr-left">
-                                        <div className="ptr-dot"></div>
-                                        <div className="ptr-card">
-                                            <strong>고해상도 비주얼</strong>
-                                            <p>시선을 사로잡는 썸네일로<br/>초기 트래픽(유입) 극대화</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Right Pointer (Comments Area) */}
-                                    <div className="xhs-pointer ptr-right">
-                                        <div className="ptr-dot"></div>
-                                        <div className="ptr-card">
-                                            <strong>리얼한 찐후기</strong>
-                                            <p>중화권 MZ세대의 즉각적인<br/>반응과 전환율(CVR) 상승</p>
-                                        </div>
+                            <div className="xhs-gallery">
+                                <div className="xhs-frame xhs-pos-1">
+                                    <img src="/images/xhs-new-1.png" alt="XHS 1" />
+                                </div>
+                                <div className="xhs-frame xhs-pos-2">
+                                    <img src="/images/xhs-new-2.png" alt="XHS 2" />
+                                </div>
+                                <div className="xhs-frame xhs-pos-3">
+                                    <img src="/images/xhs-new-3.png" alt="XHS 3" />
+                                </div>
+                                <div className="xhs-premium-badge">
+                                    <span className="emoji">🔥</span>
+                                    <div>
+                                        <strong>리얼 찐후기 확산</strong>
+                                        <p>시각적 썸네일과 폭발적 반응</p>
                                     </div>
                                 </div>
                             </div>
