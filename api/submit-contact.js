@@ -36,14 +36,14 @@ export default async function handler(req, res) {
     // Mapping React State Keys -> Airtable Field Names
     const fields = {
         'Company Name': companyName,
-        'Is Agency': !!isAgency, // Ensure boolean
+        'Is Agency': isAgency ? 'Yes' : 'No', // Ensures string format for Airtable Single Line Text column
         'Industry': industry,
         'Location': location,
         'Phone': phone,
         'Website': website || '',
         'Budget': budget || '',
         'Message': message || '',
-        'Privacy Agreement': !!privacyAgreement,
+        'Privacy Agreement': privacyAgreement ? 'Yes' : 'No',
         // Tracking Fields - Only send if they exist to keep data clean
         ...(utm_source && { 'UTM Source': utm_source }),
         ...(utm_medium && { 'UTM Medium': utm_medium }),
