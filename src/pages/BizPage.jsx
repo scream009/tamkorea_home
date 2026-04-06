@@ -240,14 +240,23 @@ const BizPage = () => {
                         </div>
                         <div className="biz-image-placeholder dianping-img">
                             <div className="dp-gallery">
-                                <div className="dp-full-card pos-left">
-                                    <img src="/images/dp-full-1.png" alt="Dianping 1" />
+                                <div className="phone-mockup dp-phone pos-left">
+                                    <div className="notch"></div>
+                                    <div className="screen-content">
+                                        <img src="/images/dp-full-1.png" alt="Dianping 1" />
+                                    </div>
                                 </div>
-                                <div className="dp-full-card pos-center">
-                                    <img src="/images/dp-full-2.png" alt="Dianping 2" />
+                                <div className="phone-mockup dp-phone pos-center">
+                                    <div className="notch"></div>
+                                    <div className="screen-content">
+                                        <img src="/images/dp-full-2.png" alt="Dianping 2" />
+                                    </div>
                                 </div>
-                                <div className="dp-full-card pos-right">
-                                    <img src="/images/dp-full-3.png" alt="Dianping 3" />
+                                <div className="phone-mockup dp-phone pos-right">
+                                    <div className="notch"></div>
+                                    <div className="screen-content">
+                                        <img src="/images/dp-full-3.png" alt="Dianping 3" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
