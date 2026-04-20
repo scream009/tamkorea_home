@@ -15,7 +15,8 @@ const AIRTABLE_BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa'; // 
 // ★ 에어테이블 테이블/필드명 - 실제 필드명으로 수정 필요
 const SCHEDULE_TABLE  = '진행_DB_OLD';   // 스케줄 테이블명
 const INFL_ID_FIELD   = 'INFL_ID';          // 인플루언서 ID 필드명 (텍스트 or Linked Record)
-const INFL_NAME_FIELD = 'XHS_ID(필수)';        // 인플 닉네임(또는 Lookup된 이름 필드)
+const INFL_NAME_FIELD = 'XHS_ID(필수)';        // INFL_DB의 닉네임 필드
+const SCHEDULE_INFL_NAME_FIELD = 'XHS_ID_';        // 진행_DB_OLD의 닉네임 필드
 const CLIENT_FIELD    = '매장명_검색용';       // 고객사 필드명 (CS_DB에서 Lookup 필수)
 const ZH_CLIENT_FIELD = '중문명';           // 중문 고객사명 (CS_DB에서 Lookup 필수)
 const GUIDE_FIELD     = '拍摄剧本';       // 가이드 링크 (CS_DB에서 Lookup 필수)
@@ -85,7 +86,7 @@ export default async function handler(req, res) {
 
       const fetchSchedule = async (formula) => {
         const filter    = encodeURIComponent(formula);
-        const fieldList = [CLIENT_FIELD, ZH_CLIENT_FIELD, INFL_NAME_FIELD, GUIDE_FIELD, DATE_FIELD, DEADLINE_FIELD, RESULT_FIELD, STATUS_FIELD]
+        const fieldList = [CLIENT_FIELD, ZH_CLIENT_FIELD, SCHEDULE_INFL_NAME_FIELD, GUIDE_FIELD, DATE_FIELD, DEADLINE_FIELD, RESULT_FIELD, STATUS_FIELD]
           .map(f => `fields[]=${encodeURIComponent(f)}`)
           .join('&');
         const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(SCHEDULE_TABLE)}?filterByFormula=${filter}&${fieldList}&sort[0][field]=${encodeURIComponent(DATE_FIELD)}&sort[0][direction]=asc`;
