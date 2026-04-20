@@ -90,6 +90,7 @@ export default async function handler(req, res) {
           .join('&');
         const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(SCHEDULE_TABLE)}?filterByFormula=${filter}&${fieldList}&sort[0][field]=${encodeURIComponent(DATE_FIELD)}&sort[0][direction]=asc`;
         const resp = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` } });
+        const json = await resp.json();
         if (!resp.ok) {
           console.error('SCHEDULE_TABLE Error:', json);
           throw new Error(`진행_DB_OLD 연동 오류: ${json.error?.message || '알 수 없는 에러'}`);
