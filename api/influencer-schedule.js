@@ -71,9 +71,10 @@ export default async function handler(req, res) {
         const infUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(INF_TABLE)}?filterByFormula=${infFilter}&fields[]=${encodeURIComponent(INFL_ID_FIELD)}&fields[]=${encodeURIComponent(INFL_NAME_FIELD)}`;
         const infResp = await fetch(infUrl, { headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` } });
         const infJson = await infResp.json();
-        
-        if (!infResp.ok) throw new Error(infJson.error?.message || 'Airtable INFL_DB error');
-        
+        if (!infResp.ok) {
+          console.error('INFL_DB Error:', infJson);
+          throw new Error(`INFL_DB 연동 오류: ${infJson.error?.message || '알 수 없는 에러'}`);
+        }
         if (infJson.records && infJson.records.length > 0) {
           resolvedInflId = infJson.records[0].fields[INFL_ID_FIELD];
           resolvedInflName = infJson.records[0].fields[INFL_NAME_FIELD] || '';
@@ -89,8 +90,10 @@ export default async function handler(req, res) {
           .join('&');
         const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(SCHEDULE_TABLE)}?filterByFormula=${filter}&${fieldList}&sort[0][field]=${encodeURIComponent(DATE_FIELD)}&sort[0][direction]=asc`;
         const resp = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` } });
-        const json = await resp.json();
-        if (!resp.ok) throw new Error(json.error?.message || 'Airtable error');
+        if (!resp.ok) {
+          console.error('SCHEDULE_TABLE Error:', json);
+          throw new Error(`진행_DB_OLD 연동 오류: ${json.error?.message || '알 수 없는 에러'}`);
+        }
         return json.records || [];
       };
 
@@ -127,7 +130,8 @@ export default async function handler(req, res) {
 
     } catch (err) {
       console.error('Server error (GET):', err);
-      return res.status(500).json({ error: 'Internal server error' });
+      // 클라이언트에게 명확한 에러 메시지 전달
+      return res.status(500).json({ error: err.message || 'Internal server error' });
     }
   }
 
