@@ -112,11 +112,9 @@ export default async function handler(req, res) {
         return res.status(200).json({ records: [], token });
       }
 
-      // 닉네임 및 마감일 추출 (1번째 레코드 기준, 만약 INFL_DB에서 가져온 이름이 없다면)
+      // 닉네임 추출 (만약 INFL_DB에서 가져온 이름이 없다면)
       const firstFields = rawRecords[0].fields;
-      const inflName = resolvedInflName || firstFields[INFL_NAME_FIELD] || '';
-      const deadlineRaw = firstFields[DEADLINE_FIELD] || '';
-      const deadline = deadlineRaw ? formatDeadline(deadlineRaw) : '';
+      const inflName = resolvedInflName || firstFields[SCHEDULE_INFL_NAME_FIELD] || '';
 
       // 클라이언트에 필요한 데이터만 정제하여 반환
       const records = rawRecords.map(rec => ({
@@ -124,11 +122,12 @@ export default async function handler(req, res) {
         client:     rec.fields[ZH_CLIENT_FIELD] || rec.fields[CLIENT_FIELD] || '',
         guide:      rec.fields[GUIDE_FIELD]   || '',
         date:       rec.fields[DATE_FIELD]    || '',
+        deadline:   rec.fields[DEADLINE_FIELD] ? formatDeadline(rec.fields[DEADLINE_FIELD]) : '',
         resultLink: rec.fields[RESULT_FIELD]  || '',
         status:     rec.fields[STATUS_FIELD]  || '대기 중',
       }));
 
-      return res.status(200).json({ records, inflId: resolvedInflId, inflName, deadline, token });
+      return res.status(200).json({ records, inflId: resolvedInflId, inflName, token });
 
     } catch (err) {
       console.error('Server error (GET):', err);

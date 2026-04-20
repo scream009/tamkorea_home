@@ -64,7 +64,6 @@ export default function InfluencerSubmitPage() {
         }
         setRecords(data.records);
         if (data.inflName) setInflName(data.inflName);
-        if (data.deadline) setDeadline(data.deadline);
         if (data.inflId) setResolvedInflId(data.inflId);
         // 기존 제출 링크를 초기값으로 세팅
         const initLinks = {};
@@ -222,9 +221,6 @@ export default function InfluencerSubmitPage() {
           <div className="inf-header-sub">
             <span className="inf-badge">📸 {inflName || resolvedInflId || token}</span>
             <span>共 {totalCount} 个客户 · 已提交 {doneCount} 个</span>
-            {deadline && (
-              <span className="inf-deadline-badge">📅 截止日期: {deadline}</span>
-            )}
           </div>
         </div>
       </div>
@@ -252,7 +248,7 @@ export default function InfluencerSubmitPage() {
               <tr>
                 <th style={{ width: '30%' }}>客户名</th>
                 <th style={{ width: '10%' }}>拍摄指南</th>
-                <th style={{ width: '12%' }}>拍摄日期</th>
+                <th style={{ width: '12%' }}>拍摄日期 & 截止日期</th>
                 <th>提交视频链接</th>
                 <th style={{ width: '10%' }}>状态</th>
               </tr>
@@ -267,7 +263,6 @@ export default function InfluencerSubmitPage() {
                     {/* 고객사 */}
                     <td>
                       <div className="inf-client-name">{rec.client}</div>
-                      <div className="inf-client-date">{formatDate(rec.date)}</div>
                     </td>
 
                     {/* 촬영가이드 (롱텍스트 팝업) */}
@@ -284,9 +279,14 @@ export default function InfluencerSubmitPage() {
                       )}
                     </td>
 
-                    {/* 날짜 (모바일 숨김) */}
+                    {/* 날짜 및 마감일 */}
                     <td style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                      {formatDate(rec.date)}
+                      <div>{formatDate(rec.date)}</div>
+                      {rec.deadline && (
+                        <div style={{ color: 'var(--revu-red)', marginTop: '4px', fontWeight: '500' }}>
+                          截止: {rec.deadline}
+                        </div>
+                      )}
                     </td>
 
                     {/* 링크 입력 */}
