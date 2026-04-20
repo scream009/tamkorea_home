@@ -43,6 +43,7 @@ export default function InfluencerSubmitPage() {
   const [inflName, setInflName] = useState('');     // 인플루언서 닉네임
   const [deadline, setDeadline] = useState('');     // 제출 마감일
   const [resolvedInflId, setResolvedInflId] = useState(''); // 서버에서 해석한 실제 INFL_ID
+  const [guideModal, setGuideModal] = useState({ isOpen: false, text: '', client: '' }); // 롱텍스트 가이드 모달
 
   // ─── 데이터 로드 ────────────────────────────────────────────
   useEffect(() => {
@@ -269,17 +270,15 @@ export default function InfluencerSubmitPage() {
                       <div className="inf-client-date">{formatDate(rec.date)}</div>
                     </td>
 
-                    {/* 촬영가이드 */}
+                    {/* 촬영가이드 (롱텍스트 팝업) */}
                     <td>
                       {rec.guide ? (
-                        <a
-                          href={rec.guide}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
                           className="inf-btn-guide"
+                          onClick={() => setGuideModal({ isOpen: true, text: rec.guide, client: rec.client })}
                         >
                           📖 查看
-                        </a>
+                        </button>
                       ) : (
                         <span className="inf-btn-guide no-guide">📖 无</span>
                       )}
