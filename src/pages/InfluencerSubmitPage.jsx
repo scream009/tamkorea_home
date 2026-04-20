@@ -78,7 +78,7 @@ export default function InfluencerSubmitPage() {
         setStatus('error');
         setErrorMsg('데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
       });
-  }, [inflId]);
+  }, [token]);
 
   // ─── Toast 표시 ─────────────────────────────────────────────
   const showToast = useCallback((message, type = 'success') => {
