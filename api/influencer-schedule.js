@@ -123,7 +123,7 @@ export default async function handler(req, res) {
         client:     rec.fields[ZH_CLIENT_FIELD] || rec.fields[CLIENT_FIELD] || '',
         guide:      rec.fields[GUIDE_FIELD]   || '',
         date:       rec.fields[DATE_FIELD]    || '',
-        deadline:   rec.fields[DEADLINE_FIELD] ? formatDeadline(rec.fields[DEADLINE_FIELD]) : '',
+        deadline:   rec.fields[DATE_FIELD] ? formatDeadline(rec.fields[DATE_FIELD]) : '',
         resultLink: rec.fields[RESULT_FIELD]  || '',
         status:     rec.fields[STATUS_FIELD]  || '대기 중',
       }));
