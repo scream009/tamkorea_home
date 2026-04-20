@@ -3,7 +3,6 @@
    tamkorea.com/submit?id=I260419780
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
   --revu-purple: #7c3aed;
@@ -28,7 +27,7 @@
 .inf-submit-page {
   min-height: 100vh;
   background: var(--bg-dark);
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
   color: var(--text-primary);
   padding: 0 0 80px;
 }
