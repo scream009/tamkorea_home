@@ -157,7 +157,7 @@ export default function InfluencerSubmitPage() {
       <div className="inf-submit-page">
         <div className="inf-header">
           <div className="inf-header-inner">
-            <div className="inf-logo"><span className="inf-logo-dot" /> GRAVITY × TAMKOREA</div>
+            <div className="inf-logo"><span className="inf-logo-dot" /> T A M K O R E A</div>
             <h1>拍摄结果提交</h1>
           </div>
         </div>
@@ -176,7 +176,7 @@ export default function InfluencerSubmitPage() {
       <div className="inf-submit-page">
         <div className="inf-header">
           <div className="inf-header-inner">
-            <div className="inf-logo"><span className="inf-logo-dot" /> GRAVITY × TAMKOREA</div>
+            <div className="inf-logo"><span className="inf-logo-dot" /> T A M K O R E A</div>
             <h1>拍摄结果提交</h1>
           </div>
         </div>
@@ -196,7 +196,7 @@ export default function InfluencerSubmitPage() {
       <div className="inf-submit-page">
         <div className="inf-header">
           <div className="inf-header-inner">
-            <div className="inf-logo"><span className="inf-logo-dot" /> GRAVITY × TAMKOREA</div>
+            <div className="inf-logo"><span className="inf-logo-dot" /> T A M K O R E A</div>
             <h1>拍摄结果提交</h1>
           </div>
         </div>
@@ -216,7 +216,7 @@ export default function InfluencerSubmitPage() {
       {/* Header */}
       <div className="inf-header">
         <div className="inf-header-inner">
-          <div className="inf-logo"><span className="inf-logo-dot" /> GRAVITY × TAMKOREA</div>
+          <div className="inf-logo"><span className="inf-logo-dot" /> T A M K O R E A</div>
           <h1>本月拍摄结果提交</h1>
           <div className="inf-header-sub">
             <span className="inf-badge">📸 {inflName || resolvedInflId || token}</span>
@@ -330,6 +330,21 @@ export default function InfluencerSubmitPage() {
 
       {/* Toast */}
       <Toast message={toast.message} type={toast.type} show={toast.show} />
+
+      {/* 가이드 내용 모달 (Popup) */}
+      {guideModal.isOpen && (
+        <div className="inf-modal-backdrop" onClick={() => setGuideModal({ isOpen: false, text: '', client: '' })}>
+          <div className="inf-modal-content" onClick={e => e.stopPropagation()}>
+            <div className="inf-modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)' }}>{guideModal.client} - 拍摄指南</h3>
+              <button onClick={() => setGuideModal({ isOpen: false, text: '', client: '' })} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
+            </div>
+            <div className="inf-modal-body" style={{ whiteSpace: 'pre-wrap', color: '#111', fontSize: '0.95rem', lineHeight: '1.6', maxHeight: '50vh', overflowY: 'auto', background: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid #e9ecef' }}>
+              {guideModal.text}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
