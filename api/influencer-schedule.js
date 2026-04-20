@@ -9,7 +9,7 @@
  *   → { recordId, resultLink } 로 결과물 링크 업데이트
  */
 
-const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
+const AIRTABLE_API_KEY = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const AIRTABLE_BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa'; // 기존 고객문의(AIRTABLE_BASE_ID)와 분리
 
 // ★ 에어테이블 테이블/필드명 - 실제 필드명으로 수정 필요
