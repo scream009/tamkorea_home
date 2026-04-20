@@ -41,7 +41,6 @@ export default function InfluencerSubmitPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [inflName, setInflName] = useState('');     // 인플루언서 닉네임
-  const [deadline, setDeadline] = useState('');     // 제출 마감일
   const [resolvedInflId, setResolvedInflId] = useState(''); // 서버에서 해석한 실제 INFL_ID
   const [guideModal, setGuideModal] = useState({ isOpen: false, text: '', client: '' }); // 롱텍스트 가이드 모달
 
