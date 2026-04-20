@@ -1,0 +1,568 @@
+/* ============================================================
+   Gravity | Influencer Submit Page
+   tamkorea.com/submit?id=I260419780
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --revu-purple: #7c3aed;
+  --purple-light: #a78bfa;
+  --purple-dark: #5b21b6;
+  --bg-dark: #0a0a0f;
+  --bg-card: rgba(255, 255, 255, 0.04);
+  --bg-card-hover: rgba(255, 255, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-purple: rgba(124, 58, 237, 0.4);
+  --text-primary: #f0f0f5;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --success: #10b981;
+  --success-bg: rgba(16, 185, 129, 0.1);
+  --error: #ef4444;
+  --error-bg: rgba(239, 68, 68, 0.1);
+  --warning: #f59e0b;
+}
+
+/* ─── Layout ──────────────────────────────────────────────── */
+.inf-submit-page {
+  min-height: 100vh;
+  background: var(--bg-dark);
+  font-family: 'Inter', -apple-system, sans-serif;
+  color: var(--text-primary);
+  padding: 0 0 80px;
+}
+
+/* ─── Header ──────────────────────────────────────────────── */
+.inf-header {
+  background: linear-gradient(135deg, #1a0533 0%, #0f0a1e 50%, #0a0a0f 100%);
+  border-bottom: 1px solid var(--border-purple);
+  padding: 32px 24px 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.inf-header::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.inf-header-inner {
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.inf-logo {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: var(--purple-light);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inf-logo-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--revu-purple);
+  display: inline-block;
+}
+
+.inf-header h1 {
+  font-size: clamp(20px, 4vw, 28px);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+  line-height: 1.3;
+}
+
+.inf-header-sub {
+  font-size: 14px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.inf-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(124, 58, 237, 0.15);
+  border: 1px solid var(--border-purple);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--purple-light);
+}
+
+/* 마감일 뱃지 */
+.inf-deadline-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--warning);
+  animation: pulse-badge 2.5s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.65; }
+}
+
+/* ─── Progress Bar ────────────────────────────────────────── */
+.inf-progress-wrap {
+  max-width: 780px;
+  margin: 24px auto 0;
+  padding: 0 24px;
+}
+
+.inf-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.inf-progress-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.inf-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--revu-purple), var(--purple-light));
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+/* ─── Container ───────────────────────────────────────────── */
+.inf-container {
+  max-width: 780px;
+  margin: 32px auto 0;
+  padding: 0 24px;
+}
+
+/* ─── State Cards (loading / error / empty) ───────────────── */
+.inf-state-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 60px 24px;
+  text-align: center;
+}
+
+.inf-state-card.error { border-color: rgba(239, 68, 68, 0.3); }
+
+.inf-state-icon {
+  font-size: 40px;
+  margin-bottom: 16px;
+}
+
+.inf-state-card h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.inf-state-card p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.inf-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--revu-purple);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Hint Text ──────────────────────────────────────────── */
+.inf-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  line-height: 1.6;
+}
+
+.inf-hint strong {
+  color: var(--purple-light);
+  font-weight: 600;
+}
+
+/* ─── Table ───────────────────────────────────────────────── */
+.inf-table-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.inf-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* Header Row */
+.inf-table thead tr {
+  background: rgba(124, 58, 237, 0.08);
+  border-bottom: 1px solid var(--border-purple);
+}
+
+.inf-table thead th {
+  padding: 14px 16px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--purple-light);
+  white-space: nowrap;
+}
+
+/* Body Rows */
+.inf-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.2s ease;
+}
+
+.inf-table tbody tr:last-child { border-bottom: none; }
+.inf-table tbody tr:hover { background: var(--bg-card-hover); }
+
+.inf-table td {
+  padding: 14px 16px;
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+/* Client Name */
+.inf-client-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.inf-client-date {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+/* Guide Button */
+.inf-btn-guide {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(124, 58, 237, 0.1);
+  border: 1px solid var(--border-purple);
+  color: var(--purple-light);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.inf-btn-guide:hover {
+  background: rgba(124, 58, 237, 0.2);
+  border-color: var(--revu-purple);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.inf-btn-guide.no-guide {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Link Input */
+.inf-link-cell {
+  min-width: 220px;
+}
+
+.inf-input-wrap {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.inf-link-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  min-width: 0;
+}
+
+.inf-link-input::placeholder { color: var(--text-muted); }
+
+.inf-link-input:focus {
+  border-color: var(--revu-purple);
+  background: rgba(124, 58, 237, 0.06);
+}
+
+.inf-link-input.submitted {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.05);
+  color: var(--success);
+}
+
+.inf-link-input.invalid {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+/* Row Save Button */
+.inf-btn-save {
+  display: inline-flex;
+  align-items: center;
+  background: var(--revu-purple);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.inf-btn-save:hover:not(:disabled) {
+  background: var(--purple-dark);
+  transform: translateY(-1px);
+}
+
+.inf-btn-save:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.inf-btn-save.resubmit {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.inf-btn-save.resubmit:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.25);
+  transform: translateY(-1px);
+}
+
+/* Status Badge */
+.inf-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.inf-status.done {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.inf-status.pending {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+/* ─── Toast Notification ──────────────────────────────────── */
+.inf-toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: #1a1a2e;
+  border: 1px solid var(--border-purple);
+  border-radius: 12px;
+  padding: 14px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.inf-toast.show {
+  transform: translateX(-50%) translateY(0);
+}
+
+.inf-toast.success { border-color: rgba(16, 185, 129, 0.4); }
+.inf-toast.error { border-color: rgba(239, 68, 68, 0.4); }
+
+/* ─── Mobile Responsive: Card Layout ─────────────────────── */
+@media (max-width: 640px) {
+  .inf-header { padding: 20px 16px 18px; }
+  .inf-container { padding: 0 12px; }
+  .inf-progress-wrap { padding: 0 12px; }
+
+  /* 테이블 래퍼: 배경/보더 제거 (카드가 개별로 처리) */
+  .inf-table-wrap {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+  }
+
+  /* 테이블 자체 레이아웃 해제 */
+  .inf-table,
+  .inf-table tbody,
+  .inf-table tbody tr,
+  .inf-table td {
+    display: block;
+    width: 100%;
+  }
+
+  /* 테이블 헤더 완전 숨김 */
+  .inf-table thead { display: none; }
+
+  /* 각 행(tr) → 카드 */
+  .inf-table tbody tr {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    margin-bottom: 12px;
+    padding: 0;
+    overflow: hidden;
+    transition: border-color 0.2s ease;
+  }
+
+  .inf-table tbody tr:hover {
+    background: var(--bg-card-hover);
+    border-color: rgba(124, 58, 237, 0.2);
+  }
+
+  .inf-table tbody tr:last-child {
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0;
+  }
+
+  /* 각 td → 블록 */
+  .inf-table td { padding: 0; border: none; }
+
+  /* ── Card 내부 구조 ──────────────────────── */
+
+  /* 1행: 고객사명 + 상태 뱃지 (헤더 영역) */
+  .inf-table td:nth-child(1) {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 14px 14px 10px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(124, 58, 237, 0.05);
+  }
+
+  /* 상태 뱃지를 1번 셀 옆에 붙이기 위해 5번째 td를 숨기고 JS로 처리 */
+  /* → 상태는 카드 헤더 우측에 노출 (아래 .inf-card-status 참조) */
+  .inf-table td:nth-child(5) { display: none; } /* 상태 칼럼 숨김 (헤더로 이동) */
+
+  /* 2행: 가이드 버튼 */
+  .inf-table td:nth-child(2) {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .inf-btn-guide {
+    width: 100%;
+    justify-content: center;
+    padding: 10px 14px;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+
+  /* 3행: 날짜 (숨김 - 헤더에서 이미 표시) */
+  .inf-table td:nth-child(3) { display: none; }
+
+  /* 4행: 링크 입력 영역 */
+  .inf-table td:nth-child(4) {
+    padding: 12px 14px 14px;
+  }
+
+  .inf-link-cell { min-width: 0; }
+
+  .inf-input-wrap {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .inf-link-input {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 16px; /* ★ 16px 미만이면 iOS Safari가 자동 줌인 - 반드시 16px 이상 유지 */
+  }
+
+  .inf-btn-save {
+    width: 100%;
+    justify-content: center;
+    padding: 13px;
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: 10px;
+  }
+
+  /* 고객사명 폰트 조정 */
+  .inf-client-name { font-size: 15px; }
+  .inf-client-date { font-size: 12px; margin-top: 4px; }
+
+  /* 힌트 텍스트 */
+  .inf-hint { font-size: 12px; margin-bottom: 14px; }
+
+  /* Toast: 모바일 하단 풀너비 */
+  .inf-toast {
+    white-space: normal;
+    text-align: center;
+    width: calc(100% - 32px);
+    bottom: 16px;
+    border-radius: 10px;
+  }
+}

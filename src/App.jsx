@@ -11,6 +11,7 @@ import BizPage from './pages/BizPage';
 import CampaignDetailPage from './pages/CampaignDetailPage';
 import LoginPage from './pages/auth/LoginPage';
 import SignupSelectionPage from './pages/auth/SignupSelectionPage';
+import InfluencerSubmitPage from './pages/InfluencerSubmitPage';
 import SignupCreatorPage from './pages/auth/SignupCreatorPage';
 import SignupBusinessPage from './pages/auth/SignupBusinessPage';
 import './App.css';
@@ -19,8 +20,14 @@ function App() {
   return (
     <LanguageProvider>
       <Router>
-        <Layout>
-          <Routes>
+        <Routes>
+          {/* 독립 페이지: 헤더/푸터 없음 */}
+          <Route path="/submit" element={<InfluencerSubmitPage />} />
+
+          {/* 일반 페이지: Layout (헤더/푸터) 포함 */}
+          <Route path="/*" element={
+            <Layout>
+              <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/campaigns" element={<CampaignsPlaceholder />} /> {/* Changed */}
@@ -31,9 +38,11 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupSelectionPage />} />
             <Route path="/signup/creator" element={<SignupCreatorPage />} />
-            <Route path="/signup/business" element={<SignupBusinessPage />} />
-          </Routes>
-        </Layout>
+              <Route path="/signup/business" element={<SignupBusinessPage />} />
+            </Routes>
+          </Layout>
+          } />
+        </Routes>
       </Router>
     </LanguageProvider>
   );
