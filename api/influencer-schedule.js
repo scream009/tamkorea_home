@@ -15,7 +15,7 @@ const AIRTABLE_BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa'; // 
 // ★ 에어테이블 테이블/필드명 - 실제 필드명으로 수정 필요
 const SCHEDULE_TABLE  = '진행_DB_OLD';   // 스케줄 테이블명
 const INFL_ID_FIELD   = 'INFL_ID';          // 인플루언서 ID 필드명 (텍스트 or Linked Record)
-const INFL_NAME_FIELD = 'XHS_ID';            // 인플 닉네임(또는 Lookup된 이름 필드)
+const INFL_NAME_FIELD = 'XHS_ID(필수)';        // 인플 닉네임(또는 Lookup된 이름 필드)
 const CLIENT_FIELD    = '고객명';           // 고객사 필드명
 const ZH_CLIENT_FIELD = '중문명';           // 중문 고객사명 (CS_DB에서 Lookup, 에어테이블 추가 필요)
 const GUIDE_FIELD     = '촬영 가이드';       // CS_DB에서 Lookup된 촬영가이드 URL 필드명
