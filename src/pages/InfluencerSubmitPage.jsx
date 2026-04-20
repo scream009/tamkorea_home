@@ -9,9 +9,9 @@ function formatDate(dateStr) {
     const d = new Date(dateStr);
     const month = d.getMonth() + 1;
     const day = d.getDate();
-    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
     const dayName = days[d.getDay()];
-    return `${month}/${day} (${dayName})`;
+    return `${month}月${day}日 (${dayName})`;
   } catch {
     return dateStr;
   }
@@ -48,7 +48,7 @@ export default function InfluencerSubmitPage() {
   useEffect(() => {
     if (!token) {
       setStatus('error');
-      setErrorMsg('링크가 올바르지 않습니다. 담당자에게 문의해 주세요.');
+      setErrorMsg('链接不正确。请联系负责人。'); // 링크가 올바르지 않습니다
       return;
     }
 
@@ -76,7 +76,7 @@ export default function InfluencerSubmitPage() {
       .catch(err => {
         console.error(err);
         setStatus('error');
-        setErrorMsg('데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+        setErrorMsg('加载数据失败，请稍后再试。'); // 데이터를 불러오지 못했습니다
       });
   }, [token]);
 
@@ -97,14 +97,14 @@ export default function InfluencerSubmitPage() {
   const handleSaveOne = useCallback(async (recordId) => {
     const link = links[recordId]?.trim();
     if (!link) {
-      showToast('링크를 입력해 주세요.', 'error');
+      showToast('请输入链接。', 'error'); // 링크를 입력해 주세요
       return;
     }
 
     // URL 형식 검사
     if (!isValidUrl(link)) {
       setInvalidLinks(prev => ({ ...prev, [recordId]: true }));
-      showToast('올바른 URL 형식이 아닙니다.  (예: https://xhslink.com/...)', 'error');
+      showToast('链接格式不正确。(例: https://xhslink.com/...)', 'error'); // 올바른 URL 형식이 아닙니다
       return;
     }
     // 유효 → 오류 상태 해제
@@ -126,10 +126,10 @@ export default function InfluencerSubmitPage() {
           rec.id === recordId ? { ...rec, resultLink: link, status: '제출완료' } : rec
         )
       );
-      showToast('저장되었습니다!', 'success');
+      showToast('保存成功！', 'success'); // 저장되었습니다
     } catch (err) {
       console.error(err);
-      showToast('저장에 실패했습니다. 다시 시도해 주세요.', 'error');
+      showToast('保存失败，请重试。', 'error'); // 저장에 실패했습니다
     } finally {
       setSaving(s => ({ ...s, [recordId]: false }));
     }
@@ -157,13 +157,13 @@ export default function InfluencerSubmitPage() {
         <div className="inf-header">
           <div className="inf-header-inner">
             <div className="inf-logo"><span className="inf-logo-dot" /> GRAVITY × TAMKOREA</div>
-            <h1>촬영 결과물 제출</h1>
+            <h1>拍摄结果提交</h1>
           </div>
         </div>
         <div className="inf-container">
           <div className="inf-state-card">
             <div className="inf-spinner" />
-            <p>스케줄을 불러오는 중...</p>
+            <p>正在加载日程...</p>
           </div>
         </div>
       </div>
@@ -176,13 +176,13 @@ export default function InfluencerSubmitPage() {
         <div className="inf-header">
           <div className="inf-header-inner">
             <div className="inf-logo"><span className="inf-logo-dot" /> GRAVITY × TAMKOREA</div>
-            <h1>촬영 결과물 제출</h1>
+            <h1>拍摄结果提交</h1>
           </div>
         </div>
         <div className="inf-container">
           <div className="inf-state-card error">
             <div className="inf-state-icon">⚠️</div>
-            <h2>오류가 발생했습니다</h2>
+            <h2>发生错误</h2>
             <p>{errorMsg}</p>
           </div>
         </div>
@@ -196,14 +196,14 @@ export default function InfluencerSubmitPage() {
         <div className="inf-header">
           <div className="inf-header-inner">
             <div className="inf-logo"><span className="inf-logo-dot" /> GRAVITY × TAMKOREA</div>
-            <h1>촬영 결과물 제출</h1>
+            <h1>拍摄结果提交</h1>
           </div>
         </div>
         <div className="inf-container">
           <div className="inf-state-card">
             <div className="inf-state-icon">📭</div>
-            <h2>배정된 스케줄이 없습니다</h2>
-            <p>담당자에게 문의해 주세요.</p>
+            <h2>暂无分配的日程</h2>
+            <p>请联系负责人。</p>
           </div>
         </div>
       </div>
@@ -216,12 +216,12 @@ export default function InfluencerSubmitPage() {
       <div className="inf-header">
         <div className="inf-header-inner">
           <div className="inf-logo"><span className="inf-logo-dot" /> GRAVITY × TAMKOREA</div>
-          <h1>이번 달 촬영 결과물 제출</h1>
+          <h1>本月拍摄结果提交</h1>
           <div className="inf-header-sub">
             <span className="inf-badge">📸 {inflName || resolvedInflId || token}</span>
-            <span>총 {totalCount}개 고객사 · {doneCount}건 제출완료</span>
+            <span>共 {totalCount} 个客户 · 已提交 {doneCount} 个</span>
             {deadline && (
-              <span className="inf-deadline-badge">📅 제출 마감: {deadline}</span>
+              <span className="inf-deadline-badge">📅 截止日期: {deadline}</span>
             )}
           </div>
         </div>
@@ -230,7 +230,7 @@ export default function InfluencerSubmitPage() {
       {/* Progress */}
       <div className="inf-progress-wrap">
         <div className="inf-progress-label">
-          <span>제출 진행률</span>
+          <span>提交进度</span>
           <span>{doneCount} / {totalCount} ({progressPct}%)</span>
         </div>
         <div className="inf-progress-bar">
@@ -241,18 +241,18 @@ export default function InfluencerSubmitPage() {
       {/* Main */}
       <div className="inf-container">
         {/* 안내 문구 */}
-        <p className="inf-hint">작업이 완료된 고객사부터 순서대로 링크를 입력하고 <strong>저장</strong> 또는 <strong>Enter</strong>를 눌러주세요.</p>
+        <p className="inf-hint">请依次输入已完成客户的链接并点击 <strong>保存 (Save)</strong> 或按 <strong>Enter</strong> 键。</p>
 
         {/* 테이블 */}
         <div className="inf-table-wrap">
           <table className="inf-table">
             <thead>
               <tr>
-                <th style={{ width: '30%' }}>고객사</th>
-                <th style={{ width: '10%' }}>가이드</th>
-                <th style={{ width: '12%' }}>촬영일</th>
-                <th>영상 링크 제출</th>
-                <th style={{ width: '10%' }}>상태</th>
+                <th style={{ width: '30%' }}>客户名</th>
+                <th style={{ width: '10%' }}>拍摄指南</th>
+                <th style={{ width: '12%' }}>拍摄日期</th>
+                <th>提交视频链接</th>
+                <th style={{ width: '10%' }}>状态</th>
               </tr>
             </thead>
             <tbody>
@@ -277,10 +277,10 @@ export default function InfluencerSubmitPage() {
                           rel="noopener noreferrer"
                           className="inf-btn-guide"
                         >
-                          📖 보기
+                          📖 查看
                         </a>
                       ) : (
-                        <span className="inf-btn-guide no-guide">📖 없음</span>
+                        <span className="inf-btn-guide no-guide">📖 无</span>
                       )}
                     </td>
 
@@ -307,9 +307,9 @@ export default function InfluencerSubmitPage() {
                           className={`inf-btn-save ${isDone ? 'resubmit' : ''}`}
                           onClick={() => handleSaveOne(rec.id)}
                           disabled={isSaving || !links[rec.id]?.trim()}
-                          title={isDone ? '링크 수정 후 다시 저장' : '저장'}
+                          title={isDone ? '修改链接后重新保存' : '保存'}
                         >
-                          {isSaving ? '⏳' : isDone ? '수정' : '저장'}
+                          {isSaving ? '⏳' : isDone ? '修改' : '保存'}
                         </button>
                       </div>
                     </td>
@@ -317,7 +317,7 @@ export default function InfluencerSubmitPage() {
                     {/* 상태 */}
                     <td>
                       <span className={`inf-status ${isDone ? 'done' : 'pending'}`}>
-                        {isDone ? '✅ 완료' : '⏳ 대기'}
+                        {isDone ? '✅ 已完成' : '⏳ 待提交'}
                       </span>
                     </td>
                   </tr>

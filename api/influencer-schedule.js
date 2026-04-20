@@ -17,6 +17,7 @@ const SCHEDULE_TABLE  = '진행_DB_OLD';   // 스케줄 테이블명
 const INFL_ID_FIELD   = 'INFL_ID';          // 인플루언서 ID 필드명 (텍스트 or Linked Record)
 const INFL_NAME_FIELD = 'XHS_ID';            // 인플 닉네임(또는 Lookup된 이름 필드)
 const CLIENT_FIELD    = '고객명';           // 고객사 필드명
+const ZH_CLIENT_FIELD = '중문명';           // 중문 고객사명 (CS_DB에서 Lookup, 에어테이블 추가 필요)
 const GUIDE_FIELD     = '촬영 가이드';       // CS_DB에서 Lookup된 촬영가이드 URL 필드명
 const DATE_FIELD      = 'Date Rollup';        // 촬영일자 필드명
 const DEADLINE_FIELD  = '제출마감일';        // ▲ 서트 기준 마감일 필드 (에어테이블 추가 필요)
@@ -83,7 +84,7 @@ export default async function handler(req, res) {
 
       const fetchSchedule = async (formula) => {
         const filter    = encodeURIComponent(formula);
-        const fieldList = [CLIENT_FIELD, INFL_NAME_FIELD, GUIDE_FIELD, DATE_FIELD, DEADLINE_FIELD, RESULT_FIELD, STATUS_FIELD]
+        const fieldList = [CLIENT_FIELD, ZH_CLIENT_FIELD, INFL_NAME_FIELD, GUIDE_FIELD, DATE_FIELD, DEADLINE_FIELD, RESULT_FIELD, STATUS_FIELD]
           .map(f => `fields[]=${encodeURIComponent(f)}`)
           .join('&');
         const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(SCHEDULE_TABLE)}?filterByFormula=${filter}&${fieldList}&sort[0][field]=${encodeURIComponent(DATE_FIELD)}&sort[0][direction]=asc`;
@@ -115,7 +116,7 @@ export default async function handler(req, res) {
       // 클라이언트에 필요한 데이터만 정제하여 반환
       const records = rawRecords.map(rec => ({
         id:         rec.id,
-        client:     rec.fields[CLIENT_FIELD]  || '',
+        client:     rec.fields[ZH_CLIENT_FIELD] || rec.fields[CLIENT_FIELD] || '',
         guide:      rec.fields[GUIDE_FIELD]   || '',
         date:       rec.fields[DATE_FIELD]    || '',
         resultLink: rec.fields[RESULT_FIELD]  || '',
