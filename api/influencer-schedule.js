@@ -28,15 +28,16 @@ const STATUS_FIELD    = '제출상태';         // 제출상태 필드명
 const INF_TABLE       = 'INFL_DB';          // 인플루언서 마스터 테이블
 const INF_TOKEN_FIELD = 'Submit_Token';     // URL 파라미터용 보안 토큰 (생성 방식: "submit_" & LEFT(RECORD_ID(), 12))
 
-// ─── 마감일 포맷 헬퍼 ─────────────────────────────────────────────
+// ─── 마감일 포맷 헬퍼 (촬영일 기준 +14일 자동 계산) ──────────────────────────
 function formatDeadline(dateStr) {
   if (!dateStr) return '';
   try {
     const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    d.setDate(d.getDate() + 14); // 2주(14일) 자동 추가
     const month = d.getMonth() + 1;
     const day   = d.getDate();
-    const days  = ['일', '월', '화', '수', '목', '금', '토'];
-    return `${month}/${day} (${days[d.getDay()]})`;
+    return `${month}/${day}`; // 요일 제거
   } catch {
     return dateStr;
   }
