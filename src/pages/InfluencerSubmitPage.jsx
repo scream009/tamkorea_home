@@ -76,7 +76,8 @@ export default function InfluencerSubmitPage() {
       .catch(err => {
         console.error(err);
         setStatus('error');
-        setErrorMsg('加载数据失败，请稍后再试。'); // 데이터를 불러오지 못했습니다
+        // Vercel/에어테이블에서 온 상세 에러 메시지가 있으면 화면에 그대로 출력
+        setErrorMsg(err.message || '加载数据失败，请稍后再试。'); 
       });
   }, [token]);
 
