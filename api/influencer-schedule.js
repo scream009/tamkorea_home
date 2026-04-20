@@ -10,7 +10,7 @@
  */
 
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
-const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID || 'appEzEPLBz4t30wmt';
+const AIRTABLE_BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa'; // 기존 고객문의(AIRTABLE_BASE_ID)와 분리
 
 // ★ 에어테이블 테이블/필드명 - 실제 필드명으로 수정 필요
 const SCHEDULE_TABLE  = '진행_DB_OLD';   // 스케줄 테이블명
