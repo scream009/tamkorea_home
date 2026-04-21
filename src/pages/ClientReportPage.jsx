@@ -205,7 +205,6 @@ const ClientReportPage = () => {
           <section className="category-section">
             <h2 className="category-title">
               <TypeBadge type="influencer" />
-              <span className="cat-count">{records.influencer.length}건</span>
             </h2>
             <div className="premium-table-wrapper">
               <table className="premium-table">
@@ -233,7 +232,6 @@ const ClientReportPage = () => {
           <section className="category-section">
             <h2 className="category-title">
               <TypeBadge type="experience" />
-              <span className="cat-count">{records.experience.length}건</span>
             </h2>
             <div className="premium-table-wrapper">
               <table className="premium-table">
@@ -263,20 +261,17 @@ const ClientReportPage = () => {
           <section className="category-section">
             <h2 className="category-title">
               <TypeBadge type="press" />
-              <span className="cat-count">{records.press.length}건</span>
             </h2>
             <div className="premium-table-wrapper">
               <table className="premium-table">
                 <thead><tr>
-                  <th style={{width:'6%'}}>No.</th>
-                  <th style={{width:'38%'}}>ID</th>
-                  <th style={{width:'56%'}}>샤오홍슈 결과물</th>
+                  <th style={{width:'8%'}}>No.</th>
+                  <th style={{width:'92%'}}>샤오홍슈 결과물</th>
                 </tr></thead>
                 <tbody>
                   {records.press.map(item => (
                     <tr key={item.id} className={!item.xhsResult ? 'row-pending' : ''}>
                       <td>{item.seq}</td>
-                      <td><span className="id-tag">{item.displayId||'-'}</span></td>
                       <td><LinkBtn href={item.xhsResult} label="포스팅 확인" /></td>
                     </tr>
                   ))}
