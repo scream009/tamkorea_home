@@ -132,8 +132,8 @@ const ClientReportPage = () => {
           const item = {
             id: rec.id, seq: 0,
             displayId:  xhsId || wcId || inflId || '',
-            xhsResult:  f['XHS_Result'] || '',
-            dpResult:   f['DP_Result']  || '',
+            xhsResult:  (f['XHS_Result'] || '').trim(),
+            dpResult:   (f['DP_Result']  || '').trim(),
             status:     f['진행상태']   || '',
           };
           if (type==='인플' || type==='인플루언서') influencer.push(item);
