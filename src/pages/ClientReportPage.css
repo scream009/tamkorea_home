@@ -1,0 +1,273 @@
+/* ================================================================
+   ClientReportPage.css  — Gravity Premium Report v2
+   ================================================================ */
+
+/* ── 기본 래퍼 ─────────────────────────────────────────────── */
+.cr-wrap {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f0c29 0%, #1a1a2e 50%, #16213e 100%);
+  padding: 32px 16px 60px;
+  font-family: 'Inter', 'Pretendard', -apple-system, sans-serif;
+  color: #e2e8f0;
+}
+
+.cr-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.cr-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid rgba(255,255,255,0.1);
+  border-top-color: #818cf8;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 리포트 용지 ────────────────────────────────────────────── */
+.report-paper {
+  max-width: 900px;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+}
+
+/* ── 헤더 ──────────────────────────────────────────────────── */
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 28px 32px 24px;
+  background: linear-gradient(135deg, rgba(99,102,241,0.25) 0%, rgba(139,92,246,0.15) 100%);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.report-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+  background: linear-gradient(90deg, #a5b4fc, #e879f9);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.report-sub {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.gravity-logo-accent {
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  color: #c4b5fd;
+  text-align: right;
+  line-height: 1.6;
+  padding: 4px 0;
+}
+
+/* ── 통계 게이지 바 ─────────────────────────────────────────── */
+.stats-section {
+  padding: 20px 32px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stat-bar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.stat-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+.stat-nums {
+  font-weight: 600;
+  color: #a5b4fc;
+}
+
+.stat-bar-track {
+  height: 6px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.stat-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #a855f7);
+  border-radius: 99px;
+  transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── 섹션 (유형별) ─────────────────────────────────────────── */
+.category-section {
+  padding: 22px 32px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.category-section:last-of-type {
+  border-bottom: none;
+}
+
+.category-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 14px;
+  color: #e2e8f0;
+}
+
+.cat-count {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 400;
+}
+
+/* ── 유형 뱃지 ─────────────────────────────────────────────── */
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.type-badge.infl  { background: rgba(99,102,241,0.2); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.35); }
+.type-badge.exp   { background: rgba(34,197,94,0.15); color: #86efac; border: 1px solid rgba(34,197,94,0.3); }
+.type-badge.press { background: rgba(251,191,36,0.15); color: #fde68a; border: 1px solid rgba(251,191,36,0.3); }
+
+/* ── 테이블 ────────────────────────────────────────────────── */
+.premium-table-wrapper {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.07);
+}
+
+.premium-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.premium-table thead {
+  background: rgba(255,255,255,0.05);
+}
+
+.premium-table th {
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  white-space: nowrap;
+}
+
+.premium-table td {
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  vertical-align: middle;
+  color: #cbd5e1;
+}
+
+.premium-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.premium-table tbody tr:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+.premium-table tbody tr.row-pending {
+  opacity: 0.55;
+}
+
+/* ── ID 태그 ─────────────────────────────────────────────────*/
+.id-tag {
+  display: inline-block;
+  background: rgba(99,102,241,0.12);
+  color: #a5b4fc;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 0.78rem;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 링크 버튼 ──────────────────────────────────────────────── */
+.link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: rgba(99,102,241,0.15);
+  color: #a5b4fc;
+  border: 1px solid rgba(99,102,241,0.3);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.2s, border-color 0.2s, transform 0.15s;
+}
+.link-btn:hover {
+  background: rgba(99,102,241,0.3);
+  border-color: rgba(99,102,241,0.6);
+  transform: translateY(-1px);
+}
+
+.link-pending {
+  font-size: 0.75rem;
+  color: #475569;
+}
+
+/* ── 푸터 ──────────────────────────────────────────────────── */
+.report-footer {
+  padding: 16px 32px;
+  background: rgba(0,0,0,0.2);
+  border-top: 1px solid rgba(255,255,255,0.05);
+  text-align: center;
+}
+.report-footer p {
+  font-size: 0.72rem;
+  color: #475569;
+  margin: 0;
+}
+
+/* ── 반응형 ─────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .cr-wrap { padding: 16px 8px 40px; }
+  .report-header { flex-direction: column; gap: 12px; padding: 20px; }
+  .report-title { font-size: 1.4rem; }
+  .stats-section,
+  .category-section { padding: 16px 16px; }
+  .premium-table th,
+  .premium-table td { padding: 5px 8px; font-size: 0.75rem; }
+  .id-tag { max-width: 100px; }
+}

@@ -12,6 +12,7 @@ import CampaignDetailPage from './pages/CampaignDetailPage';
 import LoginPage from './pages/auth/LoginPage';
 import SignupSelectionPage from './pages/auth/SignupSelectionPage';
 import InfluencerSubmitPage from './pages/InfluencerSubmitPage';
+import ClientReportPage from './pages/ClientReportPage';
 import SignupCreatorPage from './pages/auth/SignupCreatorPage';
 import SignupBusinessPage from './pages/auth/SignupBusinessPage';
 import './App.css';
@@ -23,6 +24,7 @@ function App() {
         <Routes>
           {/* 독립 페이지: 헤더/푸터 없음 */}
           <Route path="/submit" element={<InfluencerSubmitPage />} />
+          <Route path="/report" element={<ClientReportPage />} />
 
           {/* 일반 페이지: Layout (헤더/푸터) 포함 */}
           <Route path="/*" element={
