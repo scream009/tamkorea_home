@@ -247,6 +247,62 @@
   color: #475569;
 }
 
+/* ── 기자단 그리드 ──────────────────────────────────────────── */
+.press-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.press-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  transition: background 0.2s, border-color 0.2s, transform 0.15s;
+}
+.press-card:hover {
+  background: rgba(251,191,36,0.08);
+  border-color: rgba(251,191,36,0.25);
+  transform: translateY(-1px);
+}
+.press-card.press-pending {
+  opacity: 0.45;
+}
+
+.press-seq {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: rgba(251,191,36,0.15);
+  color: #fde68a;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.press-link {
+  color: #fde68a;
+  font-size: 0.78rem;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+.press-link:hover {
+  color: #fef3c7;
+}
+
+.press-wait {
+  color: #475569;
+  font-size: 0.75rem;
+}
+
 /* ── 푸터 ──────────────────────────────────────────────────── */
 .report-footer {
   padding: 16px 32px;
@@ -265,9 +321,9 @@
   .cr-wrap { padding: 16px 8px 40px; }
   .report-header { flex-direction: column; gap: 12px; padding: 20px; }
   .report-title { font-size: 1.4rem; }
-  .stats-section,
   .category-section { padding: 16px 16px; }
   .premium-table th,
   .premium-table td { padding: 5px 8px; font-size: 0.75rem; }
   .id-tag { max-width: 100px; }
+  .press-grid { grid-template-columns: repeat(2, 1fr); }
 }

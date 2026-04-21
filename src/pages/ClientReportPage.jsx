@@ -186,19 +186,10 @@ const ClientReportPage = () => {
             <p className="report-sub">{branchName} · {month} 실적 보고서</p>
           </div>
           <div className="gravity-logo-accent">
-            GRAVITY<br />
+            TAMKOREA<br />
             <span style={{ fontSize:'0.65rem', color:'#9ca3af' }}>PERFORMANCE REPORT</span>
           </div>
         </header>
-
-        {/* ── 통계 게이지 ──────────────────────────── */}
-        {(stats.infl_target>0 || stats.exp_target>0 || stats.press_target>0) && (
-          <section className="stats-section">
-            <StatBar label="인플루언서" done={stats.infl_done}  target={stats.infl_target} />
-            <StatBar label="체험단"     done={stats.exp_done}   target={stats.exp_target} />
-            <StatBar label="기자단"     done={stats.press_done} target={stats.press_target} />
-          </section>
-        )}
 
         {/* ── 인플루언서 ───────────────────────────── */}
         {hasInfl && (
@@ -256,27 +247,25 @@ const ClientReportPage = () => {
           </section>
         )}
 
-        {/* ── 기자단 ───────────────────────────────── */}
+        {/* ── 기자단 (컴팩트 그리드) ─────────────── */}
         {hasPress && (
           <section className="category-section">
             <h2 className="category-title">
               <TypeBadge type="press" />
             </h2>
-            <div className="premium-table-wrapper">
-              <table className="premium-table">
-                <thead><tr>
-                  <th style={{width:'8%'}}>No.</th>
-                  <th style={{width:'92%'}}>샤오홍슈 결과물</th>
-                </tr></thead>
-                <tbody>
-                  {records.press.map(item => (
-                    <tr key={item.id} className={!item.xhsResult ? 'row-pending' : ''}>
-                      <td>{item.seq}</td>
-                      <td><LinkBtn href={item.xhsResult} label="포스팅 확인" /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="press-grid">
+              {records.press.map(item => (
+                <div key={item.id} className={`press-card ${!item.xhsResult ? 'press-pending' : ''}`}>
+                  <span className="press-seq">{item.seq}</span>
+                  {item.xhsResult ? (
+                    <a href={item.xhsResult} target="_blank" rel="noopener noreferrer" className="press-link">
+                      포스팅 확인 →
+                    </a>
+                  ) : (
+                    <span className="press-wait">진행 중</span>
+                  )}
+                </div>
+              ))}
             </div>
           </section>
         )}
@@ -288,7 +277,7 @@ const ClientReportPage = () => {
         )}
 
         <footer className="report-footer">
-          <p>본 보고서는 GRAVITY에서 제공하는 실시간 데이터 기반 자동 생성 보고서입니다.</p>
+          <p>본 보고서는 TAMKOREA에서 제공하는 실시간 데이터 기반 자동 생성 보고서입니다.</p>
         </footer>
       </div>
     </div>
