@@ -117,9 +117,9 @@ export default async function handler(req, res) {
         status,
       };
 
-      if (type === '인플' || type === '인플루언서') {
+      if (type === '인플' || type === '인플루언서' || type === '체험→인플' || type === '기자→인플') {
         influencer.push(item);
-      } else if (type === '체험' || type === '체험단') {
+      } else if (type === '체험' || type === '체험단' || type === '기자→체험') {
         experience.push(item);
       } else if (type === '기자' || type === '기자단') {
         press.push(item);

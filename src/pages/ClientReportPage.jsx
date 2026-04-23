@@ -136,8 +136,8 @@ const ClientReportPage = () => {
             dpResult:   (f['DP_Result']  || '').trim(),
             status:     f['진행상태']   || '',
           };
-          if (type==='인플' || type==='인플루언서') influencer.push(item);
-          else if (type==='체험' || type==='체험단')  experience.push(item);
+          if (type==='인플' || type==='인플루언서' || type==='체험→인플' || type==='기자→인플') influencer.push(item);
+          else if (type==='체험' || type==='체험단' || type==='기자→체험')  experience.push(item);
           else if (type==='기자' || type==='기자단')  press.push(item);
           else experience.push(item); // fallback
         });
