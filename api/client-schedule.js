@@ -105,6 +105,7 @@ export default async function handler(req, res) {
 
     // 3. 데이터 가공 및 분류
     const scheduleItems = [];
+    const teamGroups = {};
     const influencer = [];
     const experience = [];
     const press      = [];
@@ -129,6 +130,8 @@ export default async function handler(req, res) {
       let totalPax = f['# 총인원'] || f['총인원'] || f['총 인원'] || ''; // Fallback
       let memo = f['인원메모'] || f['비고'] || ''; // Fallback
 
+      const teamId = resvLinks.length > 0 ? resvLinks[0] : rec.id;
+
       if (resvLinks.length > 0 && resvMap[resvLinks[0]]) {
         const resvData = resvMap[resvLinks[0]];
         if (resvData.pax) totalPax = resvData.pax;
@@ -149,9 +152,23 @@ export default async function handler(req, res) {
         memo
       };
 
-      // 달력용 통합 리스트
+      // 달력용 통합 리스트 (그룹핑)
       if (reserveDate) {
-        scheduleItems.push(item);
+        if (!teamGroups[teamId]) {
+          teamGroups[teamId] = {
+            ...item,
+            displayIds: displayId !== '대기중' && displayId ? [displayId] : [],
+            xhsResults: xhsResult ? [xhsResult] : []
+          };
+        } else {
+          // 팀 그룹이 이미 있으면 ID와 결과물만 배열에 추가
+          if (displayId !== '대기중' && displayId) {
+            teamGroups[teamId].displayIds.push(displayId);
+          }
+          if (xhsResult) {
+            teamGroups[teamId].xhsResults.push(xhsResult);
+          }
+        }
       }
 
       // 리스트용 분류
@@ -166,6 +183,9 @@ export default async function handler(req, res) {
       }
     });
 
+    // Object.values를 통해 그룹화된 팀 이벤트 배열 생성
+    const groupedScheduleItems = Object.values(teamGroups);
+
     influencer.forEach((r, i) => { r.seq = i + 1; });
     experience.forEach((r, i) => { r.seq = i + 1; });
     press.forEach((r, i)      => { r.seq = i + 1; });
@@ -176,7 +196,7 @@ export default async function handler(req, res) {
       branchName,
       month,
       stats,
-      scheduleItems,
+      scheduleItems: groupedScheduleItems,
       records: { influencer, experience, press },
     });
 
