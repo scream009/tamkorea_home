@@ -179,6 +179,49 @@ const ClientReportPage = () => {
   const hasExp   = records.experience?.length > 0;
   const hasPress = records.press?.length > 0;
 
+  const handleDownloadCSV = () => {
+    if (!records) return;
+    
+    const headers = ['구분', 'No.', '닉네임(ID)', '샤오홍슈 링크', '따종디엔핑 링크', '진행상태'];
+    const rows = [];
+    
+    const escape = (text) => `"${(text || '').toString().replace(/"/g, '""')}"`;
+    
+    const addRows = (categoryName, items) => {
+      if (!items) return;
+      items.forEach(item => {
+        const row = [
+          escape(categoryName),
+          item.seq,
+          escape(item.displayId),
+          escape(item.xhsResult),
+          escape(item.dpResult),
+          escape(item.status)
+        ];
+        rows.push(row.join(','));
+      });
+    };
+
+    addRows('인플루언서', records.influencer);
+    addRows('체험단', records.experience);
+    addRows('기자단', records.press);
+
+    const csvContent = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const safeBrand = (brandName || '캠페인').replace(/\s+/g, '_');
+    const safeMonth = (month || '').replace(/\s+/g, '');
+    const filename = `${safeBrand}_${safeMonth}_실적보고서.csv`;
+    
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="cr-wrap">
       <style>{`@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}`}</style>
@@ -190,9 +233,33 @@ const ClientReportPage = () => {
             <h1 className="report-title">{brandName}</h1>
             <p className="report-sub">{branchName} · {month} 실적 보고서</p>
           </div>
-          <div className="gravity-logo-accent">
-            {partnerName}<br />
-            <span style={{ fontSize:'0.65rem', color:'#9ca3af' }}>PERFORMANCE REPORT</span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
+            <div className="gravity-logo-accent" style={{ margin: 0 }}>
+              {partnerName}<br />
+              <span style={{ fontSize:'0.65rem', color:'#9ca3af' }}>PERFORMANCE REPORT</span>
+            </div>
+            <button 
+              onClick={handleDownloadCSV}
+              style={{
+                background: 'rgba(168, 85, 247, 0.1)',
+                border: '1px solid rgba(168, 85, 247, 0.3)',
+                color: '#d8b4fe',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                fontSize: '0.8rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s',
+                boxShadow: '0 0 10px rgba(168, 85, 247, 0.1)'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(168, 85, 247, 0.2)'; e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.5)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(168, 85, 247, 0.1)'; e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.3)'; }}
+            >
+              📥 CSV 다운로드
+            </button>
           </div>
         </header>
 
