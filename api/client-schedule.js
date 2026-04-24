@@ -70,8 +70,9 @@ export default async function handler(req, res) {
         const chunk = linkedRecIds.slice(i, i + chunkSize);
         const orParts = chunk.map(id => `RECORD_ID()='${id}'`).join(',');
         const formula = encodeURIComponent(`OR(${orParts})`);
-        // Added 예약일시 to the fetched fields
-        const url = `https://api.airtable.com/v0/${BASE_ID}/${RECORD_TABLE}?filterByFormula=${formula}&fields%5B%5D=유형&fields%5B%5D=XHS_ID&fields%5B%5D=WC_ID&fields%5B%5D=INFL_ID&fields%5B%5D=XHS_Result&fields%5B%5D=DP_Result&fields%5B%5D=진행상태&fields%5B%5D=Shoot_ID&fields%5B%5D=예약일시`;
+        const fieldsToFetch = ['유형', 'XHS_ID', 'WC_ID', 'INFL_ID', 'XHS_Result', 'DP_Result', '진행상태', 'Shoot_ID', '예약일시', '# 총인원', '인원메모', '비고'];
+        const fieldsQuery = fieldsToFetch.map(f => `fields%5B%5D=${encodeURIComponent(f)}`).join('&');
+        const url = `https://api.airtable.com/v0/${BASE_ID}/${RECORD_TABLE}?filterByFormula=${formula}&${fieldsQuery}`;
         const chunk_recs = await fetchAllRecords(url);
         allRecords = allRecords.concat(chunk_recs);
       }
@@ -97,6 +98,8 @@ export default async function handler(req, res) {
       const status    = f['진행상태']   || '진행전';
       const shootId   = f['Shoot_ID']   || '';
       const reserveDate = f['예약일시'] || null;
+      const totalPax    = f['# 총인원'] || '';
+      const memo        = f['인원메모'] || f['비고'] || '';
 
       const item = {
         id:        rec.id,
@@ -107,7 +110,9 @@ export default async function handler(req, res) {
         dpResult,
         status,
         type,
-        reserveDate
+        reserveDate,
+        totalPax,
+        memo
       };
 
       // 달력용 통합 리스트

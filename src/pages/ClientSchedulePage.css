@@ -255,23 +255,26 @@
 
 .event-badge {
   font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  margin-bottom: 0.25rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  margin-bottom: 0.3rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: pointer;
-  transition: transform 0.1s ease;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
 .event-badge:hover {
-  transform: scale(1.02);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  filter: brightness(1.1);
 }
 
-.event-infl { background: rgba(139, 92, 246, 0.2); border-left: 3px solid #8b5cf6; color: #ddd; }
-.event-exp { background: rgba(59, 130, 246, 0.2); border-left: 3px solid #3b82f6; color: #ddd; }
-.event-press { background: rgba(16, 185, 129, 0.2); border-left: 3px solid #10b981; color: #ddd; }
+.event-infl { background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(139, 92, 246, 0.1)); border-left: 3px solid #8b5cf6; color: #f3f4f6; }
+.event-exp { background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(59, 130, 246, 0.1)); border-left: 3px solid #3b82f6; color: #f3f4f6; }
+.event-press { background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.1)); border-left: 3px solid #10b981; color: #f3f4f6; }
 
 /* Status Indicators */
 .status-dot {
@@ -356,6 +359,133 @@
   0%, 100% { opacity: 1; }
   50% { opacity: .5; }
 }
+
+/* Event Modal */
+.event-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+
+.event-modal-content {
+  background: var(--revu-bg-dark);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  width: 90%;
+  max-width: 500px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.event-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(0,0,0,0.2);
+  border: none;
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: background 0.2s;
+}
+
+.event-modal-close:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.modal-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.modal-header.event-infl { background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, transparent 100%); }
+.modal-header.event-exp { background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, transparent 100%); }
+.modal-header.event-press { background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, transparent 100%); }
+
+.modal-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.detail-row {
+  margin-bottom: 1.25rem;
+}
+
+.detail-row:last-child {
+  margin-bottom: 0;
+}
+
+.detail-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #a09eb5;
+  margin-bottom: 0.4rem;
+}
+
+.detail-value {
+  display: block;
+  font-size: 1rem;
+  color: #f3f4f6;
+  padding-left: 1.5rem; /* align with text, indenting past icon */
+}
+
+.memo-box {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.05);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #d1d5db;
+  white-space: pre-wrap;
+}
+
+.result-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(139, 92, 246, 0.15);
+  color: #c4b5fd;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  margin-left: 1.5rem;
+  transition: background 0.2s;
+}
+
+.result-link:hover {
+  background: rgba(139, 92, 246, 0.3);
+  color: #fff;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
 @media (max-width: 768px) {
   .calendar-grid {

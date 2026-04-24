@@ -11,7 +11,10 @@ import {
   MessageSquare,
   Send,
   ExternalLink,
-  AlertCircle
+  AlertCircle,
+  X,
+  User,
+  Info
 } from 'lucide-react';
 import './ClientSchedulePage.css';
 
@@ -35,6 +38,9 @@ export default function ClientSchedulePage() {
   // 피드백 상태
   const [feedback, setFeedback] = useState('');
   const [feedbackSent, setFeedbackSent] = useState(false);
+
+  // 팝업(모달) 상태
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   useEffect(() => {
     if (!campaignId) {
@@ -296,11 +302,21 @@ export default function ClientSchedulePage() {
                     <span className="calendar-date-num">{dayObj.date.getDate()}</span>
                     <div className="event-list flex flex-col gap-1">
                       {events.map((ev, i) => (
-                        <div key={i} className={`event-badge ${getTypeClass(ev.type)} flex flex-col`} title={`${ev.status} - ${ev.displayId}`}>
-                          <div className="flex items-center gap-1 opacity-80 text-[10px]">
-                            {getStatusDot(ev.status)} {new Date(ev.reserveDate).getHours()}:{String(new Date(ev.reserveDate).getMinutes()).padStart(2, '0')}
+                        <div 
+                          key={i} 
+                          className={`event-badge ${getTypeClass(ev.type)} flex flex-col`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedEvent(ev);
+                          }}
+                        >
+                          <div className="flex items-center gap-1 font-medium text-xs mb-0.5">
+                            {getStatusDot(ev.status)} {ev.type}
                           </div>
-                          <div className="font-semibold truncate">{ev.displayId}</div>
+                          <div className="flex items-center justify-between opacity-90 text-[10px]">
+                            <span>{new Date(ev.reserveDate).getHours()}:{String(new Date(ev.reserveDate).getMinutes()).padStart(2, '0')}</span>
+                            <span>{ev.totalPax ? `${ev.totalPax}명` : ''}</span>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -384,6 +400,58 @@ export default function ClientSchedulePage() {
         </div>
 
       </main>
+
+      {/* Event Details Modal */}
+      {selectedEvent && (
+        <div className="event-modal-overlay" onClick={() => setSelectedEvent(null)}>
+          <div className="event-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="event-modal-close" onClick={() => setSelectedEvent(null)}>
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className={`modal-header ${getTypeClass(selectedEvent.type)}`}>
+              <h3 className="modal-title flex items-center gap-2">
+                {getStatusDot(selectedEvent.status)} {selectedEvent.type} 상세정보
+              </h3>
+            </div>
+            
+            <div className="modal-body">
+              <div className="detail-row">
+                <span className="detail-label"><CalendarIcon className="w-4 h-4" /> 예약 일시</span>
+                <span className="detail-value text-white font-medium">
+                  {new Date(selectedEvent.reserveDate).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+              
+              <div className="detail-row">
+                <span className="detail-label"><Users className="w-4 h-4" /> 방문 인원</span>
+                <span className="detail-value">{selectedEvent.totalPax ? `${selectedEvent.totalPax}명` : '미정'}</span>
+              </div>
+              
+              <div className="detail-row">
+                <span className="detail-label"><User className="w-4 h-4" /> 방문자 ID (닉네임)</span>
+                <span className="detail-value">{selectedEvent.displayId}</span>
+              </div>
+              
+              <div className="detail-row">
+                <span className="detail-label"><Info className="w-4 h-4" /> 예약 메시지 / 메모</span>
+                <span className="detail-value memo-box">
+                  {selectedEvent.memo ? selectedEvent.memo : '등록된 메모가 없습니다.'}
+                </span>
+              </div>
+
+              {selectedEvent.xhsResult && (
+                <div className="detail-row mt-4 pt-4 border-t border-white/10">
+                  <span className="detail-label text-var-revu-purple">완료 결과물</span>
+                  <a href={selectedEvent.xhsResult} target="_blank" rel="noopener noreferrer" className="result-link">
+                    확인하기 <ExternalLink className="w-4 h-4" />
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
