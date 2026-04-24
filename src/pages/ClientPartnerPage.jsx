@@ -456,14 +456,14 @@ export default function ClientPartnerPage() {
         </div>
       ) : (
         <div className="schedule-container">
-          <div className="mb-14 pb-10 border-b border-[rgba(255,255,255,0.05)] relative flex flex-col items-center justify-center text-center">
+          <div className="mb-14 pb-10 border-b border-[rgba(255,255,255,0.05)] relative flex flex-col items-center justify-center w-full" style={{ textAlign: 'center', width: '100%' }}>
              {/* 파트너명 (고급스러운 은은한 퍼플-실버 톤 적용 및 섀도우) */}
-             <h2 style={{ color: '#e9d5ff', fontSize: '2.5rem', fontWeight: '800', margin: '0 0 8px 0', letterSpacing: '-0.02em', textShadow: '0 4px 20px rgba(168,85,247,0.2)' }}>
+             <h2 style={{ color: '#e9d5ff', fontSize: '2.5rem', fontWeight: '800', margin: '0 0 8px 0', letterSpacing: '-0.02em', textShadow: '0 4px 20px rgba(168,85,247,0.2)', textAlign: 'center', width: '100%' }}>
                {partnerName}
              </h2>
              
              {/* 서브 타이틀 */}
-             <p style={{ color: '#9ca3af', fontSize: '0.95rem', margin: 0 }}>
+             <p style={{ color: '#9ca3af', fontSize: '0.95rem', margin: 0, textAlign: 'center', width: '100%' }}>
                통합 캠페인 성과 대시보드
              </p>
           </div>
