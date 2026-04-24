@@ -162,10 +162,15 @@ export default function ClientSchedulePage() {
   if (error) {
     return (
       <div className="schedule-page flex items-center justify-center">
-        <div className="text-center bg-[#1e1e2d] p-8 rounded-2xl max-w-md w-full border border-red-500/30">
+        <div className="text-center bg-[var(--surface2)] p-8 rounded-2xl max-w-md w-full border border-red-500/30">
           <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-white mb-2">접근 오류</h2>
-          <p className="text-[#a09eb5]">{error}</p>
+          <p className="text-[var(--muted)]">{error}</p>
+          <div className="mt-6 text-xs text-[var(--muted)] text-left bg-[var(--surface)] p-3 rounded-lg">
+            <strong>💡 해결 방법:</strong><br />
+            1. URL 뒤에 <code className="text-white">?campaignId=rec...</code> 파라미터가 제대로 붙어있는지 확인하세요.<br />
+            2. 현재 로컬 환경이라면 터미널에서 <code className="text-white">npm run dev</code> 대신 <code className="text-white">vercel dev</code>로 실행해야 API가 정상 작동합니다.
+          </div>
         </div>
       </div>
     );
@@ -215,7 +220,7 @@ export default function ClientSchedulePage() {
       <main className="schedule-container">
         {/* 2. KPI Summary Cards */}
         <div className="kpi-grid">
-          <div className="kpi-card">
+          <div className="kpi-card purple">
             <div className="kpi-header">
               <span className="kpi-title">인플루언서 진행</span>
               <Users className="w-5 h-5 kpi-icon" />
@@ -229,31 +234,31 @@ export default function ClientSchedulePage() {
             </div>
           </div>
 
-          <div className="kpi-card">
+          <div className="kpi-card blue">
             <div className="kpi-header">
               <span className="kpi-title">체험단 진행</span>
-              <Camera className="w-5 h-5 kpi-icon text-blue-400" style={{ background: 'rgba(59, 130, 246, 0.1)' }} />
+              <Camera className="w-5 h-5 kpi-icon" />
             </div>
             <div className="kpi-numbers">
-              <span className="kpi-current text-blue-400">{stats.exp_done}</span>
+              <span className="kpi-current">{stats.exp_done}</span>
               <span className="kpi-target">/ {stats.exp_target}건</span>
             </div>
             <div className="progress-bar-bg">
-              <div className="progress-bar-fill" style={{ background: 'linear-gradient(90deg, #3b82f6, #93c5fd)', width: `${expPercent}%` }}></div>
+              <div className="progress-bar-fill" style={{ width: `${expPercent}%` }}></div>
             </div>
           </div>
 
-          <div className="kpi-card">
+          <div className="kpi-card green">
             <div className="kpi-header">
               <span className="kpi-title">기자단 진행</span>
-              <Newspaper className="w-5 h-5 kpi-icon text-emerald-400" style={{ background: 'rgba(16, 185, 129, 0.1)' }} />
+              <Newspaper className="w-5 h-5 kpi-icon" />
             </div>
             <div className="kpi-numbers">
-              <span className="kpi-current text-emerald-400">{stats.press_done}</span>
+              <span className="kpi-current">{stats.press_done}</span>
               <span className="kpi-target">/ {stats.press_target}건</span>
             </div>
             <div className="progress-bar-bg">
-              <div className="progress-bar-fill" style={{ background: 'linear-gradient(90deg, #10b981, #6ee7b7)', width: `${pressPercent}%` }}></div>
+              <div className="progress-bar-fill" style={{ width: `${pressPercent}%` }}></div>
             </div>
           </div>
         </div>
@@ -276,63 +281,70 @@ export default function ClientSchedulePage() {
 
         {/* 4. Main Content (Calendar / List) */}
         {viewMode === 'calendar' ? (
-          <div className="calendar-container">
-            <div className="calendar-header">
-              <button onClick={prevMonth} className="calendar-nav-btn"><ChevronLeft className="w-5 h-5" /></button>
-              <h2 className="calendar-month-title">
-                {currentDate.getFullYear()}년 {currentDate.getMonth() + 1}월
-              </h2>
-              <button onClick={nextMonth} className="calendar-nav-btn"><ChevronRight className="w-5 h-5" /></button>
+          <div className="section">
+            <div className="section-header">
+              <div className="section-title">📅 예약 현황 달력</div>
+              <div className="section-badge">{month}</div>
             </div>
-            
-            <div className="calendar-grid">
-              {['일', '월', '화', '수', '목', '금', '토'].map(day => (
-                <div key={day} className="calendar-day-name">{day}</div>
-              ))}
+            <div className="cal-wrap">
+              <div className="cal-nav">
+                <div className="cal-month">
+                  {currentDate.getFullYear()}년 {currentDate.getMonth() + 1}월
+                </div>
+                <div className="cal-btns">
+                  <button onClick={prevMonth} className="cal-btn">‹ 이전</button>
+                  <button onClick={() => setCurrentDate(new Date())} className="cal-btn today">오늘</button>
+                  <button onClick={nextMonth} className="cal-btn">다음 ›</button>
+                </div>
+              </div>
               
-              {calendarDays.map((dayObj, idx) => {
-                const events = getEventsForDate(dayObj.date);
-                const isToday = new Date().toDateString() === dayObj.date.toDateString();
+              <div className="cal-grid">
+                {['일', '월', '화', '수', '목', '금', '토'].map(day => (
+                  <div key={day} className="cal-hdr">{day}</div>
+                ))}
                 
-                return (
-                  <div 
-                    key={idx} 
-                    className={`calendar-cell ${!dayObj.isCurrentMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}`}
-                  >
-                    <span className="calendar-date-num">{dayObj.date.getDate()}</span>
-                    <div className="event-list flex flex-col gap-1">
-                      {events.map((ev, i) => (
-                        <div 
-                          key={i} 
-                          className={`event-badge ${getTypeClass(ev.type)} flex flex-col`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedEvent(ev);
-                          }}
-                        >
-                          <div className="flex items-center gap-1 font-medium text-xs mb-0.5">
-                            {getStatusDot(ev.status)} {ev.type}
+                {calendarDays.map((dayObj, idx) => {
+                  const events = getEventsForDate(dayObj.date);
+                  const isToday = new Date().toDateString() === dayObj.date.toDateString();
+                  
+                  return (
+                    <div 
+                      key={idx} 
+                      className={`cal-cell ${!dayObj.isCurrentMonth ? 'empty' : ''} ${isToday ? 'today-cell' : ''}`}
+                    >
+                      {dayObj.isCurrentMonth && <div className="cell-num">{dayObj.date.getDate()}</div>}
+                      <div className="event-list flex flex-col gap-[2px]">
+                        {events.map((ev, i) => (
+                          <div 
+                            key={i} 
+                            className={`event-badge ${getTypeClass(ev.type)}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedEvent(ev);
+                            }}
+                          >
+                            <div className="flex items-center gap-1">
+                              {getStatusDot(ev.status)} {ev.type} {ev.totalPax ? `(${ev.totalPax}명)` : ''}
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between opacity-90 text-[10px]">
-                            <span>{new Date(ev.reserveDate).getHours()}:{String(new Date(ev.reserveDate).getMinutes()).padStart(2, '0')}</span>
-                            <span>{ev.totalPax ? `${ev.totalPax}명` : ''}</span>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
         ) : (
-          <div className="calendar-container">
-             <h3 className="text-xl font-bold mb-6 text-white">전체 예약 및 실적 리스트</h3>
+          <div className="section">
+            <div className="section-header">
+              <div className="section-title">📋 전체 예약 및 실적 리스트</div>
+            </div>
              {data.scheduleItems && data.scheduleItems.length > 0 ? (
-               <div className="overflow-x-auto">
-                 <table className="w-full text-left border-collapse">
+               <div className="tbl-wrap">
+                 <table className="styled-table">
                    <thead>
-                     <tr className="border-b border-white/10 text-[#a09eb5]">
+                     <tr>
                        <th className="py-3 px-4 font-medium">예약일시</th>
                        <th className="py-3 px-4 font-medium">진행상태</th>
                        <th className="py-3 px-4 font-medium">유형</th>
@@ -355,11 +367,11 @@ export default function ClientSchedulePage() {
                          <td className="py-3 px-4 font-medium">{item.displayId}</td>
                          <td className="py-3 px-4">
                            {item.xhsResult ? (
-                             <a href={item.xhsResult} target="_blank" rel="noopener noreferrer" className="text-var-revu-purple hover:underline flex items-center gap-1 text-sm">
+                             <a href={item.xhsResult} target="_blank" rel="noopener noreferrer" className="link-btn flex items-center gap-1 w-max">
                                확인 <ExternalLink className="w-3 h-3" />
                              </a>
                            ) : (
-                             <span className="text-white/20 text-sm">-</span>
+                             <span className="text-[var(--muted)]">-</span>
                            )}
                          </td>
                        </tr>
@@ -368,34 +380,38 @@ export default function ClientSchedulePage() {
                  </table>
                </div>
              ) : (
-               <div className="text-center py-12 text-[#a09eb5]">등록된 일정이 없습니다.</div>
+               <div className="text-center py-12 text-[var(--muted)]">등록된 일정이 없습니다.</div>
              )}
           </div>
         )}
 
         {/* 5. Client Feedback Area (고객사 소통 창구) */}
-        <div className="feedback-section">
-          <div className="feedback-header">
-            <MessageSquare className="w-6 h-6 text-var-revu-purple" />
-            <h3 className="feedback-title">운영팀에 메시지 남기기</h3>
+        <div className="section">
+          <div className="section-header">
+            <div className="section-title">💬 문의 / 메모</div>
+            <div className="section-badge" style={{background: 'var(--purple-dim)', color: 'var(--purple-light)'}}>운영팀 직접 전달</div>
           </div>
-          <p className="text-[#a09eb5] text-sm mb-4">
-            일정 변경 요청이나 특별한 지시사항이 있다면 남겨주세요. 실시간으로 담당자에게 전달됩니다.
-          </p>
-          <textarea 
-            className="feedback-textarea" 
-            placeholder="메모를 입력해주세요..."
-            value={feedback}
-            onChange={(e) => setFeedback(e.target.value)}
-          ></textarea>
-          <div className="flex justify-end">
-            <button 
-              className="feedback-submit" 
-              onClick={handleFeedbackSubmit}
-              disabled={!feedback.trim() || feedbackSent}
-            >
-              {feedbackSent ? '전송 완료!' : <><Send className="w-4 h-4" /> 전송하기</>}
-            </button>
+          <div className="memo-wrap">
+            <div className="memo-intro">
+              💡 아래에 입력하신 내용은 탐코리아 담당 매니저에게 즉시 전달됩니다.
+            </div>
+            <div className="memo-form">
+              <textarea 
+                className="memo-input" 
+                placeholder="일정 변경 요청이나 특별한 지시사항이 있다면 남겨주세요."
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+              ></textarea>
+              <div className="flex justify-end">
+                <button 
+                  className="memo-submit" 
+                  onClick={handleFeedbackSubmit}
+                  disabled={!feedback.trim() || feedbackSent}
+                >
+                  {feedbackSent ? '전송 완료!' : '전송하기 →'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
