@@ -165,7 +165,18 @@ export default function ClientSchedulePage() {
 
   const formatType = (type) => {
     if (!type) return '';
-    return type.replace(/.*(?:->|=>|→|➔|➡|▶|>)\s*/, '').trim();
+    return String(type).replace(/.*(?:->|=>|→|➔|➡|▶|>)\s*/, '').trim();
+  };
+
+  const formatMemo = (memo) => {
+    if (!memo) return '등록된 메모가 없습니다.';
+    let memoStr = Array.isArray(memo) ? memo.join('\n') : String(memo);
+    if (typeof memo === 'object' && memo !== null && !Array.isArray(memo)) {
+      memoStr = JSON.stringify(memo);
+    }
+    // 예약메시지 내의 '체험→', '기자->' 등 특수문자가 포함된 카테고리명을 삭제
+    memoStr = memoStr.replace(/[가-힣a-zA-Z0-9]+(?:->|=>|→|➔|➡|▶|>)\s*/g, '');
+    return memoStr;
   };
 
   // 에러 화면
@@ -456,7 +467,9 @@ export default function ClientSchedulePage() {
               <div className="detail-row">
                 <span className="detail-label"><CalendarIcon className="w-4 h-4" /> 예약 일시</span>
                 <span className="detail-value text-white font-medium">
-                  {new Date(selectedEvent.reserveDate).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  {!isNaN(new Date(selectedEvent.reserveDate).getTime()) 
+                    ? new Date(selectedEvent.reserveDate).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    : '시간 미정'}
                 </span>
               </div>
               
@@ -473,7 +486,7 @@ export default function ClientSchedulePage() {
               <div className="detail-row">
                 <span className="detail-label"><Info className="w-4 h-4" /> 예약 메시지 / 메모</span>
                 <span className="detail-value memo-box">
-                  {selectedEvent.memo ? selectedEvent.memo : '등록된 메모가 없습니다.'}
+                  {formatMemo(selectedEvent.memo)}
                 </span>
               </div>
 
