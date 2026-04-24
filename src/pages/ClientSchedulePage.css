@@ -1,17 +1,28 @@
+:root {
+  --purple: #7C3AED;
+  --purple-light: #a78bfa;
+  --purple-dim: rgba(124, 58, 237, 0.15);
+  --bg: #0d0f1a;
+  --surface: #151726;
+  --surface2: #1c1f33;
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #f1f5f9;
+  --muted: #64748b;
+  --green: #10b981;
+  --orange: #f59e0b;
+  --red: #ef4444;
+  --blue: #3b82f6;
+}
+
 .schedule-page {
-  padding-top: 80px;
+  padding-top: 60px;
   min-height: 100vh;
-  background-color: var(--revu-bg-dark);
-  color: #fff;
+  background-color: var(--bg);
+  color: var(--text);
   font-family: 'Inter', 'Pretendard', sans-serif;
 }
 
 .schedule-header {
-  background: linear-gradient(180deg, rgba(30, 20, 50, 0.9) 0%, var(--revu-bg-dark) 100%);
-  padding: 3rem 1.5rem;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
 }
 
 .schedule-header::before {
