@@ -1,0 +1,148 @@
+/**
+ * Gravity | Client Schedule API
+ * GET /api/client-schedule?campaignId=recXXXXXXXX
+ */
+
+const TOKEN = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
+const BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
+const CAMPAIGN_TABLE = encodeURIComponent('Campaign_DB');
+const RECORD_TABLE   = encodeURIComponent('진행_DB_OLD');
+
+async function atFetch(url) {
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${TOKEN}` }
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Airtable error ${res.status}: ${text}`);
+  }
+  return res.json();
+}
+
+async function fetchAllRecords(baseUrl) {
+  let records = [];
+  let offset = null;
+  do {
+    const url = offset ? `${baseUrl}&offset=${offset}` : baseUrl;
+    const data = await atFetch(url);
+    records = records.concat(data.records || []);
+    offset = data.offset || null;
+  } while (offset);
+  return records;
+}
+
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const { campaignId } = req.query;
+  if (!campaignId) return res.status(400).json({ error: 'campaignId is required' });
+
+  try {
+    // 1. Campaign_DB 정보 가져오기
+    const campData = await atFetch(
+      `https://api.airtable.com/v0/${BASE_ID}/${CAMPAIGN_TABLE}/${campaignId}`
+    );
+    const cf = campData.fields;
+
+    const campaignName  = cf['계약명'] || '';
+    const brandName     = Array.isArray(cf['고객사명']) ? cf['고객사명'][0] : (cf['고객사명'] || '');
+    const branchName    = Array.isArray(cf['지점명'])   ? cf['지점명'][0]   : (cf['지점명'] || '');
+    const month         = cf['계약월'] || '';
+    const linkedRecIds  = cf['진행_DB_OLD'] || [];
+
+    const stats = {
+      infl_target: cf['인플_요청'] || cf['# 인플_목표'] || 0,
+      infl_done:   cf['인플_실적'] || cf['# 인플_실적'] || 0,
+      exp_target:  cf['체험단_요청'] || cf['# 세팅_목표'] || cf['# 체험_목표'] || 0,
+      exp_done:    cf['체험_실적'] || cf['# 세팅_실적'] || cf['# 체험_실적'] || 0,
+      press_target: cf['기자단_요청'] || cf['# 기자_목표'] || 0,
+      press_done:  cf['기자_실적'] || cf['# 기자_실적'] || 0,
+    };
+
+    // 2. 진행_DB_OLD 레코드 가져오기 (예약일시 필드 추가)
+    let allRecords = [];
+
+    if (linkedRecIds.length > 0) {
+      const chunkSize = 30;
+      for (let i = 0; i < linkedRecIds.length; i += chunkSize) {
+        const chunk = linkedRecIds.slice(i, i + chunkSize);
+        const orParts = chunk.map(id => `RECORD_ID()='${id}'`).join(',');
+        const formula = encodeURIComponent(`OR(${orParts})`);
+        // Added 예약일시 to the fetched fields
+        const url = `https://api.airtable.com/v0/${BASE_ID}/${RECORD_TABLE}?filterByFormula=${formula}&fields%5B%5D=유형&fields%5B%5D=XHS_ID&fields%5B%5D=WC_ID&fields%5B%5D=INFL_ID&fields%5B%5D=XHS_Result&fields%5B%5D=DP_Result&fields%5B%5D=진행상태&fields%5B%5D=Shoot_ID&fields%5B%5D=예약일시`;
+        const chunk_recs = await fetchAllRecords(url);
+        allRecords = allRecords.concat(chunk_recs);
+      }
+    }
+
+    // 3. 데이터 가공 및 분류
+    const scheduleItems = [];
+    const influencer = [];
+    const experience = [];
+    const press      = [];
+
+    allRecords.forEach((rec, index) => {
+      const f = rec.fields;
+      const type = f['유형'] || '';
+
+      const xhsId    = Array.isArray(f['XHS_ID'])  ? f['XHS_ID'][0]  : (f['XHS_ID'] || '');
+      const wcId     = Array.isArray(f['WC_ID'])    ? f['WC_ID'][0]   : (f['WC_ID'] || '');
+      const inflId   = Array.isArray(f['INFL_ID'])  ? f['INFL_ID'][0] : (f['INFL_ID'] || '');
+      let displayId = xhsId || wcId || inflId || '대기중';
+
+      const xhsResult = f['XHS_Result'] || '';
+      const dpResult  = f['DP_Result']  || '';
+      const status    = f['진행상태']   || '진행전';
+      const shootId   = f['Shoot_ID']   || '';
+      const reserveDate = f['예약일시'] || null;
+
+      const item = {
+        id:        rec.id,
+        seq:       index + 1,
+        shootId,
+        displayId,
+        xhsResult,
+        dpResult,
+        status,
+        type,
+        reserveDate
+      };
+
+      // 달력용 통합 리스트
+      if (reserveDate) {
+        scheduleItems.push(item);
+      }
+
+      // 리스트용 분류
+      if (type === '인플' || type === '인플루언서' || type === '체험→인플' || type === '기자→인플') {
+        influencer.push(item);
+      } else if (type === '체험' || type === '체험단' || type === '기자→체험') {
+        experience.push(item);
+      } else if (type === '기자' || type === '기자단') {
+        press.push(item);
+      } else {
+        experience.push(item);
+      }
+    });
+
+    influencer.forEach((r, i) => { r.seq = i + 1; });
+    experience.forEach((r, i) => { r.seq = i + 1; });
+    press.forEach((r, i)      => { r.seq = i + 1; });
+
+    return res.status(200).json({
+      campaignName,
+      brandName,
+      branchName,
+      month,
+      stats,
+      scheduleItems,
+      records: { influencer, experience, press },
+    });
+
+  } catch (err) {
+    console.error('[client-schedule] error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+}
