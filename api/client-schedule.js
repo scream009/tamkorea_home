@@ -96,7 +96,10 @@ export default async function handler(req, res) {
         const chunk_recs = await fetchAllRecords(url);
         chunk_recs.forEach(r => {
           resvMap[r.id] = {
-            pax: r.fields['방문 인원'] || r.fields['방문인원'] || r.fields['# 방문 인원'] || r.fields['# 방문인원'] || ''
+            pax: r.fields['방문 인원'] || r.fields['방문인원'] || r.fields['# 방문 인원'] || r.fields['# 방문인원'] || '',
+            xhsCount: r.fields['XHS_건수'],
+            dpCount: r.fields['DP_건수'],
+            specialNote: r.fields['특이사항'] || r.fields['인원메모'] || r.fields['비고'] || ''
           };
         });
       }
@@ -130,16 +133,26 @@ export default async function handler(req, res) {
       
       // 예약메시지 직접 생성을 위한 필드들 (특이사항, 건수 등)
       let memo = f['특이사항'] || f['인원메모'] || f['비고'] || ''; 
-      const xhsCount = f['XHS_건수'] || f['샤오홍슈 건수'] || 1;
-      const dpCount = f['DP_건수'] || f['따중리뷰 건수'] || 0;
+      let xhsCount = f['XHS_건수'] || f['샤오홍슈 건수'];
+      let dpCount = f['DP_건수'] || f['따중리뷰 건수'];
 
       const teamId = resvLinks.length > 0 ? resvLinks[0] : rec.id;
 
       if (resvLinks.length > 0 && resvMap[resvLinks[0]]) {
         const resvData = resvMap[resvLinks[0]];
         if (resvData.pax) totalPax = resvData.pax;
-        // DB의 예약메세지 수식 에러 방지를 위해, message는 가져오지 않고 React에서 자체 생성함.
+        if (resvData.specialNote) memo = resvData.specialNote;
+        if (resvData.xhsCount !== undefined) xhsCount = resvData.xhsCount;
+        if (resvData.dpCount !== undefined) dpCount = resvData.dpCount;
       }
+      
+      // 캠페인 레벨(Campaign_DB) 폴백
+      if (xhsCount === undefined) xhsCount = cf['XHS_건수'] || cf['샤오홍슈 건수'];
+      if (dpCount === undefined) dpCount = cf['DP_건수'] || cf['따중리뷰 건수'];
+
+      // 최종 기본값
+      xhsCount = xhsCount !== undefined ? xhsCount : 1;
+      dpCount = dpCount !== undefined ? dpCount : 0;
 
       const item = {
         id:        rec.id,
