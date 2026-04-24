@@ -96,8 +96,7 @@ export default async function handler(req, res) {
         const chunk_recs = await fetchAllRecords(url);
         chunk_recs.forEach(r => {
           resvMap[r.id] = {
-            pax: r.fields['방문 인원'] || r.fields['방문인원'] || r.fields['# 방문 인원'] || r.fields['# 방문인원'] || '',
-            message: r.fields['예약메시지'] || r.fields['예약메세지'] || ''
+            pax: r.fields['방문 인원'] || r.fields['방문인원'] || r.fields['# 방문 인원'] || r.fields['# 방문인원'] || ''
           };
         });
       }
@@ -128,14 +127,18 @@ export default async function handler(req, res) {
       // 예약테이블(Shadow Group) 데이터와 매핑
       const resvLinks = f['예약팀명_DB'] || [];
       let totalPax = f['# 총인원'] || f['총인원'] || f['총 인원'] || ''; // Fallback
-      let memo = f['인원메모'] || f['비고'] || ''; // Fallback
+      
+      // 예약메시지 직접 생성을 위한 필드들 (특이사항, 건수 등)
+      let memo = f['특이사항'] || f['인원메모'] || f['비고'] || ''; 
+      const xhsCount = f['XHS_건수'] || f['샤오홍슈 건수'] || 1;
+      const dpCount = f['DP_건수'] || f['따중리뷰 건수'] || 0;
 
       const teamId = resvLinks.length > 0 ? resvLinks[0] : rec.id;
 
       if (resvLinks.length > 0 && resvMap[resvLinks[0]]) {
         const resvData = resvMap[resvLinks[0]];
         if (resvData.pax) totalPax = resvData.pax;
-        if (resvData.message) memo = resvData.message;
+        // DB의 예약메세지 수식 에러 방지를 위해, message는 가져오지 않고 React에서 자체 생성함.
       }
 
       const item = {
@@ -149,7 +152,9 @@ export default async function handler(req, res) {
         type,
         reserveDate,
         totalPax,
-        memo
+        memo,
+        xhsCount,
+        dpCount
       };
 
       // 달력용 통합 리스트 (그룹핑)
