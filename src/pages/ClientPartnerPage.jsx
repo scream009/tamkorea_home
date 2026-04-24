@@ -454,9 +454,24 @@ export default function ClientPartnerPage() {
         </div>
       ) : (
         <div className="schedule-container">
-          <div className="text-center mb-12 opacity-50">
-             <h2 className="text-2xl font-bold tracking-widest">{partnerName}</h2>
-             <p className="text-sm">PARTNER DASHBOARD</p>
+          <div className="flex flex-col items-center justify-center mb-16 pb-12 border-b border-[rgba(255,255,255,0.05)] relative">
+             {/* 배경 네온 글로우 효과 */}
+             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[100px] bg-[var(--revu-purple)] opacity-20 blur-[80px] rounded-full pointer-events-none"></div>
+             
+             {/* 뱃지 */}
+             <span className="px-4 py-1.5 text-[0.75rem] font-bold uppercase tracking-[0.3em] text-[var(--purple-light)] bg-[var(--purple-dim)]/50 border border-[var(--purple-light)]/30 rounded-full mb-5 shadow-[0_0_15px_rgba(168,85,247,0.2)] backdrop-blur-md">
+               Authorized Partner
+             </span>
+             
+             {/* 파트너명 */}
+             <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white drop-shadow-lg mb-3 z-10">
+               {partnerName}
+             </h2>
+             
+             {/* 서브 타이틀 */}
+             <p className="text-[#9ca3af] text-sm md:text-base font-medium tracking-wide z-10">
+               통합 캠페인 성과 대시보드
+             </p>
           </div>
           {data.campaigns.map(camp => (
             <CampaignDashboardBlock key={camp.id} camp={camp} partnerName={partnerName} />
