@@ -182,12 +182,18 @@ export default function ClientSchedulePage() {
     }
 
     const paxStr = event.totalPax ? `${event.totalPax}명` : '미정';
-    const specialNote = event.memo && event.memo.trim() ? ` (${event.memo.trim()})` : '';
+    
+    // SAFE HANDLING: event.memo가 배열일 수 있으므로 문자열로 강제 변환 후 trim
+    const safeMemo = Array.isArray(event.memo) ? event.memo.join(', ') : String(event.memo || '');
+    const specialNote = safeMemo.trim() ? ` (${safeMemo.trim()})` : '';
 
-    const xhsCount = event.xhsCount || 1;
-    let contentStr = `샤오홍슈 ${xhsCount}건`;
-    if (event.dpCount > 0) {
-      contentStr += `, 따중리뷰 ${event.dpCount}건`;
+    // SAFE HANDLING: 건수도 배열일 수 있으므로 안전하게 처리
+    const safeXhsCount = Array.isArray(event.xhsCount) ? event.xhsCount[0] : (event.xhsCount || 1);
+    const safeDpCount = Array.isArray(event.dpCount) ? event.dpCount[0] : (event.dpCount || 0);
+
+    let contentStr = `샤오홍슈 ${safeXhsCount}건`;
+    if (Number(safeDpCount) > 0) {
+      contentStr += `, 따중리뷰 ${safeDpCount}건`;
     }
 
     const brandLabel = brandName && branchName ? `${brandName} ${branchName}` : (brandName || campaignName || '캠페인');
