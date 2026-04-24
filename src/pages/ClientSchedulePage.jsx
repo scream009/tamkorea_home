@@ -52,7 +52,16 @@ export default function ClientSchedulePage() {
     const fetchData = async () => {
       try {
         const res = await fetch(`/api/client-schedule?campaignId=${campaignId}`);
-        if (!res.ok) throw new Error('데이터를 불러오는데 실패했습니다.');
+        if (!res.ok) {
+          let errorMsg = '데이터를 불러오는데 실패했습니다.';
+          try {
+            const errData = await res.json();
+            if (errData.error) errorMsg = `API 오류: ${errData.error}`;
+          } catch (e) {
+            errorMsg = `네트워크/서버 오류 (${res.status})`;
+          }
+          throw new Error(errorMsg);
+        }
         const result = await res.json();
         
         // 예약일시 기준 오름차순 정렬
