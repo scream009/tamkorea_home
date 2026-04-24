@@ -174,6 +174,12 @@ export default function ClientSchedulePage() {
     if (typeof memo === 'object' && memo !== null && !Array.isArray(memo)) {
       memoStr = JSON.stringify(memo);
     }
+    
+    // 에어테이블 수식 에러(#ERROR!) 감지 시 친절한 안내 메시지로 대체
+    if (memoStr.includes('#ERROR!')) {
+      return '⚠️ 에어테이블 예약메시지 수식에 오류(#ERROR!)가 있어 내용을 불러오지 못했습니다. 에어테이블 원본을 확인해주세요.';
+    }
+
     // 예약메시지 내의 '체험→', '기자->' 등 특수문자가 포함된 카테고리명을 삭제
     memoStr = memoStr.replace(/[가-힣a-zA-Z0-9]+(?:->|=>|→|➔|➡|▶|>)\s*/g, '');
     return memoStr;
