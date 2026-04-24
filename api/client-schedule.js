@@ -77,6 +77,32 @@ export default async function handler(req, res) {
       }
     }
 
+    // 2.5 예약테이블(Shadow Group) 데이터 가져오기 (방문 인원, 예약메시지)
+    const reservationIds = new Set();
+    allRecords.forEach(rec => {
+      const resvLinks = rec.fields['예약팀명_DB'] || [];
+      resvLinks.forEach(id => reservationIds.add(id));
+    });
+
+    const resvMap = {};
+    if (reservationIds.size > 0) {
+      const resvArray = Array.from(reservationIds);
+      const resvChunkSize = 30;
+      for (let i = 0; i < resvArray.length; i += resvChunkSize) {
+        const chunk = resvArray.slice(i, i + resvChunkSize);
+        const orParts = chunk.map(id => `RECORD_ID()='${id}'`).join(',');
+        const formula = encodeURIComponent(`OR(${orParts})`);
+        const url = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent('예약테이블')}?filterByFormula=${formula}`;
+        const chunk_recs = await fetchAllRecords(url);
+        chunk_recs.forEach(r => {
+          resvMap[r.id] = {
+            pax: r.fields['방문 인원'] || '',
+            message: r.fields['예약메시지'] || r.fields['예약메세지'] || ''
+          };
+        });
+      }
+    }
+
     // 3. 데이터 가공 및 분류
     const scheduleItems = [];
     const influencer = [];
@@ -94,12 +120,16 @@ export default async function handler(req, res) {
 
       const xhsResult = f['XHS_Result'] || '';
       const dpResult  = f['DP_Result']  || '';
-      const status    = f['진행상태']   || '진행전';
-      const shootId   = f['Shoot_ID']   || '';
-      const reserveDate = f['예약일시'] || null;
-      // 에어테이블 필드명이 변경될 수 있으므로 여러 가능성 체크
-      const totalPax    = f['# 총인원'] || f['총인원'] || f['총 인원'] || '';
-      const memo        = f['인원메모'] || f['비고'] || '';
+      // 예약테이블(Shadow Group) 데이터와 매핑
+      const resvLinks = f['예약팀명_DB'] || [];
+      let totalPax = f['# 총인원'] || f['총인원'] || f['총 인원'] || ''; // Fallback
+      let memo = f['인원메모'] || f['비고'] || ''; // Fallback
+
+      if (resvLinks.length > 0 && resvMap[resvLinks[0]]) {
+        const resvData = resvMap[resvLinks[0]];
+        if (resvData.pax) totalPax = resvData.pax;
+        if (resvData.message) memo = resvData.message;
+      }
 
       const item = {
         id:        rec.id,
