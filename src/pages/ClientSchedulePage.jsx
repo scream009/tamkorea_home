@@ -323,20 +323,23 @@ export default function ClientSchedulePage() {
                     >
                       {dayObj.isCurrentMonth && <div className="cell-num">{dayObj.date.getDate()}</div>}
                       <div className="event-list flex flex-col gap-[2px]">
-                        {events.map((ev, i) => (
-                          <div 
-                            key={i} 
-                            className={`event-badge ${getTypeClass(ev.type)}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedEvent(ev);
-                            }}
-                          >
-                            <div className="flex items-center gap-1">
-                              {getStatusDot(ev.status)} {ev.type} {ev.totalPax ? `(${ev.totalPax}명)` : ''}
+                        {events.map((ev, i) => {
+                          const displayType = ev.type.includes('->') ? ev.type.split('->').pop().trim() : ev.type;
+                          return (
+                            <div 
+                              key={i} 
+                              className={`event-badge ${getTypeClass(ev.type)}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedEvent(ev);
+                              }}
+                            >
+                              <div className="flex items-center gap-1">
+                                {getStatusDot(ev.status)} {displayType} {ev.totalPax ? `(${ev.totalPax}명)` : ''}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   );
