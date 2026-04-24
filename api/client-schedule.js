@@ -50,6 +50,11 @@ export default async function handler(req, res) {
     const brandName     = Array.isArray(cf['고객사명']) ? cf['고객사명'][0] : (cf['고객사명'] || '');
     const branchName    = Array.isArray(cf['지점명'])   ? cf['지점명'][0]   : (cf['지점명'] || '');
     const month         = cf['계약월'] || '';
+    
+    const partnerField  = cf['협력사명'] || cf['협력사'] || '';
+    const partnerRaw    = Array.isArray(partnerField) ? partnerField[0] : partnerField;
+    const partnerName   = (partnerRaw && partnerRaw !== '직영' && partnerRaw !== '탐코리아' && partnerRaw.toUpperCase() !== 'TAMKOREA') ? partnerRaw : 'TAMKOREA';
+
     const linkedRecIds  = cf['진행_DB_OLD'] || [];
 
     const stats = {
@@ -213,6 +218,7 @@ export default async function handler(req, res) {
       brandName,
       branchName,
       month,
+      partnerName,
       stats,
       scheduleItems: groupedScheduleItems,
       records: { influencer, experience, press },

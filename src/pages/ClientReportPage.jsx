@@ -111,6 +111,11 @@ const ClientReportPage = () => {
         const branchName  = Array.isArray(cf['지점명'])   ? cf['지점명'][0]   : (cf['지점명'] || '');
         const month       = cf['계약월'] || '';
         const campaignName= cf['계약명'] || '';
+        
+        const partnerField = cf['협력사명'] || cf['협력사'] || '';
+        const partnerRaw   = Array.isArray(partnerField) ? partnerField[0] : partnerField;
+        const partnerName  = (partnerRaw && partnerRaw !== '직영' && partnerRaw !== '탐코리아' && partnerRaw.toUpperCase() !== 'TAMKOREA') ? partnerRaw : 'TAMKOREA';
+
         const linkedIds   = cf['진행_DB_OLD'] || [];
 
         const stats = {
@@ -145,7 +150,7 @@ const ClientReportPage = () => {
         experience.forEach((r,i) => r.seq = i+1);
         press.forEach((r,i)      => r.seq = i+1);
 
-        setReportData({ campaignName, brandName, branchName, month, stats, records:{ influencer, experience, press } });
+        setReportData({ campaignName, brandName, branchName, month, partnerName, stats, records:{ influencer, experience, press } });
 
       } catch(e) {
         setError(e.message);
@@ -169,7 +174,7 @@ const ClientReportPage = () => {
   );
   if (!reportData) return null;
 
-  const { campaignName, brandName, branchName, month, stats, records } = reportData;
+  const { campaignName, brandName, branchName, month, partnerName = 'TAMKOREA', stats, records } = reportData;
   const hasInfl  = records.influencer?.length > 0;
   const hasExp   = records.experience?.length > 0;
   const hasPress = records.press?.length > 0;
@@ -186,7 +191,7 @@ const ClientReportPage = () => {
             <p className="report-sub">{branchName} · {month} 실적 보고서</p>
           </div>
           <div className="gravity-logo-accent">
-            TAMKOREA<br />
+            {partnerName}<br />
             <span style={{ fontSize:'0.65rem', color:'#9ca3af' }}>PERFORMANCE REPORT</span>
           </div>
         </header>
@@ -277,7 +282,7 @@ const ClientReportPage = () => {
         )}
 
         <footer className="report-footer">
-          <p>본 보고서는 TAMKOREA에서 제공하는 실시간 데이터 기반 자동 생성 보고서입니다.</p>
+          <p>본 보고서는 {partnerName}에서 제공하는 실시간 데이터 기반 자동 생성 보고서입니다.</p>
         </footer>
       </div>
     </div>

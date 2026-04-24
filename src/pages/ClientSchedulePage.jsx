@@ -258,7 +258,7 @@ export default function ClientSchedulePage() {
     );
   }
 
-  const { stats, campaignName, brandName, branchName, month, records } = data;
+  const { stats, campaignName, brandName, branchName, month, records, partnerName = 'TAMKOREA' } = data;
   
   const displayName = brandName && branchName ? `${brandName} ${branchName}` : campaignName;
 
@@ -403,7 +403,7 @@ export default function ClientSchedulePage() {
                     <p className="report-sub">{branchName} · {month} 실적 보고서</p>
                   </div>
                   <div className="gravity-logo-accent">
-                    TAMKOREA<br />
+                    {partnerName}<br />
                     <span style={{ fontSize:'0.65rem', color:'#9ca3af' }}>PERFORMANCE REPORT</span>
                   </div>
                 </header>
