@@ -117,18 +117,20 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
   return (
     <div className="campaign-dashboard-block" style={{ marginBottom: '80px', paddingBottom: '40px', borderBottom: '1px solid rgba(255,255,255,0.1)', position: 'relative' }}>
       
-      {/* 공유 버튼 추가 */}
+      {/* 공유 버튼 수정 (은은한 고스트 버튼 스타일) */}
       <button 
         onClick={copyClientLink}
         style={{
           position: 'absolute', top: '0', right: '0',
-          background: 'var(--revu-purple)', color: '#fff', border: 'none',
-          padding: '8px 16px', borderRadius: '8px', cursor: 'pointer',
-          fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px',
-          boxShadow: '0 4px 12px rgba(168,85,247,0.3)', transition: 'all 0.2s'
+          background: 'transparent', color: '#9ca3af', border: '1px solid rgba(255,255,255,0.15)',
+          padding: '6px 12px', borderRadius: '6px', cursor: 'pointer',
+          fontSize: '0.75rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px',
+          transition: 'all 0.2s'
         }}
+        onMouseOver={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'; }}
+        onMouseOut={(e) => { e.currentTarget.style.color = '#9ca3af'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}
       >
-        <ExternalLink className="w-4 h-4" /> 개별 고객사 링크 복사
+        <ExternalLink className="w-3.5 h-3.5" /> 공유 링크
       </button>
 
       {/* 1. Header */}
@@ -454,22 +456,14 @@ export default function ClientPartnerPage() {
         </div>
       ) : (
         <div className="schedule-container">
-          <div className="flex flex-col items-center justify-center mb-16 pb-12 border-b border-[rgba(255,255,255,0.05)] relative">
-             {/* 배경 네온 글로우 효과 */}
-             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[100px] bg-[var(--revu-purple)] opacity-20 blur-[80px] rounded-full pointer-events-none"></div>
-             
-             {/* 뱃지 */}
-             <span className="px-4 py-1.5 text-[0.75rem] font-bold uppercase tracking-[0.3em] text-[var(--purple-light)] bg-[var(--purple-dim)]/50 border border-[var(--purple-light)]/30 rounded-full mb-5 shadow-[0_0_15px_rgba(168,85,247,0.2)] backdrop-blur-md">
-               Authorized Partner
-             </span>
-             
-             {/* 파트너명 */}
-             <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white drop-shadow-lg mb-3 z-10">
+          <div className="mb-14 pb-10 border-b border-[rgba(255,255,255,0.05)] relative" style={{ textAlign: 'left' }}>
+             {/* 파트너명 (강제 흰색 적용) */}
+             <h2 style={{ color: '#ffffff', fontSize: '2.5rem', fontWeight: '800', margin: '0 0 8px 0', letterSpacing: '-0.02em' }}>
                {partnerName}
              </h2>
              
              {/* 서브 타이틀 */}
-             <p className="text-[#9ca3af] text-sm md:text-base font-medium tracking-wide z-10">
+             <p style={{ color: '#9ca3af', fontSize: '0.95rem', margin: 0 }}>
                통합 캠페인 성과 대시보드
              </p>
           </div>
