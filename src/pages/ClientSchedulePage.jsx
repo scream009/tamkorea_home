@@ -168,21 +168,31 @@ export default function ClientSchedulePage() {
     return String(type).replace(/.*(?:->|=>|→|➔|➡|▶|>)\s*/, '').trim();
   };
 
-  const formatMemo = (memo) => {
-    if (!memo) return '등록된 메모가 없습니다.';
-    let memoStr = Array.isArray(memo) ? memo.join('\n') : String(memo);
-    if (typeof memo === 'object' && memo !== null && !Array.isArray(memo)) {
-      memoStr = JSON.stringify(memo);
-    }
+  const generateDynamicMemo = (event, campaignName, brandName, branchName) => {
+    const typeStr = formatType(event.type);
+    const typeText = typeStr ? `${typeStr} 예약` : '예약';
     
-    // 에어테이블 수식 에러(#ERROR!) 감지 시 친절한 안내 메시지로 대체
-    if (memoStr.includes('#ERROR!')) {
-      return '⚠️ 에어테이블 예약메시지 수식에 오류(#ERROR!)가 있어 내용을 불러오지 못했습니다. 에어테이블 원본을 확인해주세요.';
+    const ids = event.displayIds?.length > 0 ? event.displayIds.join(', ') : event.displayId;
+    
+    let dateStr = '미정';
+    if (!isNaN(new Date(event.reserveDate).getTime())) {
+      const d = new Date(event.reserveDate);
+      const days = ['(일)', '(월)', '(화)', '(수)', '(목)', '(금)', '(토)'];
+      dateStr = `${d.getMonth() + 1}/${d.getDate()}${days[d.getDay()]} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     }
 
-    // 예약메시지 내의 '체험→', '기자->' 등 특수문자가 포함된 카테고리명을 삭제
-    memoStr = memoStr.replace(/[가-힣a-zA-Z0-9]+(?:->|=>|→|➔|➡|▶|>)\s*/g, '');
-    return memoStr;
+    const paxStr = event.totalPax ? `${event.totalPax}명` : '미정';
+    const specialNote = event.memo && event.memo.trim() ? ` (${event.memo.trim()})` : '';
+
+    const xhsCount = event.xhsCount || 1;
+    let contentStr = `샤오홍슈 ${xhsCount}건`;
+    if (event.dpCount > 0) {
+      contentStr += `, 따중리뷰 ${event.dpCount}건`;
+    }
+
+    const brandLabel = brandName && branchName ? `${brandName} ${branchName}` : (brandName || campaignName || '캠페인');
+
+    return `【${brandLabel}】 ${typeText}입니다.\n\n- 닉네임: ${ids}\n- 일정: ${dateStr}\n- 인원: ${paxStr}${specialNote}\n- 내용: ${contentStr}\n\n* 방문시간은 약간의 변동이 있을 수 있습니다.`;
   };
 
   // 에러 화면
@@ -491,8 +501,8 @@ export default function ClientSchedulePage() {
               
               <div className="detail-row">
                 <span className="detail-label"><Info className="w-4 h-4" /> 예약 메시지 / 메모</span>
-                <span className="detail-value memo-box">
-                  {formatMemo(selectedEvent.memo)}
+                <span className="detail-value memo-box" style={{ whiteSpace: 'pre-wrap' }}>
+                  {generateDynamicMemo(selectedEvent, campaignName, brandName, branchName)}
                 </span>
               </div>
 
