@@ -70,9 +70,8 @@ export default async function handler(req, res) {
         const chunk = linkedRecIds.slice(i, i + chunkSize);
         const orParts = chunk.map(id => `RECORD_ID()='${id}'`).join(',');
         const formula = encodeURIComponent(`OR(${orParts})`);
-        const fieldsToFetch = ['유형', 'XHS_ID', 'WC_ID', 'INFL_ID', 'XHS_Result', 'DP_Result', '진행상태', 'Shoot_ID', '예약일시', '# 총인원', '인원메모', '비고'];
-        const fieldsQuery = fieldsToFetch.map(f => `fields%5B%5D=${encodeURIComponent(f)}`).join('&');
-        const url = `https://api.airtable.com/v0/${BASE_ID}/${RECORD_TABLE}?filterByFormula=${formula}&${fieldsQuery}`;
+        // 특정 필드만 요청하면 에어테이블 스키마 변경 시(예: # 총인원 -> 총인원) 500 에러 발생하므로 전체 필드 요청
+        const url = `https://api.airtable.com/v0/${BASE_ID}/${RECORD_TABLE}?filterByFormula=${formula}`;
         const chunk_recs = await fetchAllRecords(url);
         allRecords = allRecords.concat(chunk_recs);
       }
@@ -98,7 +97,8 @@ export default async function handler(req, res) {
       const status    = f['진행상태']   || '진행전';
       const shootId   = f['Shoot_ID']   || '';
       const reserveDate = f['예약일시'] || null;
-      const totalPax    = f['# 총인원'] || '';
+      // 에어테이블 필드명이 변경될 수 있으므로 여러 가능성 체크
+      const totalPax    = f['# 총인원'] || f['총인원'] || f['총 인원'] || '';
       const memo        = f['인원메모'] || f['비고'] || '';
 
       const item = {
