@@ -104,8 +104,33 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
   const hasExp = camp.records.experience.length > 0;
   const hasPress = camp.records.press.length > 0;
 
+  const copyClientLink = () => {
+    const link = `https://report.tamkorea.com/schedule?campaignId=${camp.id}`;
+    navigator.clipboard.writeText(link).then(() => {
+      alert(`[${camp.brandName}] 전용 리포트 링크가 복사되었습니다.\n이 링크를 고객사에게 전달하세요!\n\n${link}`);
+    }).catch(err => {
+      console.error('링크 복사 실패:', err);
+      alert('링크 복사에 실패했습니다.');
+    });
+  };
+
   return (
-    <div className="campaign-dashboard-block" style={{ marginBottom: '80px', paddingBottom: '40px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+    <div className="campaign-dashboard-block" style={{ marginBottom: '80px', paddingBottom: '40px', borderBottom: '1px solid rgba(255,255,255,0.1)', position: 'relative' }}>
+      
+      {/* 공유 버튼 추가 */}
+      <button 
+        onClick={copyClientLink}
+        style={{
+          position: 'absolute', top: '0', right: '0',
+          background: 'var(--revu-purple)', color: '#fff', border: 'none',
+          padding: '8px 16px', borderRadius: '8px', cursor: 'pointer',
+          fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px',
+          boxShadow: '0 4px 12px rgba(168,85,247,0.3)', transition: 'all 0.2s'
+        }}
+      >
+        <ExternalLink className="w-4 h-4" /> 개별 고객사 링크 복사
+      </button>
+
       {/* 1. Header */}
       <header className="schedule-header flex flex-col items-center mb-10">
         <div className="inline-block bg-[var(--purple-dim)] text-[var(--purple-light)] px-5 py-2 rounded-full text-base font-bold mb-4 tracking-wider shadow-[0_0_15px_rgba(168,85,247,0.3)] border border-[var(--purple-light)]/20">
