@@ -568,7 +568,7 @@ export default function ClientSchedulePage() {
           </div>
           <div className="memo-wrap">
             <div className="memo-intro">
-              💡 아래에 입력하신 내용은 탐코리아 담당 매니저에게 즉시 전달됩니다.
+              💡 아래에 입력하신 내용은 담당 운영팀 매니저에게 즉시 전달됩니다.
             </div>
             <div className="memo-form">
               <textarea 
