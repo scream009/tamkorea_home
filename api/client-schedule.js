@@ -120,6 +120,10 @@ export default async function handler(req, res) {
 
       const xhsResult = f['XHS_Result'] || '';
       const dpResult  = f['DP_Result']  || '';
+      const status    = f['진행상태']   || '진행전';
+      const shootId   = f['Shoot_ID']   || '';
+      const reserveDate = f['예약일시'] || null;
+
       // 예약테이블(Shadow Group) 데이터와 매핑
       const resvLinks = f['예약팀명_DB'] || [];
       let totalPax = f['# 총인원'] || f['총인원'] || f['총 인원'] || ''; // Fallback
