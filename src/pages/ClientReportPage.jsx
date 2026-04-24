@@ -182,7 +182,7 @@ const ClientReportPage = () => {
   const handleDownloadCSV = () => {
     if (!records) return;
     
-    const headers = ['구분', 'No.', '닉네임(ID)', '샤오홍슈 링크', '따종디엔핑 링크', '진행상태'];
+    const headers = ['구분', 'No.', '닉네임(ID)', '샤오홍슈 링크', '따종디엔핑 링크'];
     const rows = [];
     
     const escape = (text) => `"${(text || '').toString().replace(/"/g, '""')}"`;
@@ -195,8 +195,7 @@ const ClientReportPage = () => {
           item.seq,
           escape(item.displayId),
           escape(item.xhsResult),
-          escape(item.dpResult),
-          escape(item.status)
+          escape(item.dpResult)
         ];
         rows.push(row.join(','));
       });
