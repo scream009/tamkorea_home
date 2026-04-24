@@ -17,6 +17,21 @@ import {
   Info
 } from 'lucide-react';
 import './ClientSchedulePage.css';
+import './ClientReportPage.css';
+
+// 서브 컴포넌트
+const TypeBadge = ({ type }) => {
+  const map = { influencer: ['📣 인플루언서','infl'], experience: ['🍽️ 체험단','exp'], press: ['📰 기자단','press'] };
+  const [label, cls] = map[type] || ['기타','exp'];
+  return <span className={`type-badge ${cls}`}>{label}</span>;
+};
+
+const LinkBtn = ({ href, label }) =>
+  href ? (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="link-btn">🔗 {label}</a>
+  ) : (
+    <span className="link-pending">진행 중</span>
+  );
 
 // 날짜 유틸리티
 const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
@@ -133,6 +148,12 @@ export default function ClientSchedulePage() {
       return d.getFullYear() === dateObj.getFullYear() &&
              d.getMonth() === dateObj.getMonth() &&
              d.getDate() === dateObj.getDate();
+    }).sort((a, b) => {
+      const isInflA = formatType(a.type).includes('인플');
+      const isInflB = formatType(b.type).includes('인플');
+      if (isInflA && !isInflB) return -1;
+      if (!isInflA && isInflB) return 1;
+      return new Date(a.reserveDate) - new Date(b.reserveDate);
     });
   };
 
@@ -237,27 +258,23 @@ export default function ClientSchedulePage() {
     );
   }
 
-  const { stats, campaignName, brandName, branchName, month } = data;
+  const { stats, campaignName, brandName, branchName, month, records } = data;
   
-  // 퍼센티지 계산 (방어 로직 포함)
-  const calcPercent = (done, target) => {
-    if (!target || target === 0) return 0;
-    const p = Math.round((done / target) * 100);
-    return p > 100 ? 100 : p; // 100% 초과 방지
-  };
-
-  const inflPercent = calcPercent(stats.infl_done, stats.infl_target);
-  const expPercent = calcPercent(stats.exp_done, stats.exp_target);
-  const pressPercent = calcPercent(stats.press_done, stats.press_target);
-
   const displayName = brandName && branchName ? `${brandName} ${branchName}` : campaignName;
+
+  const hasInfl  = records?.influencer?.length > 0;
+  const hasExp   = records?.experience?.length > 0;
+  const hasPress = records?.press?.length > 0;
 
   return (
     <div className="schedule-page">
       {/* 1. Header Section */}
-      <header className="schedule-header">
-        <h1 className="schedule-title">{displayName}</h1>
-        <p className="schedule-subtitle">{month} 캠페인 현황 대시보드</p>
+      <header className="schedule-header flex flex-col items-center mb-10">
+        <div className="inline-block bg-[var(--purple-dim)] text-[var(--purple-light)] px-5 py-2 rounded-full text-base font-bold mb-4 tracking-wider shadow-[0_0_15px_rgba(168,85,247,0.3)] border border-[var(--purple-light)]/20">
+          {month}
+        </div>
+        <h1 className="schedule-title text-center">{displayName}</h1>
+        <p className="schedule-subtitle text-center mt-2">캠페인 현황 대시보드</p>
       </header>
 
       <main className="schedule-container">
@@ -270,10 +287,7 @@ export default function ClientSchedulePage() {
             </div>
             <div className="kpi-numbers">
               <span className="kpi-current">{stats.infl_done}</span>
-              <span className="kpi-target">/ {stats.infl_target}건</span>
-            </div>
-            <div className="progress-bar-bg">
-              <div className="progress-bar-fill" style={{ width: `${inflPercent}%` }}></div>
+              <span className="kpi-target">건</span>
             </div>
           </div>
 
@@ -284,10 +298,7 @@ export default function ClientSchedulePage() {
             </div>
             <div className="kpi-numbers">
               <span className="kpi-current">{stats.exp_done}</span>
-              <span className="kpi-target">/ {stats.exp_target}건</span>
-            </div>
-            <div className="progress-bar-bg">
-              <div className="progress-bar-fill" style={{ width: `${expPercent}%` }}></div>
+              <span className="kpi-target">건</span>
             </div>
           </div>
 
@@ -298,10 +309,7 @@ export default function ClientSchedulePage() {
             </div>
             <div className="kpi-numbers">
               <span className="kpi-current">{stats.press_done}</span>
-              <span className="kpi-target">/ {stats.press_target}건</span>
-            </div>
-            <div className="progress-bar-bg">
-              <div className="progress-bar-fill" style={{ width: `${pressPercent}%` }}></div>
+              <span className="kpi-target">건</span>
             </div>
           </div>
         </div>
@@ -318,7 +326,7 @@ export default function ClientSchedulePage() {
             className={`view-tab ${viewMode === 'list' ? 'active' : ''}`}
             onClick={() => setViewMode('list')}
           >
-            <List className="w-4 h-4" /> 전체 리스트
+            <List className="w-4 h-4" /> 리스트 뷰
           </button>
         </div>
 
@@ -326,7 +334,7 @@ export default function ClientSchedulePage() {
         {viewMode === 'calendar' ? (
           <div className="section">
             <div className="section-header">
-              <div className="section-title">📅 예약 현황 달력</div>
+              <div className="section-title text-white font-extrabold text-[1.4rem] tracking-tight drop-shadow-md">📅 예약 현황 달력</div>
               <div className="section-badge">{month}</div>
             </div>
             <div className="cal-wrap">
@@ -386,56 +394,103 @@ export default function ClientSchedulePage() {
             </div>
           </div>
         ) : (
-          <div className="section">
-            <div className="section-header">
-              <div className="section-title">📋 전체 예약 및 실적 리스트</div>
+          <div className="section mt-8">
+            <div className="cr-wrap" style={{ minHeight: 'auto', padding: 0 }}>
+              <div className="report-paper">
+                <header className="report-header" style={{ marginBottom: '30px' }}>
+                  <div>
+                    <h1 className="report-title">{brandName}</h1>
+                    <p className="report-sub">{branchName} · {month} 실적 보고서</p>
+                  </div>
+                  <div className="gravity-logo-accent">
+                    TAMKOREA<br />
+                    <span style={{ fontSize:'0.65rem', color:'#9ca3af' }}>PERFORMANCE REPORT</span>
+                  </div>
+                </header>
+
+                {hasInfl && (
+                  <section className="category-section">
+                    <h2 className="category-title">
+                      <TypeBadge type="influencer" />
+                    </h2>
+                    <div className="premium-table-wrapper">
+                      <table className="premium-table">
+                        <thead><tr>
+                          <th style={{width:'6%'}}>No.</th>
+                          <th style={{width:'38%'}}>방문자 ID</th>
+                          <th style={{width:'56%'}}>샤오홍슈 결과물</th>
+                        </tr></thead>
+                        <tbody>
+                          {records.influencer.map(item => (
+                            <tr key={item.id} className={!item.xhsResult ? 'row-pending' : ''}>
+                              <td>{item.seq}</td>
+                              <td><span className="id-tag">{item.displayId || '-'}</span></td>
+                              <td><LinkBtn href={item.xhsResult} label="포스팅 확인" /></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                )}
+
+                {hasExp && (
+                  <section className="category-section">
+                    <h2 className="category-title">
+                      <TypeBadge type="experience" />
+                    </h2>
+                    <div className="premium-table-wrapper">
+                      <table className="premium-table">
+                        <thead><tr>
+                          <th style={{width:'6%'}}>No.</th>
+                          <th style={{width:'28%'}}>방문자 ID</th>
+                          <th style={{width:'33%'}}>샤오홍슈 결과물</th>
+                          <th style={{width:'33%'}}>따종디엔핑</th>
+                        </tr></thead>
+                        <tbody>
+                          {records.experience.map(item => (
+                            <tr key={item.id} className={!item.xhsResult && !item.dpResult ? 'row-pending' : ''}>
+                              <td>{item.seq}</td>
+                              <td><span className="id-tag">{item.displayId || '-'}</span></td>
+                              <td><LinkBtn href={item.xhsResult} label="샤오홍슈" /></td>
+                              <td><LinkBtn href={item.dpResult}  label="따종디엔핑" /></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                )}
+
+                {hasPress && (
+                  <section className="category-section">
+                    <h2 className="category-title">
+                      <TypeBadge type="press" />
+                    </h2>
+                    <div className="press-grid">
+                      {records.press.map(item => (
+                        <div key={item.id} className={`press-card ${!item.xhsResult ? 'press-pending' : ''}`}>
+                          <span className="press-seq">{item.seq}</span>
+                          {item.xhsResult ? (
+                            <a href={item.xhsResult} target="_blank" rel="noopener noreferrer" className="press-link">
+                              포스팅 확인 →
+                            </a>
+                          ) : (
+                            <span className="press-wait">진행 중</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {!hasInfl && !hasExp && !hasPress && (
+                  <div className="cr-center" style={{ padding:'60px 0', color:'#6b7280' }}>
+                    아직 등록된 실적이 없습니다.
+                  </div>
+                )}
+              </div>
             </div>
-             {data.scheduleItems && data.scheduleItems.length > 0 ? (
-               <div className="tbl-wrap">
-                 <table className="styled-table">
-                   <thead>
-                     <tr>
-                       <th className="py-3 px-4 font-medium">예약일시</th>
-                       <th className="py-3 px-4 font-medium">진행상태</th>
-                       <th className="py-3 px-4 font-medium">유형</th>
-                       <th className="py-3 px-4 font-medium">이름(ID)</th>
-                       <th className="py-3 px-4 font-medium">결과물</th>
-                     </tr>
-                   </thead>
-                   <tbody>
-                     {data.scheduleItems.map((item, idx) => (
-                       <tr key={idx} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                         <td className="py-3 px-4 text-sm">
-                           {item.reserveDate ? new Date(item.reserveDate).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '미정'}
-                         </td>
-                         <td className="py-3 px-4">
-                           <span className="flex items-center text-sm">
-                             {getStatusDot(item.status)} {item.status}
-                           </span>
-                         </td>
-                         <td className="py-3 px-4 text-sm text-[#a09eb5]">{formatType(item.type)}</td>
-                         <td className="py-3 px-4 font-medium">{item.displayIds?.length > 0 ? item.displayIds.join(', ') : item.displayId}</td>
-                         <td className="py-3 px-4">
-                           {item.xhsResults && item.xhsResults.length > 0 ? (
-                             <div className="flex flex-col gap-1">
-                               {item.xhsResults.map((url, ui) => (
-                                 <a key={ui} href={url} target="_blank" rel="noopener noreferrer" className="link-btn flex items-center gap-1 w-max text-[#c4b5fd]">
-                                   확인 {ui+1} <ExternalLink className="w-3 h-3" />
-                                 </a>
-                               ))}
-                             </div>
-                           ) : (
-                             <span className="text-[var(--muted)]">-</span>
-                           )}
-                         </td>
-                       </tr>
-                     ))}
-                   </tbody>
-                 </table>
-               </div>
-             ) : (
-               <div className="text-center py-12 text-[var(--muted)]">등록된 일정이 없습니다.</div>
-             )}
           </div>
         )}
 
