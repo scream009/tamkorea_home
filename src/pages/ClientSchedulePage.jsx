@@ -71,13 +71,7 @@ export default function ClientSchedulePage() {
 
         setData(result);
         
-        // 데이터가 있으면 가장 첫 예약일이 포함된 달로 캘린더 이동 (옵션)
-        if (result.scheduleItems && result.scheduleItems.length > 0) {
-           const firstEventDate = new Date(result.scheduleItems[0].reserveDate);
-           if (!isNaN(firstEventDate.getTime())) {
-               setCurrentDate(firstEventDate);
-           }
-        }
+        // 초기 로드 시 달력은 '오늘(이번 달)' 기준으로 표출 (별도 이동 안함)
       } catch (err) {
         setError(err.message);
       } finally {
@@ -155,6 +149,7 @@ export default function ClientSchedulePage() {
 
   // 진행 상태 렌더러
   const getStatusDot = (status) => {
+    if (!status) return <span className="status-dot status-wait" title="진행전"></span>;
     if (status.includes('완료')) return <span className="status-dot status-done" title={status}></span>;
     if (status.includes('확정')) return <span className="status-dot status-resv" title={status}></span>;
     if (status.includes('취소')) return <span className="status-dot status-cancel" title={status}></span>;
@@ -162,9 +157,15 @@ export default function ClientSchedulePage() {
   };
 
   const getTypeClass = (type) => {
+    if (!type) return 'event-exp';
     if (type.includes('인플')) return 'event-infl';
     if (type.includes('기자')) return 'event-press';
     return 'event-exp';
+  };
+
+  const formatType = (type) => {
+    if (!type) return '';
+    return type.replace(/.*(?:->|=>|→|➔|➡|▶|>)\s*/, '').trim();
   };
 
   // 에러 화면
@@ -321,26 +322,30 @@ export default function ClientSchedulePage() {
                       key={idx} 
                       className={`cal-cell ${!dayObj.isCurrentMonth ? 'empty' : ''} ${isToday ? 'today-cell' : ''}`}
                     >
-                      {dayObj.isCurrentMonth && <div className="cell-num">{dayObj.date.getDate()}</div>}
-                      <div className="event-list flex flex-col gap-[2px]">
-                        {events.map((ev, i) => {
-                          const displayType = ev.type.includes('->') ? ev.type.split('->').pop().trim() : ev.type;
-                          return (
-                            <div 
-                              key={i} 
-                              className={`event-badge ${getTypeClass(ev.type)}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedEvent(ev);
-                              }}
-                            >
-                              <div className="flex items-center gap-1">
-                                {getStatusDot(ev.status)} {displayType} {ev.totalPax ? `(${ev.totalPax}명)` : ''}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                      {dayObj.isCurrentMonth && (
+                        <>
+                          <div className="cell-num">{dayObj.date.getDate()}</div>
+                          <div className="event-list flex flex-col gap-[2px]">
+                            {events.map((ev, i) => {
+                              const displayType = formatType(ev.type);
+                              return (
+                                <div 
+                                  key={i} 
+                                  className={`event-badge ${getTypeClass(ev.type)}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedEvent(ev);
+                                  }}
+                                >
+                                  <div className="flex items-center gap-1">
+                                    {getStatusDot(ev.status)} {displayType} {ev.totalPax ? `(${ev.totalPax}명)` : ''}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
                     </div>
                   );
                 })}
@@ -375,13 +380,17 @@ export default function ClientSchedulePage() {
                              {getStatusDot(item.status)} {item.status}
                            </span>
                          </td>
-                         <td className="py-3 px-4 text-sm text-[#a09eb5]">{item.type}</td>
-                         <td className="py-3 px-4 font-medium">{item.displayId}</td>
+                         <td className="py-3 px-4 text-sm text-[#a09eb5]">{formatType(item.type)}</td>
+                         <td className="py-3 px-4 font-medium">{item.displayIds?.length > 0 ? item.displayIds.join(', ') : item.displayId}</td>
                          <td className="py-3 px-4">
-                           {item.xhsResult ? (
-                             <a href={item.xhsResult} target="_blank" rel="noopener noreferrer" className="link-btn flex items-center gap-1 w-max">
-                               확인 <ExternalLink className="w-3 h-3" />
-                             </a>
+                           {item.xhsResults && item.xhsResults.length > 0 ? (
+                             <div className="flex flex-col gap-1">
+                               {item.xhsResults.map((url, ui) => (
+                                 <a key={ui} href={url} target="_blank" rel="noopener noreferrer" className="link-btn flex items-center gap-1 w-max text-[#c4b5fd]">
+                                   확인 {ui+1} <ExternalLink className="w-3 h-3" />
+                                 </a>
+                               ))}
+                             </div>
                            ) : (
                              <span className="text-[var(--muted)]">-</span>
                            )}
@@ -439,7 +448,7 @@ export default function ClientSchedulePage() {
             
             <div className={`modal-header ${getTypeClass(selectedEvent.type)}`}>
               <h3 className="modal-title flex items-center gap-2">
-                {getStatusDot(selectedEvent.status)} {selectedEvent.type} 상세정보
+                {getStatusDot(selectedEvent.status)} {formatType(selectedEvent.type)} 상세정보
               </h3>
             </div>
             
@@ -458,7 +467,7 @@ export default function ClientSchedulePage() {
               
               <div className="detail-row">
                 <span className="detail-label"><User className="w-4 h-4" /> 방문자 ID (닉네임)</span>
-                <span className="detail-value">{selectedEvent.displayId}</span>
+                <span className="detail-value">{selectedEvent.displayIds?.length > 0 ? selectedEvent.displayIds.join(', ') : selectedEvent.displayId}</span>
               </div>
               
               <div className="detail-row">
@@ -468,12 +477,16 @@ export default function ClientSchedulePage() {
                 </span>
               </div>
 
-              {selectedEvent.xhsResult && (
+              {selectedEvent.xhsResults && selectedEvent.xhsResults.length > 0 && (
                 <div className="detail-row mt-4 pt-4 border-t border-white/10">
-                  <span className="detail-label text-var-revu-purple">완료 결과물</span>
-                  <a href={selectedEvent.xhsResult} target="_blank" rel="noopener noreferrer" className="result-link">
-                    확인하기 <ExternalLink className="w-4 h-4" />
-                  </a>
+                  <span className="detail-label" style={{color: 'var(--purple-light)'}}>완료 결과물</span>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {selectedEvent.xhsResults.map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="result-link ml-0">
+                        확인하기 {i+1} <ExternalLink className="w-4 h-4" />
+                      </a>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

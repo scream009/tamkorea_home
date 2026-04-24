@@ -96,7 +96,7 @@ export default async function handler(req, res) {
         const chunk_recs = await fetchAllRecords(url);
         chunk_recs.forEach(r => {
           resvMap[r.id] = {
-            pax: r.fields['방문 인원'] || '',
+            pax: r.fields['방문 인원'] || r.fields['방문인원'] || r.fields['# 방문 인원'] || r.fields['# 방문인원'] || '',
             message: r.fields['예약메시지'] || r.fields['예약메세지'] || ''
           };
         });
