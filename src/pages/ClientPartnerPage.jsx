@@ -114,6 +114,48 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
     });
   };
 
+  const handleDownloadCSV = () => {
+    if (!camp.records) return;
+    
+    const headers = ['구분', 'No.', '닉네임(ID)', '샤오홍슈 링크', '따종디엔핑 링크'];
+    const rows = [];
+    
+    const escape = (text) => `"${(text || '').toString().replace(/"/g, '""')}"`;
+    
+    const addRows = (categoryName, items) => {
+      if (!items) return;
+      items.forEach(item => {
+        const row = [
+          escape(categoryName),
+          item.seq,
+          escape(item.displayId),
+          escape(item.xhsResult),
+          escape(item.dpResult)
+        ];
+        rows.push(row.join(','));
+      });
+    };
+
+    addRows('인플루언서', camp.records.influencer);
+    addRows('체험단', camp.records.experience);
+    addRows('기자단', camp.records.press);
+
+    const csvContent = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const safeBrand = (camp.brandName || '캠페인').replace(/\s+/g, '_');
+    const safeMonth = (camp.month || '').replace(/\s+/g, '');
+    const filename = `${safeBrand}_${safeMonth}_실적보고서.csv`;
+    
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="campaign-dashboard-block" style={{ marginBottom: '80px', paddingBottom: '40px', borderBottom: '1px solid rgba(255,255,255,0.1)', position: 'relative' }}>
       
@@ -159,12 +201,39 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
       </div>
 
       {/* 3. View Toggles */}
-      <div className="view-tabs">
-        <button className={`view-tab ${viewMode === 'calendar' ? 'active' : ''}`} onClick={() => setViewMode('calendar')}>
-          <CalendarIcon className="w-4 h-4" /> 달력 뷰
-        </button>
-        <button className={`view-tab ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>
-          <List className="w-4 h-4" /> 리스트 뷰
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginBottom: '1.5rem', position: 'relative' }}>
+        <div className="view-tabs" style={{ marginBottom: 0 }}>
+          <button className={`view-tab ${viewMode === 'calendar' ? 'active' : ''}`} onClick={() => setViewMode('calendar')}>
+            <CalendarIcon className="w-4 h-4" /> 달력 뷰
+          </button>
+          <button className={`view-tab ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>
+            <List className="w-4 h-4" /> 리스트 뷰
+          </button>
+        </div>
+        <button 
+          onClick={handleDownloadCSV}
+          style={{
+            position: 'absolute',
+            right: 0,
+            background: 'rgba(168, 85, 247, 0.1)',
+            border: '1px solid rgba(168, 85, 247, 0.3)',
+            color: '#d8b4fe',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            fontSize: '0.85rem',
+            fontWeight: '600',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            transition: 'all 0.2s',
+            boxShadow: '0 0 10px rgba(168, 85, 247, 0.1)',
+            height: 'fit-content'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(168, 85, 247, 0.2)'; e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.5)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(168, 85, 247, 0.1)'; e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.3)'; }}
+        >
+          📥 CSV 다운로드
         </button>
       </div>
 
