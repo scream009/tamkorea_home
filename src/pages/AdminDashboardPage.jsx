@@ -299,25 +299,29 @@ export default function AdminDashboardPage() {
                 {STATUS_ORDER.map(group => (
                   <Bar key={group} dataKey={group} stackId="a" fill={STATUS_COLORS[group]}>
                     <LabelList dataKey="__total" content={(props) => {
-                      const { index, x, y, width, height, value } = props;
-                      if (!value) return null;
+                      const { index, x, y, width, height } = props;
+                      if (x == null || y == null || width == null) return null;
+                      
                       const row = statusData[index];
                       if (!row) return null;
                       
+                      // 숫자 강제 변환 후 마지막 유효 세그먼트 찾기
                       let lastNonZero = null;
                       for (let i = STATUS_ORDER.length - 1; i >= 0; i--) {
-                        if (row[STATUS_ORDER[i]] > 0) {
+                        if (Number(row[STATUS_ORDER[i]]) > 0) {
                           lastNonZero = STATUS_ORDER[i];
                           break;
                         }
                       }
+                      
+                      // 현재 그룹이 마지막 세그먼트가 아니면 라벨 렌더링 안 함
                       if (group !== lastNonZero) return null;
 
                       return (
                         <text x={x + width + 8} y={y + height / 2}
                           fill="#e5e7eb" fontSize={13} fontWeight={600}
                           dominantBaseline="central">
-                          {value}
+                          {row.__total}
                         </text>
                       );
                     }} />
