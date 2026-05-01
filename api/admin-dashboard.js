@@ -82,9 +82,9 @@ export default async function handler(req, res) {
       targetMap[key] = (targetMap[key] || 0) + target;
     });
 
-    // ─── 2. 진행_DB_OLD: 해당 월 실적 (정산월 = "2604") ────────
-    // HH/LH/AN 담당자 + 정산월 일치
-    const scheduleFormula = `AND(OR({예약_ID}='HH',{예약_ID}='LH',{예약_ID}='AN'),{정산월}='${monthCode}')`;
+    // ─── 2. 진행_DB_OLD: 해당 월 실적 ─────────────────────────
+    // 정산월 필드는 Single Select 텍스트 형식: "2026. 4월"
+    const scheduleFormula = `AND(OR({예약_ID}='HH',{예약_ID}='LH',{예약_ID}='AN'),{정산월}='${monthText}')`;
     const scheduleRecords = await fetchAll(
       '진행_DB_OLD',
       scheduleFormula,
