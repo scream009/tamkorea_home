@@ -315,8 +315,9 @@
 
 .inf-input-wrap {
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  align-items: center;
+  align-items: stretch;
 }
 
 .inf-link-input {
@@ -365,6 +366,7 @@
   white-space: nowrap;
   transition: all 0.2s ease;
   flex-shrink: 0;
+  align-self: flex-end;
 }
 
 .inf-btn-save:hover:not(:disabled) {
@@ -529,8 +531,6 @@
   .inf-link-cell { min-width: 0; }
 
   .inf-input-wrap {
-    flex-direction: column;
-    align-items: stretch;
     gap: 10px;
   }
 
@@ -547,6 +547,7 @@
     font-size: 14px;
     font-weight: 700;
     border-radius: 10px;
+    align-self: stretch;
   }
 
   /* 고객사명 폰트 조정 */

@@ -45,8 +45,8 @@ export default function InfluencerSubmitPage() {
   const token = searchParams.get('token') || searchParams.get('id'); // token 우선, id는 하위호환
 
   const [records, setRecords] = useState([]);
-  const [links, setLinks] = useState({});          // { recordId: linkValue }
-  const [invalidLinks, setInvalidLinks] = useState({}); // { recordId: true } URL 오류
+  const [links, setLinks] = useState({});          // { recordId: { xhs, dp, dy } }
+  const [invalidLinks, setInvalidLinks] = useState({}); // { recordId: { xhs: true, dp: false, dy: false } } URL 오류
   const [saving, setSaving] = useState({});         // { recordId: true/false }
   const [status, setStatus] = useState('idle');     // 'idle' | 'loading' | 'error' | 'empty'
   const [errorMsg, setErrorMsg] = useState('');
@@ -78,7 +78,11 @@ export default function InfluencerSubmitPage() {
         // 기존 제출 링크를 초기값으로 세팅
         const initLinks = {};
         data.records.forEach(rec => {
-          initLinks[rec.id] = rec.resultLink || '';
+          initLinks[rec.id] = {
+            xhs: rec.resultLink || '',
+            dp: rec.dpResultLink || '',
+            dy: rec.dyResultLink || ''
+          };
         });
         setLinks(initLinks);
         setStatus('idle');
@@ -106,27 +110,37 @@ export default function InfluencerSubmitPage() {
 
   // ─── 개별 저장 ──────────────────────────────────────────────
   const handleSaveOne = useCallback(async (recordId) => {
-    const link = links[recordId]?.trim();
-    if (!link) {
-      showToast('请输入链接。', 'error'); // 링크를 입력해 주세요
+    const linkObj = links[recordId] || {};
+    const xhsLink = linkObj.xhs?.trim() || '';
+    const dpLink = linkObj.dp?.trim() || '';
+    const dyLink = linkObj.dy?.trim() || '';
+
+    if (!xhsLink && !dpLink && !dyLink) {
+      showToast('请输入至少一个链接。', 'error'); // 최소 하나의 링크를 입력해 주세요
       return;
     }
 
     // URL 형식 검사
-    if (!isValidUrl(link)) {
-      setInvalidLinks(prev => ({ ...prev, [recordId]: true }));
+    let hasInvalid = false;
+    const newInvalidState = { ...(invalidLinks[recordId] || {}) };
+    
+    if (xhsLink && !isValidUrl(xhsLink)) { hasInvalid = true; newInvalidState.xhs = true; } else { newInvalidState.xhs = false; }
+    if (dpLink && !isValidUrl(dpLink)) { hasInvalid = true; newInvalidState.dp = true; } else { newInvalidState.dp = false; }
+    if (dyLink && !isValidUrl(dyLink)) { hasInvalid = true; newInvalidState.dy = true; } else { newInvalidState.dy = false; }
+
+    setInvalidLinks(prev => ({ ...prev, [recordId]: newInvalidState }));
+
+    if (hasInvalid) {
       showToast('链接格式不正确。(例: https://xhslink.com/...)', 'error'); // 올바른 URL 형식이 아닙니다
       return;
     }
-    // 유효 → 오류 상태 해제
-    setInvalidLinks(prev => ({ ...prev, [recordId]: false }));
 
     setSaving(s => ({ ...s, [recordId]: true }));
     try {
       const res = await fetch('/api/influencer-schedule', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recordId, resultLink: link }),
+        body: JSON.stringify({ recordId, resultLink: xhsLink, dpResultLink: dpLink, dyResultLink: dyLink }),
       });
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || 'Failed');
@@ -134,7 +148,7 @@ export default function InfluencerSubmitPage() {
       // 로컬 상태 업데이트
       setRecords(prev =>
         prev.map(rec =>
-          rec.id === recordId ? { ...rec, resultLink: link, status: '제출완료' } : rec
+          rec.id === recordId ? { ...rec, resultLink: xhsLink, dpResultLink: dpLink, dyResultLink: dyLink, status: '제출완료' } : rec
         )
       );
       showToast('保存成功！', 'success'); // 저장되었습니다
@@ -144,7 +158,7 @@ export default function InfluencerSubmitPage() {
     } finally {
       setSaving(s => ({ ...s, [recordId]: false }));
     }
-  }, [links, isValidUrl, showToast]);
+  }, [links, invalidLinks, isValidUrl, showToast]);
 
   // ─── Enter 키로 즉시 저장 ────────────────────────────────────
   const handleKeyDown = useCallback((e, recordId) => {
@@ -304,19 +318,41 @@ export default function InfluencerSubmitPage() {
                       <div className="inf-input-wrap">
                         <input
                           type="url"
-                          className={`inf-link-input ${isDone ? 'submitted' : ''} ${invalidLinks[rec.id] ? 'invalid' : ''}`}
-                          placeholder="https://xhslink.com/..."
-                          value={links[rec.id] || ''}
+                          className={`inf-link-input ${isDone ? 'submitted' : ''} ${invalidLinks[rec.id]?.xhs ? 'invalid' : ''}`}
+                          placeholder="小红书 (XHS) 链接"
+                          value={links[rec.id]?.xhs || ''}
                           onChange={e => {
-                            setLinks(prev => ({ ...prev, [rec.id]: e.target.value }));
-                            if (invalidLinks[rec.id]) setInvalidLinks(prev => ({ ...prev, [rec.id]: false }));
+                            setLinks(prev => ({ ...prev, [rec.id]: { ...prev[rec.id], xhs: e.target.value } }));
+                            if (invalidLinks[rec.id]?.xhs) setInvalidLinks(prev => ({ ...prev, [rec.id]: { ...prev[rec.id], xhs: false } }));
+                          }}
+                          onKeyDown={e => handleKeyDown(e, rec.id)}
+                        />
+                        <input
+                          type="url"
+                          className={`inf-link-input ${isDone ? 'submitted' : ''} ${invalidLinks[rec.id]?.dp ? 'invalid' : ''}`}
+                          placeholder="大众点评 (DP) 链接"
+                          value={links[rec.id]?.dp || ''}
+                          onChange={e => {
+                            setLinks(prev => ({ ...prev, [rec.id]: { ...prev[rec.id], dp: e.target.value } }));
+                            if (invalidLinks[rec.id]?.dp) setInvalidLinks(prev => ({ ...prev, [rec.id]: { ...prev[rec.id], dp: false } }));
+                          }}
+                          onKeyDown={e => handleKeyDown(e, rec.id)}
+                        />
+                        <input
+                          type="url"
+                          className={`inf-link-input ${isDone ? 'submitted' : ''} ${invalidLinks[rec.id]?.dy ? 'invalid' : ''}`}
+                          placeholder="抖音及其他 (DY及其他) 链接"
+                          value={links[rec.id]?.dy || ''}
+                          onChange={e => {
+                            setLinks(prev => ({ ...prev, [rec.id]: { ...prev[rec.id], dy: e.target.value } }));
+                            if (invalidLinks[rec.id]?.dy) setInvalidLinks(prev => ({ ...prev, [rec.id]: { ...prev[rec.id], dy: false } }));
                           }}
                           onKeyDown={e => handleKeyDown(e, rec.id)}
                         />
                         <button
                           className={`inf-btn-save ${isDone ? 'resubmit' : ''}`}
                           onClick={() => handleSaveOne(rec.id)}
-                          disabled={isSaving || !links[rec.id]?.trim()}
+                          disabled={isSaving || !(links[rec.id]?.xhs?.trim() || links[rec.id]?.dp?.trim() || links[rec.id]?.dy?.trim())}
                           title={isDone ? '修改链接后重新保存' : '保存'}
                         >
                           {isSaving ? '⏳' : isDone ? '修改' : '保存'}
