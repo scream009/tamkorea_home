@@ -313,7 +313,14 @@
   min-width: 220px;
 }
 
+.inf-link-cell-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .inf-input-wrap {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -366,7 +373,7 @@
   white-space: nowrap;
   transition: all 0.2s ease;
   flex-shrink: 0;
-  align-self: flex-end;
+  align-self: center;
 }
 
 .inf-btn-save:hover:not(:disabled) {
@@ -409,6 +416,10 @@
   background: rgba(245, 158, 11, 0.1);
   color: var(--warning);
   border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.mobile-only {
+  display: none;
 }
 
 /* ─── Toast Notification ──────────────────────────────────── */
@@ -502,9 +513,12 @@
     background: rgba(124, 58, 237, 0.05);
   }
 
-  /* 상태 뱃지를 1번 셀 옆에 붙이기 위해 5번째 td를 숨기고 JS로 처리 */
-  /* → 상태는 카드 헤더 우측에 노출 (아래 .inf-card-status 참조) */
+  /* 상태 뱃지는 1번 셀 내부에 mobile-only 클래스로 표시됨 */
   .inf-table td:nth-child(5) { display: none; } /* 상태 칼럼 숨김 (헤더로 이동) */
+
+  .mobile-only {
+    display: inline-flex;
+  }
 
   /* 2행: 가이드 버튼 */
   .inf-table td:nth-child(2) {
@@ -529,6 +543,12 @@
   }
 
   .inf-link-cell { min-width: 0; }
+
+  .inf-link-cell-content {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
 
   .inf-input-wrap {
     gap: 10px;

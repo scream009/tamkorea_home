@@ -286,7 +286,12 @@ export default function InfluencerSubmitPage() {
                   <tr key={rec.id}>
                     {/* 고객사 */}
                     <td>
-                      <div className="inf-client-name">{rec.client}</div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
+                        <div className="inf-client-name">{rec.client}</div>
+                        <span className={`inf-status mobile-only ${isDone ? 'done' : 'pending'}`}>
+                          {isDone ? '✅ 已完成' : '⏳ 待提交'}
+                        </span>
+                      </div>
                     </td>
 
                     {/* 촬영가이드 (롱텍스트 팝업) */}
@@ -315,40 +320,42 @@ export default function InfluencerSubmitPage() {
 
                     {/* 링크 입력 */}
                     <td className="inf-link-cell">
-                      <div className="inf-input-wrap">
-                        <input
-                          type="url"
-                          className={`inf-link-input ${isDone ? 'submitted' : ''} ${invalidLinks[rec.id]?.xhs ? 'invalid' : ''}`}
-                          placeholder="小红书 (XHS) 链接"
-                          value={links[rec.id]?.xhs || ''}
-                          onChange={e => {
-                            setLinks(prev => ({ ...prev, [rec.id]: { ...prev[rec.id], xhs: e.target.value } }));
-                            if (invalidLinks[rec.id]?.xhs) setInvalidLinks(prev => ({ ...prev, [rec.id]: { ...prev[rec.id], xhs: false } }));
-                          }}
-                          onKeyDown={e => handleKeyDown(e, rec.id)}
-                        />
-                        <input
-                          type="url"
-                          className={`inf-link-input ${isDone ? 'submitted' : ''} ${invalidLinks[rec.id]?.dp ? 'invalid' : ''}`}
-                          placeholder="大众点评 (DP) 链接"
-                          value={links[rec.id]?.dp || ''}
-                          onChange={e => {
-                            setLinks(prev => ({ ...prev, [rec.id]: { ...prev[rec.id], dp: e.target.value } }));
-                            if (invalidLinks[rec.id]?.dp) setInvalidLinks(prev => ({ ...prev, [rec.id]: { ...prev[rec.id], dp: false } }));
-                          }}
-                          onKeyDown={e => handleKeyDown(e, rec.id)}
-                        />
-                        <input
-                          type="url"
-                          className={`inf-link-input ${isDone ? 'submitted' : ''} ${invalidLinks[rec.id]?.dy ? 'invalid' : ''}`}
-                          placeholder="抖音及其他 (DY及其他) 链接"
-                          value={links[rec.id]?.dy || ''}
-                          onChange={e => {
-                            setLinks(prev => ({ ...prev, [rec.id]: { ...prev[rec.id], dy: e.target.value } }));
-                            if (invalidLinks[rec.id]?.dy) setInvalidLinks(prev => ({ ...prev, [rec.id]: { ...prev[rec.id], dy: false } }));
-                          }}
-                          onKeyDown={e => handleKeyDown(e, rec.id)}
-                        />
+                      <div className="inf-link-cell-content">
+                        <div className="inf-input-wrap">
+                          <input
+                            type="url"
+                            className={`inf-link-input ${isDone ? 'submitted' : ''} ${invalidLinks[rec.id]?.xhs ? 'invalid' : ''}`}
+                            placeholder="小红书 (XHS) 链接"
+                            value={links[rec.id]?.xhs || ''}
+                            onChange={e => {
+                              setLinks(prev => ({ ...prev, [rec.id]: { ...prev[rec.id], xhs: e.target.value } }));
+                              if (invalidLinks[rec.id]?.xhs) setInvalidLinks(prev => ({ ...prev, [rec.id]: { ...prev[rec.id], xhs: false } }));
+                            }}
+                            onKeyDown={e => handleKeyDown(e, rec.id)}
+                          />
+                          <input
+                            type="url"
+                            className={`inf-link-input ${isDone ? 'submitted' : ''} ${invalidLinks[rec.id]?.dp ? 'invalid' : ''}`}
+                            placeholder="大众点评 (DP) 链接"
+                            value={links[rec.id]?.dp || ''}
+                            onChange={e => {
+                              setLinks(prev => ({ ...prev, [rec.id]: { ...prev[rec.id], dp: e.target.value } }));
+                              if (invalidLinks[rec.id]?.dp) setInvalidLinks(prev => ({ ...prev, [rec.id]: { ...prev[rec.id], dp: false } }));
+                            }}
+                            onKeyDown={e => handleKeyDown(e, rec.id)}
+                          />
+                          <input
+                            type="url"
+                            className={`inf-link-input ${isDone ? 'submitted' : ''} ${invalidLinks[rec.id]?.dy ? 'invalid' : ''}`}
+                            placeholder="抖音及其他 (DY及其他) 链接"
+                            value={links[rec.id]?.dy || ''}
+                            onChange={e => {
+                              setLinks(prev => ({ ...prev, [rec.id]: { ...prev[rec.id], dy: e.target.value } }));
+                              if (invalidLinks[rec.id]?.dy) setInvalidLinks(prev => ({ ...prev, [rec.id]: { ...prev[rec.id], dy: false } }));
+                            }}
+                            onKeyDown={e => handleKeyDown(e, rec.id)}
+                          />
+                        </div>
                         <button
                           className={`inf-btn-save ${isDone ? 'resubmit' : ''}`}
                           onClick={() => handleSaveOne(rec.id)}
