@@ -202,16 +202,23 @@ export default function AdminDashboardPage() {
 
       if (group !== '취소/노쇼' && group !== '기타') {
         const client = rec.client || 'Unknown';
-        if (!clientCountMap[client]) {
-          clientCountMap[client] = { name: client, HH: 0, LH: 0, AN: 0, total: 0, __target: 0 };
+        const branch = rec.branch || '';
+        // 화면 표시용 키: "고객사명 지점명"
+        const displayKey = branch ? `${client} ${branch}` : client;
+        if (!clientCountMap[displayKey]) {
+          clientCountMap[displayKey] = {
+            name: displayKey,
+            clientName: client,
+            branchName: branch,
+            HH: 0, LH: 0, AN: 0, total: 0, __target: 0
+          };
         }
-        clientCountMap[client][c]++;
-        clientCountMap[client].total++;
+        clientCountMap[displayKey][c]++;
+        clientCountMap[displayKey].total++;
       }
     });
 
-    // 4. Campaign_DB 목표수량 매핑
-    //    - 선택 월이 있으면 계약월(한국어 텍스트)로 필터, 없으면 전체 합산
+    // 4. Campaign_DB 목표수량 매핑 (한국어 고객사명 기준)
     const campaignMonthText = selectedMonth !== 'all' ? MONTH_MAP[selectedMonth] : null;
 
     Object.entries(targetMap).forEach(([key, entries]) => {
@@ -223,15 +230,20 @@ export default function AdminDashboardPage() {
       const totalTarget = relevant.reduce((s, e) => s + (e.target || 0), 0);
       if (totalTarget === 0) return;
 
-      const [clientKr] = key.split('__');  // 한국어 고객사명
+      // key = "\uace0\uac1d\uc0ac\uba85__\uc9c0\uc810\uba85" 또\ub294 "\uace0\uac1d\uc0ac\uba85"
+      const [clientKr, branchKr] = key.split('__');
 
-      // 중문명(진행_DB) ↔ 한국명(Campaign_DB) 텍스트 부분 매칭
-      Object.keys(clientCountMap).forEach(mapKey => {
-        if (mapKey.includes(clientKr) || clientKr.includes(mapKey)) {
-          clientCountMap[mapKey].__target = Math.max(
-            clientCountMap[mapKey].__target,
-            totalTarget
-          );
+      // clientCountMap의 key는 "\uace0\uac1d\uc0ac\uba85 \uc9c0\uc810\uba85" 형\ud0dc
+      Object.keys(clientCountMap).forEach(displayKey => {
+        const d = clientCountMap[displayKey];
+        const nameMatch  = d.clientName === clientKr || d.clientName?.includes(clientKr) || clientKr?.includes(d.clientName);
+        const branchMatch = !branchKr || !d.branchName ||
+          d.branchName === branchKr ||
+          d.branchName?.includes(branchKr) ||
+          branchKr?.includes(d.branchName);
+
+        if (nameMatch && branchMatch) {
+          d.__target = Math.max(d.__target, totalTarget);
         }
       });
     });
