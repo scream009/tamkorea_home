@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, LabelList
+  ResponsiveContainer, LabelList, Customized
 } from 'recharts';
 import './AdminDashboardPage.css';
 
@@ -288,51 +288,44 @@ export default function AdminDashboardPage() {
             {selectedLabel} 담당자별 상태 현황
           </div>
           <div className="adm-chart-card">
-            {/* chart + 합계 숫자를 relative 컨테이너로 묶어 HTML 오버레이 */}
-            <div style={{ position: 'relative' }}>
-              <ResponsiveContainer width="100%" height={210}>
-                <BarChart data={statusData} layout="vertical"
-                  margin={{ top: 8, right: 80, left: 10, bottom: 8 }} barSize={30}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
-                  <XAxis type="number" stroke="#374151" tick={{ fill: '#6b7280', fontSize: 12 }} />
-                  <YAxis dataKey="name" type="category" stroke="transparent"
-                    tick={{ fill: '#e5e7eb', fontSize: 15, fontWeight: 700 }} width={38} />
-                  <Tooltip content={<StatusTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-                  {STATUS_ORDER.map(group => (
-                    <Bar key={group} dataKey={group} stackId="a" fill={STATUS_COLORS[group]} />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
-
-              {/* HTML 합계 오버레이: chart 오른쪽 여백(80px)에 각 bar row 중앙 정렬 */}
-              {/* height=210, margin top=8, bottom=8 → inner=194px, 3 rows each ≈64.7px */}
-              <div style={{
-                position: 'absolute', top: 0, right: 0,
-                width: 72, height: 210,
-                pointerEvents: 'none',
-              }}>
-                {statusData.map((d, i) => {
-                  const innerH = 194; // 210 - 8(top) - 8(bottom)
-                  const rowH = innerH / 3;
-                  const centerY = 8 + i * rowH + rowH / 2; // px from top
+            <ResponsiveContainer width="100%" height={210}>
+              <BarChart data={statusData} layout="vertical"
+                margin={{ top: 8, right: 80, left: 10, bottom: 8 }} barSize={30}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
+                <XAxis type="number" stroke="#374151" tick={{ fill: '#6b7280', fontSize: 12 }} />
+                <YAxis dataKey="name" type="category" stroke="transparent"
+                  tick={{ fill: '#e5e7eb', fontSize: 15, fontWeight: 700 }} width={38} />
+                <Tooltip content={<StatusTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+                {STATUS_ORDER.map(group => (
+                  <Bar key={group} dataKey={group} stackId="a" fill={STATUS_COLORS[group]} />
+                ))}
+                {/* Recharts Customized: 실제 yAxis scale로 정확한 위치에 합계 렌더 */}
+                <Customized component={({ yAxisMap, xAxisMap, offset }) => {
+                  const yAxis = yAxisMap && yAxisMap[Object.keys(yAxisMap)[0]];
+                  const xAxis = xAxisMap && xAxisMap[Object.keys(xAxisMap)[0]];
+                  if (!yAxis || !xAxis) return null;
                   return (
-                    <div key={d.name} style={{
-                      position: 'absolute',
-                      top: centerY - 10, // vertically center 20px text
-                      left: 8,
-                      color: '#e5e7eb',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      lineHeight: '20px',
-                    }}>
-                      {d.__total}
-                    </div>
+                    <g>
+                      {statusData.map(d => {
+                        const barCenterY = yAxis.scale(d.name) + yAxis.bandwidth / 2;
+                        const barEndX = xAxis.scale(d.__total) + offset.left;
+                        return (
+                          <text key={d.name}
+                            x={barEndX + 10}
+                            y={barCenterY + 5}
+                            fill="#e5e7eb" fontSize={13} fontWeight={600}>
+                            {d.__total}
+                          </text>
+                        );
+                      })}
+                    </g>
                   );
-                })}
-              </div>
-            </div>
+                }} />
+              </BarChart>
+            </ResponsiveContainer>
             <CustomLegend items={STATUS_ORDER.map(g => ({ label: g, color: STATUS_COLORS[g] }))} />
           </div>
+
 
 
           {/* Chart 2: 고객사별 실적 */}
