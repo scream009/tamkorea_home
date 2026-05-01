@@ -95,12 +95,23 @@
 
 /* ─── Section Label ─────────────────────────────────────── */
 .adm-section-label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--adm-sub);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 12px;
+  letter-spacing: 0.07em;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.adm-section-sub {
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #4b5563;
 }
 
 /* ─── Chart Card ────────────────────────────────────────── */
@@ -111,6 +122,11 @@
   padding: 24px 16px 16px;
   margin-bottom: 40px;
   overflow-x: auto;
+}
+
+.adm-chart-card--scroll {
+  overflow-y: auto;
+  max-height: 700px;
 }
 
 /* ─── Custom Tooltip ────────────────────────────────────── */
@@ -157,6 +173,16 @@
   border-top: 1px solid rgba(255,255,255,0.08);
   font-weight: 700;
   color: var(--adm-purple-lt);
+}
+
+.adm-tooltip-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.08);
+  margin: 6px 0;
+}
+
+.adm-target-val {
+  color: #f59e0b !important;
 }
 
 /* ─── Loading / Error ───────────────────────────────────── */
