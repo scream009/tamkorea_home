@@ -6,21 +6,21 @@ import {
 import './AdminDashboardPage.css';
 
 const STATUS_GROUPS = {
-  '요청/대기': ['예약요청', '변경요청', '긴급예약'],
   '예약확정': ['예약확정', '改时间', '인플'],
   '촬영완료': ['촬영완료'],
-  '완료/업로드': ['업로드대기', '업로드완료', '송부완료', '배포완료'],
+  '업로드완료': ['업로드대기', '업로드완료', '송부완료', '배포완료'],
   '취소/노쇼': ['취소_방문자', '취소_고객사', '노쇼', '예약취소', '예약반려'],
 };
 
 const STATUS_COLORS = {
-  '요청/대기': '#f59e0b',
   '예약확정': '#3b82f6',
   '촬영완료': '#10b981',
-  '완료/업로드': '#8b5cf6',
+  '업로드완료': '#8b5cf6',
   '취소/노쇼': '#ef4444',
   '기타': '#6b7280'
 };
+
+const STATUS_ORDER = ['예약확정', '촬영완료', '업로드완료', '취소/노쇼', '기타'];
 
 const COORD_COLORS = {
   'HH': '#7c3aed',
@@ -82,16 +82,22 @@ export default function AdminDashboardPage() {
   const { statusData, clientData, totalValid } = useMemo(() => {
     if (!records.length) return { statusData: [], clientData: [], totalValid: 0 };
 
-    // 1. Coordinator Status Data
+    // 1. Filter records by month (e.g., '2604' for April)
+    const currentMonth = '2604'; // TODO: Make this dynamic via dropdown if needed
+    const filteredRecords = records.filter(r => r.month === currentMonth || r.linkedMonth === 'rec... (or we just rely on month text if available, for now checking string "2604")');
+    // Actually, just checking substring or exact match.
+    const monthRecords = records.filter(r => r.month === currentMonth);
+
+    // 2. Coordinator Status Data
     const coordMap = { HH: {}, LH: {}, AN: {} };
     Object.keys(coordMap).forEach(c => {
-      Object.keys(STATUS_COLORS).forEach(sg => coordMap[c][sg] = 0);
+      STATUS_ORDER.forEach(sg => coordMap[c][sg] = 0);
     });
 
     let validCount = 0;
     const clientCountMap = {};
 
-    records.forEach(rec => {
+    monthRecords.forEach(rec => {
       const c = rec.coordinator;
       const group = getStatusGroup(rec.status);
       
@@ -99,8 +105,8 @@ export default function AdminDashboardPage() {
         coordMap[c][group] = (coordMap[c][group] || 0) + 1;
       }
 
-      // 2. Client Data (Valid only)
-      if (group !== '취소/노쇼' && (c === 'HH' || c === 'LH' || c === 'AN')) {
+      // 3. Client Data (Valid only)
+      if (group !== '취소/노쇼' && group !== '기타' && (c === 'HH' || c === 'LH' || c === 'AN')) {
         validCount++;
         const client = rec.client;
         if (!clientCountMap[client]) {
@@ -138,11 +144,11 @@ export default function AdminDashboardPage() {
 
       <div className="admin-stats-row">
         <div className="admin-stat-card">
-          <div className="stat-label">Total Records</div>
-          <div className="stat-value">{records.length}</div>
+          <div className="stat-label">Total Records (April)</div>
+          <div className="stat-value">{statusData.reduce((sum, curr) => sum + Object.values(curr).filter(v => typeof v === 'number').reduce((a,b)=>a+b, 0), 0)}</div>
         </div>
         <div className="admin-stat-card">
-          <div className="stat-label">Valid Campaigns</div>
+          <div className="stat-label">Valid Campaigns (April)</div>
           <div className="stat-value highlight">{totalValid}</div>
         </div>
       </div>
@@ -150,17 +156,17 @@ export default function AdminDashboardPage() {
       <div className="admin-charts-container">
         {/* Chart 1: Status by Coordinator */}
         <div className="admin-chart-card">
-          <h2>Overall Status by Coordinator</h2>
+          <h2>Overall Status by Coordinator (April 2026)</h2>
           <div className="admin-chart-wrapper">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={statusData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
-                <XAxis dataKey="name" stroke="#9ca3af" tick={{ fill: '#9ca3af' }} />
-                <YAxis stroke="#9ca3af" tick={{ fill: '#9ca3af' }} />
+              <BarChart data={statusData} layout="vertical" margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" horizontal={true} vertical={false} />
+                <XAxis type="number" stroke="#9ca3af" tick={{ fill: '#9ca3af' }} />
+                <YAxis dataKey="name" type="category" stroke="#9ca3af" tick={{ fill: '#9ca3af' }} width={40} />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                {Object.keys(STATUS_COLORS).map(group => (
-                  <Bar key={group} dataKey={group} stackId="a" fill={STATUS_COLORS[group]} radius={[group === '취소/노쇼' ? 4 : 0, group === '취소/노쇼' ? 4 : 0, 0, 0]} />
+                {STATUS_ORDER.map(group => (
+                  <Bar key={group} dataKey={group} stackId="a" fill={STATUS_COLORS[group]} />
                 ))}
               </BarChart>
             </ResponsiveContainer>
