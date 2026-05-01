@@ -88,6 +88,20 @@ function ClientTooltip({ active, payload, label }) {
   );
 }
 
+// ─── 커스텀 범례 (순서 고정) ────────────────────────────────
+function CustomLegend({ items }) {
+  return (
+    <div className="adm-custom-legend">
+      {items.map(({ label, color }) => (
+        <span key={label} className="adm-legend-item">
+          <span className="adm-legend-dot" style={{ background: color }} />
+          {label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 // ─── 담당자 차트 오른쪽 합계 라벨 ───────────────────────────
 function TotalLabel({ x, y, width, height, value }) {
   if (!value) return null;
@@ -278,13 +292,6 @@ export default function AdminDashboardPage() {
                 <YAxis dataKey="name" type="category" stroke="transparent"
                   tick={{ fill: '#e5e7eb', fontSize: 15, fontWeight: 700 }} width={38} />
                 <Tooltip content={<StatusTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-                <Legend
-                  iconType="square" iconSize={10}
-                  wrapperStyle={{ paddingTop: 14, fontSize: 12, color: '#9ca3af' }}
-                  payload={STATUS_ORDER.map(group => ({
-                    value: group, type: 'square', color: STATUS_COLORS[group],
-                  }))}
-                />
                 {STATUS_ORDER.map(group => (
                   <Bar key={group} dataKey={group} stackId="a" fill={STATUS_COLORS[group]}>
                     {group === '기타' && (
@@ -294,6 +301,7 @@ export default function AdminDashboardPage() {
                 ))}
               </BarChart>
             </ResponsiveContainer>
+            <CustomLegend items={STATUS_ORDER.map(g => ({ label: g, color: STATUS_COLORS[g] }))} />
           </div>
 
           {/* Chart 2: 고객사별 실적 */}

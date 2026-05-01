@@ -131,9 +131,35 @@
   max-height: 750px;
 }
 
-/* recharts Y축 tick 2줄 대응: 줄 높이 확보 */
+/* recharts Y축 tick 2줄 대응 */
 .adm-chart-card--scroll .recharts-cartesian-axis-tick {
   dominant-baseline: central;
+}
+
+/* 커스텀 범례 */
+.adm-custom-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 18px;
+  padding: 14px 0 4px;
+}
+
+.adm-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+.adm-legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
 }
 
 /* ─── Custom Tooltip ────────────────────────────────────── */
