@@ -1,74 +1,90 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, LabelList, Cell
 } from 'recharts';
 import './AdminDashboardPage.css';
 
-const STATUS_GROUPS = {
-  '예약확정': ['예약확정', '改时间', '인플'],
-  '촬영완료': ['촬영완료'],
-  '업로드완료': ['업로드대기', '업로드완료', '송부완료', '배포완료'],
-  '취소/노쇼': ['취소_방문자', '취소_고객사', '노쇼', '예약취소', '예약반려'],
-};
+// ─── 체험단 유형 목록 ────────────────────────────────────────
+const EXP_TYPES = ['체험', '체험단', '기자→체험'];
 
-const STATUS_COLORS = {
-  '예약확정': '#3b82f6',
-  '촬영완료': '#10b981',
-  '업로드완료': '#8b5cf6',
-  '취소/노쇼': '#ef4444',
-  '기타': '#6b7280'
-};
-
+// ─── 상태 그룹 (사용자 요청 순서 기준) ──────────────────────
 const STATUS_ORDER = ['예약확정', '촬영완료', '업로드완료', '취소/노쇼', '기타'];
+const STATUS_GROUPS = {
+  '예약확정':   ['예약확정', '改时间', '인플', '예약요청', '변경요청', '긴급예약'],
+  '촬영완료':   ['촬영완료'],
+  '업로드완료': ['업로드대기', '업로드완료', '송부완료', '배포완료'],
+  '취소/노쇼':  ['취소_방문자', '취소_고객사', '노쇼', '예약취소', '예약반려'],
+};
+const STATUS_COLORS = {
+  '예약확정':   '#3b82f6',
+  '촬영완료':   '#10b981',
+  '업로드완료': '#7c3aed',
+  '취소/노쇼':  '#ef4444',
+  '기타':       '#4b5563',
+};
 
+// ─── 담당자 색상 ─────────────────────────────────────────────
 const COORD_COLORS = {
   'HH': '#7c3aed',
   'LH': '#ec4899',
   'AN': '#14b8a6',
-  '기타': '#6b7280'
 };
 
 function getStatusGroup(status) {
-  for (const [group, statuses] of Object.entries(STATUS_GROUPS)) {
-    if (statuses.includes(status)) return group;
+  for (const [group, list] of Object.entries(STATUS_GROUPS)) {
+    if (list.includes(status)) return group;
   }
   return '기타';
 }
 
+// ─── 커스텀 툴팁 ─────────────────────────────────────────────
 function CustomTooltip({ active, payload, label }) {
-  if (active && payload && payload.length) {
-    let total = 0;
-    payload.forEach(entry => total += entry.value);
-
-    return (
-      <div className="admin-tooltip">
-        <h4>{label}</h4>
-        {payload.map((entry, index) => (
-          <div key={`item-${index}`} className="admin-tooltip-item">
-            <span className="admin-tooltip-color" style={{ backgroundColor: entry.color }}></span>
-            <span className="admin-tooltip-name">{entry.name}</span>
-            <span className="admin-tooltip-value">{entry.value}</span>
-          </div>
-        ))}
-        <div className="admin-tooltip-total">
-          <span>Total:</span>
-          <span>{total}</span>
+  if (!active || !payload?.length) return null;
+  const total = payload.reduce((s, e) => s + (e.value || 0), 0);
+  return (
+    <div className="adm-tooltip">
+      <div className="adm-tooltip-label">{label}</div>
+      {payload.map((entry, i) => (
+        <div key={i} className="adm-tooltip-row">
+          <span className="adm-tooltip-dot" style={{ background: entry.color }} />
+          <span className="adm-tooltip-name">{entry.name}</span>
+          <span className="adm-tooltip-val">{entry.value}</span>
         </div>
-      </div>
-    );
-  }
-  return null;
+      ))}
+      <div className="adm-tooltip-total"><span>합계</span><span>{total}</span></div>
+    </div>
+  );
 }
 
+// ─── 커스텀 라벨 (막대 오른쪽 끝에 합계 표시) ───────────────
+function TotalLabel(props) {
+  const { x, y, width, height, value } = props;
+  if (!value) return null;
+  return (
+    <text
+      x={x + width + 8}
+      y={y + height / 2}
+      dy={4}
+      fill="#e5e7eb"
+      fontSize={13}
+      fontWeight={600}
+    >
+      {value}
+    </text>
+  );
+}
+
+// ─── Main ────────────────────────────────────────────────────
 export default function AdminDashboardPage() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedMonth, setSelectedMonth] = useState('all');
 
   useEffect(() => {
     fetch('/api/admin-dashboard')
-      .then(res => res.json())
+      .then(r => r.json())
       .then(data => {
         if (data.error) throw new Error(data.error);
         setRecords(data.records || []);
@@ -77,127 +93,182 @@ export default function AdminDashboardPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // ─── Data Processing ────────────────────────────────────────
+  // 사용 가능한 월 목록 자동 생성
+  const availableMonths = useMemo(() => {
+    const monthSet = new Set();
+    records.forEach(r => {
+      const m = r.month || r.linkedMonth;
+      if (m) monthSet.add(m);
+    });
+    return ['all', ...Array.from(monthSet).sort()];
+  }, [records]);
 
-  const { statusData, clientData, totalValid } = useMemo(() => {
-    if (!records.length) return { statusData: [], clientData: [], totalValid: 0 };
+  // ─── 데이터 처리 ─────────────────────────────────────────
+  const { statusData, clientData } = useMemo(() => {
+    if (!records.length) return { statusData: [], clientData: [] };
 
-    console.log("Total records fetched:", records.length);
-    console.log("Sample record:", records[0]);
-
-    // 1. Filter records by month (e.g., '2604' for April)
-    const currentMonth = '2604'; 
-    let monthRecords = records.filter(r => String(r.month).includes(currentMonth) || String(r.linkedMonth).includes(currentMonth));
-    console.log("Records after month filter:", monthRecords.length);
-    
-    // 만약 2604(4월) 데이터가 없다면(혹은 정산월 필드명이 다르면) 임시로 전체 데이터를 보여줍니다.
-    if (monthRecords.length === 0) {
-      monthRecords = records;
+    // 1. 체험단 유형만 필터
+    let filtered = records.filter(r => EXP_TYPES.includes(r.type) || r.type === '');
+    // 유형 필드가 빈 경우를 대비해: 유형 데이터가 전혀 없으면 전체 사용
+    const hasType = records.some(r => r.type);
+    if (hasType) {
+      filtered = records.filter(r => EXP_TYPES.includes(r.type));
     }
 
-    // 2. Coordinator Status Data
-    const coordMap = { HH: {}, LH: {}, AN: {} };
-    Object.keys(coordMap).forEach(c => {
+    // 2. 월 필터
+    if (selectedMonth !== 'all') {
+      filtered = filtered.filter(r =>
+        String(r.month).includes(selectedMonth) ||
+        String(r.linkedMonth).includes(selectedMonth)
+      );
+    }
+
+    // 3. 담당자별 상태 집계
+    const coordMap = {};
+    ['HH', 'LH', 'AN'].forEach(c => {
+      coordMap[c] = {};
       STATUS_ORDER.forEach(sg => coordMap[c][sg] = 0);
+      coordMap[c]['__total'] = 0;
     });
 
-    let validCount = 0;
     const clientCountMap = {};
 
-    monthRecords.forEach(rec => {
+    filtered.forEach(rec => {
       const c = rec.coordinator;
       const group = getStatusGroup(rec.status);
-      
-      if (coordMap[c] !== undefined) {
-        coordMap[c][group] = (coordMap[c][group] || 0) + 1;
-      }
+      if (!coordMap[c]) return;
 
-      // 3. Client Data (Valid only)
-      if (group !== '취소/노쇼' && group !== '기타' && (c === 'HH' || c === 'LH' || c === 'AN')) {
-        validCount++;
-        const client = rec.client;
+      coordMap[c][group]++;
+      coordMap[c]['__total']++;
+
+      // 고객사 집계 (취소/노쇼 제외)
+      if (group !== '취소/노쇼' && group !== '기타') {
+        const client = rec.client || 'Unknown';
         if (!clientCountMap[client]) {
           clientCountMap[client] = { name: client, HH: 0, LH: 0, AN: 0, total: 0 };
         }
-        clientCountMap[client][c]++;
+        clientCountMap[client][c] = (clientCountMap[client][c] || 0) + 1;
         clientCountMap[client].total++;
       }
     });
 
-    const statusDataArray = Object.keys(coordMap).map(coord => ({
+    const statusDataArray = ['HH', 'LH', 'AN'].map(coord => ({
       name: coord,
-      ...coordMap[coord]
+      ...Object.fromEntries(STATUS_ORDER.map(sg => [sg, coordMap[coord][sg]])),
+      __total: coordMap[coord]['__total'],
     }));
 
-    // Sort clients by total and take top 15
+    // 전체 고객사, 총합 내림차순 정렬
     const clientDataArray = Object.values(clientCountMap)
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 15);
+      .sort((a, b) => b.total - a.total);
 
-    return { statusData: statusDataArray, clientData: clientDataArray, totalValid: validCount };
-  }, [records]);
+    return { statusData: statusDataArray, clientData: clientDataArray };
+  }, [records, selectedMonth]);
 
+  if (loading) return (
+    <div className="adm-page">
+      <div className="adm-loading">
+        <div className="adm-spinner" />
+        <p>데이터 로딩 중...</p>
+      </div>
+    </div>
+  );
 
-  if (loading) return <div className="admin-loading">Loading Dashboard Data...</div>;
-  if (error) return <div className="admin-error">Error: {error}</div>;
+  if (error) return (
+    <div className="adm-page">
+      <div className="adm-error">⚠️ {error}</div>
+    </div>
+  );
+
+  const monthLabel = selectedMonth === 'all' ? '전체' : selectedMonth;
 
   return (
-    <div className="admin-dashboard">
-      <div className="admin-header">
-        <div className="admin-logo"><span className="admin-logo-dot" /> TAM KOREA</div>
-        <h1>Coordinator Performance</h1>
-        <p>Real-time overview of HH, LH, AN activity</p>
+    <div className="adm-page">
+      {/* 헤더 */}
+      <header className="adm-header">
+        <div className="adm-logo"><span className="adm-logo-dot" /> TAM KOREA</div>
+        <h1>담당자별 실적 현황</h1>
+        <p>체험단 기준 · HH / LH / AN</p>
+      </header>
+
+      {/* 월 선택 필터 */}
+      <div className="adm-filter-bar">
+        {availableMonths.map(m => (
+          <button
+            key={m}
+            className={`adm-filter-btn ${selectedMonth === m ? 'active' : ''}`}
+            onClick={() => setSelectedMonth(m)}
+          >
+            {m === 'all' ? '전체' : m}
+          </button>
+        ))}
       </div>
 
-      <div className="admin-stats-row">
-        <div className="admin-stat-card">
-          <div className="stat-label">Total Records (April)</div>
-          <div className="stat-value">{statusData.reduce((sum, curr) => sum + Object.values(curr).filter(v => typeof v === 'number').reduce((a,b)=>a+b, 0), 0)}</div>
-        </div>
-        <div className="admin-stat-card">
-          <div className="stat-label">Valid Campaigns (April)</div>
-          <div className="stat-value highlight">{totalValid}</div>
-        </div>
+      <div className="adm-section-label">📊 담당자별 상태 현황 ({monthLabel})</div>
+
+      {/* Chart 1: 담당자별 상태 (가로 누적 막대) */}
+      <div className="adm-chart-card">
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart
+            data={statusData}
+            layout="vertical"
+            margin={{ top: 8, right: 80, left: 10, bottom: 8 }}
+            barSize={32}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" horizontal={false} />
+            <XAxis type="number" stroke="#4b5563" tick={{ fill: '#9ca3af', fontSize: 12 }} />
+            <YAxis
+              dataKey="name"
+              type="category"
+              stroke="transparent"
+              tick={{ fill: '#e5e7eb', fontSize: 14, fontWeight: 600 }}
+              width={40}
+            />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+            <Legend
+              wrapperStyle={{ paddingTop: 16, fontSize: 12, color: '#9ca3af' }}
+            />
+            {STATUS_ORDER.map((group, idx) => (
+              <Bar key={group} dataKey={group} stackId="a" fill={STATUS_COLORS[group]}>
+                {/* 마지막 세그먼트에만 합계 라벨 */}
+                {group === STATUS_ORDER[STATUS_ORDER.length - 1] && (
+                  <LabelList dataKey="__total" content={<TotalLabel />} />
+                )}
+              </Bar>
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
-      <div className="admin-charts-container">
-        {/* Chart 1: Status by Coordinator */}
-        <div className="admin-chart-card">
-          <h2>Overall Status by Coordinator (April 2026)</h2>
-          <div className="admin-chart-wrapper">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={statusData} layout="vertical" margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" horizontal={true} vertical={false} />
-                <XAxis type="number" stroke="#9ca3af" tick={{ fill: '#9ca3af' }} />
-                <YAxis dataKey="name" type="category" stroke="#9ca3af" tick={{ fill: '#9ca3af' }} width={40} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                {STATUS_ORDER.map(group => (
-                  <Bar key={group} dataKey={group} stackId="a" fill={STATUS_COLORS[group]} />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+      <div className="adm-section-label">🏢 고객사별 실적 ({monthLabel} · 취소/노쇼 제외)</div>
 
-        {/* Chart 2: Top Clients */}
-        <div className="admin-chart-card">
-          <h2>Top 15 Clients by Valid Campaigns</h2>
-          <div className="admin-chart-wrapper" style={{ height: '500px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={clientData} layout="vertical" margin={{ top: 5, right: 30, left: 80, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" horizontal={true} vertical={false} />
-                <XAxis type="number" stroke="#9ca3af" tick={{ fill: '#9ca3af' }} />
-                <YAxis dataKey="name" type="category" stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 12 }} width={120} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{ paddingTop: '10px' }} />
-                <Bar dataKey="HH" stackId="a" fill={COORD_COLORS['HH']} />
-                <Bar dataKey="LH" stackId="a" fill={COORD_COLORS['LH']} />
-                <Bar dataKey="AN" stackId="a" fill={COORD_COLORS['AN']} radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+      {/* Chart 2: 고객사별 실적 (전체, 가로 누적) */}
+      <div className="adm-chart-card">
+        <ResponsiveContainer width="100%" height={Math.max(300, clientData.length * 28 + 60)}>
+          <BarChart
+            data={clientData}
+            layout="vertical"
+            margin={{ top: 8, right: 60, left: 16, bottom: 8 }}
+            barSize={16}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" horizontal={false} />
+            <XAxis type="number" stroke="#4b5563" tick={{ fill: '#9ca3af', fontSize: 12 }} />
+            <YAxis
+              dataKey="name"
+              type="category"
+              stroke="transparent"
+              tick={{ fill: '#d1d5db', fontSize: 11 }}
+              width={160}
+            />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+            <Legend wrapperStyle={{ paddingTop: 16, fontSize: 12, color: '#9ca3af' }} />
+            <Bar dataKey="HH" stackId="a" fill={COORD_COLORS['HH']} name="HH" />
+            <Bar dataKey="LH" stackId="a" fill={COORD_COLORS['LH']} name="LH" />
+            <Bar dataKey="AN" stackId="a" fill={COORD_COLORS['AN']} name="AN">
+              <LabelList dataKey="total" position="right" style={{ fill: '#9ca3af', fontSize: 11 }} />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );

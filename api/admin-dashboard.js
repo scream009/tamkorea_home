@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     const table = '진행_DB_OLD';
     // Only fetch records for the main coordinators. We could also just fetch all and filter in frontend.
     const formula = "OR({예약_ID}='HH', {예약_ID}='LH', {예약_ID}='AN')";
-    const fields = ['예약_ID', '진행상태', '고객명', '중문명 Rollup (from 매장코드)', '귀속 정산월', '정산월'];
+    const fields = ['예약_ID', '진행상태', '고객명', '중문명 Rollup (from 매장코드)', '귀속 정산월', '정산월', '유형'];
     
     let allRecords = [];
     let offset = '';
@@ -64,6 +64,7 @@ export default async function handler(req, res) {
         coordinator: f['예약_ID'] || 'Unknown',
         status: f['진행상태'] || '상태없음',
         client: clientName || 'Unknown',
+        type: f['유형'] || '',
         month: Array.isArray(f['정산월']) ? f['정산월'][0] : f['정산월'] || '',
         linkedMonth: Array.isArray(f['귀속 정산월']) ? f['귀속 정산월'][0] : f['귀속 정산월'] || '',
       };
