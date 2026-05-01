@@ -298,7 +298,8 @@ export default function AdminDashboardPage() {
                 <Tooltip content={<StatusTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
                 {STATUS_ORDER.map(group => (
                   <Bar key={group} dataKey={group} stackId="a" fill={STATUS_COLORS[group]}>
-                    <LabelList dataKey="__total" content={(props) => {
+                    {/* dataKey를 __total 대신 group으로 설정하여 Recharts가 값을 인식하고 content 함수를 무조건 호출하도록 강제 */}
+                    <LabelList dataKey={group} content={(props) => {
                       const { index, x, y, width, height } = props;
                       if (x == null || y == null || width == null) return null;
                       
