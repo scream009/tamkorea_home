@@ -236,7 +236,11 @@ export default function AdminDashboardPage() {
         total: d.total,
         __target: d.__target,
       }))
-      .sort((a, b) => b.total - a.total);
+      .sort((a, b) => {
+        // 목표수량 내림차순, 목표 없는 항목은 실적 내림차순으로 맨 뒤
+        if (b.__target !== a.__target) return b.__target - a.__target;
+        return b.total - a.total;
+      });
 
     return { statusData: statusDataArray, clientData: clientDataArray };
   }, [records, targetMap]);
