@@ -218,35 +218,43 @@ export default function AdminDashboardPage() {
       }
     });
 
-    // 4. Campaign_DB 목표수량 매핑 (한국어 고객사명 기준)
+    // 4. Campaign_DB 목표수량 매핑
+    //    특정 월이 선택된 경우에만 목표 표시 (전체 뷰에서는 다월 합산 방지)
     const campaignMonthText = selectedMonth !== 'all' ? MONTH_MAP[selectedMonth] : null;
 
-    Object.entries(targetMap).forEach(([key, entries]) => {
-      const relevant = campaignMonthText
-        ? entries.filter(e => e.month === campaignMonthText)
-        : entries;
-      if (!relevant.length) return;
+    if (campaignMonthText) {
+      Object.entries(targetMap).forEach(([key, entries]) => {
+        // 선택된 달의 목표만 사용
+        const relevant = entries.filter(e => e.month === campaignMonthText);
+        if (!relevant.length) return;
 
-      const totalTarget = relevant.reduce((s, e) => s + (e.target || 0), 0);
-      if (totalTarget === 0) return;
+        const totalTarget = relevant.reduce((s, e) => s + (e.target || 0), 0);
+        if (totalTarget === 0) return;
 
-      // key = "\uace0\uac1d\uc0ac\uba85__\uc9c0\uc810\uba85" 또\ub294 "\uace0\uac1d\uc0ac\uba85"
-      const [clientKr, branchKr] = key.split('__');
+        // key = "고객사명__지점명" 또는 "고객사명"
+        const [clientKr, branchKr] = key.split('__');
 
-      // clientCountMap의 key는 "\uace0\uac1d\uc0ac\uba85 \uc9c0\uc810\uba85" 형\ud0dc
-      Object.keys(clientCountMap).forEach(displayKey => {
-        const d = clientCountMap[displayKey];
-        const nameMatch  = d.clientName === clientKr || d.clientName?.includes(clientKr) || clientKr?.includes(d.clientName);
-        const branchMatch = !branchKr || !d.branchName ||
-          d.branchName === branchKr ||
-          d.branchName?.includes(branchKr) ||
-          branchKr?.includes(d.branchName);
+        Object.keys(clientCountMap).forEach(displayKey => {
+          const d = clientCountMap[displayKey];
 
-        if (nameMatch && branchMatch) {
-          d.__target = Math.max(d.__target, totalTarget);
-        }
+          // 고객사명: 완전 일치 우선, 부분 포함 허용
+          const nameMatch =
+            d.clientName === clientKr ||
+            d.clientName?.includes(clientKr) ||
+            clientKr?.includes(d.clientName);
+
+          // 지점명: 완전 일치만 허용 (substring 매칭 금지 → 오작동 방지)
+          const branchMatch =
+            !branchKr ||                        // Campaign_DB에 지점명 없으면 무조건 통과
+            !d.branchName ||                    // 진행_DB에 지점명 없으면 무조건 통과
+            d.branchName === branchKr;          // 완전 일치만
+
+          if (nameMatch && branchMatch) {
+            d.__target = Math.max(d.__target, totalTarget);
+          }
+        });
       });
-    });
+    }
 
     const statusDataArray = ['HH', 'LH', 'AN'].map(coord => ({
       name: coord,
