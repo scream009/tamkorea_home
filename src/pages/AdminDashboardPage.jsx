@@ -288,44 +288,52 @@ export default function AdminDashboardPage() {
             {selectedLabel} 담당자별 상태 현황
           </div>
           <div className="adm-chart-card">
-            <ResponsiveContainer width="100%" height={210}>
-              <BarChart data={statusData} layout="vertical"
-                margin={{ top: 8, right: 80, left: 10, bottom: 8 }} barSize={30}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
-                <XAxis type="number" stroke="#374151" tick={{ fill: '#6b7280', fontSize: 12 }} />
-                <YAxis dataKey="name" type="category" stroke="transparent"
-                  tick={{ fill: '#e5e7eb', fontSize: 15, fontWeight: 700 }} width={38} />
-                <Tooltip content={<StatusTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-                {STATUS_ORDER.map(group => (
-                  <Bar key={group} dataKey={group} stackId="a" fill={STATUS_COLORS[group]}>
-                    {/* 각 row에서 마지막 비어있지 않은 세그먼트에만 합계 표시 */}
-                    <LabelList dataKey="__total" content={(props) => {
-                      const { index, x, y, width, height, value } = props;
-                      if (!value) return null;
-                      const row = statusData[index];
-                      if (!row) return null;
-                      // 현재 group이 이 row의 마지막 비어있지 않은 세그먼트인지 확인
-                      let lastNonZero = '예약확정';
-                      for (let i = STATUS_ORDER.length - 1; i >= 0; i--) {
-                        if (row[STATUS_ORDER[i]] > 0) {
-                          lastNonZero = STATUS_ORDER[i];
-                          break;
-                        }
-                      }
-                      if (group !== lastNonZero) return null;
-                      return (
-                        <text x={x + width + 8} y={y + height / 2 + 4}
-                          fill="#e5e7eb" fontSize={13} fontWeight={600}>
-                          {value}
-                        </text>
-                      );
-                    }} />
-                  </Bar>
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
+            {/* chart + 합계 숫자를 relative 컨테이너로 묶어 HTML 오버레이 */}
+            <div style={{ position: 'relative' }}>
+              <ResponsiveContainer width="100%" height={210}>
+                <BarChart data={statusData} layout="vertical"
+                  margin={{ top: 8, right: 80, left: 10, bottom: 8 }} barSize={30}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
+                  <XAxis type="number" stroke="#374151" tick={{ fill: '#6b7280', fontSize: 12 }} />
+                  <YAxis dataKey="name" type="category" stroke="transparent"
+                    tick={{ fill: '#e5e7eb', fontSize: 15, fontWeight: 700 }} width={38} />
+                  <Tooltip content={<StatusTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+                  {STATUS_ORDER.map(group => (
+                    <Bar key={group} dataKey={group} stackId="a" fill={STATUS_COLORS[group]} />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+
+              {/* HTML 합계 오버레이: chart 오른쪽 여백(80px)에 각 bar row 중앙 정렬 */}
+              {/* height=210, margin top=8, bottom=8 → inner=194px, 3 rows each ≈64.7px */}
+              <div style={{
+                position: 'absolute', top: 0, right: 0,
+                width: 72, height: 210,
+                pointerEvents: 'none',
+              }}>
+                {statusData.map((d, i) => {
+                  const innerH = 194; // 210 - 8(top) - 8(bottom)
+                  const rowH = innerH / 3;
+                  const centerY = 8 + i * rowH + rowH / 2; // px from top
+                  return (
+                    <div key={d.name} style={{
+                      position: 'absolute',
+                      top: centerY - 10, // vertically center 20px text
+                      left: 8,
+                      color: '#e5e7eb',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      lineHeight: '20px',
+                    }}>
+                      {d.__total}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
             <CustomLegend items={STATUS_ORDER.map(g => ({ label: g, color: STATUS_COLORS[g] }))} />
           </div>
+
 
           {/* Chart 2: 고객사별 실적 */}
           <div className="adm-section-label">
