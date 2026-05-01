@@ -82,11 +82,18 @@ export default function AdminDashboardPage() {
   const { statusData, clientData, totalValid } = useMemo(() => {
     if (!records.length) return { statusData: [], clientData: [], totalValid: 0 };
 
+    console.log("Total records fetched:", records.length);
+    console.log("Sample record:", records[0]);
+
     // 1. Filter records by month (e.g., '2604' for April)
-    const currentMonth = '2604'; // TODO: Make this dynamic via dropdown if needed
-    const filteredRecords = records.filter(r => r.month === currentMonth || r.linkedMonth === 'rec... (or we just rely on month text if available, for now checking string "2604")');
-    // Actually, just checking substring or exact match.
-    const monthRecords = records.filter(r => r.month === currentMonth);
+    const currentMonth = '2604'; 
+    let monthRecords = records.filter(r => String(r.month).includes(currentMonth) || String(r.linkedMonth).includes(currentMonth));
+    console.log("Records after month filter:", monthRecords.length);
+    
+    // 만약 2604(4월) 데이터가 없다면(혹은 정산월 필드명이 다르면) 임시로 전체 데이터를 보여줍니다.
+    if (monthRecords.length === 0) {
+      monthRecords = records;
+    }
 
     // 2. Coordinator Status Data
     const coordMap = { HH: {}, LH: {}, AN: {} };

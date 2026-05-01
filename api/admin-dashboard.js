@@ -64,7 +64,7 @@ export default async function handler(req, res) {
         coordinator: f['예약_ID'] || 'Unknown',
         status: f['진행상태'] || '상태없음',
         client: clientName || 'Unknown',
-        month: f['정산월'] || '',
+        month: Array.isArray(f['정산월']) ? f['정산월'][0] : f['정산월'] || '',
         linkedMonth: Array.isArray(f['귀속 정산월']) ? f['귀속 정산월'][0] : f['귀속 정산월'] || '',
       };
     });
