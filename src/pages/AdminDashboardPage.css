@@ -126,7 +126,12 @@
 
 .adm-chart-card--scroll {
   overflow-y: auto;
-  max-height: 700px;
+  max-height: 750px;
+}
+
+/* recharts Y축 tick 2줄 대응: 줄 높이 확보 */
+.adm-chart-card--scroll .recharts-cartesian-axis-tick {
+  dominant-baseline: central;
 }
 
 /* ─── Custom Tooltip ────────────────────────────────────── */
