@@ -297,30 +297,32 @@ export default function AdminDashboardPage() {
                   tick={{ fill: '#e5e7eb', fontSize: 15, fontWeight: 700 }} width={38} />
                 <Tooltip content={<StatusTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
                 {STATUS_ORDER.map(group => (
-                  <Bar key={group} dataKey={group} stackId="a" fill={STATUS_COLORS[group]} />
+                  <Bar key={group} dataKey={group} stackId="a" fill={STATUS_COLORS[group]}>
+                    <LabelList dataKey="__total" content={(props) => {
+                      const { index, x, y, width, height, value } = props;
+                      if (!value) return null;
+                      const row = statusData[index];
+                      if (!row) return null;
+                      
+                      let lastNonZero = null;
+                      for (let i = STATUS_ORDER.length - 1; i >= 0; i--) {
+                        if (row[STATUS_ORDER[i]] > 0) {
+                          lastNonZero = STATUS_ORDER[i];
+                          break;
+                        }
+                      }
+                      if (group !== lastNonZero) return null;
+
+                      return (
+                        <text x={x + width + 8} y={y + height / 2}
+                          fill="#e5e7eb" fontSize={13} fontWeight={600}
+                          dominantBaseline="central">
+                          {value}
+                        </text>
+                      );
+                    }} />
+                  </Bar>
                 ))}
-                {/* Recharts Customized: 실제 yAxis scale로 정확한 위치에 합계 렌더 */}
-                <Customized component={({ yAxisMap, xAxisMap, offset }) => {
-                  const yAxis = yAxisMap && yAxisMap[Object.keys(yAxisMap)[0]];
-                  const xAxis = xAxisMap && xAxisMap[Object.keys(xAxisMap)[0]];
-                  if (!yAxis || !xAxis) return null;
-                  return (
-                    <g>
-                      {statusData.map(d => {
-                        const barCenterY = yAxis.scale(d.name) + yAxis.bandwidth / 2;
-                        const barEndX = xAxis.scale(d.__total) + offset.left;
-                        return (
-                          <text key={d.name}
-                            x={barEndX + 10}
-                            y={barCenterY + 5}
-                            fill="#e5e7eb" fontSize={13} fontWeight={600}>
-                            {d.__total}
-                          </text>
-                        );
-                      })}
-                    </g>
-                  );
-                }} />
               </BarChart>
             </ResponsiveContainer>
             <CustomLegend items={STATUS_ORDER.map(g => ({ label: g, color: STATUS_COLORS[g] }))} />
