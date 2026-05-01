@@ -297,14 +297,31 @@ export default function AdminDashboardPage() {
                   tick={{ fill: '#e5e7eb', fontSize: 15, fontWeight: 700 }} width={38} />
                 <Tooltip content={<StatusTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
                 {STATUS_ORDER.map(group => (
-                  <Bar key={group} dataKey={group} stackId="a" fill={STATUS_COLORS[group]} />
+                  <Bar key={group} dataKey={group} stackId="a" fill={STATUS_COLORS[group]}>
+                    {/* 각 row에서 마지막 비어있지 않은 세그먼트에만 합계 표시 */}
+                    <LabelList dataKey="__total" content={(props) => {
+                      const { index, x, y, width, height, value } = props;
+                      if (!value) return null;
+                      const row = statusData[index];
+                      if (!row) return null;
+                      // 현재 group이 이 row의 마지막 비어있지 않은 세그먼트인지 확인
+                      let lastNonZero = '예약확정';
+                      for (let i = STATUS_ORDER.length - 1; i >= 0; i--) {
+                        if (row[STATUS_ORDER[i]] > 0) {
+                          lastNonZero = STATUS_ORDER[i];
+                          break;
+                        }
+                      }
+                      if (group !== lastNonZero) return null;
+                      return (
+                        <text x={x + width + 8} y={y + height / 2 + 4}
+                          fill="#e5e7eb" fontSize={13} fontWeight={600}>
+                          {value}
+                        </text>
+                      );
+                    }} />
+                  </Bar>
                 ))}
-                {/* 투명 Bar로 합계 라벨만 표시 — 기타=0 이어도 항상 렌더링 */}
-                <Bar dataKey="__total" stackId="label" fill="transparent"
-                  legendType="none" barSize={0} isAnimationActive={false}>
-                  <LabelList position="right"
-                    style={{ fill: '#e5e7eb', fontSize: 13, fontWeight: 600 }} />
-                </Bar>
               </BarChart>
             </ResponsiveContainer>
             <CustomLegend items={STATUS_ORDER.map(g => ({ label: g, color: STATUS_COLORS[g] }))} />
