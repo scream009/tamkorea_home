@@ -191,6 +191,16 @@
 }
 
 /* ─── Loading / Error ───────────────────────────────────── */
+.adm-loading-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 80px 0;
+  color: var(--adm-sub);
+  font-size: 15px;
+}
+
 .adm-loading, .adm-error {
   display: flex;
   flex-direction: column;

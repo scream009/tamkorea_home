@@ -25,15 +25,11 @@ const STATUS_COLORS = {
 };
 const COORD_COLORS = { HH: '#7c3aed', LH: '#ec4899', AN: '#14b8a6' };
 
-// 정산월 코드(2604) ↔ 계약월 텍스트(2026. 4월) 양방향 매핑
-const MONTH_MAP = {
-  '2601': '2026. 1월', '2602': '2026. 2월', '2603': '2026. 3월',
-  '2604': '2026. 4월', '2605': '2026. 5월', '2606': '2026. 6월',
-  '2607': '2026. 7월', '2608': '2026. 8월', '2609': '2026. 9월',
-  '2610': '2026. 10월', '2611': '2026. 11월', '2612': '2026. 12월',
-};
-// 역방향: "2026. 4월" → "2604"
-const MONTH_REVERSE = Object.fromEntries(Object.entries(MONTH_MAP).map(([k, v]) => [v, k]));
+// 월 선택 옵션 (추후 추가 가능)
+const MONTH_OPTIONS = [
+  { code: '2603', label: '3월' },
+  { code: '2604', label: '4월' },
+];
 
 function getStatusGroup(status) {
   for (const [group, list] of Object.entries(STATUS_GROUPS)) {
@@ -42,7 +38,7 @@ function getStatusGroup(status) {
   return '기타';
 }
 
-// ─── Custom Tooltip (담당자 차트) ────────────────────────────
+// ─── Tooltip: 담당자 차트 ────────────────────────────────────
 function StatusTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   const total = payload.reduce((s, e) => s + (e.value || 0), 0);
@@ -61,14 +57,15 @@ function StatusTooltip({ active, payload, label }) {
   );
 }
 
-// ─── Custom Tooltip (고객사 차트) ────────────────────────────
+// ─── Tooltip: 고객사 차트 ────────────────────────────────────
 function ClientTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   const totalDone = payload.reduce((s, e) => s + (e.value || 0), 0);
   const target = payload[0]?.payload?.__target || 0;
+  const [name] = (label || '').split('||');
   return (
     <div className="adm-tooltip">
-      <div className="adm-tooltip-label">{label}</div>
+      <div className="adm-tooltip-label">{name}</div>
       {payload.map((e, i) => (
         <div key={i} className="adm-tooltip-row">
           <span className="adm-tooltip-dot" style={{ background: e.color }} />
@@ -91,7 +88,7 @@ function ClientTooltip({ active, payload, label }) {
   );
 }
 
-// ─── Total label on bar right ─────────────────────────────────
+// ─── 담당자 차트 오른쪽 합계 라벨 ───────────────────────────
 function TotalLabel({ x, y, width, height, value }) {
   if (!value) return null;
   return (
@@ -102,32 +99,20 @@ function TotalLabel({ x, y, width, height, value }) {
   );
 }
 
-// ─── 고객사 Y축 커스텀 Tick: "고객사명  (목표: N)" ─────────────
+// ─── Y축 커스텀 Tick: 고객사명 + 목표수량 ───────────────────
 function ClientYTick({ x, y, payload }) {
-  const [name, targetStr] = (payload.value || '').split('||');
+  const raw = payload.value || '';
+  const [name, targetStr] = raw.split('||');
   const target = Number(targetStr || 0);
   return (
     <g>
-      {/* 고객사명 */}
-      <text
-        x={x - 6}
-        y={y + 4}
-        textAnchor="end"
-        fill="#d1d5db"
-        fontSize={11}
-      >
+      <text x={x - 6} y={y + (target > 0 ? 1 : 4)}
+        textAnchor="end" fill="#d1d5db" fontSize={11}>
         {name}
       </text>
-      {/* 목표 수량 뱃지 */}
       {target > 0 && (
-        <text
-          x={x - 6}
-          y={y + 15}
-          textAnchor="end"
-          fill="#f59e0b"
-          fontSize={9.5}
-          fontWeight={600}
-        >
+        <text x={x - 6} y={y + 13}
+          textAnchor="end" fill="#f59e0b" fontSize={9.5} fontWeight={600}>
           목표 {target}
         </text>
       )}
@@ -137,57 +122,42 @@ function ClientYTick({ x, y, payload }) {
 
 // ─── Main ────────────────────────────────────────────────────
 export default function AdminDashboardPage() {
-  const [records, setRecords]             = useState([]);
-  const [targetMap, setTargetMap]         = useState({});
-  const [loading, setLoading]             = useState(true);
-  const [error, setError]                 = useState(null);
-  const [selectedMonth, setSelectedMonth] = useState('all');
+  const [selectedMonth, setSelectedMonth] = useState('2604'); // 기본값: 4월
+  const [records, setRecords]   = useState([]);
+  const [targetMap, setTargetMap] = useState({});
+  const [monthText, setMonthText] = useState('');
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(null);
 
+  // 월이 바뀔 때마다 API 재호출
   useEffect(() => {
-    fetch('/api/admin-dashboard')
+    setLoading(true);
+    setError(null);
+    fetch(`/api/admin-dashboard?month=${selectedMonth}`)
       .then(r => r.json())
       .then(data => {
         if (data.error) throw new Error(data.error);
         setRecords(data.records || []);
         setTargetMap(data.targetMap || {});
+        setMonthText(data.monthText || '');
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
-  }, []);
-
-  // 정산월 코드 기반으로 가능한 월 목록 생성
-  const availableMonths = useMemo(() => {
-    const s = new Set();
-    records.forEach(r => {
-      const m = r.month || r.linkedMonth;
-      if (m && MONTH_MAP[m]) s.add(m);
-    });
-    return ['all', ...Array.from(s).sort()];
-  }, [records]);
+  }, [selectedMonth]);
 
   // ─── 데이터 가공 ─────────────────────────────────────────
   const { statusData, clientData } = useMemo(() => {
     if (!records.length) return { statusData: [], clientData: [] };
 
-    // 1. 체험단 유형 필터
+    // 1. 체험단 유형 필터 (유형 필드가 있는 경우에만 적용)
     const hasType = records.some(r => r.type);
-    let filtered = hasType
-      ? records.filter(r => EXP_TYPES.has(r.type))
-      : records;
+    const filtered = hasType ? records.filter(r => EXP_TYPES.has(r.type)) : records;
 
-    // 2. 월 필터 (정산월 코드 기준)
-    if (selectedMonth !== 'all') {
-      filtered = filtered.filter(r =>
-        r.month === selectedMonth || r.linkedMonth === selectedMonth
-      );
-    }
-
-    // 3. 담당자별 상태 집계
+    // 2. 담당자별 상태 집계
     const coordMap = {};
     ['HH', 'LH', 'AN'].forEach(c => {
-      coordMap[c] = {};
+      coordMap[c] = { __total: 0 };
       STATUS_ORDER.forEach(sg => { coordMap[c][sg] = 0; });
-      coordMap[c]['__total'] = 0;
     });
 
     const clientCountMap = {};
@@ -203,13 +173,10 @@ export default function AdminDashboardPage() {
       if (group !== '취소/노쇼' && group !== '기타') {
         const client = rec.client || 'Unknown';
         const branch = rec.branch || '';
-        // 화면 표시용 키: "고객사명 지점명"
         const displayKey = branch ? `${client} ${branch}` : client;
         if (!clientCountMap[displayKey]) {
           clientCountMap[displayKey] = {
-            name: displayKey,
-            clientName: client,
-            branchName: branch,
+            clientName: client, branchName: branch,
             HH: 0, LH: 0, AN: 0, total: 0, __target: 0
           };
         }
@@ -218,43 +185,28 @@ export default function AdminDashboardPage() {
       }
     });
 
-    // 4. Campaign_DB 목표수량 매핑
-    //    특정 월이 선택된 경우에만 목표 표시 (전체 뷰에서는 다월 합산 방지)
-    const campaignMonthText = selectedMonth !== 'all' ? MONTH_MAP[selectedMonth] : null;
+    // 3. 목표 수량 매핑 (API가 이미 해당 월 데이터만 반환하므로 단순 매칭)
+    Object.entries(targetMap).forEach(([key, target]) => {
+      if (!target) return;
+      const [clientKr, branchKr] = key.split('__');
 
-    if (campaignMonthText) {
-      Object.entries(targetMap).forEach(([key, entries]) => {
-        // 선택된 달의 목표만 사용
-        const relevant = entries.filter(e => e.month === campaignMonthText);
-        if (!relevant.length) return;
+      Object.keys(clientCountMap).forEach(displayKey => {
+        const d = clientCountMap[displayKey];
 
-        const totalTarget = relevant.reduce((s, e) => s + (e.target || 0), 0);
-        if (totalTarget === 0) return;
+        const nameMatch =
+          d.clientName === clientKr ||
+          d.clientName?.includes(clientKr) ||
+          clientKr?.includes(d.clientName);
 
-        // key = "고객사명__지점명" 또는 "고객사명"
-        const [clientKr, branchKr] = key.split('__');
+        // 지점명: 완전 일치만 (substring 금지)
+        const branchMatch =
+          !branchKr || !d.branchName || d.branchName === branchKr;
 
-        Object.keys(clientCountMap).forEach(displayKey => {
-          const d = clientCountMap[displayKey];
-
-          // 고객사명: 완전 일치 우선, 부분 포함 허용
-          const nameMatch =
-            d.clientName === clientKr ||
-            d.clientName?.includes(clientKr) ||
-            clientKr?.includes(d.clientName);
-
-          // 지점명: 완전 일치만 허용 (substring 매칭 금지 → 오작동 방지)
-          const branchMatch =
-            !branchKr ||                        // Campaign_DB에 지점명 없으면 무조건 통과
-            !d.branchName ||                    // 진행_DB에 지점명 없으면 무조건 통과
-            d.branchName === branchKr;          // 완전 일치만
-
-          if (nameMatch && branchMatch) {
-            d.__target = Math.max(d.__target, totalTarget);
-          }
-        });
+        if (nameMatch && branchMatch) {
+          d.__target = Math.max(d.__target, target);
+        }
       });
-    }
+    });
 
     const statusDataArray = ['HH', 'LH', 'AN'].map(coord => ({
       name: coord,
@@ -262,41 +214,27 @@ export default function AdminDashboardPage() {
       __total: coordMap[coord]['__total'],
     }));
 
-    // 고객사 차트용: Y축 key에 목표 수량 포함 ("고객사명||목표N")
-    const clientDataArray = Object.values(clientCountMap)
-      .sort((a, b) => b.total - a.total)
-      .map(d => ({
-        ...d,
-        // Y축 tick이 name 필드를 기준으로 렌더링하므로 목표를 함께 인코딩
-        nameWithTarget: `${d.name}||${d.__target}`,
-      }));
+    const clientDataArray = Object.entries(clientCountMap)
+      .map(([displayKey, d]) => ({
+        nameWithTarget: `${displayKey}||${d.__target}`,
+        name: displayKey,
+        HH: d.HH, LH: d.LH, AN: d.AN,
+        total: d.total,
+        __target: d.__target,
+      }))
+      .sort((a, b) => b.total - a.total);
 
     return { statusData: statusDataArray, clientData: clientDataArray };
-  }, [records, targetMap, selectedMonth]);
+  }, [records, targetMap]);
 
   // ─── Loading / Error ─────────────────────────────────────
-  if (loading) return (
-    <div className="adm-page">
-      <div className="adm-loading">
-        <div className="adm-spinner" />
-        <p>데이터 불러오는 중...</p>
-      </div>
-    </div>
-  );
   if (error) return (
     <div className="adm-page">
       <div className="adm-error">⚠️ {error}</div>
     </div>
   );
 
-  const monthLabel = selectedMonth === 'all'
-    ? '전체'
-    : (MONTH_MAP[selectedMonth] || selectedMonth);
-
-  // 고객사 차트 높이: 목표 표시로 줄 높이가 살짝 늘어남
-  const clientChartHeight = Math.max(360, clientData.length * 32 + 80);
-  // Y축 너비: 긴 이름 + "목표 N" 줄이 들어가도록
-  const yAxisWidth = 170;
+  const selectedLabel = MONTH_OPTIONS.find(m => m.code === selectedMonth)?.label || selectedMonth;
 
   return (
     <div className="adm-page">
@@ -309,87 +247,77 @@ export default function AdminDashboardPage() {
 
       {/* 월 선택 */}
       <div className="adm-filter-bar">
-        {availableMonths.map(m => (
+        {MONTH_OPTIONS.map(m => (
           <button
-            key={m}
-            className={`adm-filter-btn ${selectedMonth === m ? 'active' : ''}`}
-            onClick={() => setSelectedMonth(m)}
+            key={m.code}
+            className={`adm-filter-btn ${selectedMonth === m.code ? 'active' : ''}`}
+            onClick={() => setSelectedMonth(m.code)}
           >
-            {m === 'all' ? '전체' : (MONTH_MAP[m] || m)}
+            {m.label}
           </button>
         ))}
       </div>
 
-      {/* Chart 1: 담당자별 상태 */}
-      <div className="adm-section-label">
-        담당자별 상태 현황 — {monthLabel}
-      </div>
-      <div className="adm-chart-card">
-        <ResponsiveContainer width="100%" height={210}>
-          <BarChart
-            data={statusData}
-            layout="vertical"
-            margin={{ top: 8, right: 80, left: 10, bottom: 8 }}
-            barSize={30}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
-            <XAxis type="number" stroke="#374151" tick={{ fill: '#6b7280', fontSize: 12 }} />
-            <YAxis
-              dataKey="name"
-              type="category"
-              stroke="transparent"
-              tick={{ fill: '#e5e7eb', fontSize: 15, fontWeight: 700 }}
-              width={38}
-            />
-            <Tooltip content={<StatusTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-            <Legend iconType="square" iconSize={10}
-              wrapperStyle={{ paddingTop: 14, fontSize: 12, color: '#9ca3af' }} />
-            {STATUS_ORDER.map(group => (
-              <Bar key={group} dataKey={group} stackId="a" fill={STATUS_COLORS[group]}>
-                {group === '기타' && (
-                  <LabelList dataKey="__total" content={<TotalLabel />} />
-                )}
-              </Bar>
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      {loading ? (
+        <div className="adm-loading-inline">
+          <div className="adm-spinner" />
+          <span>{selectedLabel} 데이터 로딩 중...</span>
+        </div>
+      ) : (
+        <>
+          {/* Chart 1: 담당자별 상태 */}
+          <div className="adm-section-label">
+            {selectedLabel} 담당자별 상태 현황
+          </div>
+          <div className="adm-chart-card">
+            <ResponsiveContainer width="100%" height={210}>
+              <BarChart data={statusData} layout="vertical"
+                margin={{ top: 8, right: 80, left: 10, bottom: 8 }} barSize={30}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
+                <XAxis type="number" stroke="#374151" tick={{ fill: '#6b7280', fontSize: 12 }} />
+                <YAxis dataKey="name" type="category" stroke="transparent"
+                  tick={{ fill: '#e5e7eb', fontSize: 15, fontWeight: 700 }} width={38} />
+                <Tooltip content={<StatusTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+                <Legend iconType="square" iconSize={10}
+                  wrapperStyle={{ paddingTop: 14, fontSize: 12, color: '#9ca3af' }} />
+                {STATUS_ORDER.map(group => (
+                  <Bar key={group} dataKey={group} stackId="a" fill={STATUS_COLORS[group]}>
+                    {group === '기타' && (
+                      <LabelList dataKey="__total" content={<TotalLabel />} />
+                    )}
+                  </Bar>
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
 
-      {/* Chart 2: 고객사별 실적 + 목표 */}
-      <div className="adm-section-label">
-        고객사별 실적 — {monthLabel}
-        <span className="adm-section-sub">취소/노쇼 제외 · 노란색 = 목표 수량</span>
-      </div>
-      <div className="adm-chart-card adm-chart-card--scroll">
-        <ResponsiveContainer width="100%" height={clientChartHeight}>
-          <BarChart
-            data={clientData}
-            layout="vertical"
-            margin={{ top: 8, right: 60, left: 16, bottom: 8 }}
-            barSize={14}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
-            <XAxis type="number" stroke="#374151" tick={{ fill: '#6b7280', fontSize: 12 }} allowDecimals={false} />
-            <YAxis
-              dataKey="nameWithTarget"
-              type="category"
-              stroke="transparent"
-              tick={<ClientYTick />}
-              width={yAxisWidth}
-              interval={0}
-            />
-            <Tooltip content={<ClientTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-            <Legend iconType="square" iconSize={10}
-              wrapperStyle={{ paddingTop: 14, fontSize: 12, color: '#9ca3af' }} />
-            <Bar dataKey="HH" stackId="a" fill={COORD_COLORS.HH} name="HH" />
-            <Bar dataKey="LH" stackId="a" fill={COORD_COLORS.LH} name="LH" />
-            <Bar dataKey="AN" stackId="a" fill={COORD_COLORS.AN} name="AN">
-              <LabelList dataKey="total" position="right"
-                style={{ fill: '#9ca3af', fontSize: 11 }} />
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+          {/* Chart 2: 고객사별 실적 */}
+          <div className="adm-section-label">
+            {selectedLabel} 고객사별 실적
+            <span className="adm-section-sub">취소/노쇼 제외 · 노란색 = 목표</span>
+          </div>
+          <div className="adm-chart-card adm-chart-card--scroll">
+            <ResponsiveContainer width="100%" height={Math.max(320, clientData.length * 32 + 80)}>
+              <BarChart data={clientData} layout="vertical"
+                margin={{ top: 8, right: 60, left: 16, bottom: 8 }} barSize={14}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
+                <XAxis type="number" stroke="#374151" tick={{ fill: '#6b7280', fontSize: 12 }} allowDecimals={false} />
+                <YAxis dataKey="nameWithTarget" type="category" stroke="transparent"
+                  tick={<ClientYTick />} width={170} interval={0} />
+                <Tooltip content={<ClientTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+                <Legend iconType="square" iconSize={10}
+                  wrapperStyle={{ paddingTop: 14, fontSize: 12, color: '#9ca3af' }} />
+                <Bar dataKey="HH" stackId="a" fill={COORD_COLORS.HH} name="HH" />
+                <Bar dataKey="LH" stackId="a" fill={COORD_COLORS.LH} name="LH" />
+                <Bar dataKey="AN" stackId="a" fill={COORD_COLORS.AN} name="AN">
+                  <LabelList dataKey="total" position="right"
+                    style={{ fill: '#9ca3af', fontSize: 11 }} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
     </div>
   );
 }

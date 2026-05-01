@@ -1,15 +1,23 @@
 /**
- * Gravity | Admin Dashboard API v3
+ * Gravity | Admin Dashboard API v4
  *
- * 두 테이블 조합:
- *  1. 진행_DB_OLD  → 담당자별 실적 (유형=체험단) — 고객명(한국어) 사용
- *  2. Campaign_DB  → 고객사별 체험단 목표 수량  — 고객사명(한국어) + 지점명 기준
+ * 4월 데이터만 반환 (하드코딩 → 추후 ?month=2604 파라미터로 확장 가능)
  *
- * 매칭 전략: 양쪽 모두 한국어 고객사명으로 일치 비교
+ * 월 키 기준:
+ *  - 진행_DB_OLD  : 정산월 = "2604"
+ *  - Campaign_DB  : 계약월 = "2026. 4월"
  */
 
 const AIRTABLE_API_KEY = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const AIRTABLE_BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
+
+// 정산월 코드 → 계약월 텍스트 매핑
+const MONTH_CODE_TO_TEXT = {
+  '2601': '2026. 1월', '2602': '2026. 2월', '2603': '2026. 3월',
+  '2604': '2026. 4월', '2605': '2026. 5월', '2606': '2026. 6월',
+  '2607': '2026. 7월', '2608': '2026. 8월', '2609': '2026. 9월',
+  '2610': '2026. 10월', '2611': '2026. 11월', '2612': '2026. 12월',
+};
 
 async function fetchAll(table, formula, fields) {
   let allRecords = [];
@@ -47,62 +55,60 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    // ─── 1. Campaign_DB: 고객사별 체험단 목표 수량 ─────────────
-    // 체험_목표 또는 체험단_요청 이 있는 레코드만 가져옴
-    // 계약월 필터는 프론트에서 처리 (전체 로드 후 선택)
+    // 월 파라미터 (기본값 = 2604 / 4월)
+    const monthCode = req.query?.month || '2604';
+    const monthText = MONTH_CODE_TO_TEXT[monthCode] || '2026. 4월'; // e.g. "2026. 4월"
+
+    // ─── 1. Campaign_DB: 해당 월 체험단 목표 ──────────────────
+    // 계약월 = "2026. 4월" 인 레코드만
+    const campaignFormula = `{계약월}='${monthText}'`;
     const campaignRecords = await fetchAll(
       'Campaign_DB',
-      null,
-      ['계약월', '고객사명', '지점명', '체험_목표', '체험단_요청']
+      campaignFormula,
+      ['고객사명', '지점명', '체험_목표', '체험단_요청']
     );
 
-    // targetMap: { "고객사명+지점명" → [ { month, target } ] }
+    // targetMap: { "고객사명__지점명" → target }  (단일 월이므로 숫자 바로 저장)
     const targetMap = {};
     campaignRecords.forEach(rec => {
       const f = rec.fields;
-      const month       = extractString(f['계약월']);   // e.g. "2026. 4월"
-      const clientName  = extractString(f['고객사명']); // 한국어 고객사명
-      const branchName  = extractString(f['지점명']);   // 한국어 지점명
-      // 체험_목표 우선, 없으면 체험단_요청
-      const target      = Number(f['체험_목표'] ?? f['체험단_요청'] ?? 0);
-
+      const clientName = extractString(f['고객사명']);
+      const branchName = extractString(f['지점명']);
+      const target     = Number(f['체험_목표'] ?? f['체험단_요청'] ?? 0);
       if (!clientName || target === 0) return;
 
-      // 매칭 키: "고객사명__지점명" (지점명이 있으면 조합, 없으면 고객사명만)
       const key = branchName ? `${clientName}__${branchName}` : clientName;
-      if (!targetMap[key]) targetMap[key] = [];
-      targetMap[key].push({ month, target, clientName, branchName });
+      // 같은 고객사+지점이 여러 행이면 합산
+      targetMap[key] = (targetMap[key] || 0) + target;
     });
 
-    // ─── 2. 진행_DB_OLD: 담당자별 실적 ─────────────────────────
-    // HH / LH / AN 만 가져오고, 고객명(한국어) 사용
-    const formula = "OR({예약_ID}='HH', {예약_ID}='LH', {예약_ID}='AN')";
+    // ─── 2. 진행_DB_OLD: 해당 월 실적 (정산월 = "2604") ────────
+    // HH/LH/AN 담당자 + 정산월 일치
+    const scheduleFormula = `AND(OR({예약_ID}='HH',{예약_ID}='LH',{예약_ID}='AN'),{정산월}='${monthCode}')`;
     const scheduleRecords = await fetchAll(
       '진행_DB_OLD',
-      formula,
-      ['예약_ID', '진행상태', '고객명', '지점명', '정산월', '귀속 정산월', '유형']
+      scheduleFormula,
+      ['예약_ID', '진행상태', '고객명', '지점명', '유형']
     );
 
     const cleanedRecords = scheduleRecords.map(rec => {
       const f = rec.fields;
-
-      // 고객명: 한국어 필드 우선 (linked array 가능)
-      const clientName = extractString(f['고객명']);
-      const branchName = extractString(f['지점명']);
-
       return {
         id:          rec.id,
         coordinator: f['예약_ID'] || 'Unknown',
         status:      f['진행상태'] || '상태없음',
-        client:      clientName || 'Unknown',
-        branch:      branchName,
+        client:      extractString(f['고객명']),
+        branch:      extractString(f['지점명']),
         type:        f['유형'] || '',
-        month:       extractString(f['정산월']),
-        linkedMonth: extractString(f['귀속 정산월']),
       };
     });
 
-    return res.status(200).json({ records: cleanedRecords, targetMap });
+    return res.status(200).json({
+      records:   cleanedRecords,
+      targetMap,
+      monthCode,
+      monthText,
+    });
 
   } catch (error) {
     console.error('Admin Dashboard API Error:', error);
