@@ -226,6 +226,7 @@ export default function AdminDashboardPage() {
       name: coord,
       ...Object.fromEntries(STATUS_ORDER.map(sg => [sg, coordMap[coord][sg]])),
       __total: coordMap[coord]['__total'],
+      __labelPad: 1, // 라벨 렌더링용 더미 (항상 1 → Recharts가 반드시 렌더)
     }));
 
     const clientDataArray = Object.entries(clientCountMap)
@@ -297,37 +298,13 @@ export default function AdminDashboardPage() {
                   tick={{ fill: '#e5e7eb', fontSize: 15, fontWeight: 700 }} width={38} />
                 <Tooltip content={<StatusTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
                 {STATUS_ORDER.map(group => (
-                  <Bar key={group} dataKey={group} stackId="a" fill={STATUS_COLORS[group]}>
-                    {/* dataKey를 __total 대신 group으로 설정하여 Recharts가 값을 인식하고 content 함수를 무조건 호출하도록 강제 */}
-                    <LabelList dataKey={group} content={(props) => {
-                      const { index, x, y, width, height } = props;
-                      if (x == null || y == null || width == null) return null;
-                      
-                      const row = statusData[index];
-                      if (!row) return null;
-                      
-                      // 숫자 강제 변환 후 마지막 유효 세그먼트 찾기
-                      let lastNonZero = null;
-                      for (let i = STATUS_ORDER.length - 1; i >= 0; i--) {
-                        if (Number(row[STATUS_ORDER[i]]) > 0) {
-                          lastNonZero = STATUS_ORDER[i];
-                          break;
-                        }
-                      }
-                      
-                      // 현재 그룹이 마지막 세그먼트가 아니면 라벨 렌더링 안 함
-                      if (group !== lastNonZero) return null;
-
-                      return (
-                        <text x={x + width + 8} y={y + height / 2}
-                          fill="#e5e7eb" fontSize={13} fontWeight={600}
-                          dominantBaseline="central">
-                          {row.__total}
-                        </text>
-                      );
-                    }} />
-                  </Bar>
+                  <Bar key={group} dataKey={group} stackId="a" fill={STATUS_COLORS[group]} />
                 ))}
+                {/* 투명 더미 세그먼트: 같은 스택에 항상 양수(1)로 존재 → LabelList 100% 호출 보장 */}
+                <Bar dataKey="__labelPad" stackId="a" fill="transparent" isAnimationActive={false}>
+                  <LabelList dataKey="__total" position="right" offset={8}
+                    style={{ fill: '#e5e7eb', fontSize: 13, fontWeight: 600 }} />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
             <CustomLegend items={STATUS_ORDER.map(g => ({ label: g, color: STATUS_COLORS[g] }))} />
