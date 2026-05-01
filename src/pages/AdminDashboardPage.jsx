@@ -278,8 +278,13 @@ export default function AdminDashboardPage() {
                 <YAxis dataKey="name" type="category" stroke="transparent"
                   tick={{ fill: '#e5e7eb', fontSize: 15, fontWeight: 700 }} width={38} />
                 <Tooltip content={<StatusTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-                <Legend iconType="square" iconSize={10}
-                  wrapperStyle={{ paddingTop: 14, fontSize: 12, color: '#9ca3af' }} />
+                <Legend
+                  iconType="square" iconSize={10}
+                  wrapperStyle={{ paddingTop: 14, fontSize: 12, color: '#9ca3af' }}
+                  payload={STATUS_ORDER.map(group => ({
+                    value: group, type: 'square', color: STATUS_COLORS[group],
+                  }))}
+                />
                 {STATUS_ORDER.map(group => (
                   <Bar key={group} dataKey={group} stackId="a" fill={STATUS_COLORS[group]}>
                     {group === '기타' && (
