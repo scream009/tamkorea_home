@@ -153,9 +153,7 @@ export default async function handler(req, res) {
     try {
       const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(SCHEDULE_TABLE)}/${recordId}`;
 
-      const updateFields = {
-        [STATUS_FIELD]: '제출완료',
-      };
+      const updateFields = {};
       if (resultLink !== undefined) updateFields[RESULT_FIELD] = resultLink || null;
       if (dpResultLink !== undefined) updateFields[DP_RESULT_FIELD] = dpResultLink || null;
       if (dyResultLink !== undefined) updateFields[DY_RESULT_FIELD] = dyResultLink || null;
