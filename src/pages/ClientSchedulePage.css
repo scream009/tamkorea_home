@@ -450,6 +450,7 @@
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.6);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   z-index: 1000;
   display: flex;
@@ -576,7 +577,7 @@
   .cal-hdr { display: none; }
   .cal-cell {
     border: 1px solid var(--border);
-    min-height: auto;
+    min-height: 0;
   }
   .cal-cell.empty { display: none; }
   .cal-cell:not(:has(.event-badge)) { display: none; }

@@ -1,3 +1,4 @@
+/* eslint-env node */
 /**
  * Gravity | Influencer Schedule API
  * Vercel Serverless Function

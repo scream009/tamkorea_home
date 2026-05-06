@@ -1,3 +1,4 @@
+/* eslint-env node */
 /**
  * Gravity | Client Report API  v2
  * GET /api/client-report?recordId=recXXXXXXXX

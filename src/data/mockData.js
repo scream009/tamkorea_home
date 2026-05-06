@@ -2,9 +2,6 @@
 // Mock Data for Tam Korea Platform
 // Used to simulate backend data until Airtable integration
 import udaeRibsImage from '../assets/images/udae_ribs.jpg';
-import dianpingLogo from '../assets/images/dianping_logo.png';
-import xhsLogo from '../assets/images/xhs_logo.png';
-import instagramLogo from '../assets/images/instagram_logo.png';
 
 export const campaigns = [
     {

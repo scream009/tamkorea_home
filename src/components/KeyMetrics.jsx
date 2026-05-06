@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useLanguage } from '../context/LanguageContext'; // If you want to localize labels
 import './KeyMetrics.css';
 

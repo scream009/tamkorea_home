@@ -174,7 +174,7 @@ const ClientReportPage = () => {
   );
   if (!reportData) return null;
 
-  const { campaignName, brandName, branchName, month, partnerName = 'TAMKOREA', stats, records } = reportData;
+  const { brandName, branchName, month, partnerName = 'TAMKOREA', records } = reportData;
   const hasInfl  = records.influencer?.length > 0;
   const hasExp   = records.experience?.length > 0;
   const hasPress = records.press?.length > 0;
