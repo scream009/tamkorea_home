@@ -411,9 +411,11 @@ export default function ClientSchedulePage() {
                           <div className="event-list flex flex-col gap-[2px]">
                             {events.map((ev, i) => {
                               const displayType = formatType(ev.type);
+                              const isCancelled = ev.status === '취소_방문자' || ev.status === '취소_고객사';
+                              const isNoShow = ev.status === '노쇼';
                               return (
-                                <div 
-                                  key={i} 
+                                <div
+                                  key={i}
                                   className={`event-badge ${getTypeClass(ev.type)}`}
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -422,6 +424,8 @@ export default function ClientSchedulePage() {
                                 >
                                   <div className="flex items-center gap-1">
                                     {getStatusDot(ev.status)} {displayType} {ev.totalPax ? `(${ev.totalPax}명)` : ''}
+                                    {isCancelled && <span className="ev-tag-cancel">취소</span>}
+                                    {isNoShow    && <span className="ev-tag-noshow">노쇼</span>}
                                   </div>
                                 </div>
                               );

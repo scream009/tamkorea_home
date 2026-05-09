@@ -336,6 +336,26 @@
 .event-exp { background: rgba(59, 130, 246, 0.2); color: #93c5fd; border-left: 2px solid #3b82f6; }
 .event-press { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border-left: 2px solid #10b981; }
 
+.ev-tag-cancel,
+.ev-tag-noshow {
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+.ev-tag-cancel {
+  background: rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+.ev-tag-noshow {
+  background: rgba(245, 158, 11, 0.25);
+  color: #fcd34d;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
 /* Status Indicators */
 .status-dot {
   display: inline-block;
