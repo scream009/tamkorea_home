@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { 
-  Calendar as CalendarIcon, 
-  List, 
-  Users, 
-  Camera, 
+import {
+  Calendar as CalendarIcon,
+  List,
+  Users,
+  Camera,
   Newspaper,
+  Megaphone,
   ChevronLeft,
   ChevronRight,
   MessageSquare,
@@ -14,21 +15,30 @@ import {
   AlertCircle,
   X,
   User,
-  Info
+  Info,
+  Download,
+  Lightbulb,
+  Clock
 } from 'lucide-react';
 import './ClientSchedulePage.css';
 import './ClientReportPage.css';
 
 // 서브 컴포넌트
 const TypeBadge = ({ type }) => {
-  const map = { influencer: ['📣 인플루언서','infl'], experience: ['🍽️ 체험단','exp'], press: ['📰 기자단','press'] };
-  const [label, cls] = map[type] || ['기타','exp'];
-  return <span className={`type-badge ${cls}`}>{label}</span>;
+  const map = {
+    influencer: [<Megaphone className="tb-ico" />, '인플루언서', 'infl'],
+    experience: [<Camera className="tb-ico" />, '체험단', 'exp'],
+    press:      [<Newspaper className="tb-ico" />, '기자단', 'press'],
+  };
+  const [icon, label, cls] = map[type] || [null, '기타', 'exp'];
+  return <span className={`type-badge ${cls}`}>{icon}<span>{label}</span></span>;
 };
 
 const LinkBtn = ({ href, label }) =>
   href ? (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="link-btn">🔗 {label}</a>
+    <a href={href} target="_blank" rel="noopener noreferrer" className="link-btn">
+      <ExternalLink className="w-3.5 h-3.5" /> {label}
+    </a>
   ) : (
     <span className="link-pending">진행 중</span>
   );
@@ -56,6 +66,24 @@ export default function ClientSchedulePage() {
 
   // 팝업(모달) 상태
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const modalCloseBtnRef = useRef(null);
+
+  // 모달 접근성: ESC 키 닫기 + body scroll lock + 자동 포커스
+  useEffect(() => {
+    if (!selectedEvent) return;
+    const handleKey = (e) => {
+      if (e.key === 'Escape') setSelectedEvent(null);
+    };
+    document.addEventListener('keydown', handleKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    // 닫기 버튼에 포커스 (스크린리더 + 키보드 사용자 대응)
+    setTimeout(() => modalCloseBtnRef.current?.focus(), 0);
+    return () => {
+      document.removeEventListener('keydown', handleKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [selectedEvent]);
 
   useEffect(() => {
     if (!campaignId) {
@@ -139,23 +167,37 @@ export default function ClientSchedulePage() {
     return days;
   }, [currentDate]);
 
-  // 해당 날짜의 이벤트 필터링
-  const getEventsForDate = (dateObj) => {
-    if (!data || !data.scheduleItems) return [];
-    return data.scheduleItems.filter(item => {
-      if (!item.reserveDate) return false;
+  // 날짜별 이벤트 사전 인덱싱 — O(1) 조회 (이전 코드는 셀마다 전체 배열 필터링했음)
+  const eventsByDate = useMemo(() => {
+    const map = new Map();
+    if (!data?.scheduleItems) return map;
+
+    for (const item of data.scheduleItems) {
+      if (!item.reserveDate) continue;
       const d = new Date(item.reserveDate);
-      return d.getFullYear() === dateObj.getFullYear() &&
-             d.getMonth() === dateObj.getMonth() &&
-             d.getDate() === dateObj.getDate();
-    }).sort((a, b) => {
-      const isInflA = formatType(a.type).includes('인플');
-      const isInflB = formatType(b.type).includes('인플');
-      if (isInflA && !isInflB) return -1;
-      if (!isInflA && isInflB) return 1;
-      return new Date(a.reserveDate) - new Date(b.reserveDate);
-    });
-  };
+      if (Number.isNaN(d.getTime())) continue;
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(item);
+    }
+
+    // 날짜별 이벤트 정렬 (인플 우선 + 시간순)
+    for (const events of map.values()) {
+      events.sort((a, b) => {
+        const isInflA = formatType(a.type).includes('인플');
+        const isInflB = formatType(b.type).includes('인플');
+        if (isInflA && !isInflB) return -1;
+        if (!isInflA && isInflB) return 1;
+        return new Date(a.reserveDate) - new Date(b.reserveDate);
+      });
+    }
+    return map;
+  }, [data]);
+
+  const getEventsForDate = useCallback((dateObj) => {
+    const key = `${dateObj.getFullYear()}-${dateObj.getMonth()}-${dateObj.getDate()}`;
+    return eventsByDate.get(key) || [];
+  }, [eventsByDate]);
 
   const handleFeedbackSubmit = async () => {
     if (!feedback.trim()) return;
@@ -376,7 +418,9 @@ export default function ClientSchedulePage() {
         {viewMode === 'calendar' ? (
           <div className="section">
             <div className="section-header">
-              <div className="section-title text-white font-extrabold text-[1.4rem] tracking-tight drop-shadow-md">📅 예약 현황 달력</div>
+              <div className="section-title section-title--lg">
+                <CalendarIcon className="w-5 h-5" /> 예약 현황 달력
+              </div>
               <div className="section-badge">{month}</div>
             </div>
             <div className="cal-wrap">
@@ -399,11 +443,12 @@ export default function ClientSchedulePage() {
                 {calendarDays.map((dayObj, idx) => {
                   const events = getEventsForDate(dayObj.date);
                   const isToday = new Date().toDateString() === dayObj.date.toDateString();
-                  
+                  const hasEvents = events.length > 0;
+
                   return (
-                    <div 
-                      key={idx} 
-                      className={`cal-cell ${!dayObj.isCurrentMonth ? 'empty' : ''} ${isToday ? 'today-cell' : ''}`}
+                    <div
+                      key={idx}
+                      className={`cal-cell${!dayObj.isCurrentMonth ? ' empty' : ''}${isToday ? ' today-cell' : ''}${hasEvents ? ' cal-cell--has-events' : ''}`}
                     >
                       {dayObj.isCurrentMonth && (
                         <>
@@ -411,23 +456,35 @@ export default function ClientSchedulePage() {
                           <div className="event-list flex flex-col gap-[2px]">
                             {events.map((ev, i) => {
                               const displayType = formatType(ev.type);
-                              const isCancelled = ev.status === '취소_방문자' || ev.status === '취소_고객사';
-                              const isNoShow = ev.status === '노쇼';
+                              // 진행상태 정확매칭 → 부분문자열로 강건성 향상
+                              const statusStr = String(ev.status || '');
+                              const isCancelled = statusStr.includes('취소');
+                              const isNoShow = statusStr.includes('노쇼');
+                              const d = ev.reserveDate ? new Date(ev.reserveDate) : null;
+                              const time = (d && !Number.isNaN(d.getTime()))
+                                ? `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+                                : '';
+                              const ariaLabel = `${time ? time + ' ' : ''}${displayType}${ev.totalPax ? ' ' + ev.totalPax + '명' : ''}${isCancelled ? ' 취소' : ''}${isNoShow ? ' 노쇼' : ''}`;
                               return (
-                                <div
+                                <button
+                                  type="button"
                                   key={i}
-                                  className={`event-badge ${getTypeClass(ev.type)}`}
+                                  className={`event-badge ${getTypeClass(ev.type)}${(isCancelled || isNoShow) ? ' is-cancelled' : ''}`}
+                                  aria-label={ariaLabel}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setSelectedEvent(ev);
                                   }}
                                 >
-                                  <div className="flex items-center gap-1">
-                                    {getStatusDot(ev.status)} {displayType} {ev.totalPax ? `(${ev.totalPax}명)` : ''}
+                                  <span className="ev-row">
+                                    {time && <span className="ev-time">{time}</span>}
+                                    {getStatusDot(ev.status)}
+                                    <span className="ev-type">{displayType}</span>
+                                    {ev.totalPax ? <span className="ev-pax">({ev.totalPax}명)</span> : null}
                                     {isCancelled && <span className="ev-tag-cancel">취소</span>}
                                     {isNoShow    && <span className="ev-tag-noshow">노쇼</span>}
-                                  </div>
-                                </div>
+                                  </span>
+                                </button>
                               );
                             })}
                           </div>
@@ -448,32 +505,13 @@ export default function ClientSchedulePage() {
                     <h1 className="report-title">{brandName}</h1>
                     <p className="report-sub">{branchName} · {month} 실적 보고서</p>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
-                    <div className="gravity-logo-accent" style={{ margin: 0 }}>
+                  <div className="report-meta">
+                    <div className="gravity-logo-accent report-logo-accent">
                       {partnerName}<br />
-                      <span style={{ fontSize:'0.65rem', color:'#9ca3af' }}>PERFORMANCE REPORT</span>
+                      <span className="report-logo-sub">PERFORMANCE REPORT</span>
                     </div>
-                    <button 
-                      onClick={handleDownloadCSV}
-                      style={{
-                        background: 'rgba(168, 85, 247, 0.1)',
-                        border: '1px solid rgba(168, 85, 247, 0.3)',
-                        color: '#d8b4fe',
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                        fontSize: '0.8rem',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        transition: 'all 0.2s',
-                        boxShadow: '0 0 10px rgba(168, 85, 247, 0.1)'
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(168, 85, 247, 0.2)'; e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.5)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(168, 85, 247, 0.1)'; e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.3)'; }}
-                    >
-                      📥 CSV 다운로드
+                    <button type="button" onClick={handleDownloadCSV} className="csv-btn">
+                      <Download className="w-4 h-4" /> CSV 다운로드
                     </button>
                   </div>
                 </header>
@@ -567,27 +605,32 @@ export default function ClientSchedulePage() {
         {/* 5. Client Feedback Area (고객사 소통 창구) */}
         <div className="section">
           <div className="section-header">
-            <div className="section-title">💬 문의 / 메모</div>
-            <div className="section-badge" style={{background: 'var(--purple-dim)', color: 'var(--purple-light)'}}>운영팀 직접 전달</div>
+            <div className="section-title">
+              <MessageSquare className="w-4 h-4" /> 문의 / 메모
+            </div>
+            <div className="section-badge section-badge--soft">준비중</div>
           </div>
           <div className="memo-wrap">
             <div className="memo-intro">
-              💡 아래에 입력하신 내용은 담당 운영팀 매니저에게 즉시 전달됩니다.
+              <Lightbulb className="w-4 h-4 flex-shrink-0" />
+              <span>일정 변경이나 특별 요청사항은 현재 담당 매니저에게 <b>카카오톡으로 직접</b> 전달해 주세요. 이 페이지의 폼 전송 기능은 준비 중입니다.</span>
             </div>
-            <div className="memo-form">
-              <textarea 
-                className="memo-input" 
-                placeholder="일정 변경 요청이나 특별한 지시사항이 있다면 남겨주세요."
+            <div className="memo-form" aria-disabled="true">
+              <textarea
+                className="memo-input"
+                placeholder="(준비중) 추후 이 입력창을 통해 운영팀에 직접 메모가 전달됩니다."
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
+                disabled
               ></textarea>
               <div className="flex justify-end">
-                <button 
-                  className="memo-submit" 
-                  onClick={handleFeedbackSubmit}
-                  disabled={!feedback.trim() || feedbackSent}
+                <button
+                  type="button"
+                  className="memo-submit"
+                  disabled
+                  title="현재 폼 전송은 준비중입니다. 카카오톡으로 전달해 주세요."
                 >
-                  {feedbackSent ? '전송 완료!' : '전송하기 →'}
+                  <Send className="w-3.5 h-3.5" /> 전송 (준비중)
                 </button>
               </div>
             </div>
@@ -598,14 +641,26 @@ export default function ClientSchedulePage() {
 
       {/* Event Details Modal */}
       {selectedEvent && (
-        <div className="event-modal-overlay" onClick={() => setSelectedEvent(null)}>
+        <div
+          className="event-modal-overlay"
+          onClick={() => setSelectedEvent(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="event-modal-title"
+        >
           <div className="event-modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="event-modal-close" onClick={() => setSelectedEvent(null)}>
+            <button
+              ref={modalCloseBtnRef}
+              type="button"
+              className="event-modal-close"
+              onClick={() => setSelectedEvent(null)}
+              aria-label="닫기"
+            >
               <X className="w-5 h-5" />
             </button>
-            
+
             <div className={`modal-header ${getTypeClass(selectedEvent.type)}`}>
-              <h3 className="modal-title flex items-center gap-2">
+              <h3 id="event-modal-title" className="modal-title flex items-center gap-2">
                 {getStatusDot(selectedEvent.status)} {formatType(selectedEvent.type)} 상세정보
               </h3>
             </div>
