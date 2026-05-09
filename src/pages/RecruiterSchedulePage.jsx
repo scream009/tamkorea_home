@@ -30,9 +30,21 @@ const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 
 const isHttpUrl = (s) => typeof s === 'string' && /^https?:\/\//i.test(s.trim());
 
+// 1,000 단위 쉼표 포맷 — 숫자가 아니면 원본 반환
+const formatPal = (pal) => {
+  if (pal === '' || pal == null) return '-';
+  const n = Number(pal);
+  return Number.isFinite(n) ? n.toLocaleString('ko-KR') : String(pal);
+};
+
 // 결과물 셀 렌더러 (XHS / DP / DY 공통)
-const ResultCell = ({ value, label }) => {
-  if (!value) return <span className="mgr-result-pending">-</span>;
+// emphasizeMissing=true 면 빈 값을 빨간 '미제출' 뱃지로 강조 (XHS 전용)
+const ResultCell = ({ value, label, emphasizeMissing }) => {
+  if (!value) {
+    return emphasizeMissing
+      ? <span className="mgr-result-missing">미제출</span>
+      : <span className="mgr-result-pending">-</span>;
+  }
   if (isHttpUrl(value)) {
     return (
       <a href={value} target="_blank" rel="noopener noreferrer" className="mgr-result-link">
@@ -375,7 +387,7 @@ export default function RecruiterSchedulePage() {
                         <th style={{ width: '12%' }}>일정</th>
                         <th style={{ width: '20%' }}>고객사</th>
                         <th style={{ width: '18%' }}>방문자 ID</th>
-                        <th style={{ width: '8%' }}>PAL</th>
+                        <th className="mgr-th-num" style={{ width: '8%' }}>PAL</th>
                         <th style={{ width: '14%' }}>샤오홍슈</th>
                         <th style={{ width: '12%' }}>따종디엔핑</th>
                         <th style={{ width: '8%' }}>DY</th>
@@ -390,10 +402,13 @@ export default function RecruiterSchedulePage() {
                           : '미정';
                         const customer = `${item.brandName || ''}${item.branchName ? ' ' + item.branchName : ''}`.trim() || '미정';
                         const bucket = item.statusBucket || 'inProgress';
+                        // 진행중·완료 상태인데 XHS 결과물이 비어있으면 강조
+                        // (취소·노쇼는 미제출이 정상이므로 제외)
+                        const isXhsMissing = !item.xhsResult && bucket !== 'cancelled' && bucket !== 'noShow';
                         return (
                           <tr
                             key={idx}
-                            className={`mgr-list-row mgr-bucket-row-${bucket}`}
+                            className={`mgr-list-row mgr-bucket-row-${bucket}${isXhsMissing ? ' mgr-row-xhs-missing' : ''}`}
                             onClick={() => setSelectedEvent(item)}
                           >
                             <td className="mgr-list-date">{dateStr}</td>
@@ -414,9 +429,9 @@ export default function RecruiterSchedulePage() {
                                 </a>
                               )}
                             </td>
-                            <td className="mgr-list-pal">{item.pal || '-'}</td>
+                            <td className="mgr-list-pal">{formatPal(item.pal)}</td>
                             <td onClick={(e) => e.stopPropagation()}>
-                              <ResultCell value={item.xhsResult} label="포스팅" />
+                              <ResultCell value={item.xhsResult} label="포스팅" emphasizeMissing={isXhsMissing} />
                             </td>
                             <td onClick={(e) => e.stopPropagation()}>
                               <ResultCell value={item.dpResult} label="리뷰" />

@@ -326,6 +326,38 @@
   color: var(--purple-light);
   font-weight: 700;
   font-feature-settings: "tnum";
+  text-align: right;
+  padding-right: 14px !important;
+  white-space: nowrap;
+}
+.mgr-th-num {
+  text-align: right !important;
+  padding-right: 14px !important;
+}
+
+/* XHS 미제출 강조 — 셀 뱃지 */
+.mgr-result-missing {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+/* XHS 미제출 행 강조 — 좌측 빨간 라인 + 옅은 배경 */
+.mgr-list-row.mgr-row-xhs-missing {
+  background: rgba(239, 68, 68, 0.05);
+  box-shadow: inset 3px 0 0 rgba(239, 68, 68, 0.6);
+}
+.mgr-list-row.mgr-row-xhs-missing:hover {
+  background: rgba(239, 68, 68, 0.10);
 }
 
 /* 와이드 테이블 — 8컬럼 수용 */
