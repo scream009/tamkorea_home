@@ -1,0 +1,195 @@
+/* Recruiter Schedule Page — ClientSchedulePage 확장 */
+
+/* KPI 그리드 — 담당자용 2분할 */
+.kpi-grid--mgr {
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 600px) {
+  .kpi-grid--mgr {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mgr-card .kpi-header { margin-bottom: 14px; }
+.mgr-card .kpi-title  { font-size: 11px; }
+
+.mgr-icon-ok   { color: #10b981; }
+.mgr-icon-warn { color: #f59e0b; }
+
+.mgr-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.mgr-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.mgr-divider {
+  width: 1px;
+  align-self: stretch;
+  background: rgba(255, 255, 255, 0.08);
+}
+.mgr-stat-num {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
+  font-feature-settings: "tnum";
+}
+.mgr-num-done   { color: #10b981; }
+.mgr-num-prog   { color: var(--blue); }
+.mgr-num-cancel { color: #ef4444; }
+.mgr-num-noshow { color: #f59e0b; }
+
+.mgr-stat-label {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+.mgr-footer {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 10px;
+}
+
+/* 캘린더 셀 — 담당자용 (조금 더 크게) */
+.mgr-cal-grid .cal-cell {
+  min-height: 120px;
+}
+
+/* 이벤트 뱃지 — 담당자용 */
+.mgr-event-badge { font-size: 10px; }
+
+.mgr-customer {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 700;
+}
+
+/* 상태 카테고리별 색상 (캘린더 뱃지 + 모달 헤더 + 리스트 행) */
+.mgr-bucket-completed {
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
+  border-left: 2px solid #10b981;
+}
+.mgr-bucket-inProgress {
+  background: rgba(59, 130, 246, 0.18);
+  color: #93c5fd;
+  border-left: 2px solid #3b82f6;
+}
+.mgr-bucket-cancelled {
+  background: rgba(239, 68, 68, 0.16);
+  color: #fca5a5;
+  border-left: 2px solid #ef4444;
+}
+.mgr-bucket-noShow {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fcd34d;
+  border-left: 2px solid #f59e0b;
+}
+
+/* 모달 헤더 그라데이션 (카테고리별) */
+.modal-header.mgr-bucket-completed  { background: linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, transparent 100%); }
+.modal-header.mgr-bucket-inProgress { background: linear-gradient(135deg, rgba(59, 130, 246, 0.18) 0%, transparent 100%); }
+.modal-header.mgr-bucket-cancelled  { background: linear-gradient(135deg, rgba(239, 68, 68, 0.18) 0%, transparent 100%); }
+.modal-header.mgr-bucket-noShow     { background: linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, transparent 100%); }
+
+/* 완료 태그 (캘린더 뱃지 안의 작은 라벨) */
+.ev-tag-done {
+  font-size: 8.5px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  line-height: 1.4;
+  flex-shrink: 0;
+  margin-left: auto;
+  letter-spacing: -0.01em;
+  background: rgba(16, 185, 129, 0.28);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.45);
+}
+
+/* status-dot 카테고리 색상 추가 */
+.status-completed  { background: #10b981; }
+.status-inProgress { background: var(--blue); }
+.status-cancelled  { background: #ef4444; }
+.status-noShow     { background: #f59e0b; }
+
+/* 리스트 테이블 */
+.mgr-list-wrap { padding: 16px 24px 24px; }
+.mgr-list-scroll { overflow-x: auto; }
+.mgr-list-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 560px;
+}
+.mgr-list-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  font-weight: 600;
+}
+.mgr-list-table td {
+  padding: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+.mgr-list-row {
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.mgr-list-row:hover {
+  background: rgba(124, 58, 237, 0.06);
+}
+.mgr-list-date {
+  font-weight: 600;
+  font-feature-settings: "tnum";
+  white-space: nowrap;
+}
+.mgr-list-customer { font-weight: 700; color: var(--text); }
+.mgr-list-pax      { color: var(--muted); }
+.mgr-list-status   { display: flex; align-items: center; gap: 8px; }
+.mgr-list-status-text { font-size: 12px; }
+
+/* 취소/노쇼 행은 시각적으로 약화 */
+.mgr-bucket-row-cancelled .mgr-list-customer,
+.mgr-bucket-row-cancelled .mgr-list-date,
+.mgr-bucket-row-noShow    .mgr-list-customer,
+.mgr-bucket-row-noShow    .mgr-list-date {
+  text-decoration: line-through;
+  opacity: 0.65;
+}
+
+.mgr-empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.mgr-modal-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.mgr-shoot-id {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 13px;
+  color: var(--purple-light);
+  letter-spacing: 0.02em;
+}

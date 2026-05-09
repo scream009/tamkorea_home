@@ -15,6 +15,7 @@ import InfluencerSubmitPage from './pages/InfluencerSubmitPage';
 import ClientReportPage from './pages/ClientReportPage';
 import ClientSchedulePage from './pages/ClientSchedulePage';
 import ClientPartnerPage from './pages/ClientPartnerPage';
+import RecruiterSchedulePage from './pages/RecruiterSchedulePage';
 import SignupCreatorPage from './pages/auth/SignupCreatorPage';
 import SignupBusinessPage from './pages/auth/SignupBusinessPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
@@ -29,6 +30,7 @@ function App() {
           <Route path="/submit" element={<InfluencerSubmitPage />} />
           <Route path="/report" element={<ClientReportPage />} />
           <Route path="/schedule" element={<ClientSchedulePage />} />
+          <Route path="/manager" element={<RecruiterSchedulePage />} />
           <Route path="/partner" element={<ClientPartnerPage />} />
           <Route path="/admin" element={<AdminDashboardPage />} />
 
