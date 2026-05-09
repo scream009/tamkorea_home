@@ -7,11 +7,12 @@ import {
   X,
   User,
   Users,
-  Info,
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
-  Clock,
+  ExternalLink,
+  Link as LinkIcon,
+  FileSpreadsheet,
 } from 'lucide-react';
 import './ClientSchedulePage.css';
 import './RecruiterSchedulePage.css';
@@ -27,9 +28,19 @@ const RECRUITER_LABEL = {
 const getDaysInMonth     = (year, month) => new Date(year, month + 1, 0).getDate();
 const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 
-const formatType = (type) => {
-  if (!type) return '';
-  return String(type).replace(/.*(?:->|=>|→|➔|➡|▶|>)\s*/, '').trim();
+const isHttpUrl = (s) => typeof s === 'string' && /^https?:\/\//i.test(s.trim());
+
+// 결과물 셀 렌더러 (XHS / DP / DY 공통)
+const ResultCell = ({ value, label }) => {
+  if (!value) return <span className="mgr-result-pending">-</span>;
+  if (isHttpUrl(value)) {
+    return (
+      <a href={value} target="_blank" rel="noopener noreferrer" className="mgr-result-link">
+        <ExternalLink className="w-3 h-3" /> {label}
+      </a>
+    );
+  }
+  return <span className="mgr-result-text" title={value}>{value}</span>;
 };
 
 // "2026. 4월" → Date(2026, 3, 1)
@@ -351,38 +362,70 @@ export default function RecruiterSchedulePage() {
               <div className="section-title section-title--lg">
                 <List className="w-5 h-5" /> 체험단 전체 리스트
               </div>
-              <div className="section-badge">{stats.total}건</div>
+              <div className="section-badge">{(data.records || []).length}건</div>
             </div>
             <div className="mgr-list-wrap">
-              {data.scheduleItems.length === 0 ? (
+              {!data.records || data.records.length === 0 ? (
                 <div className="mgr-empty">이번 달 등록된 체험단 일정이 없습니다.</div>
               ) : (
                 <div className="mgr-list-scroll">
-                  <table className="mgr-list-table">
+                  <table className="mgr-list-table mgr-list-table--wide">
                     <thead>
                       <tr>
-                        <th style={{ width: '20%' }}>일정</th>
-                        <th style={{ width: '38%' }}>고객사</th>
-                        <th style={{ width: '14%' }}>인원</th>
-                        <th style={{ width: '28%' }}>상태</th>
+                        <th style={{ width: '12%' }}>일정</th>
+                        <th style={{ width: '20%' }}>고객사</th>
+                        <th style={{ width: '18%' }}>방문자 ID</th>
+                        <th style={{ width: '8%' }}>PAL</th>
+                        <th style={{ width: '14%' }}>샤오홍슈</th>
+                        <th style={{ width: '12%' }}>따종디엔핑</th>
+                        <th style={{ width: '8%' }}>DY</th>
+                        <th style={{ width: '8%' }}>상태</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {data.scheduleItems.map((ev, idx) => {
-                        const d = ev.reserveDate ? new Date(ev.reserveDate) : null;
+                      {data.records.map((item, idx) => {
+                        const d = item.reserveDate ? new Date(item.reserveDate) : null;
                         const dateStr = (d && !Number.isNaN(d.getTime()))
                           ? `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
                           : '미정';
-                        const customer = `${ev.brandName || ''}${ev.branchName ? ' ' + ev.branchName : ''}`.trim() || '미정';
-                        const bucket = ev.statusBucket || 'inProgress';
+                        const customer = `${item.brandName || ''}${item.branchName ? ' ' + item.branchName : ''}`.trim() || '미정';
+                        const bucket = item.statusBucket || 'inProgress';
                         return (
-                          <tr key={idx} className={`mgr-list-row mgr-bucket-row-${bucket}`} onClick={() => setSelectedEvent(ev)}>
+                          <tr
+                            key={idx}
+                            className={`mgr-list-row mgr-bucket-row-${bucket}`}
+                            onClick={() => setSelectedEvent(item)}
+                          >
                             <td className="mgr-list-date">{dateStr}</td>
                             <td className="mgr-list-customer">{customer}</td>
-                            <td className="mgr-list-pax">{ev.totalPax ? `${ev.totalPax}명` : '-'}</td>
+                            <td className="mgr-list-id-cell">
+                              <span className="mgr-list-id">{item.displayId || '-'}</span>
+                              {item.channelLink && (
+                                <a
+                                  href={item.channelLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="mgr-list-channel"
+                                  onClick={(e) => e.stopPropagation()}
+                                  title="인플 채널 바로가기"
+                                  aria-label="인플 채널 바로가기"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              )}
+                            </td>
+                            <td className="mgr-list-pal">{item.pal || '-'}</td>
+                            <td onClick={(e) => e.stopPropagation()}>
+                              <ResultCell value={item.xhsResult} label="포스팅" />
+                            </td>
+                            <td onClick={(e) => e.stopPropagation()}>
+                              <ResultCell value={item.dpResult} label="리뷰" />
+                            </td>
+                            <td onClick={(e) => e.stopPropagation()}>
+                              <ResultCell value={item.dyResult} label="DY" />
+                            </td>
                             <td className="mgr-list-status">
                               {getBucketDot(bucket)}
-                              <span className="mgr-list-status-text">{ev.status}</span>
                             </td>
                           </tr>
                         );
@@ -436,29 +479,70 @@ export default function RecruiterSchedulePage() {
                 <span className="detail-value">{selectedEvent.totalPax ? `${selectedEvent.totalPax}명` : '미정'}</span>
               </div>
               <div className="detail-row">
-                <span className="detail-label"><User className="w-4 h-4" /> 인플 닉네임</span>
+                <span className="detail-label"><FileSpreadsheet className="w-4 h-4" /> 콘텐츠 건수</span>
                 <span className="detail-value">
-                  {selectedEvent.displayIds?.length > 0
-                    ? selectedEvent.displayIds.join(', ')
-                    : (selectedEvent.displayId || '-')}
+                  샤오홍슈 {selectedEvent.xhsCount ?? 0}건
+                  {Number(selectedEvent.dpCount) > 0 && ` · 따중리뷰 ${selectedEvent.dpCount}건`}
                 </span>
               </div>
               <div className="detail-row">
-                <span className="detail-label"><Camera className="w-4 h-4" /> 유형</span>
-                <span className="detail-value">{formatType(selectedEvent.type)}</span>
-              </div>
-              {selectedEvent.memo && (
-                <div className="detail-row">
-                  <span className="detail-label"><Info className="w-4 h-4" /> 특이사항</span>
-                  <span className="detail-value">
-                    {Array.isArray(selectedEvent.memo) ? selectedEvent.memo.join(', ') : selectedEvent.memo}
-                  </span>
+                <span className="detail-label"><User className="w-4 h-4" /> 방문 인플</span>
+                <div className="mgr-infl-list">
+                  {(selectedEvent.influencers && selectedEvent.influencers.length > 0
+                    ? selectedEvent.influencers
+                    : [{ displayId: selectedEvent.displayId, pal: selectedEvent.pal, channelLink: selectedEvent.channelLink }]
+                  ).map((inf, i) => (
+                    <div key={i} className="mgr-infl-item">
+                      <span className="mgr-infl-name">{inf.displayId || '-'}</span>
+                      {inf.pal ? <span className="mgr-infl-pal">PAL {inf.pal}</span> : null}
+                      {inf.channelLink ? (
+                        <a
+                          href={inf.channelLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mgr-infl-link"
+                        >
+                          <LinkIcon className="w-3.5 h-3.5" /> 채널 바로가기
+                        </a>
+                      ) : (
+                        <span className="mgr-infl-link mgr-infl-link--disabled">채널 링크 없음</span>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              )}
-              {selectedEvent.shootId && (
+              </div>
+              {(selectedEvent.xhsResult || selectedEvent.dpResult || selectedEvent.dyResult ||
+                (selectedEvent.xhsResults && selectedEvent.xhsResults.length > 0)) && (
                 <div className="detail-row">
-                  <span className="detail-label"><Clock className="w-4 h-4" /> Shoot ID</span>
-                  <span className="detail-value mgr-shoot-id">{selectedEvent.shootId}</span>
+                  <span className="detail-label"><ExternalLink className="w-4 h-4" /> 결과물</span>
+                  <div className="mgr-result-row">
+                    {selectedEvent.xhsResults && selectedEvent.xhsResults.length > 0 ? (
+                      selectedEvent.xhsResults.map((u, i) => (
+                        <a key={i} href={u} target="_blank" rel="noopener noreferrer" className="mgr-result-link">
+                          <ExternalLink className="w-3 h-3" /> 샤오홍슈 {selectedEvent.xhsResults.length > 1 ? i + 1 : ''}
+                        </a>
+                      ))
+                    ) : (
+                      selectedEvent.xhsResult && (
+                        <a href={selectedEvent.xhsResult} target="_blank" rel="noopener noreferrer" className="mgr-result-link">
+                          <ExternalLink className="w-3 h-3" /> 샤오홍슈
+                        </a>
+                      )
+                    )}
+                    {selectedEvent.dpResult && (
+                      <a href={selectedEvent.dpResult} target="_blank" rel="noopener noreferrer" className="mgr-result-link">
+                        <ExternalLink className="w-3 h-3" /> 따종디엔핑
+                      </a>
+                    )}
+                    {selectedEvent.dyResult && isHttpUrl(selectedEvent.dyResult) && (
+                      <a href={selectedEvent.dyResult} target="_blank" rel="noopener noreferrer" className="mgr-result-link">
+                        <ExternalLink className="w-3 h-3" /> DY
+                      </a>
+                    )}
+                    {selectedEvent.dyResult && !isHttpUrl(selectedEvent.dyResult) && (
+                      <span className="mgr-result-text">DY: {selectedEvent.dyResult}</span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

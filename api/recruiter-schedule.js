@@ -122,6 +122,7 @@ export default async function handler(req, res) {
 
     const stats = { completed: 0, inProgress: 0, cancelled: 0, noShow: 0, total: 0 };
     const teamGroups = {};
+    const records = []; // 인플 단위 (리스트 뷰용)
 
     allRecords.forEach((rec, index) => {
       const f = rec.fields;
@@ -140,8 +141,18 @@ export default async function handler(req, res) {
 
       const xhsResult = f['XHS_Result'] || '';
       const dpResult  = f['DP_Result']  || '';
+      const dyResult  = f['DY_Result']  || '';
       const reserveDate = f['예약일시'] || null;
       const type = f['유형'] || '';
+
+      // 인플 채널 링크 (인플 마스터의 XHS_link1 lookup) — 두 가지 필드명 폴백
+      const channelLink =
+        firstOf(f['XHS_link1 (from WC_ID_)']) ||
+        firstOf(f['XHS_link1']) ||
+        '';
+
+      // PAL (인플 등급/팔로워 수)
+      const pal = firstOf(f['PAL#']) || firstOf(f['PAL']) || '';
 
       const resvLinks = f['예약팀명_DB'] || [];
       let totalPax = f['# 총인원'] || f['총인원'] || '';
@@ -166,33 +177,44 @@ export default async function handler(req, res) {
         id: rec.id,
         seq: index + 1,
         teamId,
-        shootId: f['Shoot_ID'] || '',
         brandName,
         branchName,
         displayId,
+        pal,
+        channelLink,
         xhsResult,
         dpResult,
+        dyResult,
         status,
         statusBucket: bucket,
         type,
         reserveDate,
         totalPax,
-        memo,
         xhsCount,
         dpCount,
       };
 
-      // 캘린더용 팀 그룹화
+      // 리스트 뷰용 — 인플 단위
+      records.push(item);
+
+      // 캘린더용 — 팀 단위로 그룹화
       if (reserveDate) {
+        const inflInfo = {
+          displayId: displayId !== '대기중' ? displayId : '',
+          pal,
+          channelLink,
+        };
         if (!teamGroups[teamId]) {
           teamGroups[teamId] = {
             ...item,
             displayIds: displayId !== '대기중' && displayId ? [displayId] : [],
             xhsResults: xhsResult ? [xhsResult] : [],
+            influencers: inflInfo.displayId ? [inflInfo] : [],
           };
         } else {
-          if (displayId !== '대기중' && displayId) {
-            teamGroups[teamId].displayIds.push(displayId);
+          if (inflInfo.displayId) {
+            teamGroups[teamId].displayIds.push(inflInfo.displayId);
+            teamGroups[teamId].influencers.push(inflInfo);
           }
           if (xhsResult) {
             teamGroups[teamId].xhsResults.push(xhsResult);
@@ -200,6 +222,14 @@ export default async function handler(req, res) {
         }
       }
     });
+
+    // 리스트 뷰 정렬 — 일정 오름차순
+    records.sort((a, b) => {
+      const da = a.reserveDate ? new Date(a.reserveDate).getTime() : 0;
+      const db = b.reserveDate ? new Date(b.reserveDate).getTime() : 0;
+      return da - db;
+    });
+    records.forEach((r, i) => { r.seq = i + 1; });
 
     const scheduleItems = Object.values(teamGroups);
 
@@ -209,6 +239,7 @@ export default async function handler(req, res) {
       monthLabel: airtableMonthToLabel(airtableMonth),
       stats,
       scheduleItems,
+      records,
     });
   } catch (err) {
     console.error('[recruiter-schedule] error:', err.message);

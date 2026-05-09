@@ -187,9 +187,153 @@
   color: var(--muted);
   margin-top: 6px;
 }
-.mgr-shoot-id {
-  font-family: 'JetBrains Mono', 'Consolas', monospace;
-  font-size: 13px;
+
+/* 모달 내부 — 인플 정보 카드 */
+.mgr-infl-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-left: 1.5rem;
+  margin-top: 4px;
+}
+.mgr-infl-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.mgr-infl-name {
+  font-weight: 700;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+.mgr-infl-pal {
+  background: rgba(168, 139, 250, 0.15);
   color: var(--purple-light);
+  border: 1px solid rgba(168, 139, 250, 0.3);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
   letter-spacing: 0.02em;
+  font-feature-settings: "tnum";
+}
+.mgr-infl-link {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #93c5fd;
+  text-decoration: none;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.28);
+  padding: 4px 10px;
+  border-radius: 6px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.mgr-infl-link:hover {
+  background: rgba(59, 130, 246, 0.24);
+  color: #fff;
+}
+.mgr-infl-link--disabled {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  border-color: var(--border);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* 결과물 링크 (모달 + 리스트 셀 공용) */
+.mgr-result-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: 1.5rem;
+  margin-top: 4px;
+}
+.mgr-result-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--purple-dim);
+  color: var(--purple-light);
+  border: 1px solid rgba(168, 139, 250, 0.2);
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+.mgr-result-link:hover {
+  background: rgba(168, 139, 250, 0.25);
+  color: #fff;
+  transform: translateY(-1px);
+}
+.mgr-result-text {
+  font-size: 0.78rem;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 4px 8px;
+  border-radius: 6px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+}
+.mgr-result-pending {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* 리스트 — 방문자 ID + 채널 바로가기 */
+.mgr-list-id-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mgr-list-id {
+  font-weight: 600;
+  color: var(--text);
+}
+.mgr-list-channel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  background: var(--purple-dim);
+  color: var(--purple-light);
+  border: 1px solid rgba(168, 139, 250, 0.25);
+  text-decoration: none;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+.mgr-list-channel:hover {
+  background: rgba(168, 139, 250, 0.3);
+  color: #fff;
+}
+.mgr-list-pal {
+  color: var(--purple-light);
+  font-weight: 700;
+  font-feature-settings: "tnum";
+}
+
+/* 와이드 테이블 — 8컬럼 수용 */
+.mgr-list-table--wide {
+  min-width: 880px;
+  font-size: 12.5px;
+}
+.mgr-list-table--wide th,
+.mgr-list-table--wide td {
+  padding: 10px 8px;
 }
