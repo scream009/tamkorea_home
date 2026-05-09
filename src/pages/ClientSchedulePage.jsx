@@ -47,6 +47,18 @@ const LinkBtn = ({ href, label }) =>
 const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
 const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 
+// 순수 유틸 — 컴포넌트 외부로 호이스팅 (useMemo 내부 참조 시 TDZ 회피)
+const formatType = (type) => {
+  if (!type) return '';
+  return String(type).replace(/.*(?:->|=>|→|➔|➡|▶|>)\s*/, '').trim();
+};
+const getTypeClass = (type) => {
+  if (!type) return 'event-exp';
+  if (type.includes('인플')) return 'event-infl';
+  if (type.includes('기자')) return 'event-press';
+  return 'event-exp';
+};
+
 export default function ClientSchedulePage() {
   const [searchParams] = useSearchParams();
   const campaignId = searchParams.get('campaignId');
@@ -217,18 +229,6 @@ export default function ClientSchedulePage() {
     if (status.includes('확정')) return <span className="status-dot status-resv" title={status}></span>;
     if (status.includes('취소')) return <span className="status-dot status-cancel" title={status}></span>;
     return <span className="status-dot status-wait" title={status}></span>;
-  };
-
-  const getTypeClass = (type) => {
-    if (!type) return 'event-exp';
-    if (type.includes('인플')) return 'event-infl';
-    if (type.includes('기자')) return 'event-press';
-    return 'event-exp';
-  };
-
-  const formatType = (type) => {
-    if (!type) return '';
-    return String(type).replace(/.*(?:->|=>|→|➔|➡|▶|>)\s*/, '').trim();
   };
 
   const generateDynamicMemo = (event, campaignName, brandName, branchName) => {
