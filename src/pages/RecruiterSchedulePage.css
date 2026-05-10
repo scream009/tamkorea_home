@@ -1,18 +1,17 @@
 /* Recruiter Schedule Page — ClientSchedulePage 확장 */
 
-/* KPI 그리드 — 담당자용 2분할 */
-.kpi-grid--mgr {
-  grid-template-columns: 1fr 1fr;
+/* KPI 그리드 — 담당자용: 5칸 통합 단일 카드 */
+.kpi-grid--mgr-single {
+  display: block;
+  margin-bottom: 28px;
 }
 
-@media (max-width: 600px) {
-  .kpi-grid--mgr {
-    grid-template-columns: 1fr;
-  }
+.mgr-summary-card {
+  width: 100%;
 }
 
-.mgr-card .kpi-header { margin-bottom: 14px; }
-.mgr-card .kpi-title  { font-size: 11px; }
+.mgr-card .kpi-header { margin-bottom: 16px; }
+.mgr-card .kpi-title  { font-size: 12px; font-weight: 700; }
 
 .mgr-icon-ok   { color: #10b981; }
 .mgr-icon-warn { color: #f59e0b; }
@@ -20,8 +19,10 @@
 .mgr-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 8px;
+}
+.mgr-row--5 {
+  gap: 4px;
 }
 .mgr-stat {
   flex: 1;
@@ -29,18 +30,23 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 .mgr-divider {
   width: 1px;
   align-self: stretch;
   background: rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
 }
 .mgr-stat-num {
-  font-size: 32px;
+  font-size: 30px;
   font-weight: 800;
   line-height: 1;
   font-feature-settings: "tnum";
 }
+.mgr-row--5 .mgr-stat-num { font-size: 28px; }
+
+.mgr-num-total  { color: var(--text); }
 .mgr-num-done   { color: #10b981; }
 .mgr-num-prog   { color: var(--blue); }
 .mgr-num-cancel { color: #ef4444; }
@@ -52,12 +58,19 @@
   font-weight: 600;
   letter-spacing: 0.05em;
 }
-.mgr-footer {
-  font-size: 11px;
-  color: var(--muted);
-  text-align: center;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  padding-top: 10px;
+
+@media (max-width: 600px) {
+  .mgr-row--5 {
+    flex-wrap: wrap;
+    gap: 12px 4px;
+  }
+  .mgr-row--5 .mgr-stat {
+    flex: 0 0 calc(33.333% - 4px);
+  }
+  .mgr-row--5 .mgr-divider {
+    display: none;
+  }
+  .mgr-row--5 .mgr-stat-num { font-size: 24px; }
 }
 
 /* 캘린더 셀 — 담당자용 (조금 더 크게) */
@@ -294,7 +307,7 @@
   font-size: 0.85rem;
 }
 
-/* 리스트 — 방문자 ID + 채널 바로가기 */
+/* 리스트 — 방문자 ID 셀 (ID 좌측, 채널 화살표는 우측 끝) */
 .mgr-list-id-cell {
   display: flex;
   align-items: center;
@@ -303,8 +316,14 @@
 .mgr-list-id {
   font-weight: 600;
   color: var(--text);
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .mgr-list-channel {
+  margin-left: auto;        /* 우측 끝으로 밀기 */
   display: inline-flex;
   align-items: center;
   justify-content: center;

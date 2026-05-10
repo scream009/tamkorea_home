@@ -3,12 +3,10 @@ import { useSearchParams } from 'react-router-dom';
 import {
   Calendar as CalendarIcon,
   List,
-  Camera,
   X,
   User,
   Users,
   AlertCircle,
-  AlertTriangle,
   CheckCircle2,
   ExternalLink,
   Link as LinkIcon,
@@ -231,8 +229,6 @@ export default function RecruiterSchedulePage() {
 
   const { stats, monthLabel } = data;
   const recruiterName = RECRUITER_LABEL[recruiterId] || recruiterId;
-  const inProgressTotal = stats.completed + stats.inProgress;
-  const issueTotal = stats.cancelled + stats.noShow;
 
   return (
     <div className="schedule-page">
@@ -245,14 +241,19 @@ export default function RecruiterSchedulePage() {
       </header>
 
       <main className="schedule-container">
-        {/* KPI — 진행 / 주의 (옵션 c) */}
-        <div className="kpi-grid kpi-grid--mgr">
-          <div className="kpi-card mgr-card mgr-progress">
+        {/* KPI — 5칸 통합 (전체 / 완료 / 진행중 / 취소 / 노쇼) */}
+        <div className="kpi-grid kpi-grid--mgr-single">
+          <div className="kpi-card mgr-card mgr-summary-card">
             <div className="kpi-header">
-              <span className="kpi-title">진행 현황</span>
+              <span className="kpi-title">체험단 현황</span>
               <CheckCircle2 className="w-5 h-5 mgr-icon-ok" />
             </div>
-            <div className="mgr-row">
+            <div className="mgr-row mgr-row--5">
+              <div className="mgr-stat">
+                <span className="mgr-stat-num mgr-num-total">{stats.total}</span>
+                <span className="mgr-stat-label">전체</span>
+              </div>
+              <div className="mgr-divider" />
               <div className="mgr-stat">
                 <span className="mgr-stat-num mgr-num-done">{stats.completed}</span>
                 <span className="mgr-stat-label">완료</span>
@@ -262,16 +263,7 @@ export default function RecruiterSchedulePage() {
                 <span className="mgr-stat-num mgr-num-prog">{stats.inProgress}</span>
                 <span className="mgr-stat-label">진행중</span>
               </div>
-            </div>
-            <div className="mgr-footer">{inProgressTotal}건 진행</div>
-          </div>
-
-          <div className="kpi-card mgr-card mgr-issue">
-            <div className="kpi-header">
-              <span className="kpi-title">주의 사항</span>
-              <AlertTriangle className="w-5 h-5 mgr-icon-warn" />
-            </div>
-            <div className="mgr-row">
+              <div className="mgr-divider" />
               <div className="mgr-stat">
                 <span className="mgr-stat-num mgr-num-cancel">{stats.cancelled}</span>
                 <span className="mgr-stat-label">취소</span>
@@ -282,7 +274,6 @@ export default function RecruiterSchedulePage() {
                 <span className="mgr-stat-label">노쇼</span>
               </div>
             </div>
-            <div className="mgr-footer">{issueTotal}건 발생</div>
           </div>
         </div>
 

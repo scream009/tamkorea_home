@@ -13,18 +13,33 @@ const RESV_TABLE = encodeURIComponent('예약테이블');
 
 const VALID_RECRUITERS = new Set(['HH', 'LH', 'AN', 'FB']);
 
-// 진행상태 → 4개 카테고리 매핑
-const STATUS_BUCKETS = {
-  completed:  ['업로드완료', '송부완료', '배포완료'],
-  inProgress: ['예약요청', '예약확정', '촬영완료', '변경요청', '업로드대기', '긴급예약', '예약반려'],
-  cancelled:  ['취소_방문자', '취소_고객사'],
-  noShow:     ['노쇼'],
-};
-
-function classifyStatus(status) {
-  for (const [bucket, list] of Object.entries(STATUS_BUCKETS)) {
-    if (list.includes(status)) return bucket;
+/**
+ * 카테고리 분류 — 새 기준
+ *  완료    : XHS 링크 제출됨 (진행_DB_OLD.제출상태 ✅ 또는 XHS_Result에 xhslink/xiaohongshu 포함)
+ *  취소    : 진행상태에 '취소' 포함
+ *  노쇼    : 진행상태에 '노쇼' 포함
+ *  진행중  : 그 외 (예약확정/촬영완료/예약요청/예약반려/변경요청 등)
+ *
+ * 진행상태로만 보면 "촬영완료" 인데 실제 XHS 링크 미제출 건이 완료로 잡히는 문제가 있어,
+ * "링크가 들어온 건 = 완료"로 운영 기준을 바꿈.
+ */
+function isXhsSubmitted(fields) {
+  const submitStatus = fields['제출상태'];
+  if (typeof submitStatus === 'string' &&
+      (submitStatus.includes('✅') || submitStatus.includes('제출완료'))) {
+    return true;
   }
+  const xhsResult = fields['XHS_Result'];
+  if (!xhsResult) return false;
+  const lower = String(xhsResult).toLowerCase();
+  return lower.includes('xhslink') || lower.includes('xiaohongshu');
+}
+
+function classifyStatus(fields) {
+  if (isXhsSubmitted(fields)) return 'completed';
+  const status = String(fields['진행상태'] || '');
+  if (status.includes('취소')) return 'cancelled';
+  if (status.includes('노쇼')) return 'noShow';
   return 'inProgress';
 }
 
@@ -127,7 +142,7 @@ export default async function handler(req, res) {
     allRecords.forEach((rec, index) => {
       const f = rec.fields;
       const status = f['진행상태'] || '진행전';
-      const bucket = classifyStatus(status);
+      const bucket = classifyStatus(f);
       stats[bucket] = (stats[bucket] || 0) + 1;
       stats.total += 1;
 
