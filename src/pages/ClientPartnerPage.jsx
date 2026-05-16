@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { 
   Calendar as CalendarIcon, 
@@ -58,6 +58,21 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
   const [viewMode, setViewMode] = useState('calendar');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const modalCloseBtnRef = useRef(null);
+
+  // ESC 키 닫기 + 스크롤 잠금 (Schedule 페이지와 동기화)
+  useEffect(() => {
+    if (!selectedEvent) return;
+    const handleKey = (e) => { if (e.key === 'Escape') setSelectedEvent(null); };
+    document.addEventListener('keydown', handleKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => modalCloseBtnRef.current?.focus(), 0);
+    return () => {
+      document.removeEventListener('keydown', handleKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [selectedEvent]);
 
   const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
   const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
@@ -75,13 +90,31 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
     return days;
   }, [currentDate]);
 
-  const getEventsForDate = (dateObj) => {
-    return camp.scheduleItems.filter(item => {
-      if (!item.reserveDate) return false;
+  // O(1) 날짜별 이벤트 인덱싱
+  const eventsByDate = useMemo(() => {
+    const map = new Map();
+    for (const item of camp.scheduleItems) {
+      if (!item.reserveDate) continue;
       const d = new Date(item.reserveDate);
-      return d.getFullYear() === dateObj.getFullYear() && d.getMonth() === dateObj.getMonth() && d.getDate() === dateObj.getDate();
-    });
-  };
+      if (Number.isNaN(d.getTime())) continue;
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(item);
+    }
+    for (const events of map.values()) {
+      events.sort((a, b) => {
+        const ia = String(a.type || '').includes('인플'), ib = String(b.type || '').includes('인플');
+        if (ia && !ib) return -1; if (!ia && ib) return 1;
+        return new Date(a.reserveDate) - new Date(b.reserveDate);
+      });
+    }
+    return map;
+  }, [camp.scheduleItems]);
+
+  const getEventsForDate = useCallback((dateObj) => {
+    const key = `${dateObj.getFullYear()}-${dateObj.getMonth()}-${dateObj.getDate()}`;
+    return eventsByDate.get(key) || [];
+  }, [eventsByDate]);
 
   const getStatusDot = (status) => {
     if (!status) return <span className="status-dot status-wait"></span>;
@@ -99,6 +132,28 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
   };
 
   const formatType = (type) => type ? String(type).replace(/.*(?:->|=>|→|➔|➡|▶|>)\s*/, '').trim() : '';
+
+  // 예약 메시지 자동 생성 (Schedule 페이지와 동기화)
+  const generateDynamicMemo = (event) => {
+    const typeStr = formatType(event.type);
+    const typeText = typeStr ? `${typeStr} 예약` : '예약';
+    const ids = event.displayIds?.length > 0 ? event.displayIds.join(', ') : event.displayId;
+    let dateStr = '미정';
+    if (!isNaN(new Date(event.reserveDate).getTime())) {
+      const d = new Date(event.reserveDate);
+      const dow = ['(일)', '(월)', '(화)', '(수)', '(목)', '(금)', '(토)'];
+      dateStr = `${d.getMonth() + 1}/${d.getDate()}${dow[d.getDay()]} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+    const paxStr = event.totalPax ? `${event.totalPax}명` : '미정';
+    const safeMemo = Array.isArray(event.memo) ? event.memo.join(', ') : String(event.memo || '');
+    const specialNote = safeMemo.trim() ? ` (${safeMemo.trim()})` : '';
+    const safeXhs = Array.isArray(event.xhsCount) ? event.xhsCount[0] : (event.xhsCount || 1);
+    const safeDp  = Array.isArray(event.dpCount)  ? event.dpCount[0]  : (event.dpCount  || 0);
+    let contentStr = `샤오홍슈 ${safeXhs}건`;
+    if (Number(safeDp) > 0) contentStr += `, 따중리뷰 ${safeDp}건`;
+    const brandLabel = camp.brandName && camp.branchName ? `${camp.brandName} ${camp.branchName}` : (camp.brandName || '캠페인');
+    return `【${brandLabel}】 ${typeText}입니다.\n\n- 닉네임: ${ids}\n- 일정: ${dateStr}\n- 인원: ${paxStr}${specialNote}\n- 내용: ${contentStr}\n\n* 방문시간은 약간의 변동이 있을 수 있습니다.`;
+  };
 
   const hasInfl = camp.records.influencer.length > 0;
   const hasExp = camp.records.experience.length > 0;
@@ -265,13 +320,34 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
                       <>
                         <div className="cell-num">{dayObj.date.getDate()}</div>
                         <div className="event-list flex flex-col gap-[2px]">
-                          {events.map((ev, i) => (
-                            <div key={i} className={`event-badge ${getTypeClass(ev.type)}`} onClick={(e) => { e.stopPropagation(); setSelectedEvent(ev); }}>
-                              <div className="flex items-center gap-1">
-                                {getStatusDot(ev.status)} {formatType(ev.type)} {ev.totalPax ? `(${ev.totalPax}명)` : ''}
-                              </div>
-                            </div>
-                          ))}
+                          {events.map((ev, i) => {
+                            const displayType = formatType(ev.type);
+                            const statusStr = String(ev.status || '');
+                            const isCancelled = statusStr.includes('취소');
+                            const isNoShow = statusStr.includes('노쇼');
+                            const d = ev.reserveDate ? new Date(ev.reserveDate) : null;
+                            const time = (d && !Number.isNaN(d.getTime()))
+                              ? `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+                              : '';
+                            return (
+                              <button
+                                type="button"
+                                key={i}
+                                className={`event-badge ${getTypeClass(ev.type)}${(isCancelled || isNoShow) ? ' is-cancelled' : ''}`}
+                                aria-label={`${time ? time + ' ' : ''}${displayType}${ev.totalPax ? ' ' + ev.totalPax + '명' : ''}${isCancelled ? ' 취소' : ''}${isNoShow ? ' 노쇼' : ''}`}
+                                onClick={(e) => { e.stopPropagation(); setSelectedEvent(ev); }}
+                              >
+                                <span className="ev-row">
+                                  {time && <span className="ev-time">{time}</span>}
+                                  {getStatusDot(ev.status)}
+                                  <span className="ev-type">{displayType}</span>
+                                  {ev.totalPax ? <span className="ev-pax">({ev.totalPax}명)</span> : null}
+                                  {isCancelled && <span className="ev-tag-cancel">취소</span>}
+                                  {isNoShow    && <span className="ev-tag-noshow">노쇼</span>}
+                                </span>
+                              </button>
+                            );
+                          })}
                         </div>
                       </>
                     )}
@@ -362,18 +438,65 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
         </div>
       )}
 
-      {/* Event Modal */}
+      {/* Event Modal — Schedule 페이지 기준으로 동기화 */}
       {selectedEvent && (
-        <div className="event-modal-overlay" onClick={() => setSelectedEvent(null)}>
+        <div
+          className="event-modal-overlay"
+          onClick={() => setSelectedEvent(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="event-modal-title"
+        >
           <div className="event-modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="event-modal-close" onClick={() => setSelectedEvent(null)}><X className="w-5 h-5" /></button>
+            <button
+              ref={modalCloseBtnRef}
+              type="button"
+              className="event-modal-close"
+              onClick={() => setSelectedEvent(null)}
+              aria-label="닫기"
+            >
+              <X className="w-5 h-5" />
+            </button>
             <div className={`modal-header ${getTypeClass(selectedEvent.type)}`}>
-              <h3 className="modal-title flex items-center gap-2">{getStatusDot(selectedEvent.status)} {formatType(selectedEvent.type)}</h3>
+              <h3 id="event-modal-title" className="modal-title flex items-center gap-2">
+                {getStatusDot(selectedEvent.status)} {formatType(selectedEvent.type)} 상세정보
+              </h3>
             </div>
             <div className="modal-body">
-              <div className="detail-row"><span className="detail-label"><CalendarIcon className="w-4 h-4" /> 일시</span><span className="detail-value text-white font-medium">{new Date(selectedEvent.reserveDate).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div>
-              <div className="detail-row"><span className="detail-label"><Users className="w-4 h-4" /> 인원</span><span className="detail-value">{selectedEvent.totalPax ? `${selectedEvent.totalPax}명` : '미정'}</span></div>
-              <div className="detail-row"><span className="detail-label"><User className="w-4 h-4" /> 닉네임</span><span className="detail-value">{selectedEvent.displayIds?.length > 0 ? selectedEvent.displayIds.join(', ') : selectedEvent.displayId}</span></div>
+              <div className="detail-row">
+                <span className="detail-label"><CalendarIcon className="w-4 h-4" /> 예약 일시</span>
+                <span className="detail-value text-white font-medium">
+                  {!isNaN(new Date(selectedEvent.reserveDate).getTime())
+                    ? new Date(selectedEvent.reserveDate).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    : '시간 미정'}
+                </span>
+              </div>
+              <div className="detail-row">
+                <span className="detail-label"><Users className="w-4 h-4" /> 방문 인원</span>
+                <span className="detail-value">{selectedEvent.totalPax ? `${selectedEvent.totalPax}명` : '미정'}</span>
+              </div>
+              <div className="detail-row">
+                <span className="detail-label"><User className="w-4 h-4" /> 방문자 ID (닉네임)</span>
+                <span className="detail-value">{selectedEvent.displayIds?.length > 0 ? selectedEvent.displayIds.join(', ') : selectedEvent.displayId}</span>
+              </div>
+              <div className="detail-row">
+                <span className="detail-label"><Info className="w-4 h-4" /> 예약 메시지 / 메모</span>
+                <span className="detail-value memo-box" style={{ whiteSpace: 'pre-wrap' }}>
+                  {generateDynamicMemo(selectedEvent)}
+                </span>
+              </div>
+              {selectedEvent.xhsResults && selectedEvent.xhsResults.length > 0 && (
+                <div className="detail-row" style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                  <span className="detail-label" style={{ color: 'var(--purple-light)' }}>완료 결과물</span>
+                  <div className="flex flex-wrap gap-2" style={{ marginTop: '8px' }}>
+                    {selectedEvent.xhsResults.map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="result-link">
+                        확인하기 {i + 1} <ExternalLink className="w-4 h-4" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
