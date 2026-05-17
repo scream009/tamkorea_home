@@ -79,6 +79,14 @@ function parseAirtableMonth(s) {
   if (!m) return null;
   return new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, 1);
 }
+function shiftMonthParam(monthParam, delta) {
+  const m = /^(\d{4})-(\d{1,2})$/.exec(monthParam || '');
+  if (!m) return monthParam;
+  const d = new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1 + delta, 1);
+  const y = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${y}-${mm}`;
+}
 
 export default function RecruiterSchedulePage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -107,9 +115,14 @@ export default function RecruiterSchedulePage() {
   const [monthFilter, setMonthFilter] = useState('all'); // 'all' | "2026-04" 같은 정산월 paramKey
   // 담당자 필터 — id=all 모드 전용 (기본: 전체)
   const [recruiterFilter, setRecruiterFilter] = useState('all');
+  // 달력 표시월 — 정산월 필터와 독립. 베이스월 변경 시 자동 동기화.
+  const [calMonth, setCalMonth] = useState(baseMonth);
 
-  // 베이스월 바뀌면 필터 리셋
-  useEffect(() => { setMonthFilter('all'); }, [baseMonth]);
+  // 베이스월 바뀌면 필터·달력월 리셋
+  useEffect(() => {
+    setMonthFilter('all');
+    setCalMonth(baseMonth);
+  }, [baseMonth]);
   useEffect(() => { setRecruiterFilter('all'); }, [recruiterId]);
 
   // 모달 ESC + scroll lock
@@ -171,11 +184,15 @@ export default function RecruiterSchedulePage() {
     setSearchParams(next);
   };
 
-  // 캘린더 그리드는 항상 베이스월 기준
+  // 달력 그리드는 calMonth 기준 (정산월 필터와 독립)
   const displayMonth = useMemo(() => {
-    const m = /^(\d{4})-(\d{1,2})$/.exec(baseMonth);
+    const m = /^(\d{4})-(\d{1,2})$/.exec(calMonth);
     return m ? new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, 1) : new Date();
-  }, [baseMonth]);
+  }, [calMonth]);
+
+  const changeCalMonth = (delta) => {
+    setCalMonth((prev) => shiftMonthParam(prev, delta));
+  };
 
   const calendarDays = useMemo(() => {
     const year = displayMonth.getFullYear();
@@ -427,9 +444,32 @@ export default function RecruiterSchedulePage() {
               <div className="section-title section-title--lg">
                 <CalendarIcon className="w-5 h-5" /> 체험단 일정
               </div>
-              <div className="section-badge">{baseLabel}</div>
+              <div className="section-badge">{paramToLabel(calMonth)}</div>
             </div>
             <div className="cal-wrap">
+              <div className="cal-nav">
+                <button
+                  type="button"
+                  className="cal-btn"
+                  onClick={() => changeCalMonth(-1)}
+                  aria-label="이전 달 보기"
+                >‹ 이전</button>
+                <div className="cal-month">{paramToLabel(calMonth)}</div>
+                <button
+                  type="button"
+                  className="cal-btn"
+                  onClick={() => changeCalMonth(+1)}
+                  aria-label="다음 달 보기"
+                >다음 ›</button>
+                {calMonth !== baseMonth && (
+                  <button
+                    type="button"
+                    className="cal-btn cal-btn--reset"
+                    onClick={() => setCalMonth(baseMonth)}
+                    title="기준월로 돌아가기"
+                  >↺ 기준월</button>
+                )}
+              </div>
               <div className="cal-grid mgr-cal-grid">
                 {['일', '월', '화', '수', '목', '금', '토'].map((day) => (
                   <div key={day} className="cal-hdr">{day}</div>
@@ -464,11 +504,12 @@ export default function RecruiterSchedulePage() {
                                 <button
                                   type="button"
                                   key={i}
-                                  className={`event-badge mgr-event-badge mgr-bucket-${ev.statusBucket || 'inProgress'}${(isCancelled || isNoShow) ? ' is-cancelled' : ''}${isOtherMonth ? ' is-other-month' : ''}`}
+                                  className={`event-badge mgr-event-badge mgr-bucket-${ev.statusBucket || 'inProgress'}${(isCancelled || isNoShow) ? ' is-cancelled' : ''}${isOtherMonth ? ' is-other-month' : ''} mgr-event-2line`}
                                   aria-label={`${monthShort ? monthShort + '월정산 ' : ''}${time} ${customer} ${ev.totalPax ? ev.totalPax + '명' : ''}${isCancelled ? ' 취소' : ''}${isNoShow ? ' 노쇼' : ''}`}
                                   onClick={(e) => { e.stopPropagation(); setSelectedEvent(ev); }}
                                 >
-                                  <span className="ev-row">
+                                  {/* 1행: 메타 (정산월·담당자·시간·인원·상태) */}
+                                  <span className="mgr-ev-meta">
                                     {monthShort != null && (
                                       <span className="mgr-month-pill xxs" title={`${monthShort}월 정산`}>{monthShort}</span>
                                     )}
@@ -478,12 +519,13 @@ export default function RecruiterSchedulePage() {
                                       </span>
                                     )}
                                     {time && <span className="ev-time">{time}</span>}
-                                    <span className="ev-type mgr-customer" title={customer}>{customer}</span>
                                     {ev.totalPax ? <span className="ev-pax">({ev.totalPax}명)</span> : null}
                                     {isCancelled && <span className="ev-tag-cancel">취소</span>}
                                     {isNoShow    && <span className="ev-tag-noshow">노쇼</span>}
                                     {isCompleted && !isCancelled && !isNoShow && <span className="ev-tag-done">완료</span>}
                                   </span>
+                                  {/* 2행: 고객사명 — 전체 폭 사용, 잘리면 말줄임 */}
+                                  <span className="mgr-ev-customer" title={customer}>{customer}</span>
                                 </button>
                               );
                             })}
