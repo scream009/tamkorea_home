@@ -40,6 +40,15 @@ function classifyStatus(fields) {
   return 'inProgress';
 }
 
+// 변경메시지에 placeholder("⚠ 변경일시가 입력되지 않았습니다...") 가 들어있으면
+// 변경된 적이 없는 것으로 간주하고 빈 문자열로 정규화.
+function normalizeModMsg(s) {
+  if (!s) return '';
+  const str = String(s);
+  if (str.includes('변경일시가 입력되지 않았습니다')) return '';
+  return str;
+}
+
 /* ── 월 변환 헬퍼 ──────────────────────────────────────── */
 function monthParamToAirtable(monthParam) {
   // "2026-04" → "2026. 4월"
@@ -175,7 +184,7 @@ export default async function handler(req, res) {
             dpCount: r.fields['DP_건수'],
             specialNote: r.fields['특이사항'] || r.fields['인원메모'] || r.fields['비고'] || '',
             reservationMsg: r.fields['예약메시지'] || r.fields['예약 메시지'] || '',
-            modificationMsg: r.fields['변경메시지'] || r.fields['변경 메시지'] || '',
+            modificationMsg: normalizeModMsg(r.fields['변경메시지'] || r.fields['변경 메시지']),
           };
         });
       }
@@ -246,7 +255,7 @@ export default async function handler(req, res) {
       let dpCount = f['DP_건수'];
       // 예약/수정 메시지 — 진행_DB_OLD 직접 → 예약테이블 fallback
       let reservationMsg = f['예약메시지'] || f['예약 메시지'] || '';
-      let modificationMsg = f['변경메시지'] || f['변경 메시지'] || '';
+      let modificationMsg = normalizeModMsg(f['변경메시지'] || f['변경 메시지']);
 
       const teamId = resvLinks.length > 0 ? resvLinks[0] : rec.id;
 

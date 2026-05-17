@@ -686,25 +686,31 @@ export default function RecruiterSchedulePage() {
                   </span>
                 </div>
               )}
-              <div className="detail-row">
-                <span className="detail-label"><CalendarIcon className="w-4 h-4" /> 예약 일시</span>
-                <span className="detail-value">
-                  {selectedEvent.reserveDate && !Number.isNaN(new Date(selectedEvent.reserveDate).getTime())
-                    ? new Date(selectedEvent.reserveDate).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-                    : '시간 미정'}
-                </span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label"><Users className="w-4 h-4" /> 방문 인원</span>
-                <span className="detail-value">{selectedEvent.totalPax ? `${selectedEvent.totalPax}명` : '미정'}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label"><FileSpreadsheet className="w-4 h-4" /> 콘텐츠 건수</span>
-                <span className="detail-value">
-                  샤오홍슈 {selectedEvent.xhsCount ?? 0}건
-                  {Number(selectedEvent.dpCount) > 0 && ` · 따중리뷰 ${selectedEvent.dpCount}건`}
-                </span>
-              </div>
+              {/* 예약일시·방문인원·콘텐츠건수는 예약/변경 메시지 본문에 이미 포함되므로
+                  메시지가 있으면 중복 제거 위해 숨긴다. 메시지 없으면 그대로 표시. */}
+              {!(selectedEvent.modificationMsg || selectedEvent.reservationMsg) && (
+                <>
+                  <div className="detail-row">
+                    <span className="detail-label"><CalendarIcon className="w-4 h-4" /> 예약 일시</span>
+                    <span className="detail-value">
+                      {selectedEvent.reserveDate && !Number.isNaN(new Date(selectedEvent.reserveDate).getTime())
+                        ? new Date(selectedEvent.reserveDate).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                        : '시간 미정'}
+                    </span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label"><Users className="w-4 h-4" /> 방문 인원</span>
+                    <span className="detail-value">{selectedEvent.totalPax ? `${selectedEvent.totalPax}명` : '미정'}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label"><FileSpreadsheet className="w-4 h-4" /> 콘텐츠 건수</span>
+                    <span className="detail-value">
+                      샤오홍슈 {selectedEvent.xhsCount ?? 0}건
+                      {Number(selectedEvent.dpCount) > 0 && ` · 따중리뷰 ${selectedEvent.dpCount}건`}
+                    </span>
+                  </div>
+                </>
+              )}
               {(selectedEvent.modificationMsg || selectedEvent.reservationMsg) && (
                 <div className="detail-row">
                   <span className="detail-label">
