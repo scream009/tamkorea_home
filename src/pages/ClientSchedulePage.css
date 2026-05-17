@@ -308,11 +308,9 @@
 }
 
 .event-list {
-  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   gap: 3px;
-  height: 100%;
 }
 
 .cal-cell.empty {
