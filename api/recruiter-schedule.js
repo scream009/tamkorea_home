@@ -174,6 +174,8 @@ export default async function handler(req, res) {
             xhsCount: r.fields['XHS_건수'],
             dpCount: r.fields['DP_건수'],
             specialNote: r.fields['특이사항'] || r.fields['인원메모'] || r.fields['비고'] || '',
+            reservationMsg: r.fields['예약메시지'] || r.fields['예약 메시지'] || '',
+            modificationMsg: r.fields['변경메시지'] || r.fields['변경 메시지'] || r.fields['수정메시지'] || r.fields['수정 메시지'] || '',
           };
         });
       }
@@ -242,6 +244,9 @@ export default async function handler(req, res) {
       let memo = f['특이사항'] || f['인원메모'] || f['비고'] || '';
       let xhsCount = f['XHS_건수'];
       let dpCount = f['DP_건수'];
+      // 예약/수정 메시지 — 진행_DB_OLD 직접 → 예약테이블 fallback
+      let reservationMsg = f['예약메시지'] || f['예약 메시지'] || '';
+      let modificationMsg = f['변경메시지'] || f['변경 메시지'] || f['수정메시지'] || f['수정 메시지'] || '';
 
       const teamId = resvLinks.length > 0 ? resvLinks[0] : rec.id;
 
@@ -251,6 +256,8 @@ export default async function handler(req, res) {
         if (r.specialNote) memo = r.specialNote;
         if (r.xhsCount !== undefined) xhsCount = r.xhsCount;
         if (r.dpCount !== undefined) dpCount = r.dpCount;
+        if (!reservationMsg && r.reservationMsg) reservationMsg = r.reservationMsg;
+        if (!modificationMsg && r.modificationMsg) modificationMsg = r.modificationMsg;
       }
 
       xhsCount = xhsCount !== undefined ? xhsCount : 1;
@@ -275,6 +282,9 @@ export default async function handler(req, res) {
         totalPax,
         xhsCount,
         dpCount,
+        memo,
+        reservationMsg,
+        modificationMsg,
         // v2 신규
         settlementMonth,           // "2026-04"
         settlementMonthShort,      // 4

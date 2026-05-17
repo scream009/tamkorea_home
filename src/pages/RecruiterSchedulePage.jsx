@@ -12,6 +12,7 @@ import {
   Link as LinkIcon,
   FileSpreadsheet,
   Filter,
+  MessageSquare,
 } from 'lucide-react';
 import './ClientSchedulePage.css';
 import './RecruiterSchedulePage.css';
@@ -704,6 +705,17 @@ export default function RecruiterSchedulePage() {
                   {Number(selectedEvent.dpCount) > 0 && ` · 따중리뷰 ${selectedEvent.dpCount}건`}
                 </span>
               </div>
+              {(selectedEvent.modificationMsg || selectedEvent.reservationMsg) && (
+                <div className="detail-row">
+                  <span className="detail-label">
+                    <MessageSquare className="w-4 h-4" />
+                    {selectedEvent.modificationMsg ? '변경 메시지' : '예약 메시지'}
+                  </span>
+                  <span className="detail-value memo-box" style={{ whiteSpace: 'pre-wrap' }}>
+                    {selectedEvent.modificationMsg || selectedEvent.reservationMsg}
+                  </span>
+                </div>
+              )}
               <div className="detail-row">
                 <span className="detail-label"><User className="w-4 h-4" /> 방문 인플</span>
                 <div className="mgr-infl-list">
