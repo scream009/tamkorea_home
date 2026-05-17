@@ -239,6 +239,18 @@ export default function RecruiterSchedulePage() {
     return eventsByDate.get(key) || [];
   }, [eventsByDate]);
 
+  // 베이스월 ±1 드롭다운 옵션 — 모든 hook은 early return 위에서 호출되어야 함
+  const baseOptions = useMemo(() => {
+    const today = getCurrentKstMonth();
+    return [-1, 0, 1].map((delta) => {
+      const m = /^(\d{4})-(\d{1,2})$/.exec(today);
+      const d = new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1 + delta, 1);
+      const y = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      return { value: `${y}-${mm}`, label: paramToLabel(`${y}-${mm}`) };
+    });
+  }, []);
+
   const getBucketDot = (bucket) => <span className={`status-dot status-${bucket}`} />;
 
   /* ── 에러/로딩 ─────────────────────────────── */
@@ -280,19 +292,6 @@ export default function RecruiterSchedulePage() {
   const { months, monthLabels, statsByMonth } = data;
   const recruiterName = RECRUITER_LABEL[recruiterId] || recruiterId;
   const baseLabel = monthLabels[baseMonth] || paramToLabel(baseMonth);
-
-  // 베이스월 ±1 드롭다운 옵션 (요청대로 ±1만)
-  const baseOptions = useMemo(() => {
-    const today = getCurrentKstMonth();
-    const opts = [-1, 0, 1].map((delta) => {
-      const m = /^(\d{4})-(\d{1,2})$/.exec(today);
-      const d = new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1 + delta, 1);
-      const y = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      return { value: `${y}-${mm}`, label: paramToLabel(`${y}-${mm}`) };
-    });
-    return opts;
-  }, []);
 
   /* ── 렌더 ─────────────────────────────────── */
   return (
