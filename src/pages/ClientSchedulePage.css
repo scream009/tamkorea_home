@@ -296,8 +296,7 @@
 .cal-cell {
   min-height: 92px;
   height: auto;
-  display: flex;
-  flex-direction: column;
+  display: block;
   background: rgba(28, 31, 51, 0.55);
   border: 1px solid transparent;
   border-radius: 10px;
@@ -308,9 +307,7 @@
 }
 
 .event-list {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+  display: block;
 }
 
 .cal-cell.empty {

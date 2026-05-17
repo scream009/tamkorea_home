@@ -320,7 +320,7 @@ export default function RecruiterSchedulePage() {
                       {dayObj.isCurrentMonth && (
                         <>
                           <div className="cell-num">{dayObj.date.getDate()}</div>
-                          <div className="event-list flex flex-col gap-[3px]">
+                          <div className="event-list">
                             {events.map((ev, i) => {
                               const statusStr = String(ev.status || '');
                               const isCancelled = statusStr.includes('취소');

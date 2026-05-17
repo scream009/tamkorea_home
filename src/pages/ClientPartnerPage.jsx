@@ -319,7 +319,7 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
                     {dayObj.isCurrentMonth && (
                       <>
                         <div className="cell-num">{dayObj.date.getDate()}</div>
-                        <div className="event-list flex flex-col gap-[2px]">
+                        <div className="event-list">
                           {events.map((ev, i) => {
                             const displayType = formatType(ev.type);
                             const statusStr = String(ev.status || '');

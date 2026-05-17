@@ -453,7 +453,7 @@ export default function ClientSchedulePage() {
                       {dayObj.isCurrentMonth && (
                         <>
                           <div className="cell-num">{dayObj.date.getDate()}</div>
-                          <div className="event-list flex flex-col gap-[2px]">
+                          <div className="event-list">
                             {events.map((ev, i) => {
                               const displayType = formatType(ev.type);
                               // 진행상태 정확매칭 → 부분문자열로 강건성 향상
