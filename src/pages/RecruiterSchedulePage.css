@@ -75,12 +75,12 @@
 
 /* 캘린더 셀 — 담당자용 (조금 더 크게) */
 .mgr-cal-grid {
-  /* Implicit grid tracks will default to auto. 
-     The min-height: 120px on the child cells will ensure the row is at least 120px. */
+  grid-auto-rows: minmax(120px, max-content) !important;
 }
 .mgr-cal-grid .cal-cell {
   min-height: 120px;
   height: auto;
+  overflow: visible;
 }
 
 /* 이벤트 뱃지 — 담당자용 */
@@ -392,4 +392,104 @@
 .mgr-list-table--wide th,
 .mgr-list-table--wide td {
   padding: 10px 8px;
+}
+
+/* ───────── 모바일 최적화 (담당자별 일정) ───────── */
+@media (max-width: 768px) {
+  /* 달력 → 세로 카드형 레이아웃 */
+  .mgr-cal-grid {
+    display: flex !important;
+    flex-direction: column;
+    gap: 10px;
+    grid-auto-rows: unset !important;
+  }
+  .mgr-cal-grid .cal-hdr {
+    display: none;
+  }
+  .mgr-cal-grid .cal-cell {
+    min-height: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .mgr-cal-grid .cal-cell.empty {
+    display: none;
+  }
+  .mgr-cal-grid .cal-cell:not(.cal-cell--has-events):not(.today-cell) {
+    display: none;
+  }
+  .mgr-cal-grid .cell-num {
+    display: inline-block;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .mgr-cal-grid .mgr-event-badge {
+    font-size: 12px;
+    padding: 6px 10px;
+    margin-bottom: 4px;
+    border-radius: 8px;
+  }
+  .mgr-cal-grid .ev-row {
+    gap: 6px;
+  }
+
+  /* KPI 카드 모바일 조정 */
+  .mgr-row--5 {
+    flex-wrap: wrap;
+    gap: 12px 4px;
+  }
+  .mgr-row--5 .mgr-stat {
+    flex: 0 0 calc(33.333% - 4px);
+  }
+  .mgr-row--5 .mgr-divider {
+    display: none;
+  }
+
+  /* 리스트 뷰 모바일 */
+  .mgr-list-wrap {
+    padding: 12px;
+  }
+  .mgr-list-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mgr-list-table--wide {
+    min-width: 700px;
+    font-size: 11.5px;
+  }
+
+  /* 모달 모바일 */
+  .event-modal-content {
+    width: 95%;
+    max-height: 85vh;
+  }
+  .modal-body {
+    padding: 1rem;
+  }
+  .mgr-infl-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .mgr-infl-link {
+    margin-left: 0;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .mgr-cal-grid .mgr-event-badge {
+    font-size: 11px;
+    padding: 5px 8px;
+  }
+  .mgr-stat-num {
+    font-size: 22px !important;
+  }
+  .event-modal-content {
+    width: 98%;
+    border-radius: 14px;
+  }
 }
