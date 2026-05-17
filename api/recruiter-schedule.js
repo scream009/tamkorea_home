@@ -175,7 +175,7 @@ export default async function handler(req, res) {
             dpCount: r.fields['DP_건수'],
             specialNote: r.fields['특이사항'] || r.fields['인원메모'] || r.fields['비고'] || '',
             reservationMsg: r.fields['예약메시지'] || r.fields['예약 메시지'] || '',
-            modificationMsg: r.fields['변경메시지'] || r.fields['변경 메시지'] || r.fields['수정메시지'] || r.fields['수정 메시지'] || '',
+            modificationMsg: r.fields['변경메시지'] || r.fields['변경 메시지'] || '',
           };
         });
       }
@@ -246,7 +246,7 @@ export default async function handler(req, res) {
       let dpCount = f['DP_건수'];
       // 예약/수정 메시지 — 진행_DB_OLD 직접 → 예약테이블 fallback
       let reservationMsg = f['예약메시지'] || f['예약 메시지'] || '';
-      let modificationMsg = f['변경메시지'] || f['변경 메시지'] || f['수정메시지'] || f['수정 메시지'] || '';
+      let modificationMsg = f['변경메시지'] || f['변경 메시지'] || '';
 
       const teamId = resvLinks.length > 0 ? resvLinks[0] : rec.id;
 
