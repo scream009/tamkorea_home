@@ -75,7 +75,8 @@
 
 /* 캘린더 셀 — 담당자용 (조금 더 크게) */
 .mgr-cal-grid {
-  grid-auto-rows: minmax(120px, auto);
+  /* Implicit grid tracks will default to auto. 
+     The min-height: 120px on the child cells will ensure the row is at least 120px. */
 }
 .mgr-cal-grid .cal-cell {
   min-height: 120px;
