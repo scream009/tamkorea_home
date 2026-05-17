@@ -1,6 +1,205 @@
-/* Recruiter Schedule Page — ClientSchedulePage 확장 */
+/* Recruiter Schedule Page — ClientSchedulePage 확장 (v2: 3개월 + all 모드) */
 
-/* KPI 그리드 — 담당자용: 5칸 통합 단일 카드 */
+/* ───────── 베이스월 헤더 컨트롤 ───────── */
+.mgr-base-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--purple-dim);
+  border: 1px solid rgba(168, 139, 250, 0.25);
+  border-radius: 999px;
+  padding: 4px 8px;
+  margin-bottom: 16px;
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.18);
+}
+.mgr-base-arrow {
+  background: transparent;
+  border: 0;
+  color: var(--purple-light);
+  font-size: 18px;
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+.mgr-base-arrow:hover:not(:disabled) { background: rgba(168, 139, 250, 0.18); }
+.mgr-base-arrow:disabled { opacity: 0.3; cursor: not-allowed; }
+.mgr-base-select {
+  background: transparent;
+  color: var(--purple-light);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  border: 0;
+  padding: 4px 8px;
+  cursor: pointer;
+  appearance: none;
+  text-align: center;
+}
+.mgr-base-select option {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+/* ───────── 3개월 KPI 그리드 ───────── */
+.kpi-3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 28px;
+}
+.mgr-month-card { padding: 18px 16px 14px; transition: transform 0.18s ease, box-shadow 0.18s ease; }
+.mgr-month-card.is-base {
+  border: 1px solid rgba(168, 139, 250, 0.45);
+  box-shadow: 0 0 24px rgba(168, 85, 247, 0.18);
+}
+.mgr-month-card .kpi-title {
+  display: inline-flex;
+  align-items: center;
+}
+.mgr-base-tag {
+  margin-left: 8px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(168, 139, 250, 0.18);
+  color: var(--purple-light);
+  border: 1px solid rgba(168, 139, 250, 0.35);
+}
+@media (max-width: 900px) {
+  .kpi-3col { grid-template-columns: 1fr; }
+}
+
+/* ───────── 정산월 동그라미 배지 ───────── */
+.mgr-month-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(168, 139, 250, 0.15);
+  color: var(--purple-light);
+  font-size: 11px;
+  font-weight: 800;
+  font-feature-settings: "tnum";
+  border: 1px solid rgba(168, 139, 250, 0.3);
+  line-height: 1;
+  flex-shrink: 0;
+}
+.mgr-month-pill.is-base {
+  background: var(--purple-light);
+  color: #1a0b2e;
+  border-color: var(--purple-light);
+}
+.mgr-month-pill.xs { width: 18px; height: 18px; font-size: 10px; }
+.mgr-month-pill.xxs { width: 15px; height: 15px; font-size: 9px; font-weight: 700; }
+
+/* ───────── 담당자 칩 (전체 모드) ───────── */
+.mgr-recruiter-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  font-family: ui-monospace, 'SF Mono', monospace;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+.mgr-recruiter-HH { background: rgba(168, 85, 247, 0.22); color: #d8b4fe; border-color: rgba(168, 85, 247, 0.45); }
+.mgr-recruiter-LH { background: rgba(236, 72, 153, 0.22); color: #f9a8d4; border-color: rgba(236, 72, 153, 0.45); }
+.mgr-recruiter-AN { background: rgba(20, 184, 166, 0.22); color: #5eead4; border-color: rgba(20, 184, 166, 0.45); }
+.mgr-recruiter-FB { background: rgba(234, 179, 8, 0.22);  color: #fde68a; border-color: rgba(234, 179, 8, 0.45);  }
+
+/* ───────── 필터 칩 바 ───────── */
+.mgr-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 8px 0 18px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+}
+.mgr-filter-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mgr-filter-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-right: 6px;
+  min-width: 60px;
+}
+.mgr-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+.mgr-filter-chip:hover {
+  background: rgba(168, 139, 250, 0.08);
+  color: var(--text);
+}
+.mgr-filter-chip.active {
+  background: var(--purple-dim);
+  color: var(--purple-light);
+  border-color: rgba(168, 139, 250, 0.55);
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.18);
+}
+/* 담당자 칩 active 색상 — 자기 색 그대로 */
+.mgr-filter-chip.mgr-recruiter-HH.active { background: rgba(168, 85, 247, 0.32); color: #fff; border-color: rgba(168, 85, 247, 0.75); }
+.mgr-filter-chip.mgr-recruiter-LH.active { background: rgba(236, 72, 153, 0.32); color: #fff; border-color: rgba(236, 72, 153, 0.75); }
+.mgr-filter-chip.mgr-recruiter-AN.active { background: rgba(20, 184, 166, 0.32); color: #fff; border-color: rgba(20, 184, 166, 0.75); }
+.mgr-filter-chip.mgr-recruiter-FB.active { background: rgba(234, 179, 8, 0.32);  color: #fff; border-color: rgba(234, 179, 8, 0.75);  }
+
+/* ───────── 다른 월 이벤트 배지 — 약간 흐리게 ───────── */
+.mgr-event-badge.is-other-month {
+  opacity: 0.78;
+}
+.mgr-event-badge.is-other-month::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent 0 6px,
+    rgba(255, 255, 255, 0.02) 6px 12px
+  );
+}
+.mgr-event-badge { position: relative; }
+
+/* ───────── (legacy 호환) 단일 카드 KPI ───────── */
 .kpi-grid--mgr-single {
   display: block;
   margin-bottom: 28px;
