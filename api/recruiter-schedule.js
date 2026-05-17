@@ -253,9 +253,11 @@ export default async function handler(req, res) {
       let memo = f['특이사항'] || f['인원메모'] || f['비고'] || '';
       let xhsCount = f['XHS_건수'];
       let dpCount = f['DP_건수'];
-      // 예약/수정 메시지 — 진행_DB_OLD 직접 → 예약테이블 fallback
-      let reservationMsg = f['예약메시지'] || f['예약 메시지'] || '';
-      let modificationMsg = normalizeModMsg(f['변경메시지'] || f['변경 메시지']);
+      // 예약/변경 메시지 — 오직 예약테이블이 SoT. 진행_DB_OLD 직접 read 안 함.
+      // (자동 송출기가 취소·노쇼 안내문을 예약메시지에 붙이고, 변경 시 변경메시지에
+      //  원본 메시지를 포함해 다시 생성해주는 구조)
+      let reservationMsg = '';
+      let modificationMsg = '';
 
       const teamId = resvLinks.length > 0 ? resvLinks[0] : rec.id;
 
@@ -265,8 +267,8 @@ export default async function handler(req, res) {
         if (r.specialNote) memo = r.specialNote;
         if (r.xhsCount !== undefined) xhsCount = r.xhsCount;
         if (r.dpCount !== undefined) dpCount = r.dpCount;
-        if (!reservationMsg && r.reservationMsg) reservationMsg = r.reservationMsg;
-        if (!modificationMsg && r.modificationMsg) modificationMsg = r.modificationMsg;
+        reservationMsg = r.reservationMsg || '';
+        modificationMsg = r.modificationMsg || '';   // placeholder는 resvMap 단계에서 ''로 정규화됨
       }
 
       xhsCount = xhsCount !== undefined ? xhsCount : 1;
