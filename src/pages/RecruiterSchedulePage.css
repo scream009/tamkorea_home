@@ -79,8 +79,9 @@
 }
 .mgr-cal-grid .cal-cell {
   min-height: 120px;
+  min-width: 0;
   height: auto;
-  overflow: visible;
+  overflow: hidden;
 }
 
 /* 이벤트 뱃지 — 담당자용 */

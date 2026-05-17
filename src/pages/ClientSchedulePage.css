@@ -279,11 +279,18 @@
   color: #fff;
 }
 
+/* 달력 래퍼: 내용이 넘칠 경우 가로 스크롤 허용 */
+.cal-wrap {
+  padding: 20px 24px;
+  overflow-x: auto;
+}
+
 .cal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   grid-auto-rows: minmax(92px, max-content);
   gap: 2px;
+  min-width: 0;            /* Grid가 부모 폭을 초과하지 않도록 */
 }
 
 .cal-hdr {
@@ -296,6 +303,7 @@
 
 .cal-cell {
   min-height: 92px;
+  min-width: 0;          /* ← Grid item이 콘텐츠 크기 이하로 축소 가능 */
   height: auto;
   display: block;
   background: rgba(28, 31, 51, 0.55);
@@ -305,7 +313,7 @@
   font-size: 10px;
   transition: background 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease, border-color 0.2s ease;
   position: relative;
-  overflow: visible;
+  overflow: hidden;      /* ← 셀 내부 콘텐츠가 셀 바깥으로 넘치지 않도록 */
 }
 
 .event-list {
@@ -366,9 +374,11 @@
   border: 0;
   text-align: left;
   width: 100%;
+  max-width: 100%;        /* ← 부모 셀 폭을 초과하지 않음 */
   font-family: inherit;
   color: inherit;
   display: block;
+  overflow: hidden;       /* ← 텍스트가 뱃지 밖으로 넘치지 않음 */
 }
 
 .event-badge:hover {
@@ -397,7 +407,10 @@
   opacity: 0.95;
 }
 .ev-type {
-  flex-shrink: 0;
+  flex-shrink: 1;           /* ← 공간 부족 시 축소 가능 */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .ev-pax {
   opacity: 0.78;
