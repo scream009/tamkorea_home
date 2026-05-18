@@ -202,10 +202,25 @@ function PageShell({ month, count, children }) {
   );
 }
 
+// ─── 페이지 마운트 시 검색엔진 인덱싱 차단 ─────────────────────
+function useNoIndex() {
+  useEffect(() => {
+    const meta = document.createElement('meta');
+    meta.name = 'robots';
+    meta.content = 'noindex,nofollow,noarchive,nosnippet';
+    document.head.appendChild(meta);
+    return () => { document.head.removeChild(meta); };
+  }, []);
+}
+
 // ─── Main Page ────────────────────────────────────────────────
 export default function ClientListPage() {
+  useNoIndex();
+
   const [searchParams] = useSearchParams();
-  const month = searchParams.get('month') || new Date().toISOString().slice(0, 7);
+  // URL: /clients?m=2026-05&t=xxxxxxxx  (또는 하위호환 month=)
+  const month = searchParams.get('m') || searchParams.get('month') || new Date().toISOString().slice(0, 7);
+  const token = searchParams.get('t') || '';
 
   const [clients, setClients]               = useState([]);
   const [status, setStatus]                 = useState('loading');
@@ -224,7 +239,9 @@ export default function ClientListPage() {
   useEffect(() => {
     setStatus('loading');
     setClients([]);
-    fetch(`/api/client-list?month=${encodeURIComponent(month)}`)
+    const url = `/api/client-list?month=${encodeURIComponent(month)}` +
+      (token ? `&t=${encodeURIComponent(token)}` : '');
+    fetch(url)
       .then(r => r.json())
       .then(data => {
         if (data.error) throw new Error(data.error);
@@ -236,7 +253,7 @@ export default function ClientListPage() {
         setErrorMsg(err.message);
         setStatus('error');
       });
-  }, [month]);
+  }, [month, token]);
 
   const openGuide  = useCallback(client => setGuideClient(client), []);
   const closeGuide = useCallback(() => setGuideClient(null), []);

@@ -1,15 +1,37 @@
 /* eslint-env node */
 /**
  * Gravity | Client List API (체험단 후보 전달용)
- * GET /api/client-list?month=2026-05
+ * GET /api/client-list?month=2026-05&t=<token>
+ *
+ * 보안: month + SECRET 해시 기반 토큰 검증. 토큰 불일치 시 404 반환.
  *
  * 1. Campaign_DB: 계약월 + 표출 체크박스 필터 → CS_DB 링크 ID 수집
  * 2. CS_DB: 지역(J/S/B/E)·분류(FB/AT/RT/HT)·권역 + 상세정보 일괄 조회
  * 3. 지역 → 권역 → 이름 순 정렬
  */
 
+import crypto from 'crypto';
+
 const TOKEN   = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
+const TOKEN_SECRET = process.env.CLIENTS_TOKEN_SECRET || '';
+
+// 월별 토큰 생성 (8자 hex)
+export function generateMonthToken(month) {
+  if (!TOKEN_SECRET) return '';
+  return crypto.createHash('sha256')
+    .update(`clients|${month}|${TOKEN_SECRET}`)
+    .digest('hex')
+    .slice(0, 8);
+}
+
+// 타이밍 공격 방지용 상수시간 비교
+function safeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (a.length !== b.length) return false;
+  try { return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)); }
+  catch { return false; }
+}
 
 const CAMPAIGN_TABLE = 'Campaign_DB';
 const CS_TABLE       = 'CS_DB';
@@ -82,12 +104,27 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   if (!TOKEN) return res.status(500).json({ error: 'API key not configured' });
 
-  const { month } = req.query;
+  const { month, t } = req.query;
   if (!month) return res.status(400).json({ error: 'month parameter required (e.g. 2026-05)' });
 
   let airtableMonth;
   try { airtableMonth = toAirtableMonth(month); }
   catch (e) { return res.status(400).json({ error: e.message }); }
+
+  // ── 토큰 검증 ─────────────────────────────────────────────
+  // SECRET 미설정 시: 개발 환경 fallback (경고만 로그, 통과)
+  // SECRET 설정 시: 토큰 필수 + 일치해야 통과
+  if (TOKEN_SECRET) {
+    const expected = generateMonthToken(month);
+    if (!t || !safeEqual(String(t), expected)) {
+      // 정보 노출 최소화: 404로 통일 (토큰 틀림/링크 만료 구분 안 함)
+      return res.status(404).json({ error: 'Not found' });
+    }
+  } else if (process.env.NODE_ENV === 'production') {
+    // 프로덕션인데 SECRET이 비어있으면 — 즉시 차단
+    console.error('[client-list] CLIENTS_TOKEN_SECRET not set in production');
+    return res.status(503).json({ error: 'Service misconfigured' });
+  }
 
   try {
     // ── 1. Campaign_DB: 계약월 + 표출=TRUE ─────────────────────────

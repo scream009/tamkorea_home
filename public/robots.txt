@@ -1,4 +1,14 @@
 User-agent: *
 Allow: /
 
+# Private operational pages (token/auth required)
+Disallow: /clients
+Disallow: /submit
+Disallow: /report
+Disallow: /schedule
+Disallow: /manager
+Disallow: /partner
+Disallow: /admin
+Disallow: /api/
+
 Sitemap: https://www.tamkorea.com/sitemap.xml
