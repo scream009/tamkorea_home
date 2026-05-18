@@ -1,26 +1,31 @@
 /* ============================================================
    Gravity | Client List Page
-   tamkorea.com/clients?month=2026-05
+   tamkorea.com/clients?month=YYYY-MM
    ============================================================ */
 
 :root {
-  --cl-bg:           #0a0a0f;
-  --cl-card-bg:      rgba(255, 255, 255, 0.04);
-  --cl-card-hover:   rgba(255, 255, 255, 0.07);
-  --cl-border:       rgba(255, 255, 255, 0.08);
-  --cl-purple:       #7c3aed;
-  --cl-purple-light: #a78bfa;
-  --cl-purple-dark:  #5b21b6;
-  --cl-border-purple:rgba(124, 58, 237, 0.4);
-  --cl-text-primary: #f0f0f5;
-  --cl-text-sub:     #9ca3af;
-  --cl-text-muted:   #6b7280;
+  --cl-bg:            #0a0a0f;
+  --cl-card-bg:       rgba(255, 255, 255, 0.04);
+  --cl-card-hover:    rgba(255, 255, 255, 0.07);
+  --cl-border:        rgba(255, 255, 255, 0.08);
+  --cl-purple:        #7c3aed;
+  --cl-purple-light:  #a78bfa;
+  --cl-border-purple: rgba(124, 58, 237, 0.4);
+  --cl-text-primary:  #f0f0f5;
+  --cl-text-sub:      #9ca3af;
+  --cl-text-muted:    #6b7280;
 
-  /* 권역 색상 */
-  --cl-jeju:   #7c3aed;   /* purple */
-  --cl-seoul:  #2563eb;   /* blue */
-  --cl-busan:  #ea580c;   /* orange */
-  --cl-etc:    #6b7280;   /* gray */
+  /* 지역 */
+  --cl-jeju:   #7c3aed;
+  --cl-seoul:  #2563eb;
+  --cl-busan:  #ea580c;
+  --cl-etc:    #6b7280;
+
+  /* 업종 */
+  --cl-fb:  #10b981;   /* 미식 - emerald */
+  --cl-at:  #06b6d4;   /* 액티비티 - cyan */
+  --cl-rt:  #ec4899;   /* 리테일·미용 - pink */
+  --cl-ht:  #f59e0b;   /* 호텔 - amber */
 }
 
 /* ─── Page ─────────────────────────────────────────────────── */
@@ -33,7 +38,7 @@
   padding-bottom: 80px;
 }
 
-/* ─── Header ────────────────────────────────────────────────── */
+/* ─── Header ─────────────────────────────────────────────────  */
 .cl-header {
   background: linear-gradient(135deg, #1a0533 0%, #0f0a1e 50%, #0a0a0f 100%);
   border-bottom: 1px solid var(--cl-border-purple);
@@ -41,136 +46,74 @@
   position: relative;
   overflow: hidden;
 }
-
 .cl-header::before {
   content: '';
   position: absolute;
   top: -60px; right: -60px;
   width: 250px; height: 250px;
-  background: radial-gradient(circle, rgba(124, 58, 237, 0.15) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%);
   pointer-events: none;
 }
-
-.cl-header-inner {
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
+.cl-header-inner { max-width: 1020px; margin: 0 auto; }
 .cl-logo {
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.15em;
-  color: var(--cl-purple-light);
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.15em;
+  color: var(--cl-purple-light); margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
 }
-
 .cl-logo-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--cl-purple);
-  display: inline-block;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--cl-purple); display: inline-block;
 }
-
 .cl-header h1 {
-  font-size: clamp(22px, 4vw, 30px);
-  font-weight: 700;
-  color: var(--cl-text-primary);
-  margin: 0 0 10px;
-  line-height: 1.2;
+  font-size: clamp(22px, 4vw, 30px); font-weight: 700;
+  color: var(--cl-text-primary); margin: 0 0 10px; line-height: 1.2;
 }
-
 .cl-header-sub {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  font-size: 14px;
-  color: var(--cl-text-sub);
-  flex-wrap: wrap;
+  display: flex; align-items: center; gap: 14px;
+  font-size: 14px; color: var(--cl-text-sub); flex-wrap: wrap;
+}
+.cl-month-badge {
+  background: rgba(124,58,237,0.15); border: 1px solid var(--cl-border-purple);
+  border-radius: 20px; padding: 4px 14px;
+  font-size: 13px; font-weight: 600; color: var(--cl-purple-light);
+  letter-spacing: 0.06em;
 }
 
-.cl-badge {
-  display: inline-flex;
-  align-items: center;
-  background: rgba(124, 58, 237, 0.15);
-  border: 1px solid var(--cl-border-purple);
-  border-radius: 20px;
-  padding: 4px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--cl-purple-light);
-  letter-spacing: 0.04em;
-}
-
-/* ─── Region Filter ─────────────────────────────────────────── */
+/* ─── Filter Tabs ────────────────────────────────────────────  */
 .cl-filter-wrap {
-  max-width: 1000px;
-  margin: 24px auto 0;
-  padding: 0 24px;
+  max-width: 1020px; margin: 22px auto 0; padding: 0 24px;
 }
-
-.cl-filter-inner {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
+.cl-filter-inner { display: flex; gap: 8px; flex-wrap: wrap; }
 .cl-filter-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--cl-border);
-  color: var(--cl-text-sub);
-  border-radius: 20px;
-  padding: 7px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--cl-border);
+  color: var(--cl-text-sub); border-radius: 20px; padding: 7px 16px;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: all 0.2s ease; white-space: nowrap;
 }
-
 .cl-filter-btn:hover {
-  background: rgba(124, 58, 237, 0.12);
-  border-color: var(--cl-border-purple);
+  background: rgba(124,58,237,0.12); border-color: var(--cl-border-purple);
   color: var(--cl-purple-light);
 }
-
 .cl-filter-btn.active {
-  background: var(--cl-purple);
-  border-color: var(--cl-purple);
-  color: #fff;
+  background: var(--cl-purple); border-color: var(--cl-purple); color: #fff;
 }
-
 .cl-filter-count {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
-  padding: 1px 7px;
-  font-size: 11px;
-  font-weight: 700;
+  background: rgba(255,255,255,0.15); border-radius: 10px;
+  padding: 1px 7px; font-size: 11px; font-weight: 700;
 }
+.cl-filter-btn.active .cl-filter-count { background: rgba(255,255,255,0.25); }
 
-.cl-filter-btn.active .cl-filter-count {
-  background: rgba(255, 255, 255, 0.25);
-}
-
-/* ─── Container + Grid ──────────────────────────────────────── */
-.cl-container {
-  max-width: 1000px;
-  margin: 28px auto 0;
-  padding: 0 24px;
-}
-
+/* ─── Grid ───────────────────────────────────────────────────  */
+.cl-container { max-width: 1020px; margin: 24px auto 0; padding: 0 24px; }
 .cl-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 16px;
+  align-items: start;
 }
 
-/* ─── Card ──────────────────────────────────────────────────── */
+/* ─── Card ───────────────────────────────────────────────────  */
 .cl-card {
   background: var(--cl-card-bg);
   border: 1px solid var(--cl-border);
@@ -181,198 +124,186 @@
   transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
   position: relative;
 }
-
-/* 권역별 top accent line */
+/* 지역별 상단 accent */
 .cl-card::before {
   content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
 }
-
 .cl-card--jeju::before  { background: var(--cl-jeju); }
 .cl-card--seoul::before { background: var(--cl-seoul); }
 .cl-card--busan::before { background: var(--cl-busan); }
 .cl-card--etc::before   { background: var(--cl-etc); }
-
 .cl-card:hover {
   background: var(--cl-card-hover);
-  border-color: rgba(124, 58, 237, 0.25);
+  border-color: rgba(124,58,237,0.25);
   transform: translateY(-2px);
 }
 
-/* ─── Card Top (이름 + 뱃지) ────────────────────────────────── */
+/* ─── Card Top ───────────────────────────────────────────────  */
 .cl-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 20px 18px 14px;
+  padding: 20px 18px 16px;
   border-bottom: 1px solid var(--cl-border);
-  background: rgba(124, 58, 237, 0.04);
+  background: rgba(124,58,237,0.04);
 }
 
-.cl-names {
-  flex: 1;
-  min-width: 0;
+/* 배지 행 */
+.cl-badges {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;
 }
 
+/* 지역 배지 */
+.cl-badge-region {
+  display: inline-flex; align-items: center;
+  border-radius: 20px; padding: 3px 10px;
+  font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.cl-badge-region--jeju {
+  background: rgba(124,58,237,0.15); color: var(--cl-purple-light);
+  border: 1px solid rgba(124,58,237,0.35);
+}
+.cl-badge-region--seoul {
+  background: rgba(37,99,235,0.15); color: #93c5fd;
+  border: 1px solid rgba(37,99,235,0.35);
+}
+.cl-badge-region--busan {
+  background: rgba(234,88,12,0.15); color: #fdba74;
+  border: 1px solid rgba(234,88,12,0.35);
+}
+.cl-badge-region--etc {
+  background: rgba(107,114,128,0.15); color: #d1d5db;
+  border: 1px solid rgba(107,114,128,0.35);
+}
+
+/* 권역 배지 */
+.cl-badge-subarea {
+  display: inline-flex; align-items: center;
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px; padding: 3px 10px;
+  font-size: 11px; font-weight: 500; color: var(--cl-text-sub);
+  white-space: nowrap;
+}
+
+/* 업종 배지 */
+.cl-badge-cat {
+  display: inline-flex; align-items: center; gap: 4px;
+  border-radius: 20px; padding: 3px 10px;
+  font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+.cl-badge-cat--fb {
+  background: rgba(16,185,129,0.12); color: #6ee7b7;
+  border: 1px solid rgba(16,185,129,0.3);
+}
+.cl-badge-cat--at {
+  background: rgba(6,182,212,0.12); color: #67e8f9;
+  border: 1px solid rgba(6,182,212,0.3);
+}
+.cl-badge-cat--rt {
+  background: rgba(236,72,153,0.12); color: #f9a8d4;
+  border: 1px solid rgba(236,72,153,0.3);
+}
+.cl-badge-cat--ht {
+  background: rgba(245,158,11,0.12); color: #fcd34d;
+  border: 1px solid rgba(245,158,11,0.3);
+}
+
+/* 중·한 이름 */
 .cl-zh-name {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--cl-text-primary);
-  line-height: 1.3;
+  font-size: 18px; font-weight: 700;
+  color: var(--cl-text-primary); line-height: 1.3;
   word-break: break-all;
 }
-
 .cl-kr-name {
-  font-size: 12px;
-  color: var(--cl-text-muted);
-  margin-top: 5px;
-  word-break: keep-all;
+  font-size: 12px; color: var(--cl-text-muted);
+  margin-top: 5px; word-break: keep-all;
 }
 
-/* ─── Region Badge ──────────────────────────────────────────── */
-.cl-region-badge {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 20px;
-  padding: 4px 10px;
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.cl-region-badge--jeju {
-  background: rgba(124, 58, 237, 0.15);
-  color: var(--cl-purple-light);
-  border: 1px solid rgba(124, 58, 237, 0.35);
-}
-
-.cl-region-badge--seoul {
-  background: rgba(37, 99, 235, 0.15);
-  color: #93c5fd;
-  border: 1px solid rgba(37, 99, 235, 0.35);
-}
-
-.cl-region-badge--busan {
-  background: rgba(234, 88, 12, 0.15);
-  color: #fdba74;
-  border: 1px solid rgba(234, 88, 12, 0.35);
-}
-
-.cl-region-badge--etc {
-  background: rgba(107, 114, 128, 0.15);
-  color: #d1d5db;
-  border: 1px solid rgba(107, 114, 128, 0.35);
-}
-
-/* ─── Info Rows ─────────────────────────────────────────────── */
+/* ─── Info Section ───────────────────────────────────────────  */
 .cl-info {
-  padding: 14px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
+  padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 12px;
   flex: 1;
 }
 
-.cl-info-row {
-  display: flex;
-  align-items: flex-start;
+/* 영업시간 + 정기휴무 2열 그리드 */
+.cl-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
-  font-size: 13px;
-  color: var(--cl-text-sub);
-  line-height: 1.5;
 }
 
-.cl-info-icon {
-  font-size: 14px;
-  flex-shrink: 0;
-  margin-top: 1px;
+.cl-info-item {
+  display: flex; flex-direction: column; gap: 3px;
+}
+.cl-info-label {
+  font-size: 11px; font-weight: 600;
+  color: var(--cl-text-muted); letter-spacing: 0.04em;
+  display: flex; align-items: center; gap: 4px;
+}
+.cl-info-value {
+  font-size: 13px; color: var(--cl-text-sub); line-height: 1.4;
 }
 
-.cl-info-row--break {
-  color: var(--cl-text-muted);
-  font-size: 12px;
+/* 브레이크타임 한 줄 */
+.cl-info-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--cl-text-muted);
+}
+.cl-info-icon { font-size: 14px; flex-shrink: 0; }
+.cl-break-label {
+  font-size: 11px; font-weight: 600;
+  color: var(--cl-text-muted); flex-shrink: 0;
 }
 
-/* ─── Action Buttons ────────────────────────────────────────── */
+/* 제공내역 박스 */
+.cl-services-box {
+  background: rgba(16,185,129,0.05);
+  border: 1px solid rgba(16,185,129,0.18);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.cl-services-header {
+  font-size: 11px; font-weight: 700;
+  color: #6ee7b7;
+  margin-bottom: 6px;
+  display: flex; align-items: center; gap: 5px;
+  letter-spacing: 0.04em;
+}
+.cl-services-text {
+  font-size: 13px; color: var(--cl-text-sub);
+  white-space: pre-line; line-height: 1.6;
+}
+
+/* ─── Guide Button ───────────────────────────────────────────  */
 .cl-actions {
-  display: flex;
-  gap: 8px;
   padding: 0 18px 18px;
-  flex-wrap: wrap;
 }
-
-.cl-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  border-radius: 8px;
-  padding: 8px 14px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.cl-btn--guide {
-  background: rgba(124, 58, 237, 0.12);
+.cl-btn-guide {
+  width: 100%;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  background: rgba(124,58,237,0.1);
   border: 1px solid var(--cl-border-purple);
   color: var(--cl-purple-light);
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: all 0.2s ease; white-space: nowrap;
 }
-
-.cl-btn--guide:hover {
-  background: rgba(124, 58, 237, 0.22);
+.cl-btn-guide:hover {
+  background: rgba(124,58,237,0.22);
   border-color: var(--cl-purple);
   color: #fff;
   transform: translateY(-1px);
 }
 
-.cl-btn--services {
-  background: rgba(16, 185, 129, 0.08);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  color: #6ee7b7;
-}
-
-.cl-btn--services:hover {
-  background: rgba(16, 185, 129, 0.18);
-  border-color: rgba(16, 185, 129, 0.6);
-  color: #fff;
-  transform: translateY(-1px);
-}
-
-/* ─── State Cards ───────────────────────────────────────────── */
+/* ─── State Cards ────────────────────────────────────────────  */
 .cl-state-card {
-  background: var(--cl-card-bg);
-  border: 1px solid var(--cl-border);
-  border-radius: 16px;
-  padding: 60px 24px;
-  text-align: center;
+  background: var(--cl-card-bg); border: 1px solid var(--cl-border);
+  border-radius: 16px; padding: 60px 24px; text-align: center;
 }
-
-.cl-state-card--error { border-color: rgba(239, 68, 68, 0.3); }
-
-.cl-state-icon {
-  font-size: 40px;
-  margin-bottom: 16px;
-}
-
-.cl-state-card h2 {
-  font-size: 18px;
-  font-weight: 600;
-  margin: 0 0 8px;
-}
-
-.cl-state-card p {
-  font-size: 14px;
-  color: var(--cl-text-sub);
-  margin: 0;
-}
-
+.cl-state-card--error { border-color: rgba(239,68,68,0.3); }
+.cl-state-icon { font-size: 40px; margin-bottom: 16px; }
+.cl-state-card h2 { font-size: 18px; font-weight: 600; margin: 0 0 8px; }
+.cl-state-card p  { font-size: 14px; color: var(--cl-text-sub); margin: 0; }
 .cl-spinner {
   width: 36px; height: 36px;
   border: 3px solid var(--cl-border);
@@ -381,101 +312,66 @@
   animation: cl-spin 0.8s linear infinite;
   margin: 0 auto 16px;
 }
-
 @keyframes cl-spin { to { transform: rotate(360deg); } }
 
-/* ─── Modal ─────────────────────────────────────────────────── */
+/* ─── Modal ──────────────────────────────────────────────────  */
 .cl-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 20px;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.72);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999; padding: 20px;
 }
-
 .cl-modal {
   background: #13111f;
   border: 1px solid var(--cl-border-purple);
   border-radius: 16px;
-  width: 100%;
-  max-width: 520px;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+  width: 100%; max-width: 540px; max-height: 82vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
 }
-
 .cl-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  display: flex; justify-content: space-between; align-items: flex-start;
   padding: 20px 20px 16px;
-  border-bottom: 1px solid var(--cl-border);
-  flex-shrink: 0;
+  border-bottom: 1px solid var(--cl-border); flex-shrink: 0;
 }
-
 .cl-modal-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--cl-text-primary);
+  font-size: 16px; font-weight: 700; color: var(--cl-text-primary);
 }
-
 .cl-modal-subtitle {
-  font-size: 12px;
-  color: var(--cl-text-muted);
-  margin-top: 4px;
+  font-size: 12px; color: var(--cl-text-muted); margin-top: 4px;
 }
-
 .cl-modal-close {
-  background: none;
-  border: none;
-  color: var(--cl-text-muted);
-  font-size: 18px;
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 6px;
-  transition: color 0.2s, background 0.2s;
-  flex-shrink: 0;
+  background: none; border: none; color: var(--cl-text-muted);
+  font-size: 18px; cursor: pointer; padding: 2px 6px;
+  border-radius: 6px; transition: color 0.2s, background 0.2s; flex-shrink: 0;
 }
-
 .cl-modal-close:hover {
-  color: var(--cl-text-primary);
-  background: rgba(255, 255, 255, 0.08);
+  color: var(--cl-text-primary); background: rgba(255,255,255,0.08);
 }
-
 .cl-modal-body {
-  padding: 20px;
-  white-space: pre-wrap;
-  font-size: 14px;
-  line-height: 1.75;
-  color: var(--cl-text-sub);
-  overflow-y: auto;
-  word-break: break-word;
+  padding: 20px; white-space: pre-wrap;
+  font-size: 14px; line-height: 1.8; color: var(--cl-text-sub);
+  overflow-y: auto; word-break: break-word;
 }
 
-/* ─── Mobile ────────────────────────────────────────────────── */
-@media (max-width: 640px) {
+/* ─── Mobile ─────────────────────────────────────────────────  */
+@media (max-width: 680px) {
   .cl-header { padding: 20px 16px 18px; }
-  .cl-filter-wrap { padding: 0 14px; margin-top: 18px; }
-  .cl-container { padding: 0 14px; margin-top: 20px; }
+  .cl-filter-wrap { padding: 0 14px; margin-top: 16px; }
+  .cl-container { padding: 0 14px; margin-top: 18px; }
 
-  .cl-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
+  .cl-grid { grid-template-columns: 1fr; gap: 12px; }
 
-  .cl-card-top { padding: 16px 14px 12px; }
+  .cl-card-top { padding: 16px 14px 14px; }
   .cl-zh-name  { font-size: 16px; }
-  .cl-info     { padding: 12px 14px; gap: 8px; }
-  .cl-actions  { padding: 0 14px 14px; }
 
-  .cl-btn { font-size: 13px; padding: 10px 14px; flex: 1; justify-content: center; }
+  /* 2열 → 1열 */
+  .cl-info-grid { grid-template-columns: 1fr; gap: 10px; }
+
+  .cl-info { padding: 14px; gap: 10px; }
+  .cl-actions { padding: 0 14px 14px; }
 
   .cl-modal-backdrop { padding: 12px; align-items: flex-end; }
-  .cl-modal { border-radius: 16px 16px 0 0; max-height: 85vh; }
+  .cl-modal { border-radius: 16px 16px 0 0; max-height: 86vh; }
 }
