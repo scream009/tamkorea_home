@@ -89,6 +89,19 @@
   display: flex; align-items: center; gap: 12px;
 }
 
+/* 권역 필터: 들여쓰기 + 좌측 가이드라인으로 지역 종속 시각화 */
+.cl-filter-row--subarea {
+  padding-left: 16px;
+  border-left: 2px solid rgba(124, 58, 237, 0.25);
+  margin-left: 4px;
+  animation: cl-subarea-in 0.25s ease-out;
+}
+
+@keyframes cl-subarea-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .cl-filter-label {
   font-size: 11px; font-weight: 700;
   color: var(--cl-text-muted);
@@ -392,6 +405,14 @@
   .cl-header { padding: 20px 16px 18px; }
   .cl-filter-wrap { padding: 0 14px; margin-top: 16px; }
   .cl-container { padding: 0 14px; margin-top: 18px; }
+
+  /* 모바일: 필터 라벨이 버튼 위로 분리되어 보이도록 컬럼 정렬 */
+  .cl-filter-row {
+    flex-direction: column; align-items: flex-start; gap: 6px;
+  }
+  .cl-filter-row--subarea {
+    padding-left: 12px; margin-left: 2px;
+  }
 
   .cl-grid { grid-template-columns: 1fr; gap: 12px; }
 

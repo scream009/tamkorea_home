@@ -17,6 +17,21 @@ const CATEGORY_MAP = {
   HT: { label: '酒店',      icon: '🏨', key: 'ht' },
 };
 
+// ─── 권역 ── 제주는 이미 중문, 서울만 한글 → 중문 매핑 ────────
+const SUBAREA_LABEL_CN = {
+  '여의도': '汝矣岛',
+  '명동/시청/남대문': '明洞/市厅/南大门',
+  '홍대': '弘大',
+  '강남': '江南',
+};
+const getSubareaLabel = (raw) => SUBAREA_LABEL_CN[raw] || raw;
+
+// 지역별 권역 사전 정의 순서 (UI 정렬용)
+const SUBAREA_ORDER_BY_REGION = {
+  J: ['市区', '南线', '西线', '东线'],
+  S: ['여의도', '명동/시청/남대문', '홍대', '강남'],
+};
+
 // ─── 휴무 포맷 (한글 요일 → 중문 변환) ────────────────────────
 const WEEKDAY_SET = new Set(['월', '화', '수', '목', '금', '토', '일']);
 const WEEKDAY_CN  = { '월': '一', '화': '二', '수': '三', '목': '四', '금': '五', '토': '六', '일': '日' };
@@ -91,7 +106,7 @@ function ClientCard({ client, onOpenGuide }) {
             {regionInfo.label}
           </span>
           {client.subarea && (
-            <span className="cl-badge-subarea">{client.subarea}</span>
+            <span className="cl-badge-subarea">{getSubareaLabel(client.subarea)}</span>
           )}
           {categoryInfo && (
             <span className={`cl-badge-cat cl-badge-cat--${categoryInfo.key}`}>
@@ -192,12 +207,19 @@ export default function ClientListPage() {
   const [searchParams] = useSearchParams();
   const month = searchParams.get('month') || new Date().toISOString().slice(0, 7);
 
-  const [clients, setClients]             = useState([]);
-  const [status, setStatus]               = useState('loading');
-  const [errorMsg, setErrorMsg]           = useState('');
-  const [regionFilter, setRegionFilter]   = useState('all');   // 'all' | 'J' | 'S' | ...
+  const [clients, setClients]               = useState([]);
+  const [status, setStatus]                 = useState('loading');
+  const [errorMsg, setErrorMsg]             = useState('');
+  const [regionFilter, setRegionFilter]     = useState('all'); // 'all' | 'J' | 'S' | ...
+  const [subareaFilter, setSubareaFilter]   = useState('all'); // 'all' | '市区' | '여의도' | ...
   const [categoryFilter, setCategoryFilter] = useState('all'); // 'all' | 'FB' | ...
-  const [guideClient, setGuideClient]     = useState(null);    // 모달 대상
+  const [guideClient, setGuideClient]       = useState(null);  // 모달 대상
+
+  // 지역 변경 시 권역 자동 리셋 (지역 종속이므로)
+  const handleRegionChange = useCallback((code) => {
+    setRegionFilter(code);
+    setSubareaFilter('all');
+  }, []);
 
   useEffect(() => {
     setStatus('loading');
@@ -225,12 +247,23 @@ export default function ClientListPage() {
   const presentRegions    = REGION_ORDER.filter(r => clients.some(c => c.region   === r));
   const presentCategories = CATEGORY_ORDER.filter(k => clients.some(c => c.category === k));
 
-  // 지역 × 업종 AND 필터링
+  // 현재 지역에 속한 권역 (지역 'all'이면 빈 배열 → 권역 필터 숨김)
+  const presentSubareas = regionFilter === 'all'
+    ? []
+    : (SUBAREA_ORDER_BY_REGION[regionFilter] || []).filter(s =>
+        clients.some(c => c.region === regionFilter && c.subarea === s)
+      );
+
+  // 지역 × 권역 × 업종 AND 필터링
   const filtered = clients.filter(c => {
     const passRegion   = regionFilter   === 'all' || c.region   === regionFilter;
+    const passSubarea  = subareaFilter  === 'all' || c.subarea  === subareaFilter;
     const passCategory = categoryFilter === 'all' || c.category === categoryFilter;
-    return passRegion && passCategory;
+    return passRegion && passSubarea && passCategory;
   });
+
+  // 현재 지역에서 active 색상 키 (권역 active 시 사용)
+  const activeRegionKey = REGION_MAP[regionFilter]?.key || '';
 
   // ── 로딩 ──────────────────────────────────────────────────
   if (status === 'loading') {
@@ -289,7 +322,7 @@ export default function ClientListPage() {
               <div className="cl-filter-buttons">
                 <button
                   className={`cl-filter-btn${regionFilter === 'all' ? ' active' : ''}`}
-                  onClick={() => setRegionFilter('all')}
+                  onClick={() => handleRegionChange('all')}
                 >
                   全部 <span className="cl-filter-count">{clients.length}</span>
                 </button>
@@ -300,9 +333,38 @@ export default function ClientListPage() {
                     <button
                       key={code}
                       className={`cl-filter-btn cl-filter-btn--${info.key}${regionFilter === code ? ' active' : ''}`}
-                      onClick={() => setRegionFilter(code)}
+                      onClick={() => handleRegionChange(code)}
                     >
                       {info.label} <span className="cl-filter-count">{cnt}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 권역 필터 (Cascading — 지역 선택 시에만 등장) */}
+          {presentSubareas.length > 1 && (
+            <div className="cl-filter-row cl-filter-row--subarea">
+              <span className="cl-filter-label">区域</span>
+              <div className="cl-filter-buttons">
+                <button
+                  className={`cl-filter-btn cl-filter-btn--${activeRegionKey}${subareaFilter === 'all' ? ' active' : ''}`}
+                  onClick={() => setSubareaFilter('all')}
+                >
+                  全部 <span className="cl-filter-count">
+                    {clients.filter(c => c.region === regionFilter).length}
+                  </span>
+                </button>
+                {presentSubareas.map(subarea => {
+                  const cnt = clients.filter(c => c.region === regionFilter && c.subarea === subarea).length;
+                  return (
+                    <button
+                      key={subarea}
+                      className={`cl-filter-btn cl-filter-btn--${activeRegionKey}${subareaFilter === subarea ? ' active' : ''}`}
+                      onClick={() => setSubareaFilter(subarea)}
+                    >
+                      {getSubareaLabel(subarea)} <span className="cl-filter-count">{cnt}</span>
                     </button>
                   );
                 })}
