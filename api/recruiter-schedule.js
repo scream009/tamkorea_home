@@ -155,7 +155,7 @@ export default async function handler(req, res) {
     const monthOr = airtableMonths.map((am) => `{정산월}='${am}'`).join(',');
     const idClause = id === 'all' ? '' : `{예약_ID}='${id}',`;
     const formula = encodeURIComponent(
-      `AND(${idClause}OR(${monthOr}),FIND('체험',{유형}&'')>0)`
+      `AND(${idClause}OR(${monthOr}))`
     );
     const url = `https://api.airtable.com/v0/${BASE_ID}/${RECORD_TABLE}?filterByFormula=${formula}`;
     const allRecords = await fetchAllRecords(url);

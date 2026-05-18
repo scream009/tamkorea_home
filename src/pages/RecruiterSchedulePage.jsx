@@ -18,6 +18,18 @@ import './ClientSchedulePage.css';
 import './RecruiterSchedulePage.css';
 
 const RECRUITER_LIST = ['HH', 'LH', 'AN', 'FB'];
+
+function isInflType(item) {
+  return String(item?.type || '').includes('인플');
+}
+function typeMatches(item, tf) {
+  if (tf === 'all') return true;
+  if (tf === '인플') return isInflType(item);
+  return !isInflType(item);
+}
+function emptyStats() {
+  return { total: 0, completed: 0, inProgress: 0, cancelled: 0, noShow: 0 };
+}
 const VALID_IDS = new Set([...RECRUITER_LIST, 'all']);
 const RECRUITER_LABEL = {
   HH: 'HH 담당자',
@@ -116,6 +128,8 @@ export default function RecruiterSchedulePage() {
   const [monthFilter, setMonthFilter] = useState('all'); // 'all' | "2026-04" 같은 정산월 paramKey
   // 담당자 필터 — id=all 모드 전용 (기본: 전체)
   const [recruiterFilter, setRecruiterFilter] = useState('all');
+  // 유형 필터 — 체험단 / 인플루언서 / 전체
+  const [typeFilter, setTypeFilter] = useState('all'); // 'all' | '체험' | '인플'
   // 달력 표시월 — 정산월 필터와 독립. 베이스월 변경 시 자동 동기화.
   const [calMonth, setCalMonth] = useState(baseMonth);
 
@@ -123,8 +137,9 @@ export default function RecruiterSchedulePage() {
   useEffect(() => {
     setMonthFilter('all');
     setCalMonth(baseMonth);
+    setTypeFilter('all');
   }, [baseMonth]);
-  useEffect(() => { setRecruiterFilter('all'); }, [recruiterId]);
+  useEffect(() => { setRecruiterFilter('all'); setTypeFilter('all'); }, [recruiterId]);
 
   // 모달 ESC + scroll lock
   useEffect(() => {
@@ -221,9 +236,10 @@ export default function RecruiterSchedulePage() {
     return data.scheduleItems.filter((item) => {
       if (monthFilter !== 'all' && item.settlementMonth !== monthFilter) return false;
       if (isAll && recruiterFilter !== 'all' && item.recruiterId !== recruiterFilter) return false;
+      if (!typeMatches(item, typeFilter)) return false;
       return true;
     });
-  }, [data, monthFilter, recruiterFilter, isAll]);
+  }, [data, monthFilter, recruiterFilter, typeFilter, isAll]);
 
   // 필터 적용된 records (리스트 뷰)
   const filteredRecords = useMemo(() => {
@@ -231,9 +247,27 @@ export default function RecruiterSchedulePage() {
     return data.records.filter((item) => {
       if (monthFilter !== 'all' && item.settlementMonth !== monthFilter) return false;
       if (isAll && recruiterFilter !== 'all' && item.recruiterId !== recruiterFilter) return false;
+      if (!typeMatches(item, typeFilter)) return false;
       return true;
     });
-  }, [data, monthFilter, recruiterFilter, isAll]);
+  }, [data, monthFilter, recruiterFilter, typeFilter, isAll]);
+
+  // KPI 카드용 통계 — typeFilter + recruiterFilter 반영 (monthFilter는 미적용, 3개월 전체 표시)
+  const computedStatsByMonth = useMemo(() => {
+    if (!data?.records || !data?.months) return {};
+    const stats = Object.fromEntries(data.months.map((m) => [m, emptyStats()]));
+    for (const item of data.records) {
+      if (isAll && recruiterFilter !== 'all' && item.recruiterId !== recruiterFilter) continue;
+      if (!typeMatches(item, typeFilter)) continue;
+      const sm = item.settlementMonth;
+      if (sm && stats[sm]) {
+        const bucket = item.statusBucket || 'inProgress';
+        stats[sm][bucket] = (stats[sm][bucket] || 0) + 1;
+        stats[sm].total += 1;
+      }
+    }
+    return stats;
+  }, [data, recruiterFilter, typeFilter, isAll]);
 
   // 이벤트 인덱싱 (날짜 → 이벤트 배열)
   const eventsByDate = useMemo(() => {
@@ -307,7 +341,7 @@ export default function RecruiterSchedulePage() {
     );
   }
 
-  const { months, monthLabels, statsByMonth } = data;
+  const { months, monthLabels } = data;
   const recruiterName = RECRUITER_LABEL[recruiterId] || recruiterId;
   const baseLabel = monthLabels[baseMonth] || paramToLabel(baseMonth);
 
@@ -348,7 +382,7 @@ export default function RecruiterSchedulePage() {
         {/* ── 3개월 KPI 카드 ─────────────────────────── */}
         <div className="kpi-3col">
           {months.map((m) => {
-            const s = statsByMonth[m] || { total: 0, completed: 0, inProgress: 0, cancelled: 0, noShow: 0 };
+            const s = computedStatsByMonth[m] || emptyStats();
             const isBase = m === baseMonth;
             return (
               <div key={m} className={`kpi-card mgr-card mgr-month-card${isBase ? ' is-base' : ''}`}>
@@ -437,6 +471,22 @@ export default function RecruiterSchedulePage() {
               ))}
             </div>
           )}
+
+          <div className="mgr-filter-group">
+            <span className="mgr-filter-label">유형</span>
+            <button
+              className={`mgr-filter-chip${typeFilter === 'all' ? ' active' : ''}`}
+              onClick={() => setTypeFilter('all')}
+            >전체</button>
+            <button
+              className={`mgr-filter-chip${typeFilter === '체험' ? ' active mgr-type-camp-active' : ''}`}
+              onClick={() => setTypeFilter('체험')}
+            >체험단</button>
+            <button
+              className={`mgr-filter-chip${typeFilter === '인플' ? ' active mgr-type-infl-active' : ''}`}
+              onClick={() => setTypeFilter('인플')}
+            >인플루언서</button>
+          </div>
         </div>
 
         {viewMode === 'calendar' ? (
@@ -511,6 +561,7 @@ export default function RecruiterSchedulePage() {
                                 >
                                   {/* 1행: 메타 (정산월·담당자·시간·인원·상태) */}
                                   <span className="mgr-ev-meta">
+                                    {isInflType(ev) && <span className="ev-tag-infl">인플</span>}
                                     {monthShort != null && (
                                       <span className="mgr-month-pill xxs" title={`${monthShort}월 정산`}>{monthShort}</span>
                                     )}
@@ -579,7 +630,7 @@ export default function RecruiterSchedulePage() {
                         return (
                           <tr
                             key={idx}
-                            className={`mgr-list-row mgr-bucket-row-${bucket}${isXhsMissing ? ' mgr-row-xhs-missing' : ''}`}
+                            className={`mgr-list-row mgr-bucket-row-${bucket}${isXhsMissing ? ' mgr-row-xhs-missing' : ''}${isInflType(item) ? ' mgr-row-infl' : ''}`}
                             onClick={() => setSelectedEvent(item)}
                           >
                             <td>

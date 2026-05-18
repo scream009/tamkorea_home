@@ -753,3 +753,39 @@
     border-radius: 14px;
   }
 }
+
+/* ───────── 유형 필터 — 인플루언서 / 체험단 ───────── */
+.ev-tag-infl {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(6, 182, 212, 0.18);
+  color: #22d3ee;
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  border-radius: 3px;
+  padding: 0 4px;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* 인플 행 — 좌측 시안 라인 */
+.mgr-list-row.mgr-row-infl {
+  box-shadow: inset 3px 0 0 rgba(6, 182, 212, 0.55);
+}
+.mgr-list-row.mgr-row-infl:hover {
+  background: rgba(6, 182, 212, 0.06);
+}
+
+/* 유형 필터 칩 활성 색상 */
+.mgr-filter-chip.mgr-type-infl-active {
+  background: rgba(6, 182, 212, 0.2);
+  border-color: rgba(6, 182, 212, 0.5);
+  color: #22d3ee;
+}
+.mgr-filter-chip.mgr-type-camp-active {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: rgba(168, 85, 247, 0.5);
+  color: #c084fc;
+}
