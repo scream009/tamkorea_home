@@ -21,6 +21,7 @@
   --error: #ef4444;
   --error-bg: rgba(239, 68, 68, 0.1);
   --warning: #f59e0b;
+  --revu-red: #ef4444;
 }
 
 /* ─── Layout ──────────────────────────────────────────────── */
@@ -277,6 +278,34 @@
   margin-top: 3px;
 }
 
+/* Date & Deadline cell (desktop default) */
+.inf-date-cell {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.inf-shoot-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.inf-deadline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--revu-red);
+  font-weight: 500;
+}
+
+.inf-date-icon {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  line-height: 1;
+}
+
 /* Guide Button */
 .inf-btn-guide {
   display: inline-flex;
@@ -468,7 +497,6 @@
   /* 테이블 자체 레이아웃 해제 */
   .inf-table,
   .inf-table tbody,
-  .inf-table tbody tr,
   .inf-table td {
     display: block;
     width: 100%;
@@ -477,8 +505,11 @@
   /* 테이블 헤더 완전 숨김 */
   .inf-table thead { display: none; }
 
-  /* 각 행(tr) → 카드 */
+  /* 각 행(tr) → 카드. flex column으로 셀 순서 재배치 */
   .inf-table tbody tr {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 14px;
@@ -487,6 +518,12 @@
     overflow: hidden;
     transition: border-color 0.2s ease;
   }
+
+  /* 카드 내 순서: 고객사(헤더) → 날짜/마감 → 가이드 → 링크입력 */
+  .inf-table td:nth-child(1) { order: 1; }
+  .inf-table td:nth-child(3) { order: 2; }
+  .inf-table td:nth-child(2) { order: 3; }
+  .inf-table td:nth-child(4) { order: 4; }
 
   .inf-table tbody tr:hover {
     background: var(--bg-card-hover);
@@ -534,8 +571,35 @@
     border-radius: 8px;
   }
 
-  /* 3행: 날짜 (숨김 - 헤더에서 이미 표시) */
-  .inf-table td:nth-child(3) { display: none; }
+  /* 3행: 날짜 & 마감일 — 모바일에서는 핵심 정보로 강조 */
+  .inf-table td:nth-child(3) {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(124, 58, 237, 0.04), rgba(245, 158, 11, 0.04));
+    font-size: 14px;
+  }
+
+  .inf-shoot-date {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 14px;
+    gap: 8px;
+  }
+
+  .inf-deadline {
+    margin-top: 0;
+    color: var(--revu-red);
+    font-weight: 600;
+    font-size: 13px;
+    gap: 8px;
+  }
+
+  .inf-date-icon {
+    font-size: 14px;
+  }
 
   /* 4행: 링크 입력 영역 */
   .inf-table td:nth-child(4) {

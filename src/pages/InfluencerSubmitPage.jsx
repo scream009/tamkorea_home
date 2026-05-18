@@ -309,11 +309,15 @@ export default function InfluencerSubmitPage() {
                     </td>
 
                     {/* 날짜 및 마감일 */}
-                    <td style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                      <div>{formatDate(rec.date)}</div>
+                    <td className="inf-date-cell">
+                      <div className="inf-shoot-date">
+                        <span className="inf-date-icon" aria-hidden="true">📅</span>
+                        <span>{formatDate(rec.date)}</span>
+                      </div>
                       {rec.deadline && (
-                        <div style={{ color: 'var(--revu-red)', marginTop: '4px', fontWeight: '500' }}>
-                          截止: {rec.deadline}
+                        <div className="inf-deadline">
+                          <span className="inf-date-icon" aria-hidden="true">⏰</span>
+                          <span>截止: {rec.deadline}</span>
                         </div>
                       )}
                     </td>
