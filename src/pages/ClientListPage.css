@@ -82,12 +82,29 @@
 /* ─── Filter Tabs ────────────────────────────────────────────  */
 .cl-filter-wrap {
   max-width: 1020px; margin: 22px auto 0; padding: 0 24px;
+  display: flex; flex-direction: column; gap: 10px;
 }
-.cl-filter-inner { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.cl-filter-row {
+  display: flex; align-items: center; gap: 12px;
+}
+
+.cl-filter-label {
+  font-size: 11px; font-weight: 700;
+  color: var(--cl-text-muted);
+  letter-spacing: 0.1em;
+  flex-shrink: 0;
+  min-width: 32px;
+}
+
+.cl-filter-buttons {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+
 .cl-filter-btn {
   display: inline-flex; align-items: center; gap: 6px;
   background: rgba(255,255,255,0.04); border: 1px solid var(--cl-border);
-  color: var(--cl-text-sub); border-radius: 20px; padding: 7px 16px;
+  color: var(--cl-text-sub); border-radius: 20px; padding: 7px 14px;
   font-size: 13px; font-weight: 500; cursor: pointer;
   transition: all 0.2s ease; white-space: nowrap;
 }
@@ -95,9 +112,24 @@
   background: rgba(124,58,237,0.12); border-color: var(--cl-border-purple);
   color: var(--cl-purple-light);
 }
+
+/* 기본 active (전체 버튼) */
 .cl-filter-btn.active {
   background: var(--cl-purple); border-color: var(--cl-purple); color: #fff;
 }
+
+/* 지역별 active */
+.cl-filter-btn--jeju.active  { background: var(--cl-jeju);  border-color: var(--cl-jeju);  color: #fff; }
+.cl-filter-btn--seoul.active { background: var(--cl-seoul); border-color: var(--cl-seoul); color: #fff; }
+.cl-filter-btn--busan.active { background: var(--cl-busan); border-color: var(--cl-busan); color: #fff; }
+.cl-filter-btn--etc.active   { background: var(--cl-etc);   border-color: var(--cl-etc);   color: #fff; }
+
+/* 업종별 active */
+.cl-filter-btn--fb.active { background: var(--cl-fb); border-color: var(--cl-fb); color: #fff; }
+.cl-filter-btn--at.active { background: var(--cl-at); border-color: var(--cl-at); color: #fff; }
+.cl-filter-btn--rt.active { background: var(--cl-rt); border-color: var(--cl-rt); color: #fff; }
+.cl-filter-btn--ht.active { background: var(--cl-ht); border-color: var(--cl-ht); color: #fff; }
+
 .cl-filter-count {
   background: rgba(255,255,255,0.15); border-radius: 10px;
   padding: 1px 7px; font-size: 11px; font-weight: 700;

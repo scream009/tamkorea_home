@@ -160,6 +160,8 @@ export default async function handler(req, res) {
         return (a.zhName || a.krName).localeCompare(b.zhName || b.krName, 'zh');
       });
 
+    // 60초 CDN 캐시 + 5분 stale-while-revalidate (매장 데이터는 자주 안 바뀜)
+    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
     return res.status(200).json({ month, monthLabel: airtableMonth, clients });
 
   } catch (err) {

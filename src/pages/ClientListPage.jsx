@@ -2,28 +2,38 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import './ClientListPage.css';
 
-// ─── 코드 → 표시 매핑 ────────────────────────────────────────
+// ─── 코드 → 표시 매핑 (중문) ─────────────────────────────────
 const REGION_MAP = {
-  J: { label: '제주', key: 'jeju' },
-  S: { label: '서울', key: 'seoul' },
-  B: { label: '부산', key: 'busan' },
-  E: { label: '기타', key: 'etc' },
+  J: { label: '济州', key: 'jeju' },
+  S: { label: '首尔', key: 'seoul' },
+  B: { label: '釜山', key: 'busan' },
+  E: { label: '其他', key: 'etc' },
 };
 
 const CATEGORY_MAP = {
-  FB: { label: '미식',        icon: '🍽️', key: 'fb' },
-  AT: { label: '액티비티',    icon: '🎯', key: 'at' },
-  RT: { label: '리테일·미용', icon: '💄', key: 'rt' },
-  HT: { label: '호텔',        icon: '🏨', key: 'ht' },
+  FB: { label: '美食',      icon: '🍽️', key: 'fb' },
+  AT: { label: '活动',      icon: '🎯', key: 'at' },
+  RT: { label: '零售·美容', icon: '💄', key: 'rt' },
+  HT: { label: '酒店',      icon: '🏨', key: 'ht' },
 };
 
-// ─── 휴무 포맷 ────────────────────────────────────────────────
+// ─── 휴무 포맷 (한글 요일 → 중문 변환) ────────────────────────
+const WEEKDAY_SET = new Set(['월', '화', '수', '목', '금', '토', '일']);
+const WEEKDAY_CN  = { '월': '一', '화': '二', '수': '三', '목': '四', '금': '五', '토': '六', '일': '日' };
+
 function formatHoliday(holiday) {
   if (!holiday) return '';
   const parts = holiday.split(', ').filter(Boolean);
   if (parts.length === 0) return '';
-  if (parts.includes('무휴')) return '연중무휴';
-  return `매주 ${parts.join('·')} 휴무`;
+  if (parts.includes('무휴')) return '全年无休';
+
+  const days   = parts.filter(p => WEEKDAY_SET.has(p));
+  const others = parts.filter(p => !WEEKDAY_SET.has(p));
+  const cnDays = days.map(d => WEEKDAY_CN[d] || d);
+
+  if (days.length === 0)   return others.join(', ');
+  if (others.length === 0) return `每周${cnDays.join('·')}休`;
+  return `每周${cnDays.join('·')}休 · ${others.join(', ')}`;
 }
 
 // ─── 월 레이블 (UI 표시용) ───────────────────────────────────
@@ -35,18 +45,31 @@ function toDisplayMonth(monthStr) {
 
 // ─── Modal (拍摄剧本 전용) ───────────────────────────────────
 function GuideModal({ client, onClose }) {
+  // ESC 키로 닫기 + 모달 열린 동안 body 스크롤 잠금
+  useEffect(() => {
+    if (!client) return;
+    const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handleEsc);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleEsc);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [client, onClose]);
+
   if (!client) return null;
   return (
-    <div className="cl-modal-backdrop" onClick={onClose}>
+    <div className="cl-modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
       <div className="cl-modal" onClick={e => e.stopPropagation()}>
         <div className="cl-modal-header">
           <div>
             <div className="cl-modal-title">拍摄剧本</div>
             <div className="cl-modal-subtitle">{client.zhName || client.krName}</div>
           </div>
-          <button className="cl-modal-close" onClick={onClose} aria-label="닫기">✕</button>
+          <button className="cl-modal-close" onClick={onClose} aria-label="关闭">✕</button>
         </div>
-        <div className="cl-modal-body">{client.guide || '내용 없음'}</div>
+        <div className="cl-modal-body">{client.guide || '内容暂无'}</div>
       </div>
     </div>
   );
@@ -92,7 +115,7 @@ function ClientCard({ client, onOpenGuide }) {
             {client.hours && (
               <div className="cl-info-item">
                 <span className="cl-info-label">
-                  <span aria-hidden="true">🕐</span> 영업시간
+                  <span aria-hidden="true">🕐</span> 营业时间
                 </span>
                 <span className="cl-info-value">{client.hours}</span>
               </div>
@@ -100,7 +123,7 @@ function ClientCard({ client, onOpenGuide }) {
             {holiday && (
               <div className="cl-info-item">
                 <span className="cl-info-label">
-                  <span aria-hidden="true">📅</span> 정기휴무
+                  <span aria-hidden="true">📅</span> 公休日
                 </span>
                 <span className="cl-info-value">{holiday}</span>
               </div>
@@ -112,7 +135,7 @@ function ClientCard({ client, onOpenGuide }) {
         {client.breakTime && (
           <div className="cl-info-row">
             <span className="cl-info-icon" aria-hidden="true">☕</span>
-            <span className="cl-break-label">브레이크</span>
+            <span className="cl-break-label">中休</span>
             <span className="cl-info-value">{client.breakTime}</span>
           </div>
         )}
@@ -121,7 +144,7 @@ function ClientCard({ client, onOpenGuide }) {
         {client.services && (
           <div className="cl-services-box">
             <div className="cl-services-header">
-              <span aria-hidden="true">🎁</span> 제공내역
+              <span aria-hidden="true">🎁</span> 提供内容
             </div>
             <div className="cl-services-text">{client.services}</div>
           </div>
@@ -135,7 +158,7 @@ function ClientCard({ client, onOpenGuide }) {
             className="cl-btn-guide"
             onClick={() => onOpenGuide(client)}
           >
-            📋 拍摄剧本 보기
+            📋 查看拍摄剧本
           </button>
         </div>
       )}
@@ -144,16 +167,17 @@ function ClientCard({ client, onOpenGuide }) {
 }
 
 // ─── 공통 페이지 껍데기 ──────────────────────────────────────
-function PageShell({ month, children }) {
+function PageShell({ month, count, children }) {
   return (
     <div className="cl-page">
       <div className="cl-header">
         <div className="cl-header-inner">
           <div className="cl-logo"><span className="cl-logo-dot" /> T A M K O R E A</div>
           <h1>本月体验团餐厅</h1>
-          {month && (
+          {(month || count != null) && (
             <div className="cl-header-sub">
-              <span className="cl-month-badge">{toDisplayMonth(month)}</span>
+              {month && <span className="cl-month-badge">{toDisplayMonth(month)}</span>}
+              {count != null && <span>共 {count} 家</span>}
             </div>
           )}
         </div>
@@ -168,11 +192,12 @@ export default function ClientListPage() {
   const [searchParams] = useSearchParams();
   const month = searchParams.get('month') || new Date().toISOString().slice(0, 7);
 
-  const [clients, setClients]           = useState([]);
-  const [status, setStatus]             = useState('loading');
-  const [errorMsg, setErrorMsg]         = useState('');
-  const [regionFilter, setRegionFilter] = useState('전체');
-  const [guideClient, setGuideClient]   = useState(null); // 모달 대상
+  const [clients, setClients]             = useState([]);
+  const [status, setStatus]               = useState('loading');
+  const [errorMsg, setErrorMsg]           = useState('');
+  const [regionFilter, setRegionFilter]   = useState('all');   // 'all' | 'J' | 'S' | ...
+  const [categoryFilter, setCategoryFilter] = useState('all'); // 'all' | 'FB' | ...
+  const [guideClient, setGuideClient]     = useState(null);    // 모달 대상
 
   useEffect(() => {
     setStatus('loading');
@@ -194,13 +219,18 @@ export default function ClientListPage() {
   const openGuide  = useCallback(client => setGuideClient(client), []);
   const closeGuide = useCallback(() => setGuideClient(null), []);
 
-  // 필터 탭: 실제 데이터에 있는 지역만
-  const presentRegionCodes = [...new Set(clients.map(c => c.region).filter(Boolean))];
-  const filterTabs = ['전체', ...presentRegionCodes.map(code => REGION_MAP[code]?.label || code)];
+  // 필터 탭: 실제 데이터에 있는 지역/업종만 (사전 정의 순서 유지)
+  const REGION_ORDER   = ['J', 'S', 'B', 'E'];
+  const CATEGORY_ORDER = ['FB', 'AT', 'RT', 'HT'];
+  const presentRegions    = REGION_ORDER.filter(r => clients.some(c => c.region   === r));
+  const presentCategories = CATEGORY_ORDER.filter(k => clients.some(c => c.category === k));
 
-  const filtered = regionFilter === '전체'
-    ? clients
-    : clients.filter(c => (REGION_MAP[c.region]?.label || c.region) === regionFilter);
+  // 지역 × 업종 AND 필터링
+  const filtered = clients.filter(c => {
+    const passRegion   = regionFilter   === 'all' || c.region   === regionFilter;
+    const passCategory = categoryFilter === 'all' || c.category === categoryFilter;
+    return passRegion && passCategory;
+  });
 
   // ── 로딩 ──────────────────────────────────────────────────
   if (status === 'loading') {
@@ -248,51 +278,87 @@ export default function ClientListPage() {
 
   // ── 메인 ──────────────────────────────────────────────────
   return (
-    <div className="cl-page">
-      <div className="cl-header">
-        <div className="cl-header-inner">
-          <div className="cl-logo"><span className="cl-logo-dot" /> T A M K O R E A</div>
-          <h1>本月体验团餐厅</h1>
-          <div className="cl-header-sub">
-            <span className="cl-month-badge">{toDisplayMonth(month)}</span>
-            <span>共 {clients.length} 家</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 지역 필터 탭 */}
-      {filterTabs.length > 2 && (
+    <PageShell month={month} count={clients.length}>
+      {/* 필터: 지역 × 업종 */}
+      {(presentRegions.length > 1 || presentCategories.length > 1) && (
         <div className="cl-filter-wrap">
-          <div className="cl-filter-inner">
-            {filterTabs.map(tab => {
-              const count = tab === '전체'
-                ? clients.length
-                : clients.filter(c => (REGION_MAP[c.region]?.label || c.region) === tab).length;
-              return (
+          {/* 지역 필터 */}
+          {presentRegions.length > 1 && (
+            <div className="cl-filter-row">
+              <span className="cl-filter-label">地区</span>
+              <div className="cl-filter-buttons">
                 <button
-                  key={tab}
-                  className={`cl-filter-btn${regionFilter === tab ? ' active' : ''}`}
-                  onClick={() => setRegionFilter(tab)}
+                  className={`cl-filter-btn${regionFilter === 'all' ? ' active' : ''}`}
+                  onClick={() => setRegionFilter('all')}
                 >
-                  {tab} <span className="cl-filter-count">{count}</span>
+                  全部 <span className="cl-filter-count">{clients.length}</span>
                 </button>
-              );
-            })}
-          </div>
+                {presentRegions.map(code => {
+                  const info = REGION_MAP[code];
+                  const cnt  = clients.filter(c => c.region === code).length;
+                  return (
+                    <button
+                      key={code}
+                      className={`cl-filter-btn cl-filter-btn--${info.key}${regionFilter === code ? ' active' : ''}`}
+                      onClick={() => setRegionFilter(code)}
+                    >
+                      {info.label} <span className="cl-filter-count">{cnt}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 업종 필터 */}
+          {presentCategories.length > 1 && (
+            <div className="cl-filter-row">
+              <span className="cl-filter-label">类别</span>
+              <div className="cl-filter-buttons">
+                <button
+                  className={`cl-filter-btn${categoryFilter === 'all' ? ' active' : ''}`}
+                  onClick={() => setCategoryFilter('all')}
+                >
+                  全部 <span className="cl-filter-count">{clients.length}</span>
+                </button>
+                {presentCategories.map(code => {
+                  const info = CATEGORY_MAP[code];
+                  const cnt  = clients.filter(c => c.category === code).length;
+                  return (
+                    <button
+                      key={code}
+                      className={`cl-filter-btn cl-filter-btn--${info.key}${categoryFilter === code ? ' active' : ''}`}
+                      onClick={() => setCategoryFilter(code)}
+                    >
+                      <span aria-hidden="true">{info.icon}</span> {info.label} <span className="cl-filter-count">{cnt}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* 카드 그리드 */}
+      {/* 카드 그리드 (또는 빈 결과 안내) */}
       <div className="cl-container">
-        <div className="cl-grid">
-          {filtered.map(client => (
-            <ClientCard key={client.id} client={client} onOpenGuide={openGuide} />
-          ))}
-        </div>
+        {filtered.length > 0 ? (
+          <div className="cl-grid">
+            {filtered.map(client => (
+              <ClientCard key={client.id} client={client} onOpenGuide={openGuide} />
+            ))}
+          </div>
+        ) : (
+          <div className="cl-state-card">
+            <div className="cl-state-icon">🔍</div>
+            <h2>没有符合条件的店铺</h2>
+            <p>请尝试选择其他地区或类别。</p>
+          </div>
+        )}
       </div>
 
       {/* 拍摄剧本 모달 */}
       {guideClient && <GuideModal client={guideClient} onClose={closeGuide} />}
-    </div>
+    </PageShell>
   );
 }
