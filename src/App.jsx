@@ -12,6 +12,7 @@ import CampaignDetailPage from './pages/CampaignDetailPage';
 import LoginPage from './pages/auth/LoginPage';
 import SignupSelectionPage from './pages/auth/SignupSelectionPage';
 import InfluencerSubmitPage from './pages/InfluencerSubmitPage';
+import ClientListPage from './pages/ClientListPage';
 import ClientReportPage from './pages/ClientReportPage';
 import ClientSchedulePage from './pages/ClientSchedulePage';
 import ClientPartnerPage from './pages/ClientPartnerPage';
@@ -28,6 +29,7 @@ function App() {
         <Routes>
           {/* 독립 페이지: 헤더/푸터 없음 */}
           <Route path="/submit" element={<InfluencerSubmitPage />} />
+          <Route path="/clients" element={<ClientListPage />} />
           <Route path="/report" element={<ClientReportPage />} />
           <Route path="/schedule" element={<ClientSchedulePage />} />
           <Route path="/manager" element={<RecruiterSchedulePage />} />
