@@ -12,8 +12,8 @@ const REGION_MAP = {
 
 const CATEGORY_MAP = {
   FB: { label: '美食',      icon: '🍽️', key: 'fb' },
-  AT: { label: '活动',      icon: '🎯', key: 'at' },
-  RT: { label: '零售·美容', icon: '💄', key: 'rt' },
+  AT: { label: '景点',       icon: '🎯', key: 'at' },
+  RT: { label: '伴手礼•美发', icon: '💄', key: 'rt' },
   HT: { label: '酒店',      icon: '🏨', key: 'ht' },
 };
 
@@ -188,7 +188,7 @@ function PageShell({ month, count, children }) {
       <div className="cl-header">
         <div className="cl-header-inner">
           <div className="cl-logo"><span className="cl-logo-dot" /> T A M K O R E A</div>
-          <h1>本月体验团餐厅</h1>
+          <h1>本月探店商家目录</h1>
           {(month || count != null) && (
             <div className="cl-header-sub">
               {month && <span className="cl-month-badge">{toDisplayMonth(month)}</span>}
