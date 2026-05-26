@@ -232,6 +232,7 @@
 .inf-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed; /* th width를 엄격히 준수 — 콘텐츠가 컬럼을 늘리는 것 차단 */
 }
 
 /* Header Row */
@@ -489,8 +490,15 @@
 .inf-toast.success { border-color: rgba(16, 185, 129, 0.4); }
 .inf-toast.error { border-color: rgba(239, 68, 68, 0.4); }
 
-/* ─── Mobile Responsive: Card Layout ─────────────────────── */
-@media (max-width: 640px) {
+/* ─── Responsive: Card Layout ─────────────────────────────
+   Breakpoint: 900px
+   - 모바일(< 640px): 항상 카드 layout
+   - 태블릿/좁은 데스크탑(640-900px): 카드 layout (테이블 빽빽함)
+   - 데스크탑(900px+): 테이블 layout
+   - WeChat 자체 브라우저는 viewport 처리가 달라 ~700px대에서도
+     mobile 모드로 들어가야 자연스러움 → 900px가 안전한 기준
+*/
+@media (max-width: 900px) {
   .inf-header { padding: 20px 16px 18px; }
   .inf-container { padding: 0 12px; }
   .inf-progress-wrap { padding: 0 12px; }

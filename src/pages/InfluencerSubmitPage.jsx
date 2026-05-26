@@ -270,11 +270,11 @@ export default function InfluencerSubmitPage() {
           <table className="inf-table">
             <thead>
               <tr>
-                <th style={{ width: '25%' }}>客户名</th>
+                <th style={{ width: '22%' }}>客户名</th>
                 <th style={{ width: '10%' }}>拍摄指南</th>
                 <th style={{ width: '17%' }}>拍摄日期 & 截止日期</th>
                 <th>提交视频链接</th>
-                <th style={{ width: '12%' }}>状态</th>
+                <th style={{ width: '16%' }}>状态</th>
               </tr>
             </thead>
             <tbody>
