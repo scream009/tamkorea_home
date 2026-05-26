@@ -284,19 +284,26 @@
   color: var(--text-muted);
 }
 
+/* 날짜·마감일: CJK 글자 사이 줄바꿈 방지 (공백 단위로만 줄바꿈) */
 .inf-shoot-date {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  line-height: 1.4;
 }
 
 .inf-deadline {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   margin-top: 4px;
   color: var(--revu-red);
   font-weight: 500;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  line-height: 1.4;
 }
 
 .inf-date-icon {
@@ -304,6 +311,8 @@
   align-items: center;
   font-size: 12px;
   line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
 /* Guide Button */
