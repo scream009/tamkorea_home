@@ -141,9 +141,11 @@ const ClientReportPage = () => {
             dpResult:   (f['DP_Result']  || '').trim(),
             status:     f['진행상태']   || '',
           };
-          if (type==='인플' || type==='인플루언서' || type==='체험→인플' || type==='기자→인플') influencer.push(item);
-          else if (type==='체험' || type==='체험단' || type==='기자→체험')  experience.push(item);
-          else if (type==='기자' || type==='기자단')  press.push(item);
+          const isExcluded = status.includes('취소') || status.includes('노쇼');
+          if (isExcluded) return;
+
+          if (type.includes('인플') || type.includes('체험→인플') || type.includes('기자→인플')) influencer.push(item);
+          else if (type.includes('기자'))  press.push(item);
           else experience.push(item); // fallback
         });
         influencer.forEach((r,i) => r.seq = i+1);
@@ -160,6 +162,28 @@ const ClientReportPage = () => {
     };
     load();
   }, [recordId]);
+
+  // 파트너사에 따른 브라우저 탭 및 파비콘 동적 변경 (화이트라벨링)
+  useEffect(() => {
+    if (reportData) {
+      const { brandName, branchName, partnerName } = reportData;
+      const displayName = brandName && branchName ? `${brandName} ${branchName}` : (brandName || '캠페인');
+      
+      if (partnerName && partnerName !== 'TAMKOREA') {
+        document.title = `${displayName} 실적 보고서 - ${partnerName}`;
+        // 탐코리아 파비콘 숨기기 (투명 이미지로 대체)
+        let link = document.querySelector("link[rel~='icon']");
+        if (!link) {
+          link = document.createElement('link');
+          link.rel = 'icon';
+          document.getElementsByTagName('head')[0].appendChild(link);
+        }
+        link.href = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+      } else {
+        document.title = `${displayName} 실적 보고서 - 탐코리아`;
+      }
+    }
+  }, [reportData]);
 
   if (loading) return (
     <div className="cr-wrap cr-center">
@@ -210,8 +234,9 @@ const ClientReportPage = () => {
     const url = URL.createObjectURL(blob);
     
     const safeBrand = (brandName || '캠페인').replace(/\s+/g, '_');
+    const safeBranch = branchName ? branchName.replace(/\s+/g, '_') + '_' : '';
     const safeMonth = (month || '').replace(/\s+/g, '');
-    const filename = `${safeBrand}_${safeMonth}_실적보고서.csv`;
+    const filename = `${safeBrand}_${safeBranch}${safeMonth}_실적보고서.csv`;
     
     const link = document.createElement('a');
     link.setAttribute('href', url);
@@ -229,8 +254,10 @@ const ClientReportPage = () => {
         {/* ── 헤더 ─────────────────────────────────── */}
         <header className="report-header">
           <div>
-            <h1 className="report-title">{brandName}</h1>
-            <p className="report-sub">{branchName} · {month} 실적 보고서</p>
+            <h1 className="report-title">
+              {brandName}{branchName ? ` ${branchName}` : ''}
+            </h1>
+            <p className="report-sub">{month} 실적 보고서</p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
             <div className="gravity-logo-accent" style={{ margin: 0 }}>
