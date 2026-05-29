@@ -327,3 +327,5 @@
   .id-tag { max-width: 100px; }
   .press-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+.link-empty { color: #4b5563; font-weight: 500; display: inline-block; }

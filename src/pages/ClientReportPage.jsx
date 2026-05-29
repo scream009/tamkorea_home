@@ -17,7 +17,7 @@ async function atGet(url) {
 
 async function fetchLinkedRecords(ids) {
   if (!ids || ids.length === 0) return [];
-  const fields = ['유형','XHS_ID','WC_ID','INFL_ID','XHS_Result','DP_Result','진행상태','Shoot_ID'];
+  const fields = ['유형','XHS_ID','WC_ID','INFL_ID','XHS_Result','DP_Result','DY_Result','진행상태','Shoot_ID'];
   const fieldQ = fields.map(f => `fields[]=${encodeURIComponent(f)}`).join('&');
   let all = [];
   const chunkSize = 30;
@@ -47,7 +47,7 @@ const LinkBtn = ({ href, label }) =>
   href ? (
     <a href={href} target="_blank" rel="noopener noreferrer" className="link-btn">🔗 {label}</a>
   ) : (
-    <span className="link-pending">진행 중</span>
+    <span className="link-empty">-</span>
   );
 
 const StatBar = ({ label, done, target }) => {
@@ -90,12 +90,13 @@ const ClientReportPage = () => {
             records: {
               influencer: Array.from({length:4}).map((_,i) => ({
                 id:`i${i}`, seq:i+1, displayId:`influencer_id_${i+1}`,
-                xhsResult:'https://xhslink.com/sample', dpResult:'', status:'송부완료',
+                xhsResult:'https://xhslink.com/sample', dpResult:'', dyResult:'', status:'송부완료',
               })),
               experience: Array.from({length:18}).map((_,i) => ({
                 id:`e${i}`, seq:i+1, displayId:`user_${i+1}`,
                 xhsResult: i%3!==0 ? 'https://xhslink.com/sample' : '',
                 dpResult:  i%2===0 ? 'https://dpurl.cn/sample' : '',
+                dyResult:  i%4===0 ? 'https://v.douyin.com/sample' : '',
                 status: i%3!==0 ? '송부완료' : '예약확정',
               })),
               press: [],
@@ -139,6 +140,7 @@ const ClientReportPage = () => {
             displayId:  xhsId || wcId || inflId || '',
             xhsResult:  (f['XHS_Result'] || '').trim(),
             dpResult:   (f['DP_Result']  || '').trim(),
+            dyResult:   (f['DY_Result']  || '').trim(),
             status:     f['진행상태']   || '',
           };
           const isExcluded = status.includes('취소') || status.includes('노쇼');
@@ -206,7 +208,7 @@ const ClientReportPage = () => {
   const handleDownloadCSV = () => {
     if (!records) return;
     
-    const headers = ['구분', 'No.', '닉네임(ID)', '샤오홍슈 링크', '따종디엔핑 링크'];
+    const headers = ['구분', 'No.', '닉네임(ID)', '샤오홍슈 링크', '따종디엔핑 링크', '틱톡(DY) 링크'];
     const rows = [];
     
     const escape = (text) => `"${(text || '').toString().replace(/"/g, '""')}"`;
@@ -219,7 +221,8 @@ const ClientReportPage = () => {
           item.seq,
           escape(item.displayId),
           escape(item.xhsResult),
-          escape(item.dpResult)
+          escape(item.dpResult),
+          escape(item.dyResult)
         ];
         rows.push(row.join(','));
       });
@@ -299,15 +302,19 @@ const ClientReportPage = () => {
               <table className="premium-table">
                 <thead><tr>
                   <th style={{width:'6%'}}>No.</th>
-                  <th style={{width:'38%'}}>샤오홍슈 ID</th>
-                  <th style={{width:'56%'}}>샤오홍슈 결과물</th>
+                  <th style={{width:'19%'}}>ID (닉네임)</th>
+                  <th style={{width:'25%', textAlign:'center'}}>샤오홍슈</th>
+                  <th style={{width:'25%', textAlign:'center'}}>따종디엔핑</th>
+                  <th style={{width:'25%', textAlign:'center'}}>틱톡(DY)</th>
                 </tr></thead>
                 <tbody>
                   {records.influencer.map(item => (
-                    <tr key={item.id} className={!item.xhsResult ? 'row-pending' : ''}>
+                    <tr key={item.id} className={!item.xhsResult && !item.dpResult && !item.dyResult ? 'row-pending' : ''}>
                       <td>{item.seq}</td>
                       <td><span className="id-tag">{item.displayId||'-'}</span></td>
-                      <td><LinkBtn href={item.xhsResult} label="포스팅 확인" /></td>
+                      <td style={{textAlign:'center'}}><LinkBtn href={item.xhsResult} label="확인" /></td>
+                      <td style={{textAlign:'center'}}><LinkBtn href={item.dpResult} label="확인" /></td>
+                      <td style={{textAlign:'center'}}><LinkBtn href={item.dyResult} label="확인" /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -326,17 +333,19 @@ const ClientReportPage = () => {
               <table className="premium-table">
                 <thead><tr>
                   <th style={{width:'6%'}}>No.</th>
-                  <th style={{width:'28%'}}>샤오홍슈 ID</th>
-                  <th style={{width:'33%'}}>샤오홍슈 결과물</th>
-                  <th style={{width:'33%'}}>따종디엔핑</th>
+                  <th style={{width:'19%'}}>ID (닉네임)</th>
+                  <th style={{width:'25%', textAlign:'center'}}>샤오홍슈</th>
+                  <th style={{width:'25%', textAlign:'center'}}>따종디엔핑</th>
+                  <th style={{width:'25%', textAlign:'center'}}>틱톡(DY)</th>
                 </tr></thead>
                 <tbody>
                   {records.experience.map(item => (
-                    <tr key={item.id} className={!item.xhsResult && !item.dpResult ? 'row-pending' : ''}>
+                    <tr key={item.id} className={!item.xhsResult && !item.dpResult && !item.dyResult ? 'row-pending' : ''}>
                       <td>{item.seq}</td>
                       <td><span className="id-tag">{item.displayId||'-'}</span></td>
-                      <td><LinkBtn href={item.xhsResult} label="샤오홍슈" /></td>
-                      <td><LinkBtn href={item.dpResult}  label="따종디엔핑" /></td>
+                      <td style={{textAlign:'center'}}><LinkBtn href={item.xhsResult} label="확인" /></td>
+                      <td style={{textAlign:'center'}}><LinkBtn href={item.dpResult} label="확인" /></td>
+                      <td style={{textAlign:'center'}}><LinkBtn href={item.dyResult} label="확인" /></td>
                     </tr>
                   ))}
                 </tbody>

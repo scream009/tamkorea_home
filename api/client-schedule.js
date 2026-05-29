@@ -128,6 +128,7 @@ export default async function handler(req, res) {
 
       const xhsResult = f['XHS_Result'] || '';
       const dpResult  = f['DP_Result']  || '';
+      const dyResult  = f['DY_Result']  || '';
       const status    = f['진행상태']   || '진행전';
       const shootId   = f['Shoot_ID']   || '';
       const reserveDate = f['예약일시'] || null;
@@ -166,6 +167,7 @@ export default async function handler(req, res) {
         displayId,
         xhsResult,
         dpResult,
+        dyResult,
         status,
         type,
         reserveDate,
@@ -195,14 +197,18 @@ export default async function handler(req, res) {
       }
 
       // 리스트용 분류
-      if (type === '인플' || type === '인플루언서' || type === '체험→인플' || type === '기자→인플') {
-        influencer.push(item);
-      } else if (type === '체험' || type === '체험단' || type === '기자→체험') {
-        experience.push(item);
-      } else if (type === '기자' || type === '기자단') {
-        press.push(item);
-      } else {
-        experience.push(item);
+      const isExcluded = status.includes('취소') || status.includes('노쇼');
+      
+      if (!isExcluded) {
+        if (type === '인플' || type === '인플루언서' || type === '체험→인플' || type === '기자→인플') {
+          influencer.push(item);
+        } else if (type === '체험' || type === '체험단' || type === '기자→체험') {
+          experience.push(item);
+        } else if (type === '기자' || type === '기자단') {
+          press.push(item);
+        } else {
+          experience.push(item);
+        }
       }
     });
 
