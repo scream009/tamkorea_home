@@ -319,7 +319,7 @@
 /* ── 반응형 ─────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .cr-wrap { padding: 16px 8px 40px; }
-  .report-header { flex-direction: column; gap: 12px; padding: 20px; }
+  .report-header { flex-direction: column; gap: 12px; padding: 20px; align-items: stretch; }
   .report-title { font-size: 1.4rem; }
   .category-section { padding: 16px 16px; }
   .premium-table th,
