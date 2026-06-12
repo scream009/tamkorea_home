@@ -543,8 +543,8 @@ export default function ClientPartnerPage() {
           const month = cf['계약월'] || '';
 
           const stats = {
-            infl_done: cf['인플_실적'] || cf['# 인플_실적'] || 0,
-            exp_done:  cf['체험_실적'] || cf['# 세팅_실적'] || cf['# 체험_실적'] || 0,
+            infl_done: cf['인플_방문'] || cf['인플_실적'] || cf['# 인플_실적'] || 0,
+            exp_done:  cf['체험_방문'] || cf['체험_실적'] || cf['# 세팅_실적'] || cf['# 체험_실적'] || 0,
             press_done: cf['기자_실적'] || cf['# 기자_실적'] || 0,
           };
 
@@ -600,9 +600,12 @@ export default function ClientPartnerPage() {
             }
           }
 
-          if (type.includes('인플')) camp.records.influencer.push(item);
-          else if (type === '기자' || type === '기자단') camp.records.press.push(item);
-          else camp.records.experience.push(item);
+          const isExcluded = status.includes('취소') || status.includes('노쇼');
+          if (!isExcluded) {
+            if (type.includes('인플')) camp.records.influencer.push(item);
+            else if (type.includes('기자')) camp.records.press.push(item);
+            else camp.records.experience.push(item);
+          }
         });
 
         // 분배 완료된 스케줄 그룹들을 각 캠페인에 할당
@@ -625,6 +628,22 @@ export default function ClientPartnerPage() {
       }
     };
     fetchData();
+  }, [partnerName]);
+
+  // 파트너사에 따른 브라우저 탭 및 파비콘 동적 변경 (화이트라벨링)
+  useEffect(() => {
+    if (partnerName && partnerName !== '탐코리아' && partnerName.toUpperCase() !== 'TAMKOREA') {
+      document.title = `${partnerName} - 캠페인 성과 대시보드`;
+      let link = document.querySelector("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.getElementsByTagName('head')[0].appendChild(link);
+      }
+      link.href = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+    } else {
+      document.title = `탐코리아 - 캠페인 성과 대시보드`;
+    }
   }, [partnerName]);
 
   if (loading) return (

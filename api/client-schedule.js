@@ -57,13 +57,15 @@ export default async function handler(req, res) {
 
     const linkedRecIds  = cf['진행_DB_OLD'] || [];
 
+    // 목표 수량: 신규 '_목표' 필드 우선, 구 '_요청' 필드 폴백
+    // 실적 수량: 인플/체험 = '_방문' rollup, 기자 = '기자_실적' rollup (스키마 리네임 반영)
     const stats = {
-      infl_target: cf['인플_요청'] || cf['# 인플_목표'] || 0,
-      infl_done:   cf['인플_실적'] || cf['# 인플_실적'] || 0,
-      exp_target:  cf['체험단_요청'] || cf['# 세팅_목표'] || cf['# 체험_목표'] || 0,
-      exp_done:    cf['체험_실적'] || cf['# 세팅_실적'] || cf['# 체험_실적'] || 0,
-      press_target: cf['기자단_요청'] || cf['# 기자_목표'] || 0,
-      press_done:  cf['기자_실적'] || cf['# 기자_실적'] || 0,
+      infl_target:  cf['인플_목표'] || cf['인플_요청'] || cf['# 인플_목표'] || cf['# 인플_요청'] || 0,
+      infl_done:    cf['인플_방문'] || cf['# 인플_방문'] || cf['인플_실적'] || cf['# 인플_실적'] || 0,
+      exp_target:   cf['체험_목표'] || cf['체험단_요청'] || cf['# 체험_목표'] || cf['# 체험단_요청'] || 0,
+      exp_done:     cf['체험_방문'] || cf['# 체험_방문'] || cf['체험_실적'] || cf['# 체험_실적'] || 0,
+      press_target: cf['기자_목표'] || cf['기자단_요청'] || cf['# 기자_목표'] || cf['# 기자단_요청'] || 0,
+      press_done:   cf['기자_실적'] || cf['# 기자_실적'] || 0,
     };
 
     // 2. 진행_DB_OLD 레코드 가져오기 (예약일시 필드 추가)
@@ -110,12 +112,16 @@ export default async function handler(req, res) {
       }
     }
 
+    // 영상 이상(삭제/비공개) 판별 — 공백 무시('영상 이상' 표기도 인식)
+    const isVideoIssue = (status) => (status || '').replace(/\s/g, '').includes('영상이상');
+
     // 3. 데이터 가공 및 분류
     const scheduleItems = [];
     const teamGroups = {};
     const influencer = [];
     const experience = [];
     const press      = [];
+    const videoIssue = [];
 
     allRecords.forEach((rec, index) => {
       const f = rec.fields;
@@ -196,15 +202,27 @@ export default async function handler(req, res) {
         }
       }
 
-      // 리스트용 분류
+      // 리스트용 분류 — 취소·노쇼는 실적 리스트에서 제외 (달력에는 그대로 표시됨)
       const isExcluded = status.includes('취소') || status.includes('노쇼');
-      
+
       if (!isExcluded) {
+        // 유형 → 카테고리 판정
+        let category;
         if (type === '인플' || type === '인플루언서' || type === '체험→인플' || type === '기자→인플') {
-          influencer.push(item);
-        } else if (type === '체험' || type === '체험단' || type === '기자→체험') {
-          experience.push(item);
+          category = 'influencer';
         } else if (type === '기자' || type === '기자단') {
+          category = 'press';
+        } else {
+          category = 'experience'; // 체험 및 fallback
+        }
+        item.category = category;
+
+        // 영상 이상(삭제/비공개) → 하단 별도 리스트로 분리
+        if (isVideoIssue(status)) {
+          videoIssue.push(item);
+        } else if (category === 'influencer') {
+          influencer.push(item);
+        } else if (category === 'press') {
           press.push(item);
         } else {
           experience.push(item);
@@ -218,6 +236,7 @@ export default async function handler(req, res) {
     influencer.forEach((r, i) => { r.seq = i + 1; });
     experience.forEach((r, i) => { r.seq = i + 1; });
     press.forEach((r, i)      => { r.seq = i + 1; });
+    videoIssue.forEach((r, i) => { r.seq = i + 1; });
 
     return res.status(200).json({
       campaignName,
@@ -227,7 +246,7 @@ export default async function handler(req, res) {
       partnerName,
       stats,
       scheduleItems: groupedScheduleItems,
-      records: { influencer, experience, press },
+      records: { influencer, experience, press, videoIssue },
     });
 
   } catch (err) {

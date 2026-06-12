@@ -47,9 +47,12 @@ export default async function handler(req, res) {
         branchName: Array.isArray(cf['지점명']) ? cf['지점명'][0] : (cf['지점명'] || ''),
         month: cf['계약월'] || '',
         stats: {
-          infl_target: cf['인플_요청'] || 0, infl_done: cf['인플_실적'] || 0,
-          exp_target: cf['체험단_요청'] || 0, exp_done: cf['체험_실적'] || 0,
-          press_target: cf['기자단_요청'] || 0, press_done: cf['기자_실적'] || 0,
+          infl_target: cf['인플_목표'] || cf['인플_요청'] || cf['# 인플_목표'] || cf['# 인플_요청'] || 0,
+          infl_done: cf['인플_방문'] || cf['# 인플_방문'] || cf['인플_실적'] || cf['# 인플_실적'] || 0,
+          exp_target: cf['체험_목표'] || cf['체험단_요청'] || cf['# 체험_목표'] || cf['# 체험단_요청'] || 0,
+          exp_done: cf['체험_방문'] || cf['# 체험_방문'] || cf['체험_실적'] || cf['# 체험_실적'] || 0,
+          press_target: cf['기자_목표'] || cf['기자단_요청'] || cf['# 기자_목표'] || cf['# 기자단_요청'] || 0,
+          press_done: cf['기자_실적'] || cf['# 기자_실적'] || 0,
         }
       };
     });

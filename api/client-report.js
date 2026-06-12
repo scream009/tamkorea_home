@@ -61,13 +61,14 @@ export default async function handler(req, res) {
     const month         = cf['계약월'] || '';
     const linkedRecIds  = cf['진행_DB_OLD'] || [];   // linked record IDs
 
+    // 실적 수량: 인플/체험 = '_방문' rollup, 기자 = '기자_실적' rollup (스키마 리네임 반영)
     const stats = {
-      infl_target: cf['인플_요청'] || 0,
-      infl_done:   cf['인플_실적'] || 0,
-      exp_target:  cf['체험단_요청'] || 0,
-      exp_done:    cf['체험_실적'] || 0,
-      press_target: cf['기자단_요청'] || 0,
-      press_done:  cf['기자_실적'] || 0,
+      infl_target:  cf['인플_목표'] || cf['인플_요청'] || cf['# 인플_목표'] || cf['# 인플_요청'] || 0,
+      infl_done:    cf['인플_방문'] || cf['# 인플_방문'] || cf['인플_실적'] || cf['# 인플_실적'] || 0,
+      exp_target:   cf['체험_목표'] || cf['체험단_요청'] || cf['# 체험_목표'] || cf['# 체험단_요청'] || 0,
+      exp_done:     cf['체험_방문'] || cf['# 체험_방문'] || cf['체험_실적'] || cf['# 체험_실적'] || 0,
+      press_target: cf['기자_목표'] || cf['기자단_요청'] || cf['# 기자_목표'] || cf['# 기자단_요청'] || 0,
+      press_done:   cf['기자_실적'] || cf['# 기자_실적'] || 0,
     };
 
     // ─── 2. 진행_DB_OLD 레코드 가져오기 ────────────────────────────
