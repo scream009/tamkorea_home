@@ -380,12 +380,13 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
                   <h2 className="category-title"><TypeBadge type="influencer" /></h2>
                   <div className="premium-table-wrapper">
                     <table className="premium-table">
-                      <thead><tr><th style={{width:'6%'}}>No.</th><th style={{width:'38%'}}>방문자 ID</th><th style={{width:'56%'}}>샤오홍슈 결과물</th></tr></thead>
+                      <thead><tr><th style={{width:'6%'}}>No.</th><th style={{width:'28%'}}>방문자 ID</th><th style={{width:'33%'}}>샤오홍슈 결과물</th><th style={{width:'33%'}}>따종디엔핑</th></tr></thead>
                       <tbody>
                         {camp.records.influencer.map(item => (
-                          <tr key={item.id} className={!item.xhsResult ? 'row-pending' : ''}>
+                          <tr key={item.id} className={!item.xhsResult && !item.dpResult ? 'row-pending' : ''}>
                             <td>{item.seq}</td><td><span className="id-tag">{item.displayId || '-'}</span></td>
-                            <td><LinkBtn href={item.xhsResult} label="포스팅 확인" /></td>
+                            <td><LinkBtn href={item.xhsResult} label="샤오홍슈" /></td>
+                            <td><LinkBtn href={item.dpResult} label="따종디엔핑" /></td>
                           </tr>
                         ))}
                       </tbody>

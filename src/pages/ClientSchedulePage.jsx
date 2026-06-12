@@ -23,6 +23,9 @@ import {
 import './ClientSchedulePage.css';
 import './ClientReportPage.css';
 
+// 상수 — 영상 이상 섹션 내 하위 그룹 순서 (유형 구분 표시용)
+const VIDEO_ISSUE_GROUPS = ['influencer', 'experience', 'press'];
+
 // 서브 컴포넌트
 const TypeBadge = ({ type }) => {
   const map = {
@@ -136,6 +139,27 @@ export default function ClientSchedulePage() {
 
     fetchData();
   }, [campaignId]);
+
+  // 파트너사에 따른 브라우저 탭 및 파비콘 동적 변경 (화이트라벨링)
+  useEffect(() => {
+    if (data) {
+      const { brandName, branchName, campaignName, partnerName = 'TAMKOREA' } = data;
+      const displayName = brandName && branchName ? `${brandName} ${branchName}` : (brandName || campaignName || '캠페인');
+      
+      if (partnerName && partnerName !== 'TAMKOREA') {
+        document.title = `${displayName} 캠페인 현황 - ${partnerName}`;
+        let link = document.querySelector("link[rel~='icon']");
+        if (!link) {
+          link = document.createElement('link');
+          link.rel = 'icon';
+          document.getElementsByTagName('head')[0].appendChild(link);
+        }
+        link.href = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+      } else {
+        document.title = `${displayName} 캠페인 현황 - 탐코리아`;
+      }
+    }
+  }, [data]);
 
   // 캘린더 네비게이션
   const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
@@ -307,6 +331,7 @@ export default function ClientSchedulePage() {
   const hasInfl  = records?.influencer?.length > 0;
   const hasExp   = records?.experience?.length > 0;
   const hasPress = records?.press?.length > 0;
+  const hasVideoIssue = records?.videoIssue?.length > 0;
 
   const handleDownloadCSV = () => {
     if (!records) return;
@@ -333,6 +358,10 @@ export default function ClientSchedulePage() {
     addRows('인플루언서', records.influencer);
     addRows('체험단', records.experience);
     addRows('기자단', records.press);
+    const vi = records.videoIssue || [];
+    addRows('영상이상·인플루언서', vi.filter(i => i.category === 'influencer'));
+    addRows('영상이상·체험단', vi.filter(i => i.category === 'experience'));
+    addRows('영상이상·기자단', vi.filter(i => i.category === 'press'));
 
     const csvContent = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -525,15 +554,17 @@ export default function ClientSchedulePage() {
                       <table className="premium-table">
                         <thead><tr>
                           <th style={{width:'6%'}}>No.</th>
-                          <th style={{width:'38%'}}>방문자 ID</th>
-                          <th style={{width:'56%'}}>샤오홍슈 결과물</th>
+                          <th style={{width:'28%'}}>방문자 ID</th>
+                          <th style={{width:'33%'}}>샤오홍슈 결과물</th>
+                          <th style={{width:'33%'}}>따종디엔핑</th>
                         </tr></thead>
                         <tbody>
                           {records.influencer.map(item => (
-                            <tr key={item.id} className={!item.xhsResult ? 'row-pending' : ''}>
+                            <tr key={item.id} className={!item.xhsResult && !item.dpResult ? 'row-pending' : ''}>
                               <td>{item.seq}</td>
                               <td><span className="id-tag">{item.displayId || '-'}</span></td>
-                              <td><LinkBtn href={item.xhsResult} label="포스팅 확인" /></td>
+                              <td><LinkBtn href={item.xhsResult} label="샤오홍슈" /></td>
+                              <td><LinkBtn href={item.dpResult} label="따종디엔핑" /></td>
                             </tr>
                           ))}
                         </tbody>
@@ -592,7 +623,51 @@ export default function ClientSchedulePage() {
                   </section>
                 )}
 
-                {!hasInfl && !hasExp && !hasPress && (
+                {hasVideoIssue && (
+                  <section className="category-section video-issue-section">
+                    <h2 className="category-title">
+                      <span className="type-badge vissue">⚠️ 영상 이상</span>
+                      <span className="cat-count">{records.videoIssue.length}건 · 삭제 또는 비공개 처리됨</span>
+                    </h2>
+                    <p className="video-issue-note">
+                      아래 항목은 게시 후 플랫폼 광고 제한 정책에 따라 영상이 삭제·비공개 처리된 건입니다.
+                    </p>
+                    {VIDEO_ISSUE_GROUPS.map(cat => {
+                      const items = records.videoIssue.filter(i => i.category === cat);
+                      if (items.length === 0) return null;
+                      return (
+                        <div key={cat} className="vissue-group">
+                          <h3 className="vissue-group-title">
+                            <TypeBadge type={cat} />
+                            <span className="cat-count">{items.length}건</span>
+                          </h3>
+                          <div className="premium-table-wrapper">
+                            <table className="premium-table">
+                              <thead><tr>
+                                <th style={{width:'6%'}}>No.</th>
+                                <th style={{width:'34%'}}>방문자 ID</th>
+                                <th style={{width:'30%'}}>샤오홍슈</th>
+                                <th style={{width:'30%'}}>따종디엔핑</th>
+                              </tr></thead>
+                              <tbody>
+                                {items.map((item, i) => (
+                                  <tr key={item.id} className="row-vissue">
+                                    <td>{i + 1}</td>
+                                    <td><span className="id-tag">{item.displayId || '-'}</span></td>
+                                    <td><LinkBtn href={item.xhsResult} label="샤오홍슈" /></td>
+                                    <td><LinkBtn href={item.dpResult}  label="따종디엔핑" /></td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </section>
+                )}
+
+                {!hasInfl && !hasExp && !hasPress && !hasVideoIssue && (
                   <div className="cr-center" style={{ padding:'60px 0', color:'#6b7280' }}>
                     아직 등록된 실적이 없습니다.
                   </div>
