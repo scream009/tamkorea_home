@@ -9,9 +9,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    const partnerName = req.query.name;
+    let partnerName = req.query.name;
     if (!partnerName) {
       return res.status(400).json({ error: '협력사 이름이 필요합니다 (?name=...)' });
+    }
+    if (partnerName.includes('에코')) {
+      partnerName = '에코';
     }
 
     const TOKEN = process.env.TAMLINK_API_KEY || process.env.VITE_AT_TOKEN;
@@ -19,7 +22,12 @@ export default async function handler(req, res) {
     const CAMP_TB = encodeURIComponent('Campaign_DB');
 
     // 필터: 협력사 컬럼이 일치하는 레코드 검색
-    const formula = encodeURIComponent(`{협력사}='${partnerName}'`);
+    let formula;
+    if (partnerName === '에코') {
+      formula = encodeURIComponent("OR(FIND('에코', {협력사}) > 0, FIND('에코', {협력사명}) > 0)");
+    } else {
+      formula = encodeURIComponent(`{협력사}='${partnerName}'`);
+    }
     
     // 가져올 필드 목록 지정 (트래픽 최적화)
     const fields = ['계약명', '고객사명', '지점명', '계약월', '인플_요청', '인플_실적', '체험단_요청', '체험_실적', '기자단_요청', '기자_실적'];

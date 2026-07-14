@@ -27,17 +27,28 @@ const RESULT_FIELD    = 'XHS_Result';       // 결과물 제출 링크 (XHS)
 const DP_RESULT_FIELD = 'DP_Result';        // 결과물 제출 링크 (DP)
 const DY_RESULT_FIELD = 'DY_Result';        // 결과물 제출 링크 (DY 및 기타)
 const STATUS_FIELD    = '제출상태';         // 제출상태 필드명
+const PROG_STATUS_FIELD = '진행상태';       // 진행상태 (취소, 변경확정 등 확인용)
+const CHANGE_DATE_FIELD = '변경일시';       // 예약 변경 시의 일시
+const TYPE_FIELD        = '유형';           // 인플/체험단/기자단 유형 (마감일 일수 결정)
 
 const INF_TABLE       = 'INFL_DB';          // 인플루언서 마스터 테이블
 const INF_TOKEN_FIELD = 'Submit_Token';     // URL 파라미터용 보안 토큰 (생성 방식: "submit_" & LEFT(RECORD_ID(), 12))
 
-// ─── 마감일 포맷 헬퍼 (촬영일 기준 +14일 자동 계산) ──────────────────────────
-function formatDeadline(dateStr) {
+// ─── 유형별 업로드 마감 일수 결정 ──────────────────────────────────────────
+// 체험단(체험 계열) = 촬영일 +5일 / 인플·기자단 = 촬영일 +14일(2주)
+function deadlineDaysForType(type) {
+  const t = (type || '').trim();
+  if (t === '체험' || t === '체험단' || t === '기자→체험') return 5;
+  return 14; // 인플·인플루언서·체험→인플·기자→인플·기자단 등은 2주
+}
+
+// ─── 마감일 포맷 헬퍼 (촬영일 기준 + 유형별 일수 자동 계산) ──────────────────
+function formatDeadline(dateStr, days = 14) {
   if (!dateStr) return '';
   try {
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
-    d.setDate(d.getDate() + 14); // 2주(14일) 자동 추가
+    d.setDate(d.getDate() + days); // 유형별 마감 일수 추가
     const month = d.getMonth() + 1;
     const day   = d.getDate();
     return `${month}/${day}`; // 요일 제거
@@ -90,7 +101,7 @@ export default async function handler(req, res) {
 
       const fetchSchedule = async (formula) => {
         const filter    = encodeURIComponent(formula);
-        const fieldList = [CLIENT_FIELD, ZH_CLIENT_FIELD, SCHEDULE_INFL_NAME_FIELD, GUIDE_FIELD, DATE_FIELD, DEADLINE_FIELD, RESULT_FIELD, DP_RESULT_FIELD, DY_RESULT_FIELD, STATUS_FIELD]
+        const fieldList = [CLIENT_FIELD, ZH_CLIENT_FIELD, SCHEDULE_INFL_NAME_FIELD, GUIDE_FIELD, DATE_FIELD, DEADLINE_FIELD, RESULT_FIELD, DP_RESULT_FIELD, DY_RESULT_FIELD, STATUS_FIELD, PROG_STATUS_FIELD, CHANGE_DATE_FIELD, TYPE_FIELD]
           .map(f => `fields[]=${encodeURIComponent(f)}`)
           .join('&');
         const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(SCHEDULE_TABLE)}?filterByFormula=${filter}&${fieldList}&sort[0][field]=${encodeURIComponent(DATE_FIELD)}&sort[0][direction]=asc`;
@@ -121,17 +132,39 @@ export default async function handler(req, res) {
       const inflName = resolvedInflName || firstFields[SCHEDULE_INFL_NAME_FIELD] || '';
 
       // 클라이언트에 필요한 데이터만 정제하여 반환
-      const records = rawRecords.map(rec => ({
-        id:         rec.id,
-        client:     rec.fields[ZH_CLIENT_FIELD] || rec.fields[CLIENT_FIELD] || '',
-        guide:      rec.fields[GUIDE_FIELD]   || '',
-        date:       rec.fields[DATE_FIELD]    || '',
-        deadline:   rec.fields[DATE_FIELD] ? formatDeadline(rec.fields[DATE_FIELD]) : '',
-        resultLink: rec.fields[RESULT_FIELD]  || '',
-        dpResultLink: rec.fields[DP_RESULT_FIELD] || '',
-        dyResultLink: rec.fields[DY_RESULT_FIELD] || '',
-        status:     rec.fields[STATUS_FIELD]  || '대기 중',
-      }));
+      const records = rawRecords.map(rec => {
+        const progStatus = rec.fields[PROG_STATUS_FIELD] || '';
+        
+        // 취소되거나 노쇼인 건은 인플루언서 제출 리스트에서 제외 (null 반환 후 filter로 제거)
+        if (progStatus.includes('취소') || progStatus.includes('노쇼')) {
+          return null;
+        }
+
+        // 상태가 변경되었거나 변경일시가 있는 경우 변경일시를 최우선으로 사용
+        let finalDate = rec.fields[DATE_FIELD] || '';
+        if (rec.fields[CHANGE_DATE_FIELD] && (progStatus.includes('변경') || true)) {
+          finalDate = rec.fields[CHANGE_DATE_FIELD];
+        }
+
+        return {
+          id:         rec.id,
+          client:     rec.fields[ZH_CLIENT_FIELD] || rec.fields[CLIENT_FIELD] || '',
+          guide:      rec.fields[GUIDE_FIELD]   || '',
+          date:       finalDate,
+          deadline:   finalDate ? formatDeadline(finalDate, deadlineDaysForType(rec.fields[TYPE_FIELD])) : '',
+          resultLink: rec.fields[RESULT_FIELD]  || '',
+          dpResultLink: rec.fields[DP_RESULT_FIELD] || '',
+          dyResultLink: rec.fields[DY_RESULT_FIELD] || '',
+          status:     rec.fields[STATUS_FIELD]  || '대기 중',
+        };
+      }).filter(r => r !== null);
+
+      // 변경일시가 반영된 최종 날짜 기준으로 오름차순 재정렬
+      records.sort((a, b) => {
+        const timeA = a.date ? new Date(a.date).getTime() : 0;
+        const timeB = b.date ? new Date(b.date).getTime() : 0;
+        return timeA - timeB;
+      });
 
       return res.status(200).json({ records, inflId: resolvedInflId, inflName, token });
 

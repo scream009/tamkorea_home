@@ -508,7 +508,8 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
 
 export default function ClientPartnerPage() {
   const [searchParams] = useSearchParams();
-  const partnerName = searchParams.get('name') || '';
+  const partnerNameParam = searchParams.get('name') || '';
+  const partnerName = (partnerNameParam && partnerNameParam.includes('에코')) ? '에코' : partnerNameParam;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -524,7 +525,12 @@ export default function ClientPartnerPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const formula = encodeURIComponent(`{협력사}='${partnerName}'`);
+        let formula;
+        if (partnerName === '에코') {
+          formula = encodeURIComponent("OR(FIND('에코', {협력사}) > 0, FIND('에코', {협력사명}) > 0)");
+        } else {
+          formula = encodeURIComponent(`{협력사}='${partnerName}'`);
+        }
         const campUrl = `${AT_BASE}/${CAMPAIGN_TB}?filterByFormula=${formula}`;
         const campData = await fetchAllRecords(campUrl);
 

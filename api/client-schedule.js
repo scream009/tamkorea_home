@@ -53,7 +53,10 @@ export default async function handler(req, res) {
     
     const partnerField  = cf['협력사명'] || cf['협력사'] || '';
     const partnerRaw    = Array.isArray(partnerField) ? partnerField[0] : partnerField;
-    const partnerName   = (partnerRaw && partnerRaw !== '직영' && partnerRaw !== '탐코리아' && partnerRaw.toUpperCase() !== 'TAMKOREA') ? partnerRaw : 'TAMKOREA';
+    let partnerName   = (partnerRaw && partnerRaw !== '직영' && partnerRaw !== '탐코리아' && partnerRaw.toUpperCase() !== 'TAMKOREA') ? partnerRaw : 'TAMKOREA';
+    if (partnerName && partnerName.includes('에코')) {
+      partnerName = '에코';
+    }
 
     const linkedRecIds  = cf['진행_DB_OLD'] || [];
 

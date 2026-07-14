@@ -143,7 +143,10 @@ export default function ClientSchedulePage() {
   // 파트너사에 따른 브라우저 탭 및 파비콘 동적 변경 (화이트라벨링)
   useEffect(() => {
     if (data) {
-      const { brandName, branchName, campaignName, partnerName = 'TAMKOREA' } = data;
+      let { brandName, branchName, campaignName, partnerName = 'TAMKOREA' } = data;
+      if (partnerName && partnerName.includes('에코')) {
+        partnerName = '에코';
+      }
       const displayName = brandName && branchName ? `${brandName} ${branchName}` : (brandName || campaignName || '캠페인');
       
       if (partnerName && partnerName !== 'TAMKOREA') {
@@ -324,7 +327,10 @@ export default function ClientSchedulePage() {
     );
   }
 
-  const { stats, campaignName, brandName, branchName, month, records, partnerName = 'TAMKOREA' } = data;
+  let { stats, campaignName, brandName, branchName, month, records, partnerName = 'TAMKOREA' } = data;
+  if (partnerName && partnerName.includes('에코')) {
+    partnerName = '에코';
+  }
   
   const displayName = brandName && branchName ? `${brandName} ${branchName}` : campaignName;
 

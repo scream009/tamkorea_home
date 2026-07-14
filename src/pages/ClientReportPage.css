@@ -329,3 +329,54 @@
 }
 
 .link-empty { color: #4b5563; font-weight: 500; display: inline-block; }
+
+/* ── 영상 이상 (하단 별도 섹션) ──────────────────────────────── */
+.video-issue-section {
+  background: rgba(239, 68, 68, 0.04);
+  border-top: 1px solid rgba(239, 68, 68, 0.18);
+}
+.video-issue-section:last-of-type { border-bottom: none; }
+
+.type-badge.vissue {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.video-issue-note {
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: #94a3b8;
+  margin: -4px 0 14px;
+}
+
+.video-issue-section .premium-table-wrapper {
+  border-color: rgba(239, 68, 68, 0.18);
+}
+
+.premium-table tbody tr.row-vissue {
+  background: rgba(239, 68, 68, 0.05);
+}
+.premium-table tbody tr.row-vissue:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.vissue-cat {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+/* 영상 이상 — 유형별 하위 그룹 */
+.vissue-group { margin-top: 16px; }
+.vissue-group:first-of-type { margin-top: 4px; }
+
+.vissue-group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0 0 10px;
+  color: #e2e8f0;
+}
