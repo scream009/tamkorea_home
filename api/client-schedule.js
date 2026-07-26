@@ -244,6 +244,15 @@ export default async function handler(req, res) {
     // ── 따종디엔핑 CPC 배너 + 월간 리포트 (봇이 Campaign_DB에 적재) ──
     // 데이터가 없으면 null → 프론트에서 배너 미표시 (지어내지 않음)
     const STATUS_MAP = { '🟢 정상': 'green', '🟡 소진임박': 'amber', '🔴 충전필요': 'red' };
+    // Airtable dateTime(ISO) → 한국시간 "YYYY-MM-DD HH:mm"
+    const fmtKST = (iso) => {
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return String(iso);
+      const k = new Date(d.getTime() + 9 * 3600 * 1000);
+      const p = (n) => String(n).padStart(2, '0');
+      return `${k.getUTCFullYear()}-${p(k.getUTCMonth() + 1)}-${p(k.getUTCDate())} ${p(k.getUTCHours())}:${p(k.getUTCMinutes())}`;
+    };
     let cpc = null;
     if (cf['CPC_현재잔액'] !== undefined && cf['CPC_현재잔액'] !== null) {
       cpc = {
@@ -251,7 +260,7 @@ export default async function handler(req, res) {
         yesterday: cf['CPC_현재소진'] ?? 0,
         status: STATUS_MAP[cf['CPC_상태']] || 'red',
         daysLeft: cf['CPC_소진예상일'] ?? null,
-        updated: cf['CPC_갱신일'] || '',
+        updated: fmtKST(cf['CPC_갱신일']),
         weekly: [1, 2, 3, 4, 5]
           .map((n) => cf[`CPC_주${n}잔액`])
           .filter((v) => v !== undefined && v !== null),
