@@ -73,6 +73,13 @@ const CPC_SAMPLE = {
       url: `/reports/dp_hanla_nohyeong.html`, // 샘플: 우리가 만든 따종디엔핑 월간 리포트(정적). 추후 React+Airtable로 이식
     },
   },
+  'recn9NKKOkALvq7UH': { // 모찌롱 (CPC 잔액 0 = 충전 필요 빨강 샘플)
+    balance: 0, yesterday: 0, status: 'red', daysLeft: null, updated: '2026-07-26 15:40',
+    report: {
+      period: '2026.06.26 ~ 07.25', exposure: '45,363', rank: '상권 1위', mom: '+2.0%', good: '好评 93.2%',
+      url: `/reports/dp_mochiron.html`,
+    },
+  },
 };
 
 const CpcBanner = ({ cpc }) => {
