@@ -282,7 +282,7 @@ export default async function handler(req, res) {
         intent: cf['DP_관심'] ?? null,
         rank: cf['DP_순위'] != null ? `상권 ${cf['DP_순위']}위` : null,
         mom: cf['DP_전월비'] ? (String(cf['DP_전월비']).startsWith('-') ? cf['DP_전월비'] : `+${cf['DP_전월비']}`) : null,
-        good: cf['DP_호평률'] != null ? `好评 ${cf['DP_호평률']}%` : null,
+        good: cf['DP_호평률'] != null ? `호평률 ${cf['DP_호평률']}%` : null,
         adShare: detail?.adflow?.running ? detail.adflow.imp_share : null,
         detail,
       };

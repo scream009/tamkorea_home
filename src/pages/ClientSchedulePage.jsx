@@ -69,21 +69,21 @@ const CPC_SAMPLE = {
   'reczIRxF76tVHgmdM': {
     balance: 7674, yesterday: 1080, status: 'green', daysLeft: 7, updated: '2026-07-26 15:40',
     report: {
-      period: '2026.06.26 ~ 07.25', exposure: '48,927', rank: '상권 2위', mom: '+60.3%', good: '好评 92.9%',
+      period: '2026.06.26 ~ 07.25', exposure: '48,927', rank: '상권 2위', mom: '+60.3%', good: '호평률 92.9%',
       url: `/reports/dp_hanla_nohyeong.html`, // 샘플: 우리가 만든 따종디엔핑 월간 리포트(정적). 추후 React+Airtable로 이식
     },
   },
   'recn9NKKOkALvq7UH': { // 모찌롱 (CPC 잔액 0 = 충전 필요 빨강 샘플)
     balance: 0, yesterday: 0, status: 'red', daysLeft: null, updated: '2026-07-26 15:40',
     report: {
-      period: '2026.06.26 ~ 07.25', exposure: '45,363', rank: '상권 1위', mom: '+2.0%', good: '好评 93.2%',
+      period: '2026.06.26 ~ 07.25', exposure: '45,363', rank: '상권 1위', mom: '+2.0%', good: '호평률 93.2%',
       url: `/reports/dp_mochiron.html`,
     },
   },
   'reclpfcWInJuxY2Dp': { // 한라갈치 중문점 (CPC 잔액 0 = 충전 필요)
     balance: 0, yesterday: 0, status: 'red', daysLeft: null, updated: '2026-07-26 15:40',
     report: {
-      period: '2026.06.26 ~ 07.25', exposure: '25,061', rank: '상권 4위', mom: '+95%', good: '好评 98.5%',
+      period: '2026.06.26 ~ 07.25', exposure: '25,061', rank: '상권 4위', mom: '+95%', good: '호평률 98.5%',
       url: `/reports/dp_hanla_jungmun.html`,
     },
   },
@@ -134,7 +134,7 @@ const DpReportEntry = ({ report }) => {
     report.rank || null,
     report.mom ? `전월비 ${report.mom}` : null,
     report.good || null,
-    report.adShare != null ? `광고 기여 ${report.adShare}%` : null,
+    report.adShare != null ? `CPC 광고기여 ${report.adShare}%` : null,
   ].filter(Boolean);
 
   const inner = (
