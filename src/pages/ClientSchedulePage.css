@@ -795,10 +795,19 @@
 .cpc-t b{font-size:1.02rem;color:var(--text)}
 .cpc-m{display:flex;gap:26px}
 .cpc-mi{text-align:right}
-.cpc-mv{font-size:1.55rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text)}
-.cpc-mv small{font-size:.78rem;color:var(--muted);margin-left:2px}
-.cpc-mv.big.green{color:#34d399}.cpc-mv.big.amber{color:#fbbf24}.cpc-mv.big.red{color:#f87171}
-.cpc-mv.st{font-size:1.05rem}.cpc-mv.st.green{color:#34d399}.cpc-mv.st.amber{color:#fbbf24}.cpc-mv.st.red{color:#f87171}
+.cpc-bal{font-size:1.7rem;font-weight:800;font-variant-numeric:tabular-nums;background:none !important;line-height:1.15;color:#e2e8f0}
+.cpc-bal[data-status="green"]{color:#4ade80}
+.cpc-bal[data-status="amber"]{color:#fbbf24}
+.cpc-bal[data-status="red"]{color:#f87171}
+.cpc-bal--sub{font-size:1.4rem;color:#cbd5e1}
+.cpc-unit{font-size:.76rem;color:var(--muted);font-weight:600;margin-left:3px;background:none !important}
+.cpc-mi--st{display:flex;flex-direction:column;align-items:flex-end}
+.cpc-pill{display:inline-block;padding:5px 13px;border-radius:999px;font-size:.9rem;font-weight:800;line-height:1.2;background:none}
+.cpc-pill.green{background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.45);color:#6ee7b7}
+.cpc-pill.amber{background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.45);color:#fcd34d}
+.cpc-pill.red{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.5);color:#fca5a5}
+.cpc-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;vertical-align:middle}
+.cpc-dot.green{background:#34d399}.cpc-dot.amber{background:#fbbf24}.cpc-dot.red{background:#f87171}
 .cpc-ml{font-size:.72rem;color:var(--muted);margin-top:2px}
 .cpc-msg{margin-top:14px;border-radius:10px;padding:11px 14px;font-size:.9rem;font-weight:600}
 .cpc-banner.green .cpc-msg{background:rgba(16,185,129,.1);color:#6ee7b7;border:1px solid rgba(16,185,129,.25)}
@@ -822,6 +831,7 @@
   .cpc-h{flex-direction:column;align-items:flex-start}
   .cpc-m{width:100%;justify-content:space-between;gap:10px}
   .cpc-mi{text-align:left}
+  .cpc-mi--st{align-items:flex-start}
   .dprep{flex-direction:column;align-items:flex-start}
   .dprep-btn{width:100%;text-align:center}
 }

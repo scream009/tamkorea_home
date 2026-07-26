@@ -70,7 +70,7 @@ const CPC_SAMPLE = {
     balance: 7674, yesterday: 1080, status: 'green', daysLeft: 7, updated: '2026-07-26 15:40',
     report: {
       period: '2026.06.26 ~ 07.25', exposure: '48,927', rank: '상권 2위', mom: '+60.3%', good: '好评 92.9%',
-      url: `/report?campaignId=reczIRxF76tVHgmdM`, // TODO: 월간 리포트 React 페이지 (다음 단계)
+      url: `/reports/dp_hanla_nohyeong.html`, // 샘플: 우리가 만든 따종디엔핑 월간 리포트(정적). 추후 React+Airtable로 이식
     },
   },
 };
@@ -80,10 +80,10 @@ const CpcBanner = ({ cpc }) => {
   const cls = cpc.status; // green | amber | red
   const label = cls === 'red' ? '🔴 충전 필요' : cls === 'amber' ? '🟡 소진 임박' : '🟢 정상';
   const msg = cls === 'red'
-    ? '🔴 광고가 중단된 상태입니다 — 충전하시면 즉시 재개됩니다.'
+    ? '광고가 중단된 상태입니다. 충전하시면 즉시 재개됩니다.'
     : cls === 'amber'
-    ? `🟡 약 ${cpc.daysLeft}일 후 소진 예상 — 미리 충전을 권장드립니다.`
-    : `🟢 광고가 정상적으로 운영되고 있습니다 — 약 ${cpc.daysLeft}일 후 소진 시 Tam Korea가 충전을 안내드립니다.`;
+    ? `약 ${cpc.daysLeft}일 후 소진이 예상됩니다. 미리 충전을 권장드립니다.`
+    : `광고가 정상 운영 중입니다. 약 ${cpc.daysLeft}일 후 소진이 예상됩니다.`;
   const fmt = (n) => Number(n).toLocaleString();
   return (
     <div className={`cpc-banner ${cls}`}>
@@ -93,13 +93,22 @@ const CpcBanner = ({ cpc }) => {
           <b>이번 주 광고 현황</b>
         </div>
         <div className="cpc-m">
-          <div className="cpc-mi"><div className={`cpc-mv big ${cls}`}>{fmt(cpc.balance)}<small>元</small></div><div className="cpc-ml">현재 잔액</div></div>
-          <div className="cpc-mi"><div className="cpc-mv">{fmt(cpc.yesterday)}<small>元</small></div><div className="cpc-ml">어제 소진</div></div>
-          <div className="cpc-mi"><div className={`cpc-mv st ${cls}`}>{label}</div><div className="cpc-ml">{cpc.daysLeft ? `약 ${cpc.daysLeft}일분` : '상태'}</div></div>
+          <div className="cpc-mi">
+            <div className="cpc-bal" data-status={cls}>{fmt(cpc.balance)}<span className="cpc-unit">元</span></div>
+            <div className="cpc-ml">현재 잔액</div>
+          </div>
+          <div className="cpc-mi">
+            <div className="cpc-bal cpc-bal--sub">{fmt(cpc.yesterday)}<span className="cpc-unit">元</span></div>
+            <div className="cpc-ml">어제 소진</div>
+          </div>
+          <div className="cpc-mi cpc-mi--st">
+            <span className={`cpc-pill ${cls}`}>{label}</span>
+            <div className="cpc-ml">{cpc.daysLeft ? `약 ${cpc.daysLeft}일분 남음` : '상태'}</div>
+          </div>
         </div>
       </div>
-      <div className="cpc-msg">{msg}</div>
-      <div className="cpc-upd">갱신: {cpc.updated} · 매주 자동 업데이트 · Tam Korea 운영 대행</div>
+      <div className="cpc-msg"><span className={`cpc-dot ${cls}`} />{msg}</div>
+      <div className="cpc-upd">갱신: {cpc.updated}</div>
     </div>
   );
 };
