@@ -80,6 +80,13 @@ const CPC_SAMPLE = {
       url: `/reports/dp_mochiron.html`,
     },
   },
+  'reclpfcWInJuxY2Dp': { // 한라갈치 중문점 (CPC 잔액 0 = 충전 필요)
+    balance: 0, yesterday: 0, status: 'red', daysLeft: null, updated: '2026-07-26 15:40',
+    report: {
+      period: '2026.06.26 ~ 07.25', exposure: '25,061', rank: '상권 4위', mom: '+95%', good: '好评 98.5%',
+      url: `/reports/dp_hanla_jungmun.html`,
+    },
+  },
 };
 
 const CpcBanner = ({ cpc }) => {
