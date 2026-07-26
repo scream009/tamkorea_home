@@ -241,6 +241,44 @@ export default async function handler(req, res) {
     press.forEach((r, i)      => { r.seq = i + 1; });
     videoIssue.forEach((r, i) => { r.seq = i + 1; });
 
+    // ── 따종디엔핑 CPC 배너 + 월간 리포트 (봇이 Campaign_DB에 적재) ──
+    // 데이터가 없으면 null → 프론트에서 배너 미표시 (지어내지 않음)
+    const STATUS_MAP = { '🟢 정상': 'green', '🟡 소진임박': 'amber', '🔴 충전필요': 'red' };
+    let cpc = null;
+    if (cf['CPC_현재잔액'] !== undefined && cf['CPC_현재잔액'] !== null) {
+      cpc = {
+        balance: cf['CPC_현재잔액'],
+        yesterday: cf['CPC_현재소진'] ?? 0,
+        status: STATUS_MAP[cf['CPC_상태']] || 'red',
+        daysLeft: cf['CPC_소진예상일'] ?? null,
+        updated: cf['CPC_갱신일'] || '',
+        weekly: [1, 2, 3, 4, 5]
+          .map((n) => cf[`CPC_주${n}잔액`])
+          .filter((v) => v !== undefined && v !== null),
+      };
+    }
+
+    let dpReport = null;
+    if (cf['DP_기간']) {
+      let detail = null;
+      try { detail = cf['DP_리포트JSON'] ? JSON.parse(cf['DP_리포트JSON']) : null; } catch (e) { detail = null; }
+      const storeCode = cf['DP_매장코드'] || '';
+      dpReport = {
+        storeCode,
+        url: storeCode ? `/reports/dp_${storeCode}.html` : null,
+        period: String(cf['DP_기간']).replace(/~/, ' ~ '),
+        exposure: cf['DP_노출'] != null ? Number(cf['DP_노출']).toLocaleString() : null,
+        click: cf['DP_클릭'] ?? null,
+        visit: cf['DP_방문'] ?? null,
+        intent: cf['DP_관심'] ?? null,
+        rank: cf['DP_순위'] != null ? `상권 ${cf['DP_순위']}위` : null,
+        mom: cf['DP_전월비'] ? (String(cf['DP_전월비']).startsWith('-') ? cf['DP_전월비'] : `+${cf['DP_전월비']}`) : null,
+        good: cf['DP_호평률'] != null ? `好评 ${cf['DP_호평률']}%` : null,
+        adShare: detail?.adflow?.running ? detail.adflow.imp_share : null,
+        detail,
+      };
+    }
+
     return res.status(200).json({
       campaignName,
       brandName,
@@ -250,6 +288,8 @@ export default async function handler(req, res) {
       stats,
       scheduleItems: groupedScheduleItems,
       records: { influencer, experience, press, videoIssue },
+      cpc,
+      dpReport,
     });
 
   } catch (err) {

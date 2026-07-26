@@ -129,21 +129,34 @@ const CpcBanner = ({ cpc }) => {
 
 const DpReportEntry = ({ report }) => {
   if (!report) return null;
-  return (
-    <a className="dprep" href={report.url} target="_blank" rel="noopener noreferrer">
-      <div className="dprep-l">
-        <div className="dprep-ic">📊</div>
-        <div>
-          <div className="dprep-tt">따종디엔핑 월간 마케팅 리포트</div>
-          <div className="dprep-ss">{report.period} · 노출·리뷰·광고 종합</div>
-          <div className="dprep-chips">
-            <span className="dprep-chip">노출 {report.exposure}</span>
-            <span className="dprep-chip">{report.rank}</span>
-            <span className="dprep-chip">전월비 {report.mom}</span>
-            <span className="dprep-chip">{report.good}</span>
-          </div>
+  const chips = [
+    report.exposure ? `노출 ${report.exposure}` : null,
+    report.rank || null,
+    report.mom ? `전월비 ${report.mom}` : null,
+    report.good || null,
+    report.adShare != null ? `광고 기여 ${report.adShare}%` : null,
+  ].filter(Boolean);
+
+  const inner = (
+    <div className="dprep-l">
+      <div className="dprep-ic">📊</div>
+      <div>
+        <div className="dprep-tt">따종디엔핑 월간 마케팅 리포트</div>
+        <div className="dprep-ss">{report.period} · 노출·리뷰·광고 종합</div>
+        <div className="dprep-chips">
+          {chips.map((c, i) => <span key={i} className="dprep-chip">{c}</span>)}
         </div>
       </div>
+    </div>
+  );
+
+  // 리포트 파일이 아직 없으면 링크 대신 안내 카드로 표시 (깨진 링크 방지)
+  if (!report.url) {
+    return <div className="dprep">{inner}<span className="dprep-btn" style={{ opacity: .55 }}>준비 중</span></div>;
+  }
+  return (
+    <a className="dprep" href={report.url} target="_blank" rel="noopener noreferrer">
+      {inner}
       <span className="dprep-btn">리포트 열기 →</span>
     </a>
   );
@@ -421,8 +434,11 @@ export default function ClientSchedulePage() {
   
   const displayName = brandName && branchName ? `${brandName} ${branchName}` : campaignName;
 
-  // 따종디엔핑 CPC/월간리포트 (샘플: campaignId 매핑 → 실운영 시 data.cpc 로 교체)
-  const cpcInfo = (data && data.cpc) || CPC_SAMPLE[campaignId];
+  // 따종디엔핑 CPC/월간리포트
+  //  · 1순위: Airtable(봇 적재) → API 응답(data.cpc / data.dpReport)
+  //  · 2순위: 초기 샘플 하드코딩 (아직 봇이 안 돌린 과거 월 링크용 폴백)
+  const cpcInfo  = (data && data.cpc) || CPC_SAMPLE[campaignId];
+  const dpReport = (data && data.dpReport) || CPC_SAMPLE[campaignId]?.report;
 
   const hasInfl  = records?.influencer?.length > 0;
   const hasExp   = records?.experience?.length > 0;
@@ -541,7 +557,7 @@ export default function ClientSchedulePage() {
 
         {/* ★ 신규: 주간 CPC 배너 + 따종디엔핑 월간 리포트 진입 (달력 위) */}
         <CpcBanner cpc={cpcInfo} />
-        <DpReportEntry report={cpcInfo?.report} />
+        <DpReportEntry report={dpReport} />
 
         {/* 4. Main Content (Calendar / List) */}
         {viewMode === 'calendar' ? (
