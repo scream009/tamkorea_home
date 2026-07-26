@@ -783,3 +783,45 @@
     gap: 10px;
   }
 }
+
+/* ── 따종디엔핑 주간 CPC 배너 + 월간 리포트 진입 (달력 위) ── */
+.cpc-banner{border-radius:16px;padding:18px 22px;margin-bottom:16px;border:1px solid var(--border)}
+.cpc-banner.green{background:linear-gradient(120deg,rgba(16,185,129,.10),rgba(16,185,129,.03));border-color:rgba(16,185,129,.35)}
+.cpc-banner.amber{background:linear-gradient(120deg,rgba(245,158,11,.10),rgba(245,158,11,.03));border-color:rgba(245,158,11,.38)}
+.cpc-banner.red{background:linear-gradient(120deg,rgba(239,68,68,.12),rgba(239,68,68,.03));border-color:rgba(239,68,68,.45);box-shadow:0 0 22px rgba(239,68,68,.12)}
+.cpc-h{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.cpc-t{display:flex;align-items:center;gap:10px}
+.cpc-tag{font-size:.68rem;font-weight:800;padding:3px 9px;border-radius:6px;background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--purple-light)}
+.cpc-t b{font-size:1.02rem;color:var(--text)}
+.cpc-m{display:flex;gap:26px}
+.cpc-mi{text-align:right}
+.cpc-mv{font-size:1.55rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text)}
+.cpc-mv small{font-size:.78rem;color:var(--muted);margin-left:2px}
+.cpc-mv.big.green{color:#34d399}.cpc-mv.big.amber{color:#fbbf24}.cpc-mv.big.red{color:#f87171}
+.cpc-mv.st{font-size:1.05rem}.cpc-mv.st.green{color:#34d399}.cpc-mv.st.amber{color:#fbbf24}.cpc-mv.st.red{color:#f87171}
+.cpc-ml{font-size:.72rem;color:var(--muted);margin-top:2px}
+.cpc-msg{margin-top:14px;border-radius:10px;padding:11px 14px;font-size:.9rem;font-weight:600}
+.cpc-banner.green .cpc-msg{background:rgba(16,185,129,.1);color:#6ee7b7;border:1px solid rgba(16,185,129,.25)}
+.cpc-banner.amber .cpc-msg{background:rgba(245,158,11,.1);color:#fcd34d;border:1px solid rgba(245,158,11,.25)}
+.cpc-banner.red .cpc-msg{background:rgba(239,68,68,.12);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
+.cpc-upd{font-size:.68rem;color:var(--muted);margin-top:9px}
+
+.dprep{display:flex;align-items:center;justify-content:space-between;gap:16px;text-decoration:none;
+  background:linear-gradient(120deg,rgba(124,58,237,.14),rgba(99,102,241,.05));border:1px solid rgba(124,58,237,.38);
+  border-radius:16px;padding:18px 22px;margin-bottom:16px;flex-wrap:wrap;transition:.15s}
+.dprep:hover{border-color:rgba(124,58,237,.6);background:linear-gradient(120deg,rgba(124,58,237,.2),rgba(99,102,241,.08))}
+.dprep-l{display:flex;align-items:center;gap:12px}
+.dprep-ic{width:42px;height:42px;border-radius:11px;display:grid;place-items:center;font-size:1.3rem;background:rgba(124,58,237,.2);border:1px solid rgba(124,58,237,.35)}
+.dprep-tt{font-weight:800;font-size:1.02rem;color:var(--text)}
+.dprep-ss{font-size:.82rem;color:var(--muted);margin-top:2px}
+.dprep-chips{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.dprep-chip{font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:#cbd5e1}
+.dprep-btn{background:linear-gradient(135deg,#8b5cf6,#6366f1);color:#fff;font-weight:700;font-size:.9rem;padding:11px 20px;border-radius:10px;white-space:nowrap}
+
+@media(max-width:820px){
+  .cpc-h{flex-direction:column;align-items:flex-start}
+  .cpc-m{width:100%;justify-content:space-between;gap:10px}
+  .cpc-mi{text-align:left}
+  .dprep{flex-direction:column;align-items:flex-start}
+  .dprep-btn{width:100%;text-align:center}
+}

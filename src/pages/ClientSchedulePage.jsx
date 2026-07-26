@@ -62,6 +62,70 @@ const getTypeClass = (type) => {
   return 'event-exp';
 };
 
+// ── 따종디엔핑 리포팅 (샘플) ─────────────────────────────────────────
+// TODO: 실운영 시 이 하드코딩 대신 /api/client-schedule 응답의 data.cpc / data.dpReport 사용
+//        (Python cpc_weekly.py → Airtable → API 로 연결)
+const CPC_SAMPLE = {
+  'reczIRxF76tVHgmdM': {
+    balance: 7674, yesterday: 1080, status: 'green', daysLeft: 7, updated: '2026-07-26 15:40',
+    report: {
+      period: '2026.06.26 ~ 07.25', exposure: '48,927', rank: '상권 2위', mom: '+60.3%', good: '好评 92.9%',
+      url: `/report?campaignId=reczIRxF76tVHgmdM`, // TODO: 월간 리포트 React 페이지 (다음 단계)
+    },
+  },
+};
+
+const CpcBanner = ({ cpc }) => {
+  if (!cpc) return null;
+  const cls = cpc.status; // green | amber | red
+  const label = cls === 'red' ? '🔴 충전 필요' : cls === 'amber' ? '🟡 소진 임박' : '🟢 정상';
+  const msg = cls === 'red'
+    ? '🔴 광고가 중단된 상태입니다 — 충전하시면 즉시 재개됩니다.'
+    : cls === 'amber'
+    ? `🟡 약 ${cpc.daysLeft}일 후 소진 예상 — 미리 충전을 권장드립니다.`
+    : `🟢 광고가 정상적으로 운영되고 있습니다 — 약 ${cpc.daysLeft}일 후 소진 시 Tam Korea가 충전을 안내드립니다.`;
+  const fmt = (n) => Number(n).toLocaleString();
+  return (
+    <div className={`cpc-banner ${cls}`}>
+      <div className="cpc-h">
+        <div className="cpc-t">
+          <span className="cpc-tag">따종디엔핑 광고(CPC)</span>
+          <b>이번 주 광고 현황</b>
+        </div>
+        <div className="cpc-m">
+          <div className="cpc-mi"><div className={`cpc-mv big ${cls}`}>{fmt(cpc.balance)}<small>元</small></div><div className="cpc-ml">현재 잔액</div></div>
+          <div className="cpc-mi"><div className="cpc-mv">{fmt(cpc.yesterday)}<small>元</small></div><div className="cpc-ml">어제 소진</div></div>
+          <div className="cpc-mi"><div className={`cpc-mv st ${cls}`}>{label}</div><div className="cpc-ml">{cpc.daysLeft ? `약 ${cpc.daysLeft}일분` : '상태'}</div></div>
+        </div>
+      </div>
+      <div className="cpc-msg">{msg}</div>
+      <div className="cpc-upd">갱신: {cpc.updated} · 매주 자동 업데이트 · Tam Korea 운영 대행</div>
+    </div>
+  );
+};
+
+const DpReportEntry = ({ report }) => {
+  if (!report) return null;
+  return (
+    <a className="dprep" href={report.url} target="_blank" rel="noopener noreferrer">
+      <div className="dprep-l">
+        <div className="dprep-ic">📊</div>
+        <div>
+          <div className="dprep-tt">따종디엔핑 월간 마케팅 리포트</div>
+          <div className="dprep-ss">{report.period} · 노출·리뷰·광고 종합</div>
+          <div className="dprep-chips">
+            <span className="dprep-chip">노출 {report.exposure}</span>
+            <span className="dprep-chip">{report.rank}</span>
+            <span className="dprep-chip">전월비 {report.mom}</span>
+            <span className="dprep-chip">{report.good}</span>
+          </div>
+        </div>
+      </div>
+      <span className="dprep-btn">리포트 열기 →</span>
+    </a>
+  );
+};
+
 export default function ClientSchedulePage() {
   const [searchParams] = useSearchParams();
   const campaignId = searchParams.get('campaignId');
@@ -334,6 +398,9 @@ export default function ClientSchedulePage() {
   
   const displayName = brandName && branchName ? `${brandName} ${branchName}` : campaignName;
 
+  // 따종디엔핑 CPC/월간리포트 (샘플: campaignId 매핑 → 실운영 시 data.cpc 로 교체)
+  const cpcInfo = (data && data.cpc) || CPC_SAMPLE[campaignId];
+
   const hasInfl  = records?.influencer?.length > 0;
   const hasExp   = records?.experience?.length > 0;
   const hasPress = records?.press?.length > 0;
@@ -448,6 +515,10 @@ export default function ClientSchedulePage() {
             <List className="w-4 h-4" /> 리스트 뷰
           </button>
         </div>
+
+        {/* ★ 신규: 주간 CPC 배너 + 따종디엔핑 월간 리포트 진입 (달력 위) */}
+        <CpcBanner cpc={cpcInfo} />
+        <DpReportEntry report={cpcInfo?.report} />
 
         {/* 4. Main Content (Calendar / List) */}
         {viewMode === 'calendar' ? (
