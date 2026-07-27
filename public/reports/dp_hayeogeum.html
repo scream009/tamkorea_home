@@ -45,6 +45,17 @@ section{margin-top:20px;border-radius:22px;padding:24px 24px;background:var(--gl
   box-shadow:0 4px 14px rgba(254,229,0,.18);transition:.15s;border:1px solid rgba(0,0,0,.06)}
 .kko:hover{background:#ffe94d;transform:translateY(-1px);box-shadow:0 6px 18px rgba(254,229,0,.3)}
 .kko-ic{font-size:.95rem}
+.sd-box{background:rgba(0,0,0,.22);border:1px solid var(--gb);border-radius:14px;padding:16px 18px;margin-top:10px}
+.sd-head{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--gb)}
+.sd-avg{font-size:1.7rem;font-weight:800;color:#fbbf24;line-height:1}
+.sd-cap{font-size:.78rem;color:var(--ts)}
+.sd-row{display:grid;grid-template-columns:46px 1fr 82px;align-items:center;gap:10px;margin-bottom:7px}
+.sd-lb{font-size:.85rem;font-weight:700;color:#fbbf24}
+.sd-bar{background:rgba(255,255,255,.05);border-radius:6px;height:16px;overflow:hidden}
+.sd-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,#f59f2e,#fbbf24)}
+.sd-fill.low{background:linear-gradient(90deg,#ef4444,#f87171)}
+.sd-num{font-size:.8rem;color:#cbd5e1;text-align:right;font-variant-numeric:tabular-nums}
+.sd-num span{color:var(--ts);font-size:.72rem}
 .tg-box{border-radius:16px;padding:20px 22px;border:1px solid;position:relative}
 .tg-box.up{background:linear-gradient(120deg,rgba(16,185,129,.09),rgba(16,185,129,.02));border-color:rgba(16,185,129,.32)}
 .tg-box.down{background:linear-gradient(120deg,rgba(239,68,68,.10),rgba(239,68,68,.02));border-color:rgba(239,68,68,.4)}
@@ -169,7 +180,7 @@ section{margin-top:20px;border-radius:22px;padding:24px 24px;background:var(--gl
 <div class="s-note">최근 30일 일자별 노출 도달 · 우리 매장 vs 상권 평균</div><div id="chart" class="chart-container"></div></section>
 
 <section><div class="sh"><span class="ic">💬</span><h2>월간 리뷰 관리 (호평·악성 대응)</h2></div>
-<div class="s-note">评价管理 실측 · 악성리뷰 답글 예시 포함</div><div class="rsum"><span class="rchip s">⭐ 최근 평균 ★4.42</span><span class="rchip g">👍 누적 호평 6,882건 (97.4%)</span><span class="rchip b">⚠️ 中差评(악성) 184건</span><span class="rchip u">✉️ 미답변 131건 (답변율 0%)</span></div><div class="s-note" style="margin-left:0">이번 달 신규 리뷰 131건 · 답글이 하나도 없는 상태입니다. 아래는 대표 호평과, 사장님이 꼭 대응해야 할 악성리뷰입니다.</div><div class="subh">👍 이번 달 대표 호평</div><div class="rev pos"><div class="rh"><span class="stars ">★★★★★</span><span class="star-num">★5</span><span class="who">恺恺Nick的麻麻</span><span class="tp">호평</span></div><div class="cn-o"><span class="lab">[중국어 원문]</span>大家一起来济州岛玩，特意找了这家黑猪肉的店。位置很好在君悦酒店后面。环境很好 服务很好 店员小哥哥会帮我们烤肉。完美！</div><div class="ko-t"><span class="lab">[한글 번역]</span>다 같이 제주도 여행 왔는데 일부러 이 흑돼지 가게를 찾아왔어요. 위치도 좋고 하얏트호텔 뒤에 있어요. 환경도 좋고 서비스도 좋고 직원분이 고기도 구워주셨어요. 완벽해요!</div></div><div class="rev pos"><div class="rh"><span class="stars ">★★★★★</span><span class="star-num">★5</span><span class="who">聪慧专业嘿嘿熊</span><span class="tp">호평</span></div><div class="cn-o"><span class="lab">[중국어 원문]</span>[米饭]口味：「济州熟成黑猪肉」味道很好
+<div class="s-note">评价管理 실측 · 악성리뷰 답글 예시 포함</div><div class="rsum"><span class="rchip s">⭐ 최근 평균 ★4.42</span><span class="rchip g">👍 누적 호평 6,882건 (97.4%)</span><span class="rchip b">⚠️ 中差评(악성) 184건</span><span class="rchip u">✉️ 미답변 131건 (답변율 0%)</span></div><div class="s-note" style="margin-left:0">이번 달 신규 리뷰 131건 · 답글이 하나도 없는 상태입니다. 아래는 대표 호평과, 사장님이 꼭 대응해야 할 악성리뷰입니다.</div><div class="subh">⭐ 별점 분포 <span style="font-size:.78rem;color:var(--ts);font-weight:500">· 최근 수집 리뷰 기준</span></div><div class="sd-box"><div class="sd-head"><span class="sd-avg">★4.42</span><span class="sd-cap">최근 리뷰 13건 평균</span></div><div class="sd-row"><div class="sd-lb">★5</div><div class="sd-bar"><div class="sd-fill" style="width:100%"></div></div><div class="sd-num">8건 <span>(62%)</span></div></div><div class="sd-row"><div class="sd-lb">★4.5</div><div class="sd-bar"><div class="sd-fill" style="width:25%"></div></div><div class="sd-num">2건 <span>(15%)</span></div></div><div class="sd-row"><div class="sd-lb">★3.5</div><div class="sd-bar"><div class="sd-fill low" style="width:12%"></div></div><div class="sd-num">1건 <span>(8%)</span></div></div><div class="sd-row"><div class="sd-lb">★2.5</div><div class="sd-bar"><div class="sd-fill low" style="width:25%"></div></div><div class="sd-num">2건 <span>(15%)</span></div></div></div><div class="subh">👍 이번 달 대표 호평</div><div class="rev pos"><div class="rh"><span class="stars ">★★★★★</span><span class="star-num">★5</span><span class="who">恺恺Nick的麻麻</span><span class="tp">호평</span></div><div class="cn-o"><span class="lab">[중국어 원문]</span>大家一起来济州岛玩，特意找了这家黑猪肉的店。位置很好在君悦酒店后面。环境很好 服务很好 店员小哥哥会帮我们烤肉。完美！</div><div class="ko-t"><span class="lab">[한글 번역]</span>다 같이 제주도 여행 왔는데 일부러 이 흑돼지 가게를 찾아왔어요. 위치도 좋고 하얏트호텔 뒤에 있어요. 환경도 좋고 서비스도 좋고 직원분이 고기도 구워주셨어요. 완벽해요!</div></div><div class="rev pos"><div class="rh"><span class="stars ">★★★★★</span><span class="star-num">★5</span><span class="who">聪慧专业嘿嘿熊</span><span class="tp">호평</span></div><div class="cn-o"><span class="lab">[중국어 원문]</span>[米饭]口味：「济州熟成黑猪肉」味道很好
 [服务铃]服务：帮忙烤，解放自己的手
 [薄荷]环境：环境好
 [糖果]性价比：高</div><div class="ko-t"><span class="lab">[한글 번역]</span>[맛] 제주 숙성 흑돼지 맛이 정말 좋아요
