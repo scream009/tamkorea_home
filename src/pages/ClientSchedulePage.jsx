@@ -801,36 +801,45 @@ export default function ClientSchedulePage() {
           </div>
         )}
 
-        {/* 5. Client Feedback Area (고객사 소통 창구) */}
+        {/* 5. 문의 / 상담 — 카카오 채널 연결 */}
         <div className="section">
           <div className="section-header">
             <div className="section-title">
-              <MessageSquare className="w-4 h-4" /> 문의 / 메모
+              <MessageSquare className="w-4 h-4" /> 문의 / 상담
             </div>
-            <div className="section-badge section-badge--soft">준비중</div>
+            <div className="section-badge">카카오 채널</div>
           </div>
-          <div className="memo-wrap">
-            <div className="memo-intro">
-              <Lightbulb className="w-4 h-4 flex-shrink-0" />
-              <span>일정 변경이나 특별 요청사항은 현재 담당 매니저에게 <b>카카오톡으로 직접</b> 전달해 주세요. 이 페이지의 폼 전송 기능은 준비 중입니다.</span>
+
+          <div className="kko-wrap">
+            <div className="kko-left">
+              <div className="kko-brand">
+                <span className="kko-logo" aria-hidden="true">
+                  <svg viewBox="0 0 40 40" width="40" height="40">
+                    <rect width="40" height="40" rx="10" fill="#FEE500" />
+                    <path d="M20 9c-6.1 0-11 3.8-11 8.5 0 3 2 5.6 5 7.1l-1.1 4.1c-.1.4.3.7.7.5l4.8-3.1c.5.1 1.1.1 1.6.1 6.1 0 11-3.8 11-8.5S26.1 9 20 9z" fill="#191600" />
+                    <text x="20" y="21" textAnchor="middle" fontSize="9" fontWeight="800" fill="#FEE500">Ch</text>
+                  </svg>
+                </span>
+                <div>
+                  <div className="kko-title">탐코리아 카카오 채널</div>
+                  <div className="kko-sub">일정 변경 · 특별 요청 · 광고비 충전 · 서비스 신청</div>
+                </div>
+              </div>
+              <p className="kko-desc">
+                모든 문의는 <b>카카오 채널</b>로 편하게 남겨주세요. 담당 매니저가 확인 후 바로 안내드립니다.
+              </p>
+              <a className="kko-btn kko-btn--lg" href={KAKAO_URL} target="_blank" rel="noopener noreferrer">
+                💬 카카오 채널로 문의하기
+              </a>
             </div>
-            <div className="memo-form" aria-disabled="true">
-              <textarea
-                className="memo-input"
-                placeholder="(준비중) 추후 이 입력창을 통해 운영팀에 직접 메모가 전달됩니다."
-                value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
-                disabled
-              ></textarea>
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  className="memo-submit"
-                  disabled
-                  title="현재 폼 전송은 준비중입니다. 카카오톡으로 전달해 주세요."
-                >
-                  <Send className="w-3.5 h-3.5" /> 전송 (준비중)
-                </button>
+
+            <div className="kko-right">
+              <a href={KAKAO_URL} target="_blank" rel="noopener noreferrer" className="kko-qr-link">
+                <img src="/kakao_qr.png" alt="탐코리아 카카오 채널 QR" className="kko-qr" />
+              </a>
+              <div className="kko-qr-cap">
+                <b>탐코리아 카카오 채널 추가</b>
+                <span>스마트폰 카메라로 스캔하세요</span>
               </div>
             </div>
           </div>
