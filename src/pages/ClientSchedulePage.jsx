@@ -62,6 +62,9 @@ const getTypeClass = (type) => {
   return 'event-exp';
 };
 
+// Tam Korea 카카오 채널 — 충전·서비스 신청 CTA
+const KAKAO_URL = 'https://pf.kakao.com/_xkxhZzX';
+
 // ── 따종디엔핑 리포팅 (샘플) ─────────────────────────────────────────
 // TODO: 실운영 시 이 하드코딩 대신 /api/client-schedule 응답의 data.cpc / data.dpReport 사용
 //        (Python cpc_weekly.py → Airtable → API 로 연결)
@@ -121,7 +124,12 @@ const CpcBanner = ({ cpc }) => {
           </div>
         </div>
       </div>
-      <div className="cpc-msg"><span className={`cpc-dot ${cls}`} />{msg}</div>
+      <div className="cpc-msg">
+        <span className="cpc-msg-t"><span className={`cpc-dot ${cls}`} />{msg}</span>
+        <a className="kko-btn" href={KAKAO_URL} target="_blank" rel="noopener noreferrer">
+          💬 광고비 충전 신청
+        </a>
+      </div>
       <div className="cpc-upd">갱신: {cpc.updated}</div>
     </div>
   );
