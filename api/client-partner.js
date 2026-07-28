@@ -17,7 +17,8 @@ export default async function handler(req, res) {
       partnerName = '에코';
     }
 
-    const TOKEN = process.env.TAMLINK_API_KEY || process.env.VITE_AT_TOKEN;
+    const TOKEN = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY
+                || process.env.VITE_AT_TOKEN;
     const BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
     const CAMP_TB = encodeURIComponent('Campaign_DB');
 
@@ -46,11 +47,11 @@ export default async function handler(req, res) {
       monthQ ? `AND(${base}, {계약월}='${esc(monthQ)}')` : base
     );
     
-    // 가져올 필드 목록 지정 (트래픽 최적화)
-    const fields = ['계약명', '고객사명', '지점명', '계약월', '인플_요청', '인플_실적', '체험단_요청', '체험_실적', '기자단_요청', '기자_실적'];
-    const fieldQ = fields.map(f => `fields[]=${encodeURIComponent(f)}`).join('&');
-    
-    const url = `https://api.airtable.com/v0/${BASE_ID}/${CAMP_TB}?filterByFormula=${formula}&${fieldQ}`;
+    // 필드를 지정하지 않는다. 특정 필드만 요청하면 Airtable 스키마가 리네임될 때
+    // UNKNOWN_FIELD_NAME 으로 500 이 난다 — 실제로 '인플_실적' 이 사라져 이 API 가
+    // 계속 500 이었다(프론트가 Airtable 을 직접 불러서 드러나지 않았을 뿐).
+    // client-schedule.js 도 같은 이유로 전체 필드를 받는다.
+    const url = `https://api.airtable.com/v0/${BASE_ID}/${CAMP_TB}?filterByFormula=${formula}&pageSize=100`;
     
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${TOKEN}` }
