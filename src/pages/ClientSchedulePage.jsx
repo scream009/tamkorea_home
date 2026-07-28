@@ -65,33 +65,6 @@ const getTypeClass = (type) => {
 // Tam Korea 카카오 채널 — 충전·서비스 신청 CTA
 const KAKAO_URL = 'https://pf.kakao.com/_xkxhZzX';
 
-// ── 따종디엔핑 리포팅 (샘플) ─────────────────────────────────────────
-// TODO: 실운영 시 이 하드코딩 대신 /api/client-schedule 응답의 data.cpc / data.dpReport 사용
-//        (Python cpc_weekly.py → Airtable → API 로 연결)
-const CPC_SAMPLE = {
-  'reczIRxF76tVHgmdM': {
-    balance: 7674, yesterday: 1080, status: 'green', daysLeft: 7, updated: '2026-07-26 15:40',
-    report: {
-      period: '2026.06.26 ~ 07.25', exposure: '48,927', rank: '상권 2위', mom: '+60.3%', good: '호평률 92.9%',
-      url: `/reports/dp_hanla_nohyeong.html`, // 샘플: 우리가 만든 따종디엔핑 월간 리포트(정적). 추후 React+Airtable로 이식
-    },
-  },
-  'recn9NKKOkALvq7UH': { // 모찌롱 (CPC 잔액 0 = 충전 필요 빨강 샘플)
-    balance: 0, yesterday: 0, status: 'red', daysLeft: null, updated: '2026-07-26 15:40',
-    report: {
-      period: '2026.06.26 ~ 07.25', exposure: '45,363', rank: '상권 1위', mom: '+2.0%', good: '호평률 93.2%',
-      url: `/reports/dp_mochiron.html`,
-    },
-  },
-  'reclpfcWInJuxY2Dp': { // 한라갈치 중문점 (CPC 잔액 0 = 충전 필요)
-    balance: 0, yesterday: 0, status: 'red', daysLeft: null, updated: '2026-07-26 15:40',
-    report: {
-      period: '2026.06.26 ~ 07.25', exposure: '25,061', rank: '상권 4위', mom: '+95%', good: '호평률 98.5%',
-      url: `/reports/dp_hanla_jungmun.html`,
-    },
-  },
-};
-
 const CpcBanner = ({ cpc }) => {
   if (!cpc) return null;
   const cls = cpc.status; // green | amber | red
@@ -485,11 +458,11 @@ export default function ClientSchedulePage() {
   
   const displayName = brandName && branchName ? `${brandName} ${branchName}` : campaignName;
 
-  // 따종디엔핑 CPC/월간리포트
-  //  · 1순위: Airtable(봇 적재) → API 응답(data.cpc / data.dpReport)
-  //  · 2순위: 초기 샘플 하드코딩 (아직 봇이 안 돌린 과거 월 링크용 폴백)
-  const cpcInfo  = (data && data.cpc) || CPC_SAMPLE[campaignId];
-  const dpReport = (data && data.dpReport) || CPC_SAMPLE[campaignId]?.report;
+  // 따종디엔핑 CPC/월간리포트 — Airtable(봇 적재) → API 응답만 사용.
+  // 없으면 없는 대로 둔다(지어내지 않음). 넛지는 '매장 단위'로 고객사가 아닐 때만.
+  const cpcInfo  = data?.cpc || null;
+  const dpReport = data?.dpReport || null;
+  const isDpClient = data?.dpClient === true;
 
   const hasInfl  = records?.influencer?.length > 0;
   const hasExp   = records?.experience?.length > 0;
@@ -845,7 +818,7 @@ export default function ClientSchedulePage() {
         )}
 
         {/* 4-B. 따종디엔핑 미운영 매장 넛지 (데이터 없으면 = 미입점/타사 그룹) */}
-        {!dpReport && <DpNudge campaignId={campaignId} />}
+        {!dpReport && !isDpClient && <DpNudge campaignId={campaignId} />}
 
         {/* 5. 문의 / 상담 — 카카오 채널 연결 */}
         <div className="section">

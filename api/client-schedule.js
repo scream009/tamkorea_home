@@ -288,6 +288,28 @@ export default async function handler(req, res) {
       };
     }
 
+    // ── 따종 고객사 여부 (매장 단위) ──────────────────────────────
+    // 이번 달 리포트가 아직 없어도(월초·과거월 링크) 같은 매장의 다른 계약월에
+    // DP 데이터가 하나라도 있으면 '우리 운영 매장'이다. 넛지 오노출 방지용.
+    let dpClient = false;
+    if (!dpReport && (brandName || branchName)) {
+      try {
+        const esc = (s) => String(s).replace(/"/g, '\\"');
+        const conds = ['{DP_기간} != ""'];
+        if (brandName)  conds.push(`FIND("${esc(brandName)}",  {고객사명} & "") > 0`);
+        if (branchName) conds.push(`FIND("${esc(branchName)}", {지점명}   & "") > 0`);
+        const formula = encodeURIComponent(`AND(${conds.join(',')})`);
+        const url = `https://api.airtable.com/v0/${BASE_ID}/${CAMPAIGN_TABLE}`
+          + `?filterByFormula=${formula}&maxRecords=1&fields%5B%5D=${encodeURIComponent('DP_기간')}`;
+        const probe = await atFetch(url);
+        dpClient = (probe.records || []).length > 0;
+      } catch (e) {
+        // 조회 실패 시 '고객사'로 간주 → 넛지 미노출 (오노출보다 미노출이 안전)
+        console.error('[client-schedule] dpClient probe failed:', e.message);
+        dpClient = true;
+      }
+    }
+
     return res.status(200).json({
       campaignName,
       brandName,
@@ -299,6 +321,7 @@ export default async function handler(req, res) {
       records: { influencer, experience, press, videoIssue },
       cpc,
       dpReport,
+      dpClient: dpReport ? true : dpClient,
     });
 
   } catch (err) {
