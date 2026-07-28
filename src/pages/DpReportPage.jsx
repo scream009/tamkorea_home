@@ -125,7 +125,7 @@ const CpcSection = ({ cpc, funnel, dominance, store }) => {
     );
   }
 
-  const budget = store?.budget;
+  const budget = cpc?.daily_budget ?? store?.budget;   // 수집값 우선
   return (
     <>
       <div className={`dpr-bal ${lvl}`}>
@@ -139,7 +139,11 @@ const CpcSection = ({ cpc, funnel, dominance, store }) => {
       <Stat items={[
         { value: `${r0(yst)}元`, label: '어제 광고비 소진', color: '#9B70FF' },
         { value: `${r0(bal)}元`, label: '현재 잔액', color: bal <= 0 ? '#ff6b6b' : bal >= 1000 ? '#34d399' : '#fbbf24' },
-        { value: budget ? `${num(budget)}元/일` : `${brand} 최적 예산 추천`, label: '일예산 책정',
+        { value: budget ? `${num(budget)}元/일`
+                 : (cpc?.budget_status === 'not_set' ? '미책정'
+                    : cpc?.budget_status === 'fetch_failed' ? '수집 실패'
+                    : `${brand} 최적 예산 추천`),
+          label: '일예산 책정',
           style: budget ? {} : { fontSize: '.95rem', lineHeight: 1.35 } },
         { value: '1개', label: '활성 캠페인' },
       ]} />
@@ -157,14 +161,18 @@ const CpcSection = ({ cpc, funnel, dominance, store }) => {
 // ── 광고 기여도 ────────────────────────────────────────────────────
 const AdflowSection = ({ adflow, name, cpc }) => {
   if (!adflow || !adflow.running || adflow.imp_share == null) {
-    const bal = Number(cpc?.balance) || 0;
+    // 실제 미집행과 수집 실패를 구분해 안내한다.
+    // 잔액만 보고 추측하면 잔액이 있는 미집행 매장을 '수집 실패'로 잘못 알린다.
+    const failed = (adflow?.status || 'fetch_failed') === 'fetch_failed';
     return (
       <div className="dpr-box no">
-        <div className="dpr-gt">📉 광고 기여도 — 측정 불가 (광고 미집행)</div>
+        <div className="dpr-gt">
+          {failed ? '⏳ 광고 기여도 — 이번 회차 수집 실패' : '📉 광고 기여도 — 광고 미집행'}
+        </div>
         <div className="dpr-gd">
-          {bal <= 0
-            ? <>현재 <b>광고가 집행되지 않아</b> 광고 기여 데이터가 없습니다. 다른 매장 실측에서는 <b>광고가 전체 노출의 60~92%</b>를 만들어내고 있습니다 — 광고를 켜면 노출·유입이 즉시 반응합니다.</>
-            : '이번 기간 광고 기여 데이터를 수집하지 못했습니다.'}
+          {failed
+            ? <>광고 성과 데이터를 <b>가져오지 못했습니다</b>. 광고를 하지 않는다는 뜻이 아니며, 다음 리포트에 반영됩니다. (다른 수치는 정상 수집됐습니다)</>
+            : <>이 기간 <b>광고가 집행되지 않았습니다</b>. 다른 매장 실측에서는 <b>광고가 전체 노출의 60~92%</b>를 만들어내고 있습니다 — 광고를 켜면 노출·유입이 즉시 반응합니다.</>}
         </div>
       </div>
     );
@@ -257,10 +265,14 @@ const DominanceSection = ({ dominance, funnel, days, period }) => {
 const FunnelSection = ({ funnel }) => {
   const f = funnel || {};
   const view = f.exposure || 0, clicks = f.click || 0, visit = f.visit || 0, intent = f.intent || 0, buy = f.buy || 0;
+  // 노출은 UV(사람), 클릭은 PV(횟수)라 그대로 나누면 클릭률이 100%를 넘는다.
+  // 클릭률은 같은 단위(노출 횟수 대비 클릭 횟수)로 계산한다.
+  const viewPv = f.exposure_pv || view;
   const gb = !!f.groupbuy_on;
-  const mx = Math.max(view, 1);
+  const mx = Math.max(view, clicks, 1);   // 클릭(PV)이 노출(UV)보다 클 수 있다
   const w = (v) => Math.max(16, Math.min(100, Math.round(v / mx * 100)));
   const p1 = (a, b) => (b ? `${(a / b * 100).toFixed(1)}%` : '-');
+  const ctr = f.ctr != null ? `${f.ctr}%` : p1(clicks, viewPv);
 
   const steps = [
     { lab: '노출', sub: '曝光 · 목록/검색에 노출된 사람', n: `${num(view)}명`, ex: '얼마나 많은 잠재고객에게 노출됐나', g: 'linear-gradient(90deg,#7434FF,#9B70FF)', w: w(view) },
@@ -273,8 +285,8 @@ const FunnelSection = ({ funnel }) => {
       g: 'linear-gradient(90deg,#ef4444,#f87171)', w: w(gb && buy > 0 ? buy : 1) },
   ];
   const convs = ['',
-    `↓ 클릭률(노출→클릭) ${p1(clicks, view)}`,
-    `↓ 방문 전환(클릭→방문) ${p1(visit, clicks)}`,
+    `↓ 클릭률(노출 횟수→클릭 횟수) ${ctr}`,
+    `↓ 방문 전환(노출→방문) ${f.visit_rate != null ? f.visit_rate + '%' : p1(visit, view)}`,
     `↓ 관심 전환(방문→관심) ${p1(intent, visit)}`,
     `↓ 구매 전환(관심→구매) ${gb && buy > 0 && intent ? p1(buy, intent) : (gb ? '집계 대기' : '0% (团购 미개설)')}`,
   ];
@@ -296,11 +308,11 @@ const FunnelSection = ({ funnel }) => {
         ))}
       </div>
       <div className="dpr-foot-note" style={{ marginTop: 18 }}>
-        💡 <b>진단</b> — 노출 {num(view)}명 → 클릭 {num(clicks)}회 → <b>방문 {num(visit)}명</b> → 관심 {num(intent)}명으로 이어졌습니다 (클릭률 {p1(clicks, view)}, 방문 전환 {p1(visit, Math.max(clicks, 1))}).{' '}
+        💡 <b>진단</b> — 노출 {num(view)}명 → 클릭 {num(clicks)}회 → <b>방문 {num(visit)}명</b> → 관심 {num(intent)}명으로 이어졌습니다 (클릭률 {ctr}, 방문 전환 {f.visit_rate != null ? f.visit_rate + '%' : p1(visit, Math.max(view, 1))}).{' '}
         {gb
           ? '团购 운영 매장입니다 — 이번 기간 검증은 대시보드 기준으로 별도 확인해 매출과 연결하겠습니다.'
           : <>团购 상품이 없어 '구매' 단계가 0으로, 높은 관심이 매출로 집계되지 않습니다 → <b>团购 개설이 최우선</b>입니다.</>}{' '}
-        <span className="dpr-dim">※ 노출·방문·관심 = 사람 수, 클릭 = 클릭 횟수(월 집계) 기준.</span>
+        <span className="dpr-dim">※ 노출·방문·관심 = 사람 수, 클릭 = 횟수. 클릭률은 노출 횟수({num(viewPv)}회) 대비입니다.</span>
       </div>
     </>
   );
