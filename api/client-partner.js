@@ -9,16 +9,42 @@ export default async function handler(req, res) {
   }
 
   try {
-    let partnerName = req.query.name;
-    if (!partnerName) {
-      return res.status(400).json({ error: '협력사 이름이 필요합니다 (?name=...)' });
-    }
-    if (partnerName.includes('에코')) {
-      partnerName = '에코';
-    }
-
     const TOKEN = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY
                 || process.env.VITE_AT_TOKEN;
+    const BASE_ID0 = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
+    const CAMP_TB0 = encodeURIComponent('Campaign_DB');
+
+    // ── 토큰 방식 (?t=...) ────────────────────────────────────
+    // 협력사·계약월이 토큰에 묶여 있어 URL 을 고칠 수 없다.
+    // 토큰은 Campaign_DB '협력사토큰' 에 있으므로 별도 매핑 테이블이 필요 없다.
+    const shareToken = (req.query.t || '').trim();
+    let partnerName = req.query.name;
+    let tokenMonth = '';
+
+    if (shareToken) {
+      if (!/^[A-Za-z0-9]{6,32}$/.test(shareToken)) {
+        return res.status(400).json({ error: '잘못된 링크입니다.' });
+      }
+      const tf = encodeURIComponent(`{협력사토큰}='${shareToken.replace(/'/g, "\'")}'`);
+      const tu = `https://api.airtable.com/v0/${BASE_ID0}/${CAMP_TB0}`
+        + `?filterByFormula=${tf}&maxRecords=1`;
+      const tr = await fetch(tu, { headers: { Authorization: `Bearer ${TOKEN}` } });
+      if (!tr.ok) throw new Error(`Airtable error: ${await tr.text()}`);
+      const td = await tr.json();
+      const rec0 = (td.records || [])[0];
+      if (!rec0) {
+        return res.status(404).json({ error: '유효하지 않은 링크입니다.' });
+      }
+      const pf = rec0.fields['협력사'];
+      partnerName = Array.isArray(pf) ? pf[0] : pf;
+      tokenMonth = rec0.fields['계약월'] || '';
+    }
+
+    if (!partnerName) {
+      return res.status(400).json({ error: '협력사 링크가 아닙니다.' });
+    }
+    // 표시는 '에코'로 통일 (제주에코/서울에코 구분은 조회 조건에서만)
+    const displayName = String(partnerName).includes('에코') ? '에코' : partnerName;
     const BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
     const CAMP_TB = encodeURIComponent('Campaign_DB');
 
@@ -32,7 +58,10 @@ export default async function handler(req, res) {
       return '';
     };
     const rawMonth = (req.query.month || '').trim();
-    let monthQ = rawMonth ? (ymToLabel(rawMonth) || rawMonth) : '';
+    // 토큰 링크는 그 토큰이 가리키는 계약월이 기본이다.
+    // month 를 함께 주면(월 버튼) 그 값을 쓰되, 아래에서 같은 협력사의
+    // 토큰이 있는 달인지 확인하므로 임의의 달로 넘어갈 수는 없다.
+    let monthQ = rawMonth ? (ymToLabel(rawMonth) || rawMonth) : tokenMonth;
 
     // ── 조회 가능 기간 제한 ────────────────────────────────────
     // 협력사 링크는 ?name=..&month=.. 조합이라 누구나 URL 을 고칠 수 있다.
@@ -55,7 +84,7 @@ export default async function handler(req, res) {
     };
     if (monthQ && !inRange(monthQ)) {
       return res.status(200).json({
-        partnerName, month: monthQ, months: [], campaigns: [],
+        partnerName: displayName, month: monthQ, months: [], campaigns: [],
         outOfRange: true,
         message: '조회 가능 기간이 아닙니다 (전월·당월·다음달만 조회할 수 있습니다).',
       });
@@ -63,9 +92,10 @@ export default async function handler(req, res) {
     const esc = (v) => String(v).replace(/'/g, "\'");
 
     // 필터: 협력사 컬럼이 일치하는 레코드 검색
+    // 토큰 링크는 레코드에서 읽은 협력사 원본값을 그대로 쓴다.
+    // name= 방식일 때만 '에코' → 제주에코 로 해석한다(표시는 '에코' 통일).
     let base;
-    if (partnerName === '에코') {
-      // 표시는 '에코'로 통일하되 대상은 제주에코만 (서울에코는 별개 협력사)
+    if (!shareToken && partnerName === '에코') {
       base = "{협력사}='제주에코'";
     } else {
       base = `{협력사}='${esc(partnerName)}'`;
@@ -140,7 +170,10 @@ export default async function handler(req, res) {
       console.error('[client-partner] months lookup failed:', e.message);
     }
 
-    return res.status(200).json({ partnerName, month: monthQ || null, months, campaigns });
+    return res.status(200).json({
+      partnerName: displayName, month: monthQ || null, months, campaigns,
+      tokenMode: !!shareToken,
+    });
     
   } catch (error) {
     console.error('Partner API Error:', error);

@@ -349,7 +349,7 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
                   <div className="gravity-logo-accent" style={{ margin: 0 }}>
-                    {partnerName}<br />
+                    {shownName}<br />
                     <span style={{ fontSize:'0.65rem', color:'#9ca3af' }}>PERFORMANCE REPORT</span>
                   </div>
                 </div>
@@ -504,16 +504,20 @@ export default function ClientPartnerPage() {
   // 계약월 필터 — ?name=웹플로우&month=2607  (YYMM, 짧게)
   // 월 구분이 없으면 지난달 캠페인까지 한 화면에 섞여 나온다.
   const monthParam = (searchParams.get('month') || '').trim();
+  // 공유 토큰 — ?t=xxxx. 협력사·계약월이 토큰에 묶여 URL 조작이 통하지 않는다.
+  const shareToken = (searchParams.get('t') || '').trim();
   const partnerName = (partnerNameParam && partnerNameParam.includes('에코')) ? '에코' : partnerNameParam;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
   const [months, setMonths] = useState([]);
+  // 토큰 링크(?t=)에는 협력사명이 URL 에 없다 → 서버 응답의 이름을 쓴다
+  const shownName = data?.partnerName || partnerName || '';
 
   useEffect(() => {
-    if (!partnerName) {
-      setError('협력사 이름이 지정되지 않았습니다. (예: ?name=광고시홍보동)');
+    if (!partnerName && !shareToken) {
+      setError('유효한 협력사 링크가 아닙니다.');
       setLoading(false);
       return;
     }
@@ -525,9 +529,11 @@ export default function ClientPartnerPage() {
         //    협력사에게 그대로 노출된다(개발자도구에서 Bearer 헤더가 보였다).
         //    개별 고객사 링크(/schedule)처럼 **서버 API 경유**로 바꾼다.
         //    상세는 검증된 /api/client-schedule 을 캠페인별로 재사용한다.
+        const q = shareToken
+          ? `t=${encodeURIComponent(shareToken)}`
+          : `name=${encodeURIComponent(partnerNameParam || partnerName)}`;
         const listRes = await fetch(
-          `/api/client-partner?name=${encodeURIComponent(partnerNameParam || partnerName)}`
-          + (monthParam ? `&month=${encodeURIComponent(monthParam)}` : '')
+          `/api/client-partner?${q}` + (monthParam ? `&month=${encodeURIComponent(monthParam)}` : '')
         );
         if (!listRes.ok) throw new Error(`협력사 조회 실패 (${listRes.status})`);
         const list = await listRes.json();
@@ -573,7 +579,7 @@ export default function ClientPartnerPage() {
         // 실적 유무로 거르지 않는다. 표시 여부는 Airtable '공유표출' 체크가 정하고
         // API 가 이미 걸러서 준다. (실적으로 거르면 월초에 전부 사라졌다)
 
-        setData({ campaigns: merged });
+        setData({ campaigns: merged, partnerName: list.partnerName || partnerName });
       } catch (err) {
         console.error(err);
         setError(err.message || '데이터를 불러오지 못했습니다.');
@@ -583,12 +589,12 @@ export default function ClientPartnerPage() {
     };
 
     fetchData();
-  }, [partnerName, monthParam]);
+  }, [partnerName, monthParam, shareToken]);
 
   // 파트너사에 따른 브라우저 탭 및 파비콘 동적 변경 (화이트라벨링)
   useEffect(() => {
     if (partnerName && partnerName !== '탐코리아' && partnerName.toUpperCase() !== 'TAMKOREA') {
-      document.title = `${partnerName} - 캠페인 성과 대시보드`;
+      document.title = `${shownName || partnerName} - 캠페인 성과 대시보드`;
       let link = document.querySelector("link[rel~='icon']");
       if (!link) {
         link = document.createElement('link');
@@ -617,7 +623,7 @@ export default function ClientPartnerPage() {
     <div className="schedule-page" style={{ paddingBottom: '100px' }}>
       {data.campaigns.length === 0 ? (
         <div className="flex flex-col items-center justify-center pt-20">
-          <h1 className="schedule-title text-center mb-4">{partnerName}</h1>
+          <h1 className="schedule-title text-center mb-4">{shownName}</h1>
           <p style={{ color:'#6b7280' }}>등록된 고객사 캠페인 실적이 없습니다.</p>
         </div>
       ) : (
@@ -625,7 +631,7 @@ export default function ClientPartnerPage() {
           <div className="mb-14 pb-10 border-b border-[rgba(255,255,255,0.05)] relative flex flex-col items-center justify-center w-full" style={{ textAlign: 'center', width: '100%' }}>
              {/* 파트너명 (고급스러운 은은한 퍼플-실버 톤 적용 및 섀도우) */}
              <h2 style={{ color: '#e9d5ff', fontSize: '2.5rem', fontWeight: '800', margin: '0 0 8px 0', letterSpacing: '-0.02em', textShadow: '0 4px 20px rgba(168,85,247,0.2)', textAlign: 'center', width: '100%' }}>
-               {partnerName}
+               {shownName}
              </h2>
              
              {/* 서브 타이틀 */}
@@ -653,7 +659,9 @@ export default function ClientPartnerPage() {
                        key={m}
                        type="button"
                        className={`pt-month${active ? ' active' : ''}`}
-                       onClick={() => setSearchParams({ name: partnerNameParam, month: labelToYm(m) })}
+                       onClick={() => setSearchParams(
+                         shareToken ? { t: shareToken, month: labelToYm(m) }
+                                    : { name: partnerNameParam, month: labelToYm(m) })}
                      >
                        {m}
                      </button>
