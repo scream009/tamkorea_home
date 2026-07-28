@@ -135,6 +135,49 @@ const CpcBanner = ({ cpc }) => {
   );
 };
 
+// 따종디엔핑 미운영 매장(미입점 또는 타사 운영) 대상 넛지
+//  · 판정: API의 dpReport 부재 = 데이터 없음 = 미운영 그룹
+//  · 원칙: 달력·실적 아래 배치 · 1줄 카드 · 닫으면 14일 숨김 · 실측 수치만 사용
+const DpNudge = ({ campaignId }) => {
+  const KEY = `dp_nudge_hide_${campaignId || 'x'}`;
+  const [hidden, setHidden] = useState(true);
+
+  useEffect(() => {
+    try {
+      const until = Number(localStorage.getItem(KEY) || 0);
+      setHidden(Date.now() < until);
+    } catch (e) {
+      setHidden(false);
+    }
+  }, [KEY]);
+
+  const close = () => {
+    try { localStorage.setItem(KEY, String(Date.now() + 14 * 864e5)); } catch (e) {}
+    setHidden(true);
+  };
+
+  if (hidden) return null;
+  return (
+    <div className="dp-nudge">
+      <button type="button" className="dp-nudge-x" onClick={close} aria-label="닫기">
+        <X className="w-3.5 h-3.5" />
+      </button>
+      <div className="dp-nudge-body">
+        <div className="dp-nudge-t">🇨🇳 중화권 고객 유치, 따종디엔핑(大众点评)은 어떠세요?</div>
+        <p className="dp-nudge-d">
+          제주 상권에서 따종디엔핑을 운영 중인 매장은 중화권 고객 노출이
+          <b> 상권 평균의 8~9배</b>입니다. 이미 운영 중이시라면 현재 노출·리뷰·광고 효율이
+          어느 수준인지 무료로 진단해 드립니다.
+          <span className="dp-nudge-src">Tam Korea 운영 매장 실측 · 2026.07</span>
+        </p>
+      </div>
+      <a className="kko-btn dp-nudge-btn" href={KAKAO_URL} target="_blank" rel="noopener noreferrer">
+        💬 무료 진단 받기
+      </a>
+    </div>
+  );
+};
+
 const DpReportEntry = ({ report }) => {
   if (!report) return null;
   const chips = [
@@ -800,6 +843,9 @@ export default function ClientSchedulePage() {
             </div>
           </div>
         )}
+
+        {/* 4-B. 따종디엔핑 미운영 매장 넛지 (데이터 없으면 = 미입점/타사 그룹) */}
+        {!dpReport && <DpNudge campaignId={campaignId} />}
 
         {/* 5. 문의 / 상담 — 카카오 채널 연결 */}
         <div className="section">
