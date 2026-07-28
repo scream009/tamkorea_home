@@ -3,12 +3,12 @@
  * Proxies Airtable requests securely.
  */
 
-const AIRTABLE_API_KEY = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
-const AIRTABLE_BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
-
 async function fetchAll(table, formula, fields) {
   let allRecords = [];
   let offset = '';
+  const AIRTABLE_API_KEY = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
+  const AIRTABLE_BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
+  
   do {
     const params = new URLSearchParams();
     if (formula) params.set('filterByFormula', formula);
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
     if (req.method === 'GET' && action === 'progress') {
       if (!client) return res.status(400).json({ error: 'Client required' });
       
-      const formula = `AND(OR({예약_ID}='HH',{예약_ID}='LH',{예약_ID}='AN'), FIND('${client}', ARRAYJOIN({고객사명(from 귀속 정산월)})) > 0)`;
+      const formula = `AND(OR({예약_ID}='HH',{예약_ID}='LH',{예약_ID}='AN'), FIND('${client}', {고객명}))`;
       const records = await fetchAll('진행_DB_OLD', formula, null);
       
       // Send raw records back so frontend has all fields (links, status, original fields, etc)
@@ -66,6 +66,9 @@ export default async function handler(req, res) {
     if (req.method === 'PATCH' && action === 'bulk_update') {
       const { updates } = req.body;
       if (!Array.isArray(updates)) return res.status(400).json({ error: 'Updates must be an array' });
+
+      const AIRTABLE_API_KEY = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
+      const AIRTABLE_BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
 
       const chunkSize = 10;
       const results = [];
