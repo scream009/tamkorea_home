@@ -65,7 +65,7 @@ const getTypeClass = (type) => {
 // Tam Korea 카카오 채널 — 충전·서비스 신청 CTA
 const KAKAO_URL = 'https://pf.kakao.com/_xkxhZzX';
 
-const CpcBanner = ({ cpc }) => {
+const CpcBanner = ({ cpc, isPartner }) => {
   if (!cpc) return null;
   const cls = cpc.status; // green | amber | red
   const label = cls === 'red' ? '🔴 충전 필요' : cls === 'amber' ? '🟡 소진 임박' : '🟢 정상';
@@ -99,9 +99,14 @@ const CpcBanner = ({ cpc }) => {
       </div>
       <div className="cpc-msg">
         <span className="cpc-msg-t"><span className={`cpc-dot ${cls}`} />{msg}</span>
-        <a className="kko-btn" href={KAKAO_URL} target="_blank" rel="noopener noreferrer">
-          💬 광고비 충전 신청
-        </a>
+        {/* 협력사 링크에는 우리 카카오 채널을 노출하지 않는다 (화이트라벨) */}
+        {isPartner ? (
+          <span className="cpc-ask">담당 매니저에게 충전 요청</span>
+        ) : (
+          <a className="kko-btn" href={KAKAO_URL} target="_blank" rel="noopener noreferrer">
+            💬 광고비 충전 신청
+          </a>
+        )}
       </div>
       <div className="cpc-upd">갱신: {cpc.updated}</div>
     </div>
@@ -111,7 +116,7 @@ const CpcBanner = ({ cpc }) => {
 // 따종디엔핑 미운영 매장(미입점 또는 타사 운영) 대상 넛지
 //  · 판정: API의 dpReport 부재 = 데이터 없음 = 미운영 그룹
 //  · 원칙: 달력·실적 아래 배치 · 1줄 카드 · 닫으면 14일 숨김 · 실측 수치만 사용
-const DpNudge = ({ campaignId }) => {
+const DpNudge = ({ campaignId, isPartner }) => {
   const KEY = `dp_nudge_hide_${campaignId || 'x'}`;
   const [hidden, setHidden] = useState(true);
 
@@ -141,17 +146,25 @@ const DpNudge = ({ campaignId }) => {
           제주 상권에서 따종디엔핑을 운영 중인 매장은 중화권 고객 노출이
           <b> 상권 평균의 8~9배</b>입니다. 이미 운영 중이시라면 현재 노출·리뷰·광고 효율이
           어느 수준인지 무료로 진단해 드립니다.
-          <span className="dp-nudge-src">Tam Korea 운영 매장 실측 · 2026.07</span>
+          {/* 협력사 링크에는 대행사 브랜드를 노출하지 않는다 (화이트라벨) */}
+          <span className="dp-nudge-src">
+            {isPartner ? '제주 운영 매장 실측 · 2026.07' : 'Tam Korea 운영 매장 실측 · 2026.07'}
+          </span>
         </p>
       </div>
-      <a className="kko-btn dp-nudge-btn" href={KAKAO_URL} target="_blank" rel="noopener noreferrer">
-        💬 무료 진단 받기
-      </a>
+      {/* 협력사 링크는 우리 카카오 채널로 보내지 않고, 협력사 담당자 안내로 대체 */}
+      {isPartner ? (
+        <div className="dp-nudge-ask">담당 매니저에게 문의해 주세요</div>
+      ) : (
+        <a className="kko-btn dp-nudge-btn" href={KAKAO_URL} target="_blank" rel="noopener noreferrer">
+          💬 무료 진단 받기
+        </a>
+      )}
     </div>
   );
 };
 
-const DpReportEntry = ({ report }) => {
+const DpReportEntry = ({ report, campaignId }) => {
   if (!report) return null;
   const chips = [
     report.exposure ? `노출 ${report.exposure}` : null,
@@ -174,12 +187,10 @@ const DpReportEntry = ({ report }) => {
     </div>
   );
 
-  // 리포트 파일이 아직 없으면 링크 대신 안내 카드로 표시 (깨진 링크 방지)
-  if (!report.url) {
-    return <div className="dprep">{inner}<span className="dprep-btn" style={{ opacity: .55 }}>준비 중</span></div>;
-  }
+  // DB를 읽어 렌더하는 React 리포트로 연결 — 정적 HTML은 협력사 화이트라벨이 불가하고
+  // 봇이 Airtable만 갱신하면 옛 데이터로 남는 문제가 있다.
   return (
-    <a className="dprep" href={report.url} target="_blank" rel="noopener noreferrer">
+    <a className="dprep" href={`/dp-report?campaignId=${encodeURIComponent(campaignId || '')}`} target="_blank" rel="noopener noreferrer">
       {inner}
       <span className="dprep-btn">리포트 열기 →</span>
     </a>
@@ -458,6 +469,11 @@ export default function ClientSchedulePage() {
   
   const displayName = brandName && branchName ? `${brandName} ${branchName}` : campaignName;
 
+  // ── 협력사(화이트라벨) 판정 ───────────────────────────────────────
+  // API가 빈값·'직영'·'탐코리아'를 모두 'TAMKOREA'로 정규화해 준다.
+  // 협력사 경유 링크는 데이터는 그대로 보여주되 Tam Korea 브랜드·카카오 채널만 지운다.
+  const isPartner = !!partnerName && partnerName !== 'TAMKOREA';
+
   // 따종디엔핑 CPC/월간리포트 — Airtable(봇 적재) → API 응답만 사용.
   // 없으면 없는 대로 둔다(지어내지 않음). 넛지는 '매장 단위'로 고객사가 아닐 때만.
   const cpcInfo  = data?.cpc || null;
@@ -580,8 +596,8 @@ export default function ClientSchedulePage() {
         </div>
 
         {/* ★ 신규: 주간 CPC 배너 + 따종디엔핑 월간 리포트 진입 (달력 위) */}
-        <CpcBanner cpc={cpcInfo} />
-        <DpReportEntry report={dpReport} />
+        <CpcBanner cpc={cpcInfo} isPartner={isPartner} />
+        <DpReportEntry report={dpReport} campaignId={campaignId} />
 
         {/* 4. Main Content (Calendar / List) */}
         {viewMode === 'calendar' ? (
@@ -818,9 +834,42 @@ export default function ClientSchedulePage() {
         )}
 
         {/* 4-B. 따종디엔핑 미운영 매장 넛지 (데이터 없으면 = 미입점/타사 그룹) */}
-        {!dpReport && !isDpClient && <DpNudge campaignId={campaignId} />}
+        {!dpReport && !isDpClient && <DpNudge campaignId={campaignId} isPartner={isPartner} />}
 
-        {/* 5. 문의 / 상담 — 카카오 채널 연결 */}
+        {/* 5. 문의 — 협력사 링크는 브랜드 없는 '준비중' 안내, 직영은 카카오 채널 카드 */}
+        {isPartner ? (
+        <div className="section">
+          <div className="section-header">
+            <div className="section-title">
+              <MessageSquare className="w-4 h-4" /> 문의 / 메모
+            </div>
+            <div className="section-badge section-badge--soft">준비중</div>
+          </div>
+          <div className="memo-wrap">
+            <div className="memo-intro">
+              <Lightbulb className="w-4 h-4 flex-shrink-0" />
+              <span>일정 변경이나 특별 요청사항은 현재 담당 매니저에게 <b>카카오톡으로 직접</b> 전달해 주세요. 이 페이지의 폼 전송 기능은 준비 중입니다.</span>
+            </div>
+            <div className="memo-form" aria-disabled="true">
+              <textarea
+                className="memo-input"
+                placeholder="(준비중) 추후 이 입력창을 통해 운영팀에 직접 메모가 전달됩니다."
+                disabled
+              ></textarea>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  className="memo-submit"
+                  disabled
+                  title="현재 폼 전송은 준비중입니다. 카카오톡으로 전달해 주세요."
+                >
+                  <Send className="w-3.5 h-3.5" /> 전송 (준비중)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        ) : (
         <div className="section">
           <div className="section-header">
             <div className="section-title">
@@ -863,6 +912,7 @@ export default function ClientSchedulePage() {
             </div>
           </div>
         </div>
+        )}
 
       </main>
 

@@ -16,6 +16,7 @@ import ClientListPage from './pages/ClientListPage';
 import AdminClientLinkPage from './pages/AdminClientLinkPage';
 import ClientReportPage from './pages/ClientReportPage';
 import ClientSchedulePage from './pages/ClientSchedulePage';
+import DpReportPage from './pages/DpReportPage';
 import ClientPartnerPage from './pages/ClientPartnerPage';
 import RecruiterSchedulePage from './pages/RecruiterSchedulePage';
 import SignupCreatorPage from './pages/auth/SignupCreatorPage';
@@ -34,6 +35,7 @@ function App() {
           <Route path="/admin/clients-link" element={<AdminClientLinkPage />} />
           <Route path="/report" element={<ClientReportPage />} />
           <Route path="/schedule" element={<ClientSchedulePage />} />
+          <Route path="/dp-report" element={<DpReportPage />} />
           <Route path="/manager" element={<RecruiterSchedulePage />} />
           <Route path="/partner" element={<ClientPartnerPage />} />
           <Route path="/admin" element={<AdminDashboardPage />} />
