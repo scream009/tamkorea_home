@@ -512,6 +512,8 @@ export default function ClientPartnerPage() {
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
   const [months, setMonths] = useState([]);
+  // 서버가 확정한 조회월. 토큰 링크는 URL 에 월이 없으므로 이 값이 기준이 된다.
+  const [pickedMonth, setPickedMonth] = useState('');
   // 토큰 링크(?t=)에는 협력사명이 URL 에 없다 → 서버 응답의 이름을 쓴다
   const shownName = data?.partnerName || partnerName || '';
 
@@ -538,6 +540,7 @@ export default function ClientPartnerPage() {
         if (!listRes.ok) throw new Error(`협력사 조회 실패 (${listRes.status})`);
         const list = await listRes.json();
         setMonths(list.months || []);
+        setPickedMonth(list.month || '');
 
         // 서버가 조회 가능 기간 밖이라고 응답한 경우 (URL 을 직접 고쳐 넣은 상황)
         if (list.outOfRange) {
@@ -646,13 +649,14 @@ export default function ClientPartnerPage() {
                    // 기준월 ±1개월만 노출한다(개별 고객사 화면과 동일).
                    // 계약월 전체를 늘어놓으면 오래된 달까지 협력사에게 열리고,
                    // 지금 봐야 할 달이 어느 것인지 흐려진다.
-                   const cur = monthParam ? (ymToLabel(monthParam) || monthParam)
-                                          : months[months.length - 1];
+                   const cur = pickedMonth
+                     || (monthParam ? (ymToLabel(monthParam) || monthParam) : months[months.length - 1]);
                    const k = (v) => { const x = String(v).match(/(\d{4})\D+(\d{1,2})/); return x ? +x[1] * 12 + +x[2] : 0; };
                    const ck = k(cur);
                    return months.filter((m) => Math.abs(k(m) - ck) <= 1);
                  })().map((m) => {
-                   const cur = monthParam ? (ymToLabel(monthParam) || monthParam) : months[months.length - 1];
+                   const cur = pickedMonth
+                     || (monthParam ? (ymToLabel(monthParam) || monthParam) : months[months.length - 1]);
                    const active = m === cur;
                    return (
                      <button
