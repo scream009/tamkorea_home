@@ -164,14 +164,20 @@ const AdflowSection = ({ adflow, name, cpc }) => {
     // 실제 미집행과 수집 실패를 구분해 안내한다.
     // 잔액만 보고 추측하면 잔액이 있는 미집행 매장을 '수집 실패'로 잘못 알린다.
     const failed = (adflow?.status || 'fetch_failed') === 'fetch_failed';
+    // 推广通 캠페인 수가 0 이면 'CPC 캠페인 없음'이 확정이다(다른 광고 상품은 돌 수 있다).
+    const noCampaign = adflow?.cure_launch_num === 0;
     return (
       <div className="dpr-box no">
         <div className="dpr-gt">
-          {failed ? '⏳ 광고 기여도 — 이번 회차 수집 실패' : '📉 광고 기여도 — 광고 미집행'}
+          {failed ? '⏳ 광고 기여도 — 이번 회차 수집 실패'
+            : noCampaign ? '📉 CPC(推广通) 캠페인 미개설'
+            : '📉 광고 기여도 — 광고 미집행'}
         </div>
         <div className="dpr-gd">
           {failed
             ? <>광고 성과 데이터를 <b>가져오지 못했습니다</b>. 광고를 하지 않는다는 뜻이 아니며, 다음 리포트에 반영됩니다. (다른 수치는 정상 수집됐습니다)</>
+            : noCampaign
+            ? <>검색·목록 상단 노출을 만드는 <b>CPC(推广通) 캠페인이 개설되어 있지 않습니다.</b> 다른 광고 상품이 집행 중일 수 있으나, 상권 노출을 직접 끌어올리는 것은 CPC입니다. 다른 매장 실측에서는 <b>CPC가 전체 노출의 60~92%</b>를 만들어냅니다.</>
             : <>이 기간 <b>광고가 집행되지 않았습니다</b>. 다른 매장 실측에서는 <b>광고가 전체 노출의 60~92%</b>를 만들어내고 있습니다 — 광고를 켜면 노출·유입이 즉시 반응합니다.</>}
         </div>
       </div>
