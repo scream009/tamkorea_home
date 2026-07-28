@@ -71,7 +71,7 @@ const shortMonth = (m) => {
   return x ? `${Number(x[1])}월` : (m || '');
 };
 
-const CpcBanner = ({ cpc, isPartner }) => {
+export const CpcBanner = ({ cpc, isPartner }) => {
   if (!cpc) return null;
   const cls = cpc.status; // green | amber | red
   const label = cls === 'red' ? '🔴 충전 필요' : cls === 'amber' ? '🟡 소진 임박' : '🟢 정상';
@@ -170,7 +170,7 @@ const DpNudge = ({ campaignId, isPartner }) => {
   );
 };
 
-const DpReportEntry = ({ report, campaignId }) => {
+export const DpReportEntry = ({ report, campaignId }) => {
   if (!report) return null;
   const chips = [
     report.exposure ? `노출 ${report.exposure}` : null,

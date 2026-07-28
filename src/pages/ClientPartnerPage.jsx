@@ -14,6 +14,7 @@ import {
   User,
   Info
 } from 'lucide-react';
+import { CpcBanner, DpReportEntry } from './ClientSchedulePage';
 import './ClientSchedulePage.css'; 
 import './ClientReportPage.css';
 
@@ -271,6 +272,11 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
           📥 CSV 다운로드
         </button>
       </div>
+
+      {/* 따종디엔핑 지표 — 데이터가 있는 매장만 표시된다(수동 구분 불필요).
+          협력사 화면이므로 화이트라벨: 카카오 CTA 없이 담당자 안내로 나간다. */}
+      <CpcBanner cpc={camp.cpc} isPartner={true} />
+      <DpReportEntry report={camp.dpReport} campaignId={camp.id} />
 
       {/* 4. Calendar View */}
       {viewMode === 'calendar' ? (
@@ -570,6 +576,10 @@ export default function ClientPartnerPage() {
             branchName: c.branchName || d.branchName || '',
             month: c.month || d.month || '',
             stats: d.stats || c.stats || {},
+            // 따종 지표 — 데이터가 있는 매장만 자동으로 표시된다.
+            // 어느 매장이 따종을 하는지 따로 표시할 필요가 없다.
+            cpc: d.cpc || null,
+            dpReport: d.dpReport || null,
             scheduleItems: d.scheduleItems || [],
             records: {
               influencer: rec.influencer || [],
