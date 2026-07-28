@@ -50,47 +50,74 @@
   cursor: not-allowed;
 }
 
-/* Swimlane Layout (Grid) */
-.swimlane-board {
+/* Kanban Board Layout (Mobile Friendly) */
+.kanban-board {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 24px;
+}
+
+.type-section {
   background: white;
-  padding: 24px;
   border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-  overflow-x: auto;
+  padding: 20px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  border: 1px solid #e2e8f0;
 }
 
-.swimlane-row {
-  display: grid;
-  /* 1 Fixed Label Column + 3 Month Columns */
-  grid-template-columns: 80px minmax(320px, 1fr) minmax(320px, 1fr) minmax(320px, 1fr);
-  gap: 16px;
-}
-
-.swimlane-type-label {
+.type-header {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--revu-purple, #6b46c1);
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #edf2f7;
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  font-size: 18px;
-  color: #2d3748;
-  border-right: 2px solid #e2e8f0;
-  padding-right: 16px;
 }
 
-.swimlane-type-label.empty {
-  border: none;
-}
-
-.swimlane-month-header {
-  font-size: 18px;
-  font-weight: bold;
-  color: #1a202c;
-  text-align: center;
+.months-container {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
   padding-bottom: 12px;
-  border-bottom: 2px solid #e2e8f0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.months-container::-webkit-scrollbar {
+  height: 8px;
+}
+.months-container::-webkit-scrollbar-track {
+  background: #f7fafc; 
+  border-radius: 4px;
+}
+.months-container::-webkit-scrollbar-thumb {
+  background: #cbd5e0; 
+  border-radius: 4px;
+}
+.months-container::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0; 
+}
+
+.month-column {
+  flex: 1;
+  min-width: 280px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+}
+
+.month-header {
+  font-size: 16px;
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 12px;
+  text-align: center;
+  background: #f7fafc;
+  padding: 8px;
+  border-radius: 6px;
 }
 
 /* Droppable Cells */

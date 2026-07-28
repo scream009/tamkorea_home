@@ -416,33 +416,27 @@ export default function AdminBoardPage() {
       </div>
 
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} collisionDetection={closestCenter}>
-        
-        <div className="swimlane-board">
-          {/* Header Row (Months) */}
-          <div className="swimlane-row header-row">
-            <div className="swimlane-type-label empty"></div>
-            {displayMonths.map(month => (
-              <div key={month} className="swimlane-month-header">{month}</div>
-            ))}
-          </div>
-
-          {/* Data Rows (Types) */}
+        <div className="kanban-board">
           {types.map(type => (
-            <div key={type} className="swimlane-row data-row">
-              <div className="swimlane-type-label">{type}</div>
-              {displayMonths.map(month => {
-                const groupId = `${month}|${type}`;
-                const items = getItemsForGroup(month, type);
-                const targetCount = getTargetCount(month, type);
-                return (
-                  <DroppableGroup 
-                    key={groupId} 
-                    id={groupId} 
-                    items={items} 
-                    targetCount={targetCount}
-                  />
-                );
-              })}
+            <div key={type} className="type-section">
+              <div className="type-header">{type} 리스트</div>
+              <div className="months-container">
+                {displayMonths.map(month => {
+                  const groupId = `${month}|${type}`;
+                  const items = getItemsForGroup(month, type);
+                  const targetCount = getTargetCount(month, type);
+                  return (
+                    <div key={groupId} className="month-column">
+                      <div className="month-header">{month}</div>
+                      <DroppableGroup 
+                        id={groupId} 
+                        items={items} 
+                        targetCount={targetCount}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           ))}
         </div>
