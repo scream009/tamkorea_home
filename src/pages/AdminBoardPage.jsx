@@ -30,6 +30,17 @@ function SortableItem({ item }) {
   
   const isModified = Boolean(origMonth !== fields['정산월'] || origType !== fields['유형']);
 
+  // UI Formatting
+  const displayOrigMonth = origMonth ? origMonth.replace(/\d{4}\.\s*/, '') : '';
+  let visitDate = '';
+  if (fields['예약일시']) {
+    const d = new Date(fields['예약일시']);
+    visitDate = `${d.getMonth() + 1}/${d.getDate()}`;
+  }
+  
+  const followersRaw = fields['PAL#'] ? (Array.isArray(fields['PAL#']) ? fields['PAL#'][0] : fields['PAL#']) : 0;
+  const followerText = followersRaw >= 10000 ? (followersRaw / 10000).toFixed(1) + '만' : followersRaw.toLocaleString();
+
   return (
     <div
       ref={setNodeRef}
@@ -40,14 +51,25 @@ function SortableItem({ item }) {
     >
       <div className="card-title">
         {name}
-        <span style={{ fontSize: 11, fontWeight: 'normal', color: '#718096', marginLeft: 6 }}>
-          (원) {origMonth}
-        </span>
+        {followersRaw > 0 && (
+          <span style={{ fontSize: 11, fontWeight: 'normal', color: '#718096', marginLeft: 6 }}>
+            👥 {followerText}
+          </span>
+        )}
       </div>
       
+      <div style={{ fontSize: 12, fontWeight: 'bold', color: 'var(--revu-purple)', marginBottom: 6, display: 'flex', gap: '6px', alignItems: 'center' }}>
+        <span style={{ backgroundColor: '#f0e6ff', padding: '2px 6px', borderRadius: '4px' }}>
+          (원) {displayOrigMonth}
+        </span>
+        <span style={{ backgroundColor: '#f0e6ff', padding: '2px 6px', borderRadius: '4px' }}>
+          (원){origType}
+        </span>
+      </div>
+
       {isModified && (
         <div style={{ fontSize: 11, color: '#e53e3e', marginBottom: 6, fontWeight: 'bold' }}>
-          🔄 변경 중: {origMonth} / {origType} → {fields['정산월']} / {fields['유형']}
+          🔄 변경 중: {displayOrigMonth} / {origType} → {fields['정산월'].replace(/\d{4}\.\s*/, '')} / {fields['유형']}
         </div>
       )}
 
@@ -64,22 +86,27 @@ function SortableItem({ item }) {
         </span>
         <span style={{ color: linkColor, fontWeight: 'bold' }}>{linkStatus}</span>
       </div>
+      
       <div className="card-meta" style={{ marginTop: 4, fontSize: 11, color: '#4a5568' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          📅 {visitDate || '미정'}
+        </span>
         <span>제출상태: {submitStatus}</span>
-        {xhsLink && (
-          <span>
-            <a 
-              href={xhsLink} 
-              target="_blank" 
-              rel="noreferrer"
-              style={{ color: '#3182ce', textDecoration: 'none' }}
-              onPointerDown={(e) => e.stopPropagation()} 
-            >
-              XHS 링크 보기
-            </a>
-          </span>
-        )}
       </div>
+      
+      {xhsLink && (
+        <div style={{ marginTop: 4, fontSize: 11 }}>
+          <a 
+            href={xhsLink} 
+            target="_blank" 
+            rel="noreferrer"
+            style={{ color: '#3182ce', textDecoration: 'none', fontWeight: 'bold' }}
+            onPointerDown={(e) => e.stopPropagation()} 
+          >
+            XHS 링크 보기
+          </a>
+        </div>
+      )}
     </div>
   );
 }
