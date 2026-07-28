@@ -28,7 +28,8 @@ function SortableItem({ item }) {
   const origMonth = fields['(원)정산월'];
   const origType = fields['(원)유형'];
   
-  const isModified = Boolean(origMonth !== fields['정산월'] || origType !== fields['유형']);
+  // A card is modified if its current state differs from the last loaded DB state
+  const isModified = Boolean(item._dbMonth && (item._dbMonth !== fields['정산월'] || item._dbType !== fields['유형']));
 
   // UI Formatting
   const displayOrigMonth = origMonth ? origMonth.replace(/\d{4}\.\s*/, '') : '';
@@ -217,6 +218,10 @@ export default function AdminBoardPage() {
       data.forEach(p => {
         if (!p.fields['(원)정산월']) p.fields['(원)정산월'] = p.fields['정산월'];
         if (!p.fields['(원)유형']) p.fields['(원)유형'] = p.fields['유형'];
+        
+        // Save the DB's current state so we can track UI drags against it
+        p._dbMonth = p.fields['정산월'];
+        p._dbType = p.fields['유형'];
       });
       setProgressData(data);
     } catch (e) {
@@ -239,9 +244,7 @@ export default function AdminBoardPage() {
   });
 
   const modifiedCount = storeProgressItems.filter(p => {
-    const origMonth = p.fields['(원)정산월'];
-    const origType = p.fields['(원)유형'];
-    return origMonth !== p.fields['정산월'] || origType !== p.fields['유형'];
+    return p._dbMonth && (p._dbMonth !== p.fields['정산월'] || p._dbType !== p.fields['유형']);
   }).length;
 
   const getNextMonths = (baseStr, count) => {
@@ -333,9 +336,7 @@ export default function AdminBoardPage() {
   const handleConfirm = async () => {
     const updates = [];
     storeProgressItems.forEach(p => {
-      const origMonth = p.fields['(원)정산월'];
-      const origType = p.fields['(원)유형'];
-      if (origMonth !== p.fields['정산월'] || origType !== p.fields['유형']) {
+      if (p._dbMonth && (p._dbMonth !== p.fields['정산월'] || p._dbType !== p.fields['유형'])) {
         const targetCampaign = storeCampaigns.find(c => c.fields['계약월'] === p.fields['정산월']);
         updates.push({
           id: p.id,
