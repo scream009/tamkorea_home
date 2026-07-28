@@ -881,6 +881,12 @@
 .dp-nudge-d b{color:#c4b5fd;font-weight:700}
 .dp-nudge-src{display:block;font-size:.7rem;color:#5b6480;margin-top:5px}
 .dp-nudge-btn{font-size:.82rem;padding:9px 15px}
+/* 달력 하단 안내 — 방문 인원 vs 실적 건수 구분 */
+.cal-note{display:flex;align-items:flex-start;gap:8px;margin-top:14px;padding:11px 14px;
+  border-radius:10px;background:rgba(148,163,184,.07);border:1px solid rgba(148,163,184,.16);
+  font-size:.8rem;line-height:1.6;color:var(--muted)}
+.cal-note b{color:#cbd5e1;font-weight:700}
+
 /* 협력사 링크용 — CPC 배너의 카카오 CTA 대체 */
 .cpc-ask{font-size:.8rem;font-weight:700;color:#c4b5fd;white-space:nowrap;
   padding:9px 15px;border:1px solid rgba(196,181,253,.3);border-radius:10px;

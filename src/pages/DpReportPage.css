@@ -1,4 +1,6 @@
 /* 따종디엔핑 월간 리포트 (DB 렌더링) — 정적 리포트(generate_report_v7.py)의 디자인 언어 이식 */
+/* 전역 레이아웃(body padding-top:80px = 내비 자리)이 이 페이지엔 불필요 */
+body:has(.dpr-page){padding-top:0!important;background:#0d0f1a}
 .dpr-page{
   --revu:#7434FF; --revu2:#9B70FF; --bg:#0d0f1a; --ts:#94a3b8;
   --glass:rgba(255,255,255,.03); --gb:rgba(255,255,255,.09);
@@ -34,7 +36,7 @@
 .dpr-sec{background:var(--glass);border:1px solid var(--gb);border-radius:20px;
   padding:26px 24px;margin-bottom:18px;backdrop-filter:blur(16px)}
 .dpr-sh{display:flex;align-items:center;gap:10px;margin-bottom:4px}
-.dpr-sh h2{font-size:1.15rem;font-weight:800;margin:0;letter-spacing:-.4px}
+.dpr-sh h2{font-size:1.15rem;font-weight:800;margin:0;letter-spacing:-.4px;color:#fff}
 .dpr-ic{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;flex-shrink:0;
   background:linear-gradient(135deg,var(--revu),var(--revu2));font-size:.95rem}
 .dpr-s-note{font-size:.78rem;color:var(--ts);margin:0 0 16px 42px}

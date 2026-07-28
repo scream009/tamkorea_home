@@ -679,6 +679,14 @@ export default function ClientSchedulePage() {
                   );
                 })}
               </div>
+              {/* 수치 오해 방지 — 달력의 인원 ≠ 실적 건수 (직영·협력사 공통) */}
+              <div className="cal-note">
+                <Info className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>
+                  달력에 표시되는 인원은 <b>방문 인원</b>입니다. 실적은
+                  <b> 샤오홍슈 / 따종디엔핑 건수</b>를 참고해 주세요.
+                </span>
+              </div>
             </div>
           </div>
         ) : (
