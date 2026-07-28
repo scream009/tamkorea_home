@@ -115,6 +115,25 @@ export default async function handler(req, res) {
       }
     }
 
+    // ── 정산월이 다른 실적 제거 ────────────────────────────────
+    // Airtable 의 '귀속 정산월' 링크가 여러 캠페인에 걸린 레코드가 많다(실측 636건).
+    // 링크만 믿으면 6월에 방문한 인플루언서가 6·7·8월 화면에 모두 나온다.
+    // 레코드에는 '정산월' 이 정확히 들어 있으므로 그것으로 거른다.
+    // 정산월이 비어 있으면(판단 불가) 기존대로 포함해 누락을 만들지 않는다.
+    const normMonth = (v) => String(v || '').replace(/\s/g, '');
+    const thisMonth = normMonth(month);
+    if (thisMonth) {
+      const before = allRecords.length;
+      allRecords = allRecords.filter((rec) => {
+        const sm = normMonth(rec.fields['정산월']);
+        return !sm || sm === thisMonth;
+      });
+      const dropped = before - allRecords.length;
+      if (dropped) {
+        console.log(`[client-schedule] ${campaignId} 정산월 불일치 ${dropped}건 제외 (${month})`);
+      }
+    }
+
     // 영상 이상(삭제/비공개) 판별 — 공백 무시('영상 이상' 표기도 인식)
     const isVideoIssue = (status) => (status || '').replace(/\s/g, '').includes('영상이상');
 
