@@ -43,9 +43,13 @@ export default async function handler(req, res) {
     } else {
       base = `{협력사}='${esc(partnerName)}'`;
     }
-    const formula = encodeURIComponent(
-      monthQ ? `AND(${base}, {계약월}='${esc(monthQ)}')` : base
-    );
+    // 공유표출 체크된 캠페인만 노출한다.
+    // 예전엔 '실적이 있으면 표시'로 추측했는데, 그러면 월초에 실적이 0이라
+    // 전부 숨겨지고(협력사가 열면 빈 화면), 진행 예정 매장과 안 하는 매장이
+    // 구분되지 않았다. 이제 담당자가 매월 명시적으로 체크한다.
+    const parts = [base, '{공유표출}'];
+    if (monthQ) parts.push(`{계약월}='${esc(monthQ)}'`);
+    const formula = encodeURIComponent(`AND(${parts.join(', ')})`);
     
     // 필드를 지정하지 않는다. 특정 필드만 요청하면 Airtable 스키마가 리네임될 때
     // UNKNOWN_FIELD_NAME 으로 500 이 난다 — 실제로 '인플_실적' 이 사라져 이 API 가

@@ -562,10 +562,9 @@ export default function ClientPartnerPage() {
               videoIssue: rec.videoIssue || [],
             },
           };
-        }).filter(c =>
-          c.scheduleItems.length > 0 || c.records.influencer.length > 0
-          || c.records.experience.length > 0 || c.records.press.length > 0
-        );
+        });
+        // 실적 유무로 거르지 않는다. 표시 여부는 Airtable '공유표출' 체크가 정하고
+        // API 가 이미 걸러서 준다. (실적으로 거르면 월초에 전부 사라졌다)
 
         setData({ campaigns: merged });
       } catch (err) {
