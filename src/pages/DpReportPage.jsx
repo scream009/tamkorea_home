@@ -17,6 +17,14 @@ import './DpReportPage.css';
 
 const KAKAO_URL = 'https://pf.kakao.com/_xkxhZzX';
 
+// 따종디엔핑 광고 상품 — 중문 그대로 두면 고객사가 못 읽는다
+const PRODUCT_KO = {
+  '推广通': 'CPC 검색광고',
+  '智选展位': '배너·추천 노출',
+  '品牌秀': '브랜드 쇼케이스',
+  '商户通': '상점 프로모션',
+};
+
 /**
  * 화이트라벨 — 협력사(웹플로우·제주에코·좋아좋아 …) 경유 링크에는
  * Tam Korea 브랜드와 우리 카카오 채널이 일절 노출되면 안 된다.
@@ -147,6 +155,22 @@ const CpcSection = ({ cpc, funnel, dominance, store }) => {
           style: budget ? {} : { fontSize: '.95rem', lineHeight: 1.35 } },
         { value: '1개', label: '활성 캠페인' },
       ]} />
+      {/* 광고비가 CPC 외 다른 상품으로도 나간다. 어디에 쓰였는지 그대로 보여준다. */}
+      {Object.keys(cpc.by_product || {}).length > 0 && (
+        <div className="dpr-foot-note" style={{ marginTop: 14 }}>
+          🧾 <b>어제 광고비 {r0(yst)}元의 사용처</b>{' '}
+          {Object.entries(cpc.by_product).map(([k, v], i, arr) => (
+            <span key={k}>
+              <b>{PRODUCT_KO[k] || k}</b> {Number(v).toLocaleString()}元{i < arr.length - 1 ? ' · ' : ''}
+            </span>
+          ))}
+          <br />
+          <span className="dpr-dim">
+            ※ 검색·목록 상단 노출을 만드는 것은 <b>{PRODUCT_KO['推广通']}</b>입니다.
+            다른 상품은 배너·브랜드 노출 영역에 쓰입니다.
+          </span>
+        </div>
+      )}
       <div className="dpr-foot-note" style={{ marginTop: 14 }}>💡 <b>{brand} CPC 기여도</b> — {contrib}</div>
       <CtaRow
         text={bal <= 0
@@ -273,20 +297,23 @@ const FunnelSection = ({ funnel }) => {
   // 클릭률은 같은 단위(노출 횟수 대비 클릭 횟수)로 계산한다.
   const viewPv = f.exposure_pv || view;
   const gb = !!f.groupbuy_on;
-  const mx = Math.max(view, clicks, 1);   // 클릭(PV)이 노출(UV)보다 클 수 있다
-  const w = (v) => Math.max(16, Math.min(100, Math.round(v / mx * 100)));
+  // 막대는 값에 비례시키지 않고 **단계를 나타내는 고정 역삼각형**으로 그린다.
+  // 비례로 그리면 노출이 압도적이라 뒤 단계가 전부 뭉개진다(최소폭 보정 탓에
+  // 클릭 974회와 방문 346명 막대가 비슷해 보였다). 실제 감소폭은 단계 사이의
+  // 전환율(%)이 정확히 보여주므로 정보 손실은 없다.
+  const FUNNEL_W = [100, 84, 68, 52, 36];
   const p1 = (a, b) => (b ? `${(a / b * 100).toFixed(1)}%` : '-');
   const ctr = f.ctr != null ? `${f.ctr}%` : p1(clicks, viewPv);
 
   const steps = [
-    { lab: '노출', sub: '曝光 · 목록/검색에 노출된 사람', n: `${num(view)}명`, ex: '얼마나 많은 잠재고객에게 노출됐나', g: 'linear-gradient(90deg,#7434FF,#9B70FF)', w: w(view) },
-    { lab: '클릭', sub: '点击 · 매장을 눌러 본 횟수', n: `${num(clicks)}회`, ex: '노출된 사람이 실제로 클릭한 횟수', g: 'linear-gradient(90deg,#6366f1,#818cf8)', w: w(clicks) },
-    { lab: '방문', sub: '访问 · 매장 페이지 순 방문자', n: `${num(visit)}명`, ex: '클릭해서 매장을 방문한 실제 인원', g: 'linear-gradient(90deg,#3b82f6,#60a5fa)', w: w(visit) },
-    { lab: '관심', sub: '意向 · 찜·전화·길찾기·团购조회', n: `${num(intent)}명`, ex: '메뉴·리뷰 보고 구매 의향을 표현', g: 'linear-gradient(90deg,#10b981,#34d399)', w: w(intent) },
+    { lab: '노출', sub: '曝光 · 목록/검색에 노출된 사람', n: `${num(view)}명`, ex: '얼마나 많은 잠재고객에게 노출됐나', g: 'linear-gradient(90deg,#7434FF,#9B70FF)', w: FUNNEL_W[0] },
+    { lab: '클릭', sub: '点击 · 매장을 눌러 본 횟수', n: `${num(clicks)}회`, ex: '노출된 사람이 실제로 클릭한 횟수', g: 'linear-gradient(90deg,#6366f1,#818cf8)', w: FUNNEL_W[1] },
+    { lab: '방문', sub: '访问 · 매장 페이지 순 방문자', n: `${num(visit)}명`, ex: '클릭해서 매장을 방문한 실제 인원', g: 'linear-gradient(90deg,#3b82f6,#60a5fa)', w: FUNNEL_W[2] },
+    { lab: '관심', sub: '意向 · 찜·전화·길찾기·团购조회', n: `${num(intent)}명`, ex: '메뉴·리뷰 보고 구매 의향을 표현', g: 'linear-gradient(90deg,#10b981,#34d399)', w: FUNNEL_W[3] },
     { lab: '구매', sub: '团购 · 실제 구매·검증',
       n: gb ? `${num(buy)}건` : '0건',
       ex: gb ? (buy > 0 ? '团购 검증 발생' : '团购 운영 매장 (당 집계기간 0건)') : '团购 미개설 → 매출 추적 불가',
-      g: 'linear-gradient(90deg,#ef4444,#f87171)', w: w(gb && buy > 0 ? buy : 1) },
+      g: 'linear-gradient(90deg,#ef4444,#f87171)', w: FUNNEL_W[4] },
   ];
   const convs = ['',
     `↓ 클릭률(노출 횟수→클릭 횟수) ${ctr}`,
