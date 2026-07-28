@@ -629,7 +629,16 @@ export default function ClientPartnerPage() {
              {/* 실적월 선택 — 협력사마다 계약월이 섞여 있어 월 구분이 필요하다 */}
              {months.length > 1 && (
                <div className="pt-month-bar">
-                 {months.map((m) => {
+                 {(() => {
+                   // 기준월 ±1개월만 노출한다(개별 고객사 화면과 동일).
+                   // 계약월 전체를 늘어놓으면 오래된 달까지 협력사에게 열리고,
+                   // 지금 봐야 할 달이 어느 것인지 흐려진다.
+                   const cur = monthParam ? (ymToLabel(monthParam) || monthParam)
+                                          : months[months.length - 1];
+                   const k = (v) => { const x = String(v).match(/(\d{4})\D+(\d{1,2})/); return x ? +x[1] * 12 + +x[2] : 0; };
+                   const ck = k(cur);
+                   return months.filter((m) => Math.abs(k(m) - ck) <= 1);
+                 })().map((m) => {
                    const cur = monthParam ? (ymToLabel(monthParam) || monthParam) : months[months.length - 1];
                    const active = m === cur;
                    return (
