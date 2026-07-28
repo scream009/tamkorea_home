@@ -533,6 +533,13 @@ export default function ClientPartnerPage() {
         const list = await listRes.json();
         setMonths(list.months || []);
 
+        // 서버가 조회 가능 기간 밖이라고 응답한 경우 (URL 을 직접 고쳐 넣은 상황)
+        if (list.outOfRange) {
+          setError(list.message || '조회 가능 기간이 아닙니다.');
+          setData({ campaigns: [] });
+          return;
+        }
+
         const camps = list.campaigns || [];
         if (camps.length === 0) { setData({ campaigns: [] }); return; }
 

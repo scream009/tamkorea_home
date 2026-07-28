@@ -32,7 +32,32 @@ export default async function handler(req, res) {
       return '';
     };
     const rawMonth = (req.query.month || '').trim();
-    const monthQ = rawMonth ? (ymToLabel(rawMonth) || rawMonth) : '';
+    let monthQ = rawMonth ? (ymToLabel(rawMonth) || rawMonth) : '';
+
+    // ── 조회 가능 기간 제한 ────────────────────────────────────
+    // 협력사 링크는 ?name=..&month=.. 조합이라 누구나 URL 을 고칠 수 있다.
+    // 화면 버튼만 ±1 로 줄여도 month=2401 같이 직접 넣으면 옛 실적이 다 열린다.
+    // 그래서 **서버가** 허용 범위를 정한다. 오래된 데이터는 값이 불완전해
+    // 화면이 깨질 수 있어 노출 자체를 막는 것이 목적이다.
+    const MONTHS_BACK = 2;      // 당월 포함 최근 3개월
+    const MONTHS_FWD = 1;       // 다음 달 계약은 미리 볼 수 있게
+    const now = new Date();
+    const nowK = now.getFullYear() * 12 + (now.getMonth() + 1);
+    const keyOf = (label) => {
+      const m = String(label || '').match(/(\d{4})\D+(\d{1,2})/);
+      return m ? Number(m[1]) * 12 + Number(m[2]) : 0;
+    };
+    const inRange = (label) => {
+      const k = keyOf(label);
+      return k > 0 && k >= nowK - MONTHS_BACK && k <= nowK + MONTHS_FWD;
+    };
+    if (monthQ && !inRange(monthQ)) {
+      return res.status(200).json({
+        partnerName, month: monthQ, months: [], campaigns: [],
+        outOfRange: true,
+        message: `조회 가능 기간이 아닙니다 (최근 ${MONTHS_BACK + 1}개월).`,
+      });
+    }
     const esc = (v) => String(v).replace(/'/g, "\'");
 
     // 필터: 협력사 컬럼이 일치하는 레코드 검색
@@ -104,6 +129,7 @@ export default async function handler(req, res) {
         off = d.offset || null;
       } while (off);
       months = [...new Set(all.map(x => x.fields['계약월']).filter(Boolean))]
+        .filter(inRange)
         .sort((a, b) => {
           const p = (v) => { const m = String(v).match(/(\d{4})\D+(\d{1,2})/); return m ? +m[1] * 12 + +m[2] : 0; };
           return p(a) - p(b);
