@@ -55,7 +55,7 @@ export default async function handler(req, res) {
     if (req.method === 'GET' && action === 'progress') {
       if (!client) return res.status(400).json({ error: 'Client required' });
       
-      const formula = `FIND('${client}', {고객명})`;
+      const formula = `FIND('${client}', {매장코드})`;
       const records = await fetchAll('진행_DB_OLD', formula, null);
       
       // Send raw records back so frontend has all fields (links, status, original fields, etc)
