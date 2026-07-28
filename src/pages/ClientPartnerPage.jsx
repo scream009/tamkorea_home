@@ -17,29 +17,9 @@ import {
 import './ClientSchedulePage.css'; 
 import './ClientReportPage.css';
 
-const TOKEN   = import.meta.env.VITE_AT_TOKEN;
-const BASE_ID = 'appdsAV2ewZWCkyIa';
-const AT_BASE = `https://api.airtable.com/v0/${BASE_ID}`;
-const CAMPAIGN_TB = encodeURIComponent('Campaign_DB');
-const RECORD_TB   = encodeURIComponent('진행_DB_OLD');
-
-async function atFetch(url) {
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${TOKEN}` } });
-  if (!res.ok) { const t = await res.text(); throw new Error(t); }
-  return res.json();
-}
-
-async function fetchAllRecords(baseUrl) {
-  let records = [];
-  let offset = null;
-  do {
-    const url = offset ? `${baseUrl}&offset=${offset}` : baseUrl;
-    const data = await atFetch(url);
-    records = records.concat(data.records || []);
-    offset = data.offset || null;
-  } while (offset);
-  return records;
-}
+// Airtable 을 브라우저에서 직접 부르지 않는다.
+// 협력사에게 공유하는 링크라 PAT 토큰이 그대로 노출됐었다(Bearer 헤더 확인).
+// 모든 조회는 서버 API(/api/client-partner, /api/client-schedule) 를 거친다.
 
 const TypeBadge = ({ type }) => {
   const map = { influencer: ['📣 인플루언서','infl'], experience: ['🍽️ 체험단','exp'], press: ['📰 기자단','press'] };
@@ -541,127 +521,61 @@ export default function ClientPartnerPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        let formula;
-        if (partnerName === '에코') {
-          // 표시는 '에코'로 통일하되 대상은 **제주에코만**. 서울에코는 별개 협력사다.
-          formula = encodeURIComponent("{협력사}='제주에코'");
-        } else {
-          formula = encodeURIComponent(`{협력사}='${partnerName}'`);
-        }
-        const campUrl = `${AT_BASE}/${CAMPAIGN_TB}?filterByFormula=${formula}`;
-        const campData = await fetchAllRecords(campUrl);
+        // ⚠️ 예전엔 브라우저에서 Airtable 을 직접 호출했다. 그러면 PAT 토큰이
+        //    협력사에게 그대로 노출된다(개발자도구에서 Bearer 헤더가 보였다).
+        //    개별 고객사 링크(/schedule)처럼 **서버 API 경유**로 바꾼다.
+        //    상세는 검증된 /api/client-schedule 을 캠페인별로 재사용한다.
+        const listRes = await fetch(
+          `/api/client-partner?name=${encodeURIComponent(partnerNameParam || partnerName)}`
+          + (monthParam ? `&month=${encodeURIComponent(monthParam)}` : '')
+        );
+        if (!listRes.ok) throw new Error(`협력사 조회 실패 (${listRes.status})`);
+        const list = await listRes.json();
+        setMonths(list.months || []);
 
-        if (campData.length === 0) {
-          setData({ campaigns: [] });
-          return;
-        }
+        const camps = list.campaigns || [];
+        if (camps.length === 0) { setData({ campaigns: [] }); return; }
 
-        // 계약월 목록을 먼저 뽑아 화면에서 고를 수 있게 한다.
-        const monthOf = (r) => r.fields['계약월'] || '';
-        const mkey = (v) => { const m = String(v).match(/(\d{4})\D+(\d{1,2})/); return m ? +m[1] * 12 + +m[2] : 0; };
-        const allMonths = [...new Set(campData.map(monthOf).filter(Boolean))].sort((a, b) => mkey(a) - mkey(b));
-        setMonths(allMonths);
-        // URL 이 2607 이든 "2026. 7월" 이든 모두 받아준다
-        const wanted = monthParam ? (ymToLabel(monthParam) || monthParam) : '';
-        const picked = (wanted && allMonths.includes(wanted))
-          ? wanted : (allMonths[allMonths.length - 1] || '');
-        const scoped = picked ? campData.filter(r => monthOf(r) === picked) : campData;
+        // 캠페인 수가 협력사당 3~7곳이라 병렬 호출로 충분히 빠르다.
+        const details = await Promise.all(camps.map(async (c) => {
+          try {
+            const r = await fetch(`/api/client-schedule?campaignId=${encodeURIComponent(c.id)}`);
+            if (!r.ok) return null;
+            return await r.json();
+          } catch { return null; }
+        }));
 
-        const campaignMap = {};
-        let allLinkedRecIds = [];
-
-        scoped.forEach(rec => {
-          const cf = rec.fields;
-          const campId = rec.id;
-          const brandName = Array.isArray(cf['고객사명']) ? cf['고객사명'][0] : (cf['고객사명'] || cf['계약명'] || '알수없음');
-          const branchName = Array.isArray(cf['지점명']) ? cf['지점명'][0] : (cf['지점명'] || '');
-          const month = cf['계약월'] || '';
-
-          const stats = {
-            infl_done: cf['인플_방문'] || cf['인플_실적'] || cf['# 인플_실적'] || 0,
-            exp_done:  cf['체험_방문'] || cf['체험_실적'] || cf['# 세팅_실적'] || cf['# 체험_실적'] || 0,
-            press_done: cf['기자_실적'] || cf['# 기자_실적'] || 0,
+        const merged = camps.map((c, i) => {
+          const d = details[i] || {};
+          const rec = d.records || {};
+          return {
+            id: c.id,
+            brandName: c.brandName || d.brandName || '',
+            branchName: c.branchName || d.branchName || '',
+            month: c.month || d.month || '',
+            stats: d.stats || c.stats || {},
+            scheduleItems: d.scheduleItems || [],
+            records: {
+              influencer: rec.influencer || [],
+              experience: rec.experience || [],
+              press: rec.press || [],
+              videoIssue: rec.videoIssue || [],
+            },
           };
+        }).filter(c =>
+          c.scheduleItems.length > 0 || c.records.influencer.length > 0
+          || c.records.experience.length > 0 || c.records.press.length > 0
+        );
 
-          campaignMap[campId] = { id: campId, brandName, branchName, month, stats, records: { influencer: [], experience: [], press: [] }, scheduleItems: [] };
-          
-          if (cf['진행_DB_OLD']) {
-            cf['진행_DB_OLD'].forEach(id => { allLinkedRecIds.push({ recId: id, campId }); });
-          }
-        });
-
-        let allRecords = [];
-        if (allLinkedRecIds.length > 0) {
-          const chunkSize = 30;
-          for (let i = 0; i < allLinkedRecIds.length; i += chunkSize) {
-            const chunk = allLinkedRecIds.slice(i, i + chunkSize);
-            const orParts = chunk.map(item => `RECORD_ID()='${item.recId}'`).join(',');
-            const chunkUrl = `${AT_BASE}/${RECORD_TB}?filterByFormula=${encodeURIComponent(`OR(${orParts})`)}`;
-            const chunkRecs = await fetchAllRecords(chunkUrl);
-            chunkRecs.forEach(r => {
-              const mapping = chunk.find(m => m.recId === r.id);
-              if (mapping) r.campId = mapping.campId;
-              allRecords.push(r);
-            });
-          }
-        }
-
-        const teamGroups = {};
-        
-        allRecords.forEach((rec) => {
-          const f = rec.fields;
-          const camp = campaignMap[rec.campId];
-          const type = f['유형'] || '';
-          
-          const displayId = (Array.isArray(f['XHS_ID']) ? f['XHS_ID'][0] : f['XHS_ID']) || 
-                            (Array.isArray(f['WC_ID']) ? f['WC_ID'][0] : f['WC_ID']) || 
-                            (Array.isArray(f['INFL_ID']) ? f['INFL_ID'][0] : f['INFL_ID']) || '대기중';
-
-          const xhsResult = f['XHS_Result'] || '';
-          const dpResult  = f['DP_Result']  || '';
-          const status    = f['진행상태']   || '진행전';
-          const reserveDate = f['예약일시'] || null;
-          const totalPax = f['# 총인원'] || f['총인원'] || f['총 인원'] || '';
-          
-          const teamId = (f['예약팀명_DB'] && f['예약팀명_DB'].length > 0) ? f['예약팀명_DB'][0] : rec.id;
-          const item = { id: rec.id, displayId, xhsResult, dpResult, status, type, reserveDate, totalPax };
-
-          if (reserveDate) {
-            if (!teamGroups[teamId]) {
-              teamGroups[teamId] = { ...item, campId: rec.campId, displayIds: displayId !== '대기중' && displayId ? [displayId] : [], xhsResults: xhsResult ? [xhsResult] : [] };
-            } else {
-              if (displayId !== '대기중' && displayId) teamGroups[teamId].displayIds.push(displayId);
-              if (xhsResult) teamGroups[teamId].xhsResults.push(xhsResult);
-            }
-          }
-
-          const isExcluded = status.includes('취소') || status.includes('노쇼');
-          if (!isExcluded) {
-            if (type.includes('인플')) camp.records.influencer.push(item);
-            else if (type.includes('기자')) camp.records.press.push(item);
-            else camp.records.experience.push(item);
-          }
-        });
-
-        // 분배 완료된 스케줄 그룹들을 각 캠페인에 할당
-        Object.values(teamGroups).forEach(group => {
-          campaignMap[group.campId].scheduleItems.push(group);
-        });
-
-        Object.values(campaignMap).forEach(camp => {
-          camp.scheduleItems.sort((a, b) => new Date(a.reserveDate) - new Date(b.reserveDate));
-          camp.records.influencer.forEach((r, i) => r.seq = i + 1);
-          camp.records.experience.forEach((r, i) => r.seq = i + 1);
-          camp.records.press.forEach((r, i) => r.seq = i + 1);
-        });
-
-        setData({ campaigns: Object.values(campaignMap).filter(c => c.scheduleItems.length > 0 || c.records.influencer.length > 0 || c.records.experience.length > 0 || c.records.press.length > 0) });
-      } catch (e) {
-        setError(e.message);
+        setData({ campaigns: merged });
+      } catch (err) {
+        console.error(err);
+        setError(err.message || '데이터를 불러오지 못했습니다.');
       } finally {
         setLoading(false);
       }
     };
+
     fetchData();
   }, [partnerName, monthParam]);
 
