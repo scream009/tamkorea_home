@@ -1,0 +1,172 @@
+.admin-board-container {
+  padding: 20px;
+  background-color: #f8fafc;
+  min-height: 100vh;
+  font-family: 'Inter', 'Pretendard', sans-serif;
+}
+
+.admin-board-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+  background: white;
+  padding: 16px 24px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.admin-client-select {
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 15px;
+  outline: none;
+}
+
+.admin-btn-load {
+  padding: 8px 16px;
+  background-color: #4a5568;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.admin-btn-confirm {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.admin-btn-confirm:disabled {
+  background-color: #cbd5e0 !important;
+  color: white;
+  box-shadow: none !important;
+  cursor: not-allowed;
+}
+
+/* Swimlane Layout (Grid) */
+.swimlane-board {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  overflow-x: auto;
+}
+
+.swimlane-row {
+  display: grid;
+  /* 1 Fixed Label Column + 3 Month Columns */
+  grid-template-columns: 80px minmax(320px, 1fr) minmax(320px, 1fr) minmax(320px, 1fr);
+  gap: 16px;
+}
+
+.swimlane-type-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 18px;
+  color: #2d3748;
+  border-right: 2px solid #e2e8f0;
+  padding-right: 16px;
+}
+
+.swimlane-type-label.empty {
+  border: none;
+}
+
+.swimlane-month-header {
+  font-size: 18px;
+  font-weight: bold;
+  color: #1a202c;
+  text-align: center;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+/* Droppable Cells */
+.swimlane-cell {
+  background: #f7fafc;
+  border: 2px dashed #cbd5e0;
+  border-radius: 8px;
+  padding: 12px;
+  min-height: 200px;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.swimlane-cell.is-over {
+  background: #ebf4ff;
+  border-color: #3182ce;
+}
+
+.cell-stats {
+  font-size: 12px;
+  text-align: center;
+  margin-bottom: 12px;
+  background: white;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.cell-items-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+/* Card Design */
+.admin-item-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 14px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  cursor: grab;
+  touch-action: none; /* Required for mobile dnd */
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.admin-item-card:hover {
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+}
+
+.admin-item-card.dragging {
+  opacity: 0.5;
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2);
+  cursor: grabbing;
+}
+
+.admin-item-card.modified {
+  border: 2px solid #3182ce;
+  background-color: #ebf8ff;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+}
+
+.card-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}

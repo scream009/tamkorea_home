@@ -22,6 +22,7 @@ import RecruiterSchedulePage from './pages/RecruiterSchedulePage';
 import SignupCreatorPage from './pages/auth/SignupCreatorPage';
 import SignupBusinessPage from './pages/auth/SignupBusinessPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import AdminBoardPage from './pages/AdminBoardPage';
 import './App.css';
 
 function App() {
@@ -39,6 +40,7 @@ function App() {
           <Route path="/manager" element={<RecruiterSchedulePage />} />
           <Route path="/partner" element={<ClientPartnerPage />} />
           <Route path="/admin" element={<AdminDashboardPage />} />
+          <Route path="/admin/board" element={<AdminBoardPage />} />
 
           {/* 일반 페이지: Layout (헤더/푸터) 포함 */}
           <Route path="/*" element={
