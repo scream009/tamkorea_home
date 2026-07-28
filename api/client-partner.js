@@ -21,13 +21,30 @@ export default async function handler(req, res) {
     const BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
     const CAMP_TB = encodeURIComponent('Campaign_DB');
 
+    // 계약월 필터 — ?month=2026. 7월 처럼 넘기면 그 달 실적만.
+    // 협력사마다 계약월이 섞여 있어 월 구분 없이 보면 지난달 건까지 함께 나온다.
+    // ?month=2607 (YYMM) 또는 "2026. 7월" 둘 다 허용
+    const ymToLabel = (v) => {
+      const d = String(v || '').replace(/\D/g, '');
+      if (d.length === 4) return `20${d.slice(0, 2)}. ${Number(d.slice(2))}월`;
+      if (d.length === 6) return `${d.slice(0, 4)}. ${Number(d.slice(4))}월`;
+      return '';
+    };
+    const rawMonth = (req.query.month || '').trim();
+    const monthQ = rawMonth ? (ymToLabel(rawMonth) || rawMonth) : '';
+    const esc = (v) => String(v).replace(/'/g, "\'");
+
     // 필터: 협력사 컬럼이 일치하는 레코드 검색
-    let formula;
+    let base;
     if (partnerName === '에코') {
-      formula = encodeURIComponent("OR(FIND('에코', {협력사}) > 0, FIND('에코', {협력사명}) > 0)");
+      // 표시는 '에코'로 통일하되 대상은 제주에코만 (서울에코는 별개 협력사)
+      base = "{협력사}='제주에코'";
     } else {
-      formula = encodeURIComponent(`{협력사}='${partnerName}'`);
+      base = `{협력사}='${esc(partnerName)}'`;
     }
+    const formula = encodeURIComponent(
+      monthQ ? `AND(${base}, {계약월}='${esc(monthQ)}')` : base
+    );
     
     // 가져올 필드 목록 지정 (트래픽 최적화)
     const fields = ['계약명', '고객사명', '지점명', '계약월', '인플_요청', '인플_실적', '체험단_요청', '체험_실적', '기자단_요청', '기자_실적'];
@@ -65,7 +82,32 @@ export default async function handler(req, res) {
       };
     });
 
-    return res.status(200).json({ partnerName, campaigns });
+    // 화면에서 월을 고를 수 있도록 이 협력사가 가진 계약월 전체를 함께 준다.
+    // (월 필터가 걸려 있으면 결과에 그 달만 남으므로 별도로 한 번 더 조회한다)
+    let months = [];
+    try {
+      const mUrl = `https://api.airtable.com/v0/${BASE_ID}/${CAMP_TB}`
+        + `?filterByFormula=${encodeURIComponent(base)}`
+        + `&fields[]=${encodeURIComponent('계약월')}&pageSize=100`;
+      let off = null, all = [];
+      do {
+        const r = await fetch(off ? `${mUrl}&offset=${off}` : mUrl,
+                              { headers: { Authorization: `Bearer ${TOKEN}` } });
+        if (!r.ok) break;
+        const d = await r.json();
+        all = all.concat(d.records || []);
+        off = d.offset || null;
+      } while (off);
+      months = [...new Set(all.map(x => x.fields['계약월']).filter(Boolean))]
+        .sort((a, b) => {
+          const p = (v) => { const m = String(v).match(/(\d{4})\D+(\d{1,2})/); return m ? +m[1] * 12 + +m[2] : 0; };
+          return p(a) - p(b);
+        });
+    } catch (e) {
+      console.error('[client-partner] months lookup failed:', e.message);
+    }
+
+    return res.status(200).json({ partnerName, month: monthQ || null, months, campaigns });
     
   } catch (error) {
     console.error('Partner API Error:', error);

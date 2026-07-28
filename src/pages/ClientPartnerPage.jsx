@@ -506,14 +506,30 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
   );
 };
 
+// 계약월 표기 변환 — URL 은 짧게(2607), Airtable 값은 "2026. 7월"
+const ymToLabel = (v) => {
+  const d = String(v || '').replace(/\D/g, '');
+  if (d.length === 4) return `20${d.slice(0, 2)}. ${Number(d.slice(2))}월`;   // 2607
+  if (d.length === 6) return `${d.slice(0, 4)}. ${Number(d.slice(4))}월`;     // 202607
+  return '';
+};
+const labelToYm = (m) => {
+  const x = String(m || '').match(/(\d{4})\D+(\d{1,2})/);
+  return x ? x[1].slice(2) + String(x[2]).padStart(2, '0') : '';
+};
+
 export default function ClientPartnerPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const partnerNameParam = searchParams.get('name') || '';
+  // 계약월 필터 — ?name=웹플로우&month=2607  (YYMM, 짧게)
+  // 월 구분이 없으면 지난달 캠페인까지 한 화면에 섞여 나온다.
+  const monthParam = (searchParams.get('month') || '').trim();
   const partnerName = (partnerNameParam && partnerNameParam.includes('에코')) ? '에코' : partnerNameParam;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
+  const [months, setMonths] = useState([]);
 
   useEffect(() => {
     if (!partnerName) {
@@ -527,7 +543,8 @@ export default function ClientPartnerPage() {
         setLoading(true);
         let formula;
         if (partnerName === '에코') {
-          formula = encodeURIComponent("OR(FIND('에코', {협력사}) > 0, FIND('에코', {협력사명}) > 0)");
+          // 표시는 '에코'로 통일하되 대상은 **제주에코만**. 서울에코는 별개 협력사다.
+          formula = encodeURIComponent("{협력사}='제주에코'");
         } else {
           formula = encodeURIComponent(`{협력사}='${partnerName}'`);
         }
@@ -539,10 +556,21 @@ export default function ClientPartnerPage() {
           return;
         }
 
+        // 계약월 목록을 먼저 뽑아 화면에서 고를 수 있게 한다.
+        const monthOf = (r) => r.fields['계약월'] || '';
+        const mkey = (v) => { const m = String(v).match(/(\d{4})\D+(\d{1,2})/); return m ? +m[1] * 12 + +m[2] : 0; };
+        const allMonths = [...new Set(campData.map(monthOf).filter(Boolean))].sort((a, b) => mkey(a) - mkey(b));
+        setMonths(allMonths);
+        // URL 이 2607 이든 "2026. 7월" 이든 모두 받아준다
+        const wanted = monthParam ? (ymToLabel(monthParam) || monthParam) : '';
+        const picked = (wanted && allMonths.includes(wanted))
+          ? wanted : (allMonths[allMonths.length - 1] || '');
+        const scoped = picked ? campData.filter(r => monthOf(r) === picked) : campData;
+
         const campaignMap = {};
         let allLinkedRecIds = [];
 
-        campData.forEach(rec => {
+        scoped.forEach(rec => {
           const cf = rec.fields;
           const campId = rec.id;
           const brandName = Array.isArray(cf['고객사명']) ? cf['고객사명'][0] : (cf['고객사명'] || cf['계약명'] || '알수없음');
@@ -635,7 +663,7 @@ export default function ClientPartnerPage() {
       }
     };
     fetchData();
-  }, [partnerName]);
+  }, [partnerName, monthParam]);
 
   // 파트너사에 따른 브라우저 탭 및 파비콘 동적 변경 (화이트라벨링)
   useEffect(() => {
@@ -684,6 +712,26 @@ export default function ClientPartnerPage() {
              <p style={{ color: '#9ca3af', fontSize: '0.95rem', margin: 0, textAlign: 'center', width: '100%' }}>
                통합 캠페인 성과 대시보드
              </p>
+
+             {/* 실적월 선택 — 협력사마다 계약월이 섞여 있어 월 구분이 필요하다 */}
+             {months.length > 1 && (
+               <div className="pt-month-bar">
+                 {months.map((m) => {
+                   const cur = monthParam ? (ymToLabel(monthParam) || monthParam) : months[months.length - 1];
+                   const active = m === cur;
+                   return (
+                     <button
+                       key={m}
+                       type="button"
+                       className={`pt-month${active ? ' active' : ''}`}
+                       onClick={() => setSearchParams({ name: partnerNameParam, month: labelToYm(m) })}
+                     >
+                       {m}
+                     </button>
+                   );
+                 })}
+               </div>
+             )}
           </div>
           {data.campaigns.map(camp => (
             <CampaignDashboardBlock key={camp.id} camp={camp} partnerName={partnerName} />

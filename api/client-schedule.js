@@ -321,11 +321,46 @@ export default async function handler(req, res) {
       }
     }
 
+    // ── 같은 매장의 인접 실적월 ────────────────────────────────
+    // 링크는 계약월 레코드 하나에 고정돼 있어 다른 달 실적을 볼 수 없다.
+    // 같은 매장의 전월/다음달 레코드 ID를 함께 주어 화면에서 전환하게 한다.
+    // (요청대로 ±1개월만 — 전체 목록을 열어주면 오래된 달까지 노출된다)
+    let siblings = { prev: null, next: null };
+    if (brandName) {
+      try {
+        const esc = (s) => String(s).replace(/"/g, '\\"');
+        const conds = [`FIND("${esc(brandName)}", {고객사명} & "") > 0`];
+        if (branchName) conds.push(`FIND("${esc(branchName)}", {지점명} & "") > 0`);
+        const f = encodeURIComponent(`AND(${conds.join(',')})`);
+        const u = `https://api.airtable.com/v0/${BASE_ID}/${CAMPAIGN_TABLE}`
+          + `?filterByFormula=${f}&pageSize=100&fields%5B%5D=${encodeURIComponent('계약월')}`;
+        const all = await fetchAllRecords(u);
+        // "2026. 7월" → 정렬 키
+        const key = (v) => {
+          const m = String(v || '').match(/(\d{4})\D+(\d{1,2})/);
+          return m ? Number(m[1]) * 12 + Number(m[2]) : 0;
+        };
+        const cur = key(month);
+        const list = all
+          .map((r) => ({ id: r.id, month: r.fields['계약월'] || '', k: key(r.fields['계약월']) }))
+          .filter((x) => x.k > 0);
+        const prev = list.filter((x) => x.k === cur - 1)[0];
+        const next = list.filter((x) => x.k === cur + 1)[0];
+        siblings = {
+          prev: prev ? { id: prev.id, month: prev.month } : null,
+          next: next ? { id: next.id, month: next.month } : null,
+        };
+      } catch (e) {
+        console.error('[client-schedule] siblings lookup failed:', e.message);
+      }
+    }
+
     return res.status(200).json({
       campaignName,
       brandName,
       branchName,
       month,
+      siblings,
       partnerName,
       stats,
       scheduleItems: groupedScheduleItems,

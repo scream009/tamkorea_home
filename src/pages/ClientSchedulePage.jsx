@@ -65,6 +65,12 @@ const getTypeClass = (type) => {
 // Tam Korea 카카오 채널 — 충전·서비스 신청 CTA
 const KAKAO_URL = 'https://pf.kakao.com/_xkxhZzX';
 
+// "2026. 7월" → "7월" (버튼이 길어지지 않게)
+const shortMonth = (m) => {
+  const x = String(m || '').match(/\d{4}\D+(\d{1,2})/);
+  return x ? `${Number(x[1])}월` : (m || '');
+};
+
 const CpcBanner = ({ cpc, isPartner }) => {
   if (!cpc) return null;
   const cls = cpc.status; // green | amber | red
@@ -479,6 +485,7 @@ export default function ClientSchedulePage() {
   const cpcInfo  = data?.cpc || null;
   const dpReport = data?.dpReport || null;
   const isDpClient = data?.dpClient === true;
+  const sib = data?.siblings || { prev: null, next: null };
 
   const hasInfl  = records?.influencer?.length > 0;
   const hasExp   = records?.experience?.length > 0;
@@ -535,8 +542,22 @@ export default function ClientSchedulePage() {
     <div className="schedule-page">
       {/* 1. Header Section */}
       <header className="schedule-header flex flex-col items-center mb-10">
-        <div className="inline-block bg-[var(--purple-dim)] text-[var(--purple-light)] px-5 py-2 rounded-full text-base font-bold mb-4 tracking-wider shadow-[0_0_15px_rgba(168,85,247,0.3)] border border-[var(--purple-light)]/20">
-          {month}
+        {/* 실적월 전환 — 링크는 계약월 1개에 고정돼 있어 다른 달을 볼 수 없었다.
+            같은 매장의 전월/다음달 레코드로 이동한다(±1개월만). */}
+        <div className="mo-nav">
+          {sib.prev ? (
+            <a className="mo-btn" href={`/schedule?campaignId=${sib.prev.id}`}>
+              ‹ {shortMonth(sib.prev.month)} 실적
+            </a>
+          ) : <span className="mo-btn is-off">‹ 이전 없음</span>}
+
+          <div className="mo-cur">{month}</div>
+
+          {sib.next ? (
+            <a className="mo-btn" href={`/schedule?campaignId=${sib.next.id}`}>
+              {shortMonth(sib.next.month)} 실적 ›
+            </a>
+          ) : <span className="mo-btn is-off">다음 없음 ›</span>}
         </div>
         <h1 className="schedule-title text-center">{displayName}</h1>
         <p className="schedule-subtitle text-center mt-2">캠페인 현황 대시보드</p>
