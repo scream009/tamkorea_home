@@ -341,9 +341,15 @@ export default async function handler(req, res) {
           return m ? Number(m[1]) * 12 + Number(m[2]) : 0;
         };
         const cur = key(month);
+        // 조회 가능 기간 — 협력사 화면과 같은 규칙(전월·당월·다음달).
+        // 이 제한이 없으면 7월 링크에서 6월 → 5월 → 4월 로 계속 거슬러 올라가
+        // 오래된 실적이 전부 열린다. 링크를 준 달만 보여주는 것이 목적이다.
+        const now = new Date();
+        const nowK = now.getFullYear() * 12 + (now.getMonth() + 1);
+        const allowed = (k) => k >= nowK - 1 && k <= nowK + 1;
         const list = all
           .map((r) => ({ id: r.id, month: r.fields['계약월'] || '', k: key(r.fields['계약월']) }))
-          .filter((x) => x.k > 0);
+          .filter((x) => x.k > 0 && allowed(x.k));
         const prev = list.filter((x) => x.k === cur - 1)[0];
         const next = list.filter((x) => x.k === cur + 1)[0];
         siblings = {

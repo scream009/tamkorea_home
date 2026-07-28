@@ -37,7 +37,10 @@ const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 // 개별 고객사 대시보드 블록 컴포넌트
 const CampaignDashboardBlock = ({ camp, partnerName }) => {
   const [viewMode, setViewMode] = useState('calendar');
-  const [currentDate, setCurrentDate] = useState(new Date());
+  // 달력 기준월 = 그 캠페인의 계약월. 오늘 날짜로 잡으면 6월 실적을 골라도
+  // 달력은 7월이 떠서 실적이 없는 것처럼 보인다.
+  const [currentDate, setCurrentDate] = useState(() => monthToDate(camp.month));
+  useEffect(() => { setCurrentDate(monthToDate(camp.month)); }, [camp.month]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const modalCloseBtnRef = useRef(null);
 
@@ -498,6 +501,11 @@ const ymToLabel = (v) => {
   if (d.length === 4) return `20${d.slice(0, 2)}. ${Number(d.slice(2))}월`;   // 2607
   if (d.length === 6) return `${d.slice(0, 4)}. ${Number(d.slice(4))}월`;     // 202607
   return '';
+};
+// "2026. 7월" → Date(2026-07-01). 값이 없으면 오늘.
+const monthToDate = (label) => {
+  const x = String(label || '').match(/(\d{4})\D+(\d{1,2})/);
+  return x ? new Date(Number(x[1]), Number(x[2]) - 1, 1) : new Date();
 };
 const labelToYm = (m) => {
   const x = String(m || '').match(/(\d{4})\D+(\d{1,2})/);

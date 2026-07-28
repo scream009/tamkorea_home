@@ -214,6 +214,7 @@ export default function ClientSchedulePage() {
   const [viewMode, setViewMode] = useState('calendar'); // 'calendar' | 'list'
   
   // 캘린더 기준 월 (초기값: 현재)
+  // 달력 기준월 = 이 링크의 계약월(data.month). 데이터 로드 후 맞춘다.
   const [currentDate, setCurrentDate] = useState(new Date());
 
   // 피드백 상태
@@ -486,6 +487,14 @@ export default function ClientSchedulePage() {
   const dpReport = data?.dpReport || null;
   const isDpClient = data?.dpClient === true;
   const sib = data?.siblings || { prev: null, next: null };
+
+  // 달력 기준월을 이 링크의 계약월에 맞춘다.
+  // 오늘 날짜로 두면 8월에 7월 링크를 열었을 때 8월 달력이 떠서
+  // 실적이 없는 것처럼 보인다.
+  useEffect(() => {
+    const x = String(data?.month || '').match(/(\d{4})\D+(\d{1,2})/);
+    if (x) setCurrentDate(new Date(Number(x[1]), Number(x[2]) - 1, 1));
+  }, [data?.month]);
 
   const hasInfl  = records?.influencer?.length > 0;
   const hasExp   = records?.experience?.length > 0;
