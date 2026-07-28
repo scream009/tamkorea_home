@@ -1,12 +1,12 @@
 {
     "rewrites": [
-        {
-            "source": "/api/(.*)",
-            "destination": "/api/$1"
-        },
-        {
-            "source": "/(.*)",
-            "destination": "/index.html"
-        }
+        { "source": "/api/(.*)", "destination": "/api/$1" },
+        { "source": "/schedule", "destination": "/client.html" },
+        { "source": "/dp-report", "destination": "/client.html" },
+        { "source": "/report", "destination": "/client.html" },
+        { "source": "/partner", "destination": "/client.html" },
+        { "source": "/manager", "destination": "/client.html" },
+        { "source": "/clients", "destination": "/client.html" },
+        { "source": "/(.*)", "destination": "/index.html" }
     ]
 }

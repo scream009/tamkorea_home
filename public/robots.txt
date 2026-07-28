@@ -6,6 +6,7 @@ Disallow: /clients
 Disallow: /submit
 Disallow: /report
 Disallow: /schedule
+Disallow: /dp-report
 Disallow: /manager
 Disallow: /partner
 Disallow: /admin
