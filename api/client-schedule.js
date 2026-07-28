@@ -289,13 +289,24 @@ export default async function handler(req, res) {
     }
 
     // ── 따종 고객사 여부 (매장 단위) ──────────────────────────────
-    // 이번 달 리포트가 아직 없어도(월초·과거월 링크) 같은 매장의 다른 계약월에
-    // DP 데이터가 하나라도 있으면 '우리 운영 매장'이다. 넛지 오노출 방지용.
-    let dpClient = false;
-    if (!dpReport && (brandName || branchName)) {
+    // 판정 기준 2가지 (OR):
+    //   ① DP-office_ID  — 따종 상인포털 계정을 우리가 보유 = 입점·운영 중.
+    //                     리포트를 아직 한 번도 안 돌린 신규 매장도 잡힌다.
+    //   ② DP_기간       — 월간 리포트를 돌린 적이 있다.
+    //                     (office_ID가 비어 있는데 리포트는 있는 매장이 실제로 존재)
+    // 이번 달 리포트가 없어도(월초·과거월 링크) 같은 매장의 다른 계약월을 보고 판단한다.
+    // ※ office_ID/PASS는 자격증명이므로 존재 여부만 쓰고 값은 절대 응답에 담지 않는다.
+    const OFFICE_ID_FIELD = 'DP-office_ID (from CS_DB)';
+    const officeIdHere = cf[OFFICE_ID_FIELD];
+    const hasOfficeId = Array.isArray(officeIdHere)
+      ? officeIdHere.some((v) => String(v || '').trim() !== '')
+      : String(officeIdHere || '').trim() !== '';
+
+    let dpClient = !!dpReport || hasOfficeId;
+    if (!dpClient && (brandName || branchName)) {
       try {
         const esc = (s) => String(s).replace(/"/g, '\\"');
-        const conds = ['{DP_기간} != ""'];
+        const conds = [`OR({DP_기간} != "", ARRAYJOIN({${OFFICE_ID_FIELD}}) != "")`];
         if (brandName)  conds.push(`FIND("${esc(brandName)}",  {고객사명} & "") > 0`);
         if (branchName) conds.push(`FIND("${esc(branchName)}", {지점명}   & "") > 0`);
         const formula = encodeURIComponent(`AND(${conds.join(',')})`);
@@ -321,7 +332,7 @@ export default async function handler(req, res) {
       records: { influencer, experience, press, videoIssue },
       cpc,
       dpReport,
-      dpClient: dpReport ? true : dpClient,
+      dpClient,   // boolean 만 — 자격증명 값은 절대 내보내지 않는다
     });
 
   } catch (err) {
