@@ -61,8 +61,8 @@
   background: white;
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border: 2px solid #a0aec0; /* Stronger section border */
 }
 
 .type-header {
@@ -125,8 +125,8 @@
 
 /* Droppable Cells */
 .swimlane-cell {
-  background: #f8fafc;
-  border: 2px dashed #a0aec0; /* Slightly darker dashed border */
+  background: #edf2f7; /* Darker background to make white cards pop */
+  border: 2px dashed #718096; /* Much stronger dashed line */
   border-radius: 8px;
   padding: 12px;
   min-height: 200px;
@@ -137,7 +137,8 @@
 
 .swimlane-cell.is-over {
   background: #ebf4ff;
-  border-color: #3182ce;
+  border-color: #2b6cb0;
+  border-style: solid;
 }
 
 .cell-stats {
@@ -172,18 +173,18 @@
 /* Card Design */
 .admin-item-card {
   background: white;
-  border: 1px solid #cbd5e0; /* Darker border for better visibility */
+  border: 1px solid #718096; /* Very distinct border */
   border-radius: 10px;
   padding: 14px 16px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
   cursor: grab;
   touch-action: none; /* Required for mobile dnd */
   transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
 }
 
 .admin-item-card:hover {
-  border-color: #a0aec0;
-  box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+  border-color: #4a5568;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.15);
   transform: translateY(-2px);
 }
 

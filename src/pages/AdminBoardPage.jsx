@@ -196,17 +196,29 @@ export default function AdminBoardPage() {
           const parse = m => m ? parseInt(m[1]) * 100 + parseInt(m[2]) : 0;
           return parse(matchA) - parse(matchB);
         });
-        setAllMonths(monthList);
         
-        // Default to 2 months ago
+        // Filter out months older than 2 months ago
         const now = new Date();
         now.setMonth(now.getMonth() - 2);
-        const targetMonthStr = `${now.getFullYear()}. ${now.getMonth() + 1}월`;
+        const targetYear = now.getFullYear();
+        const targetMonth = now.getMonth() + 1;
+        const cutoffValue = targetYear * 100 + targetMonth;
+
+        const filteredMonths = monthList.filter(m => {
+          const match = m.match(/(\d{4})\.\s*(\d+)월/);
+          if (!match) return true;
+          const val = parseInt(match[1]) * 100 + parseInt(match[2]);
+          return val >= cutoffValue;
+        });
+
+        setAllMonths(filteredMonths);
         
-        if (monthList.includes(targetMonthStr)) {
+        const targetMonthStr = `${targetYear}. ${targetMonth}월`;
+        
+        if (filteredMonths.includes(targetMonthStr)) {
           setSelectedBaseMonth(targetMonthStr);
-        } else if (monthList.length > 0) {
-          setSelectedBaseMonth(monthList[0]);
+        } else if (filteredMonths.length > 0) {
+          setSelectedBaseMonth(filteredMonths[0]);
         }
         
       } catch (e) {
