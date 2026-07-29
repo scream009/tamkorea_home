@@ -35,6 +35,9 @@ const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
 const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 
 // 개별 고객사 대시보드 블록 컴포넌트
+// partnerName 은 화면에 찍는 이름이므로 **부모의 shownName** 을 받아야 한다.
+// URL 의 ?name= 을 그대로 넘기면 토큰 링크(?t=)에서는 빈 값이라 리스트 뷰
+// 보고서 머리말이 비어버린다. (화이트라벨: 여기 찍히는 건 협력사 이름이다)
 const CampaignDashboardBlock = ({ camp, partnerName }) => {
   const [viewMode, setViewMode] = useState('calendar');
   // 달력 기준월 = 그 캠페인의 계약월. 오늘 날짜로 잡으면 6월 실적을 골라도
@@ -358,7 +361,7 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
                   <div className="gravity-logo-accent" style={{ margin: 0 }}>
-                    {shownName}<br />
+                    {partnerName}<br />
                     <span style={{ fontSize:'0.65rem', color:'#9ca3af' }}>PERFORMANCE REPORT</span>
                   </div>
                 </div>
@@ -597,7 +600,7 @@ export default function ClientPartnerPage() {
             },
           };
         });
-        // 실적 유무로 거르지 않는다. 표시 여부는 Airtable '공유표출' 체크가 정하고
+        // 실적 유무로 거르지 않는다. 표시 여부는 Airtable '협력사포함' 체크가 정하고
         // API 가 이미 걸러서 준다. (실적으로 거르면 월초에 전부 사라졌다)
 
         setData({ campaigns: merged, partnerName: list.partnerName || partnerName });
@@ -693,7 +696,7 @@ export default function ClientPartnerPage() {
              )}
           </div>
           {data.campaigns.map(camp => (
-            <CampaignDashboardBlock key={camp.id} camp={camp} partnerName={partnerName} />
+            <CampaignDashboardBlock key={camp.id} camp={camp} partnerName={shownName} />
           ))}
         </div>
       )}
