@@ -129,8 +129,8 @@ function DroppableGroup({ id, items, targetCount }) {
   return (
     <div className={`swimlane-cell ${isOver ? 'is-over' : ''}`} ref={setNodeRef}>
       <div className="cell-stats">
-        <span style={{fontWeight:'bold', color:'var(--revu-purple)'}}>🎯 {targetCount}</span> | 
-        <span style={{fontWeight:'bold', color:'#3182ce'}}> 👤 {visitedCount}</span> | 
+        <span style={{fontWeight:'bold', color:'var(--revu-purple)'}}>🎯 {targetCount}</span>
+        <span style={{fontWeight:'bold', color:'#3182ce'}}> 👤 {visitedCount}</span>
         <span style={{fontWeight:'bold', color:'#38a169'}}> 🔗 {uploadCount}</span>
       </div>
       <SortableContext id={id} items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
