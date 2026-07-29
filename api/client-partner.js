@@ -1,3 +1,10 @@
+// 협력사 묶음에 이 고객사를 넣을지 정하는 체크박스 필드명.
+// '공유표출' → '협력사포함' 으로 리네임하는 중이라 둘 다 받는다.
+// 배포와 Airtable 리네임은 동시에 일어날 수 없어서, 한쪽만 바뀐 순간에도
+// 협력사 링크가 죽지 않아야 한다. 리네임이 끝나고 한동안 지나면 위 하나만 남긴다.
+const SHOW_FIELDS = ['협력사포함', '공유표출'];
+let showField = null;   // 함수 인스턴스가 살아 있는 동안 재사용
+
 export default async function handler(req, res) {
   // CORS setup
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -100,31 +107,43 @@ export default async function handler(req, res) {
     } else {
       base = `{협력사}='${esc(partnerName)}'`;
     }
-    // 공유표출 체크된 캠페인만 노출한다.
+    // 체크된 캠페인만 노출한다.
     // 예전엔 '실적이 있으면 표시'로 추측했는데, 그러면 월초에 실적이 0이라
     // 전부 숨겨지고(협력사가 열면 빈 화면), 진행 예정 매장과 안 하는 매장이
     // 구분되지 않았다. 이제 담당자가 매월 명시적으로 체크한다.
-    const parts = [base, '{공유표출}'];
-    if (monthQ) parts.push(`{계약월}='${esc(monthQ)}'`);
-    const formula = encodeURIComponent(`AND(${parts.join(', ')})`);
-    
+    //
     // 필드를 지정하지 않는다. 특정 필드만 요청하면 Airtable 스키마가 리네임될 때
     // UNKNOWN_FIELD_NAME 으로 500 이 난다 — 실제로 '인플_실적' 이 사라져 이 API 가
     // 계속 500 이었다(프론트가 Airtable 을 직접 불러서 드러나지 않았을 뿐).
     // client-schedule.js 도 같은 이유로 전체 필드를 받는다.
-    const url = `https://api.airtable.com/v0/${BASE_ID}/${CAMP_TB}?filterByFormula=${formula}&pageSize=100`;
-    
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${TOKEN}` }
-    });
+    const askAirtable = async (field) => {
+      const parts = [base, `{${field}}`];
+      if (monthQ) parts.push(`{계약월}='${esc(monthQ)}'`);
+      const formula = encodeURIComponent(`AND(${parts.join(', ')})`);
+      const url = `https://api.airtable.com/v0/${BASE_ID}/${CAMP_TB}`
+        + `?filterByFormula=${formula}&pageSize=100`;
+      return fetch(url, { headers: { Authorization: `Bearer ${TOKEN}` } });
+    };
 
-    if (!response.ok) {
-      const errText = await response.text();
+    // 아는 이름이 있으면 그것부터, 없으면 순서대로 시도한다.
+    const order = showField
+      ? [showField, ...SHOW_FIELDS.filter((f) => f !== showField)]
+      : SHOW_FIELDS;
+    let response = null, errText = '';
+    for (const field of order) {
+      const r = await askAirtable(field);
+      if (r.ok) { showField = field; response = r; break; }
+      errText = await r.text();
+      // 그 이름의 필드가 없을 때만 다음 이름으로 넘어간다.
+      // 권한·네트워크 오류까지 넘기면 진짜 문제를 못 보고 지나친다.
+      if (!errText.includes('UNKNOWN_FIELD_NAME')) break;
+    }
+    if (!response) {
       throw new Error(`Airtable error: ${errText}`);
     }
 
     const data = await response.json();
-    
+
     const campaigns = data.records.map(rec => {
       const cf = rec.fields;
       return {
