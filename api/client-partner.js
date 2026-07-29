@@ -32,6 +32,14 @@ export default async function handler(req, res) {
     const BASE_ID0 = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
     const CAMP_TB0 = encodeURIComponent('Campaign_DB');
 
+    // "2026. 7월" → 정렬 가능한 정수. 월 비교는 여러 곳에서 쓴다.
+    const keyOf = (label) => {
+      const m = String(label || '').match(/(\d{4})\D+(\d{1,2})/);
+      return m ? Number(m[1]) * 12 + Number(m[2]) : 0;
+    };
+    const now0 = new Date();
+    const nowKey = now0.getFullYear() * 12 + (now0.getMonth() + 1);
+
     // ── 토큰 방식 (?t=...) ────────────────────────────────────
     // 협력사·계약월이 토큰에 묶여 있어 URL 을 고칠 수 없다.
     // 토큰은 Campaign_DB '협력사토큰' 에 있으므로 별도 매핑 테이블이 필요 없다.
@@ -43,16 +51,45 @@ export default async function handler(req, res) {
       if (!/^[A-Za-z0-9]{6,32}$/.test(shareToken)) {
         return res.status(400).json({ error: '잘못된 링크입니다.' });
       }
+      // maxRecords=1 로 아무거나 하나 잡으면 안 된다.
+      // 같은 토큰이 여러 달에 걸린 협력사가 실제로 있었고(좋아좋아 1~8월 21행),
+      // 그 경우 어느 레코드가 잡히는지는 Airtable 내부 순서라 보장되지 않는다.
+      // 1월 레코드가 잡히면 조회 가능 기간을 벗어나 링크가 통째로 죽는다.
+      // 전부 받아서 **결정적으로** 고른다.
       const tf = encodeURIComponent(`{협력사토큰}='${shareToken.replace(/'/g, "\'")}'`);
       const tu = `https://api.airtable.com/v0/${BASE_ID0}/${CAMP_TB0}`
-        + `?filterByFormula=${tf}&maxRecords=1`;
+        + `?filterByFormula=${tf}&fields%5B%5D=${encodeURIComponent('협력사')}`
+        + `&fields%5B%5D=${encodeURIComponent('계약월')}&pageSize=100`;
       const tr = await fetch(tu, { headers: { Authorization: `Bearer ${TOKEN}` } });
       if (!tr.ok) throw new Error(`Airtable error: ${await tr.text()}`);
       const td = await tr.json();
-      const rec0 = (td.records || [])[0];
-      if (!rec0) {
+      const hits = td.records || [];
+      if (!hits.length) {
         return res.status(404).json({ error: '유효하지 않은 링크입니다.' });
       }
+      const one = (v) => (Array.isArray(v) ? v[0] : v) || '';
+
+      // 한 토큰이 서로 다른 협력사에 걸려 있으면 누구 것인지 단정할 수 없다.
+      // 잘못 고르면 남의 고객사 목록이 통째로 열린다 — 열지 않고 막는다.
+      const partners = [...new Set(hits.map((r) => one(r.fields['협력사'])).filter(Boolean))];
+      if (partners.length > 1) {
+        return res.status(409).json({
+          error: '링크가 여러 협력사에 걸려 있어 열 수 없습니다. 담당자에게 문의해 주세요.',
+        });
+      }
+
+      // 기준월: 조회 가능 기간(전월·당월·다음달) 안에서 오늘에 가장 가까운 달.
+      // 범위 안에 하나도 없으면 가장 최근 달을 준다 — 아래 범위 검사가
+      // "조회 가능 기간이 아닙니다" 로 이유를 정확히 알려준다.
+      const months = [...new Set(hits.map((r) => r.fields['계약월']).filter(Boolean))];
+      const inWindow = months.filter((m) => {
+        const k = keyOf(m);
+        return k > 0 && k >= nowKey - 1 && k <= nowKey + 1;
+      });
+      const pick = (inWindow.length ? inWindow : months)
+        .sort((a, b) => Math.abs(keyOf(a) - nowKey) - Math.abs(keyOf(b) - nowKey)
+                     || keyOf(b) - keyOf(a))[0];
+      const rec0 = { fields: { 협력사: partners[0], 계약월: pick || '' } };
       const pf = rec0.fields['협력사'];
       partnerName = Array.isArray(pf) ? pf[0] : pf;
       tokenMonth = rec0.fields['계약월'] || '';
@@ -90,15 +127,10 @@ export default async function handler(req, res) {
     // 화면이 깨질 수 있고, 협력사에게 오래된 실적을 열어줄 이유도 없다.
     const MONTHS_BACK = 1;
     const MONTHS_FWD = 1;
-    const now = new Date();
-    const nowK = now.getFullYear() * 12 + (now.getMonth() + 1);
-    const keyOf = (label) => {
-      const m = String(label || '').match(/(\d{4})\D+(\d{1,2})/);
-      return m ? Number(m[1]) * 12 + Number(m[2]) : 0;
-    };
+    // keyOf·nowKey 는 토큰 해석에서도 쓰므로 위에서 한 번만 정의한다.
     const inRange = (label) => {
       const k = keyOf(label);
-      return k > 0 && k >= nowK - MONTHS_BACK && k <= nowK + MONTHS_FWD;
+      return k > 0 && k >= nowKey - MONTHS_BACK && k <= nowKey + MONTHS_FWD;
     };
     if (monthQ && !inRange(monthQ)) {
       return res.status(200).json({
