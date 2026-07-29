@@ -197,7 +197,17 @@ export default function AdminBoardPage() {
           return parse(matchA) - parse(matchB);
         });
         setAllMonths(monthList);
-        if (monthList.length > 0) setSelectedBaseMonth(monthList[0]);
+        
+        // Default to 2 months ago
+        const now = new Date();
+        now.setMonth(now.getMonth() - 2);
+        const targetMonthStr = `${now.getFullYear()}. ${now.getMonth() + 1}월`;
+        
+        if (monthList.includes(targetMonthStr)) {
+          setSelectedBaseMonth(targetMonthStr);
+        } else if (monthList.length > 0) {
+          setSelectedBaseMonth(monthList[0]);
+        }
         
       } catch (e) {
         console.error(e);
@@ -374,7 +384,7 @@ export default function AdminBoardPage() {
   return (
     <div className="admin-board-container">
       <div className="admin-board-header">
-        <h2 style={{margin: 0, color: 'var(--revu-purple)'}}>Gravity Admin Board</h2>
+        <h2 style={{margin: 0, color: 'var(--revu-purple)'}}>탐코리아 실적 조정 보드</h2>
         
         <select 
           className="admin-client-select"
