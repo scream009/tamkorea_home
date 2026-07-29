@@ -2,8 +2,19 @@
 // '공유표출' → '협력사포함' 으로 리네임하는 중이라 둘 다 받는다.
 // 배포와 Airtable 리네임은 동시에 일어날 수 없어서, 한쪽만 바뀐 순간에도
 // 협력사 링크가 죽지 않아야 한다. 리네임이 끝나고 한동안 지나면 위 하나만 남긴다.
-const SHOW_FIELDS = ['협력사포함', '공유표출'];
+// 지금 Airtable 에 실제로 있는 이름을 앞에 둔다 — 평소엔 첫 번째로 성공해서
+// 헛된 왕복이 없고, 리네임된 순간에만 두 번째로 넘어간다.
+const SHOW_FIELDS = ['공유표출', '협력사포함'];
 let showField = null;   // 함수 인스턴스가 살아 있는 동안 재사용
+
+// filterByFormula 에 없는 필드를 쓰면 Airtable 은 UNKNOWN_FIELD_NAME 이 아니라
+// INVALID_FILTER_BY_FORMULA + "Unknown field names: <이름>" 을 준다.
+// UNKNOWN_FIELD_NAME 만 보고 있다가 협력사 링크를 전부 죽인 적이 있다.
+// 방금 시도한 이름이 메시지에 들어 있을 때만 넘어간다 — 다른 이유로 깨진
+// 수식까지 삼키면 진짜 문제를 못 보고 지나친다.
+const fieldMissing = (errText, field) =>
+  errText.includes('UNKNOWN_FIELD_NAME')
+  || (errText.includes('INVALID_FILTER_BY_FORMULA') && errText.includes(field));
 
 export default async function handler(req, res) {
   // CORS setup
@@ -134,9 +145,7 @@ export default async function handler(req, res) {
       const r = await askAirtable(field);
       if (r.ok) { showField = field; response = r; break; }
       errText = await r.text();
-      // 그 이름의 필드가 없을 때만 다음 이름으로 넘어간다.
-      // 권한·네트워크 오류까지 넘기면 진짜 문제를 못 보고 지나친다.
-      if (!errText.includes('UNKNOWN_FIELD_NAME')) break;
+      if (!fieldMissing(errText, field)) break;
     }
     if (!response) {
       throw new Error(`Airtable error: ${errText}`);
