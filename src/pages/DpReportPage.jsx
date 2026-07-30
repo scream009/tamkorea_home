@@ -479,26 +479,44 @@ const ReviewSection = ({ reviews }) => {
         </div>
       ))}
 
-      <div className="dpr-subh">⚠️ 사장님이 꼭 대응해야 할 악성리뷰</div>
-      {(r.neg || []).length > 0 ? (r.neg).map((n, i) => (
+      <div className="dpr-subh">⚠️ 사장님이 꼭 대응해야 할 中差评 (★3.5 이하)</div>
+      {(r.neg || []).length > 0 ? (r.neg).map((n, i) => {
+        const sev = Number(n.star) > 0 && Number(n.star) <= 3;
+        // ★3.5 인데 내용에 불만이 없는 리뷰까지 '악성'이라 부르고 사과 답글을 붙이면
+        // 사장님이 놀라고 답글도 어색해진다(호평에 사과한 적이 있다).
+        // reply_type 이 없는 예전 데이터는 별점으로 갈음한다.
+        const listening = n.reply_type ? n.reply_type === 'listening' : !sev;
+        return (
         <div className="dpr-rev neg" key={i}>
           <div className="dpr-rh">
-            <Stars v={n.star} low={Number(n.star) > 0 && Number(n.star) <= 3} />
+            <Stars v={n.star} low={sev} />
             <span className="dpr-who">{n.author}</span>
-            <span className="dpr-tn">악성{n.star ? ` ★${+Number(n.star).toFixed(1)}` : ''}</span>
+            <span className="dpr-tn">
+              {listening ? '낮은 별점' : '악성'}{n.star ? ` ★${+Number(n.star).toFixed(1)}` : ''}
+            </span>
           </div>
           <div className="dpr-cn-o"><span className="dpr-lab">[중국어 원문]</span>{n.cn}</div>
           <div className="dpr-ko-t"><span className="dpr-lab">[한글 번역]</span>{n.ko}</div>
+          {listening && (
+            <div className="dpr-foot-note">
+              별점은 낮지만 내용에 뚜렷한 불만이 없습니다. 말로 하지 않은 아쉬움이 있을 수 있어
+              {' '}<b>사과 대신 확인·감사</b>로 대응합니다.
+            </div>
+          )}
           {(n.reply_cn || n.reply_ko) && (
             <div className="dpr-reply">
-              <div className="dpr-rl">✍️ {brand}가 달 수 있는 정중한 답글 (사과·해명·보상)</div>
+              <div className="dpr-rl">
+                ✍️ {brand}가 달 수 있는 {listening ? '답글 (감사·아쉬운 점 확인)'
+                                                  : '정중한 답글 (사과·해명·보상)'}
+              </div>
               {n.reply_cn && <div className="dpr-rc">🇨🇳 {n.reply_cn}</div>}
               {n.reply_ko && <div className="dpr-rk">🇰🇷 {n.reply_ko}</div>}
             </div>
           )}
         </div>
-      )) : (
-        <div className="dpr-act-note">이번 기간 신규 악성리뷰가 없습니다.</div>
+      );
+      }) : (
+        <div className="dpr-act-note">이번 기간 신규 中差评(★3.5 이하)가 없습니다.</div>
       )}
 
       <div className="dpr-act-note">
