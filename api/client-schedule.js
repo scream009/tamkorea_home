@@ -286,12 +286,47 @@ export default async function handler(req, res) {
       };
     }
 
+    // ── CPT(유료 입점) 상태 ────────────────────────────────────
+    // CS_DB 가 마스터, Campaign_DB 는 lookup. 매장 단위 계약이라 계약월마다
+    // 복사하지 않는다. lookup 이라 값이 배열로 온다.
+    // 만료되면 따종이 유입 데이터를 아예 안 준다(소급 조회도 안 된다).
+    // 그래서 '왜 숫자가 없는지'를 설명하려면 이 값이 필요하다.
+    const one = (v) => (Array.isArray(v) ? v[0] : v) ?? null;
+    const cptExpire = one(cf['DP_CPT_만료일 (from CS_DB)']);
+    const cptState = one(cf['DP_CPT_상태 (from CS_DB)']);
+    let cpt = null;
+    if (cptExpire || cptState) {
+      let daysLeft = null;
+      if (cptExpire) {
+        const t = Date.parse(`${String(cptExpire).slice(0, 10)}T00:00:00Z`);
+        if (!Number.isNaN(t)) {
+          const today = Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`);
+          daysLeft = Math.round((t - today) / 86400000);
+        }
+      }
+      // 상태값이 비어 있어도 날짜만으로 판단할 수 있어야 한다.
+      // 담당자가 만료일만 채우고 상태를 안 고르는 경우가 실제로 생긴다.
+      const expired = daysLeft != null && daysLeft < 0;
+      cpt = {
+        expire: cptExpire ? String(cptExpire).slice(0, 10) : null,
+        state: cptState || null,
+        daysLeft,
+        expired: expired || /만료/.test(String(cptState || '')) && !/임박/.test(String(cptState || '')),
+        pending: /개통대기/.test(String(cptState || '')),
+        // 60일 이내면 갱신 안내를 띄운다. 계약 갱신은 즉시 처리되지 않고,
+        // 만료되면 그 기간 데이터가 영영 복구되지 않아 미리 알려야 한다.
+        soon: daysLeft != null && daysLeft >= 0 && daysLeft <= 60,
+        checked: one(cf['DP_CPT_확인일 (from CS_DB)']) || null,
+      };
+    }
+
     let dpReport = null;
     if (cf['DP_기간']) {
       let detail = null;
       try { detail = cf['DP_리포트JSON'] ? JSON.parse(cf['DP_리포트JSON']) : null; } catch (e) { detail = null; }
       const storeCode = cf['DP_매장코드'] || '';
       dpReport = {
+        cpt,
         storeCode,
         url: storeCode ? `/reports/dp_${storeCode}.html` : null,
         period: String(cf['DP_기간']).replace(/~/, ' ~ '),
@@ -391,6 +426,7 @@ export default async function handler(req, res) {
       scheduleItems: groupedScheduleItems,
       records: { influencer, experience, press, videoIssue },
       cpc,
+      cpt,        // 달력 화면도 쓸 수 있게 최상위에도 둔다(리포트를 한 번도 안 돌린 매장 포함)
       dpReport,
       dpClient,   // boolean 만 — 자격증명 값은 절대 내보내지 않는다
     });

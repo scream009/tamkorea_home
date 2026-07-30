@@ -290,17 +290,68 @@ const DominanceSection = ({ dominance, funnel, days, period }) => {
 };
 
 // ── 퍼널 ───────────────────────────────────────────────────────────
+const fmtDate = (d) => {
+  const m = String(d || '').match(/(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[1]}년 ${+m[2]}월 ${+m[3]}일` : String(d || '');
+};
+
 // 플랫폼이 유입 데이터를 안 주는 매장 안내.
 // 0 을 띄우면 '성과가 없었다'로 읽힌다 — 사실이 아니므로 사유를 그대로 쓴다.
-const TrafficUnavailable = () => (
-  <div className="dpr-act-note" style={{ lineHeight: 1.85 }}>
-    📊 <b>이 매장은 따종디엔핑에서 유입 데이터(노출·클릭·방문)를 제공하지 않습니다.</b><br />
-    상인 페이지의 데이터 대시보드에도 방문자·조회수 항목이 표시되지 않는 상태로,{' '}
-    <b>성과가 0이라는 뜻이 아니라 집계 자체가 열려 있지 않다는 뜻</b>입니다.<br />
-    플랫폼에 데이터 권한 개통을 요청해 두었으며, 열리는 즉시 다음 리포트부터 포함됩니다.<br />
-    그동안은 아래 <b>리뷰 여론 분석</b>으로 매장 상태를 확인해 주세요 — 리뷰는 정상적으로 수집되고 있습니다.
-  </div>
-);
+// CPT(유료 입점) 만료가 원인이면 그 사실을 밝힌다. 원인을 숨기면 사장님은
+// 우리 수집이 부실한 줄 알고, 갱신하면 해결된다는 것도 모른다.
+const TrafficUnavailable = ({ cpt }) => {
+  const { brand } = useBrand();
+  return (
+    <div className="dpr-act-note" style={{ lineHeight: 1.85 }}>
+      {cpt?.expired ? (
+        <>
+          📊 <b>유료 입점(CPT) 기간이 종료되어 유입 데이터가 집계되지 않았습니다.</b><br />
+          {cpt.expire && <>계약 종료일: <b>{fmtDate(cpt.expire)}</b><br /></>}
+          <b>성과가 0이라는 뜻이 아니라, 플랫폼이 집계를 중단한 상태</b>입니다.
+          노출·클릭·방문 수치는 상인 페이지에서도 조회되지 않습니다.
+        </>
+      ) : cpt?.pending ? (
+        <>
+          📊 <b>유료 입점(CPT) 개통 처리가 진행 중이라 유입 데이터가 아직 집계되지 않습니다.</b><br />
+          {cpt.expire && <>등록된 계약 기간: <b>{fmtDate(cpt.expire)}</b>까지<br /></>}
+          플랫폼 개통이 완료되는 즉시 집계가 시작되며, 다음 리포트부터 포함됩니다.
+        </>
+      ) : (
+        <>
+          📊 <b>이 매장은 따종디엔핑에서 유입 데이터(노출·클릭·방문)를 제공하지 않습니다.</b><br />
+          상인 페이지의 데이터 대시보드에도 방문자·조회수 항목이 표시되지 않는 상태로,{' '}
+          <b>성과가 0이라는 뜻이 아니라 집계 자체가 열려 있지 않다는 뜻</b>입니다.<br />
+          플랫폼에 데이터 권한 개통을 요청해 두었습니다.
+        </>
+      )}
+      {cpt?.expired && (
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.12)' }}>
+          ⚠️ <b>중단 기간의 데이터는 갱신 후에도 소급 조회되지 않습니다.</b>{' '}
+          갱신 시점부터 다시 집계됩니다. 유입 지표를 이어서 보시려면 {brand} 담당자에게
+          갱신을 요청해 주세요.
+        </div>
+      )}
+      <div style={{ marginTop: 12 }}>
+        그동안은 아래 <b>리뷰 여론 분석</b>으로 매장 상태를 확인해 주세요 — 리뷰는 정상적으로 수집되고 있습니다.
+      </div>
+    </div>
+  );
+};
+
+// 아직 유효하지만 곧 끝나는 계약 — 만료되면 그 기간 데이터가 영영 사라지므로
+// 데이터가 정상인 동안에도 미리 알린다.
+const CptExpirySoon = ({ cpt }) => {
+  const { brand } = useBrand();
+  if (!cpt?.soon || cpt.expired || cpt.pending) return null;
+  return (
+    <div className="dpr-act-note" style={{ lineHeight: 1.8, marginBottom: 18 }}>
+      ⏳ <b>유료 입점(CPT) 기간이 {fmtDate(cpt.expire)}에 종료됩니다</b>
+      {cpt.daysLeft != null && <> (D-{cpt.daysLeft})</>}.<br />
+      종료되면 노출·클릭·방문 집계가 중단되고, <b>중단 기간은 갱신 후에도 소급 조회되지 않습니다.</b>{' '}
+      리포트를 이어서 받으시려면 만료 전에 {brand} 담당자에게 갱신을 요청해 주세요.
+    </div>
+  );
+};
 
 const FunnelSection = ({ funnel }) => {
   const f = funnel || {};
@@ -652,6 +703,10 @@ export default function DpReportPage() {
   // (정상 매장은 기간이 항상 채워진다) 같은 상황으로 본다.
   const trafficNA = detail.traffic_unavailable === true
     || (!funnel?.exposure && !String(period || '').replace(/[-~\s]/g, ''));
+  // CPT 상태는 Airtable(CS_DB) 마스터가 원본 — API lookup 으로 온다.
+  // 봇을 다시 돌리지 않아도 반영되도록 응답값을 우선하고, 리포트 JSON 에
+  // 박혀 있는 값은 오프라인·구버전 대비 폴백으로만 쓴다.
+  const cpt = data?.dpReport?.cpt || data?.cpt || detail.cpt || null;
 
   return (
     <BrandCtx.Provider value={{ brand, isPartner }}>
@@ -700,8 +755,17 @@ export default function DpReportPage() {
         )}
 
         <Section icon="🔻" title="유입 → 전환 퍼널 (노출·클릭·방문·관심·구매)"
-                 note={trafficNA ? '플랫폼 데이터 미제공 매장' : '经营参谋 실측 · 최근 30일(월간) · 노출·방문·관심=사람수, 클릭=횟수'}>
-          {trafficNA ? <TrafficUnavailable /> : <FunnelSection funnel={funnel} />}
+                 note={trafficNA
+                   ? (cpt?.expired ? '유료 입점(CPT) 종료로 집계 중단'
+                      : cpt?.pending ? '유료 입점(CPT) 개통 처리 중'
+                      : '플랫폼 데이터 미제공 매장')
+                   : '经营参谋 실측 · 최근 30일(월간) · 노출·방문·관심=사람수, 클릭=횟수'}>
+          {trafficNA ? <TrafficUnavailable cpt={cpt} /> : (
+            <>
+              <CptExpirySoon cpt={cpt} />
+              <FunnelSection funnel={funnel} />
+            </>
+          )}
         </Section>
 
         <Section icon="🎁" title="团购(공동구매) — 노출·매출의 핵심 지렛대" note="따종디엔핑 할인 딜 상품 · 노출 가점 정책">
