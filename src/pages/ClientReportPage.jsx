@@ -36,6 +36,28 @@ async function fetchLinkedRecords(ids) {
   return all;
 }
 
+// '귀속 정산월' 링크가 비어도 실적을 찾는다.
+// Campaign_DB '계약명' 은 고객사명+지점명을 **공백 없이** 붙이는데,
+// 진행_DB_OLD '입력 정산월' 은 CS_DB 매장명(= '몽그레 월정리점') 기반이다.
+// 매장명에 공백이 있으면 두 문자열이 영원히 달라, 링크를 걸어주는
+// 오토메이션이 exact match 에 실패한다 → 실적이 DB 에 있는데도 화면에서 사라진다.
+// 문자열에 정산월이 들어 있어 다른 달을 끌어올 염려는 없다.
+async function fetchByCampaignName(campaignName) {
+  const key = String(campaignName || '').replace(/\s/g, '');
+  if (!key) return [];
+  const fields = ['유형','XHS_ID','WC_ID','INFL_ID','XHS_Result','DP_Result','DY_Result','진행상태','Shoot_ID'];
+  const fieldQ = fields.map(f => `fields[]=${encodeURIComponent(f)}`).join('&');
+  const expr = `SUBSTITUTE({입력 정산월}, " ", "") = '${key}'`;
+  const url = `${AT_BASE}/${PROG_TB}?filterByFormula=${encodeURIComponent(expr)}&pageSize=100&${fieldQ}`;
+  let all = [], offset = null;
+  do {
+    const data = await atGet(offset ? `${url}&offset=${offset}` : url);
+    all = all.concat(data.records || []);
+    offset = data.offset || null;
+  } while (offset);
+  return all;
+}
+
 /* ── 상수 ──────────────────────────────────────── */
 // 영상 이상 섹션 내 하위 그룹 순서 (유형 구분 표시용)
 const VIDEO_ISSUE_GROUPS = ['influencer', 'experience', 'press'];
@@ -140,7 +162,15 @@ const ClientReportPage = () => {
         };
 
         // ── 2. 진행_DB_OLD 실적 레코드 ───────────────
+        // 링크로 먼저 찾고, 링크 누락분은 계약명으로 보정한다(위 주석 참고).
         const rawRecs = await fetchLinkedRecords(linkedIds);
+        try {
+          const seen = new Set(rawRecs.map(r => r.id));
+          const extra = (await fetchByCampaignName(campaignName)).filter(r => !seen.has(r.id));
+          if (extra.length) rawRecs.push(...extra);
+        } catch {
+          // 보정 실패는 무시 — 링크로 찾은 실적은 그대로 보여준다
+        }
 
         const influencer = [], experience = [], press = [], videoIssue = [];
         rawRecs.forEach(rec => {

@@ -87,6 +87,34 @@ export default async function handler(req, res) {
       }
     }
 
+    // ── 2.2 링크 누락 보정 ('귀속 정산월' 이 비어도 예약을 찾는다) ────
+    // Campaign_DB '계약명' = 고객사명 + 지점명 을 **공백 없이** 붙인 formula.
+    // 진행_DB_OLD '입력 정산월' = CS_DB 매장명(= '몽그레 월정리점') 기반.
+    // 매장명에 공백이 있으면 두 문자열이 영원히 달라, 링크를 걸어주는
+    // 오토메이션이 exact match 에 실패한다(실측: 누락 21건이 전부 이 경우).
+    // 그러면 예약이 DB 에 있는데도 고객사 달력에서 사라진다.
+    // → 링크는 지름길로만 쓰고, 화면은 '입력 정산월' 로도 같은 레코드를 찾는다.
+    //   문자열에 정산월이 들어 있어 다른 달을 끌어오지 않는다.
+    const nospace = (v) => String(v || '').replace(/\s/g, '');
+    if (campaignName) {
+      try {
+        const key = nospace(campaignName);
+        const expr = `SUBSTITUTE({입력 정산월}, " ", "") = '${key}'`;
+        const url = `https://api.airtable.com/v0/${BASE_ID}/${RECORD_TABLE}`
+          + `?filterByFormula=${encodeURIComponent(expr)}&pageSize=100`;
+        const byName = await fetchAllRecords(url);
+        const seen = new Set(allRecords.map((r) => r.id));
+        const extra = byName.filter((r) => !seen.has(r.id));
+        if (extra.length) {
+          allRecords = allRecords.concat(extra);
+          console.log(`[client-schedule] ${campaignId} 링크 누락 ${extra.length}건 이름으로 복구 (${campaignName})`);
+        }
+      } catch (e) {
+        // 폴백 실패는 조용히 넘긴다 — 링크로 찾은 결과는 그대로 살린다
+        console.error('[client-schedule] 이름기반 보정 실패:', e.message);
+      }
+    }
+
     // 2.5 예약테이블(Shadow Group) 데이터 가져오기 (방문 인원, 예약메시지)
     const reservationIds = new Set();
     allRecords.forEach(rec => {
