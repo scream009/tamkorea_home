@@ -355,33 +355,37 @@ const CptExpirySoon = ({ cpt }) => {
 
 const FunnelSection = ({ funnel }) => {
   const f = funnel || {};
-  const view = f.exposure || 0, clicks = f.click || 0, visit = f.visit || 0, intent = f.intent || 0, buy = f.buy || 0;
-  // 노출은 UV(사람), 클릭은 PV(횟수)라 그대로 나누면 클릭률이 100%를 넘는다.
-  // 클릭률은 같은 단위(노출 횟수 대비 클릭 횟수)로 계산한다.
-  const viewPv = f.exposure_pv || view;
+  const view = f.exposure || 0, visit = f.visit || 0, intent = f.intent || 0, buy = f.buy || 0;
+  // shopUV/shopPV 는 **같은 행동(매장 페이지 진입)의 사람/횟수**다.
+  // 예전엔 shopPV 를 '클릭', shopUV 를 '방문'으로 갈라 두 단계로 그렸는데,
+  // 그러면 노출(사람) 옆에 방문 횟수가 서서 퍼널이 늘어난 것처럼 보인다
+  // — 우대 노형본점: 노출 10,304명 → '클릭' 10,910회.
+  // 한 단계로 합치고 횟수는 괄호로만 보여준다.
+  const viewPv = f.exposure_pv || 0;
+  const visitPv = f.visit_pv || f.click || 0;   // click 은 구버전 데이터의 같은 값
+  const intentPv = f.intent_pv || 0;
   const gb = !!f.groupbuy_on;
   // 막대는 값에 비례시키지 않고 **단계를 나타내는 고정 역삼각형**으로 그린다.
-  // 비례로 그리면 노출이 압도적이라 뒤 단계가 전부 뭉개진다(최소폭 보정 탓에
-  // 클릭 974회와 방문 346명 막대가 비슷해 보였다). 실제 감소폭은 단계 사이의
-  // 전환율(%)이 정확히 보여주므로 정보 손실은 없다.
-  const FUNNEL_W = [100, 84, 68, 52, 36];
+  const FUNNEL_W = [100, 78, 56, 34];
   const p1 = (a, b) => (b ? `${(a / b * 100).toFixed(1)}%` : '-');
-  const ctr = f.ctr != null ? `${f.ctr}%` : p1(clicks, viewPv);
+  const pv = (n) => (n ? <small style={{ opacity: 0.75 }}> ({num(n)}회)</small> : null);
 
   const steps = [
-    { lab: '노출', sub: '曝光 · 목록/검색에 노출된 사람', n: `${num(view)}명`, ex: '얼마나 많은 잠재고객에게 노출됐나', g: 'linear-gradient(90deg,#7434FF,#9B70FF)', w: FUNNEL_W[0] },
-    { lab: '클릭', sub: '点击 · 매장을 눌러 본 횟수', n: `${num(clicks)}회`, ex: '노출된 사람이 실제로 클릭한 횟수', g: 'linear-gradient(90deg,#6366f1,#818cf8)', w: FUNNEL_W[1] },
-    { lab: '방문', sub: '访问 · 매장 페이지 순 방문자', n: `${num(visit)}명`, ex: '클릭해서 매장을 방문한 실제 인원', g: 'linear-gradient(90deg,#3b82f6,#60a5fa)', w: FUNNEL_W[2] },
-    { lab: '관심', sub: '意向 · 찜·전화·길찾기·团购조회', n: `${num(intent)}명`, ex: '메뉴·리뷰 보고 구매 의향을 표현', g: 'linear-gradient(90deg,#10b981,#34d399)', w: FUNNEL_W[3] },
+    { lab: '노출', sub: '曝光 · 목록/검색에 노출된 사람', n: <>{num(view)}명{pv(viewPv)}</>,
+      ex: '얼마나 많은 잠재고객에게 노출됐나', g: 'linear-gradient(90deg,#7434FF,#9B70FF)', w: FUNNEL_W[0] },
+    { lab: '방문', sub: '访问 · 매장 페이지를 연 사람', n: <>{num(visit)}명{pv(visitPv)}</>,
+      ex: '노출된 사람 중 매장을 눌러 들어온 실제 인원', g: 'linear-gradient(90deg,#3b82f6,#60a5fa)', w: FUNNEL_W[1] },
+    { lab: '관심', sub: '意向 · 찜·전화·길찾기·团购조회', n: <>{num(intent)}명{pv(intentPv)}</>,
+      ex: '메뉴·리뷰 보고 구매 의향을 표현', g: 'linear-gradient(90deg,#10b981,#34d399)', w: FUNNEL_W[2] },
     { lab: '구매', sub: '团购 · 실제 구매·검증',
       n: gb ? `${num(buy)}건` : '0건',
       ex: gb ? (buy > 0 ? '团购 검증 발생' : '团购 운영 매장 (당 집계기간 0건)') : '团购 미개설 → 매출 추적 불가',
-      g: 'linear-gradient(90deg,#ef4444,#f87171)', w: FUNNEL_W[4] },
+      g: 'linear-gradient(90deg,#ef4444,#f87171)', w: FUNNEL_W[3] },
   ];
+  // 전환율은 같은 단위(사람)끼리만 — 섞으면 100%를 넘는다.
   const convs = ['',
-    `↓ 클릭률(노출 횟수→클릭 횟수) ${ctr}`,
     `↓ 방문 전환(노출→방문) ${f.visit_rate != null ? f.visit_rate + '%' : p1(visit, view)}`,
-    `↓ 관심 전환(방문→관심) ${p1(intent, visit)}`,
+    `↓ 관심 전환(방문→관심) ${f.intent_rate != null ? f.intent_rate + '%' : p1(intent, visit)}`,
     `↓ 구매 전환(관심→구매) ${gb && buy > 0 && intent ? p1(buy, intent) : (gb ? '집계 대기' : '0% (团购 미개설)')}`,
   ];
 
@@ -402,11 +406,16 @@ const FunnelSection = ({ funnel }) => {
         ))}
       </div>
       <div className="dpr-foot-note" style={{ marginTop: 18 }}>
-        💡 <b>진단</b> — 노출 {num(view)}명 → 클릭 {num(clicks)}회 → <b>방문 {num(visit)}명</b> → 관심 {num(intent)}명으로 이어졌습니다 (클릭률 {ctr}, 방문 전환 {f.visit_rate != null ? f.visit_rate + '%' : p1(visit, Math.max(view, 1))}).{' '}
+        💡 <b>진단</b> — 노출 {num(view)}명 → <b>방문 {num(visit)}명</b> → 관심 {num(intent)}명으로 이어졌습니다
+        {' '}(방문 전환 {f.visit_rate != null ? f.visit_rate + '%' : p1(visit, Math.max(view, 1))},
+        {' '}관심 전환 {f.intent_rate != null ? f.intent_rate + '%' : p1(intent, Math.max(visit, 1))}).{' '}
         {gb
           ? '团购 운영 매장입니다 — 이번 기간 검증은 대시보드 기준으로 별도 확인해 매출과 연결하겠습니다.'
           : <>团购 상품이 없어 '구매' 단계가 0으로, 높은 관심이 매출로 집계되지 않습니다 → <b>团购 개설이 최우선</b>입니다.</>}{' '}
-        <span className="dpr-dim">※ 노출·방문·관심 = 사람 수, 클릭 = 횟수. 클릭률은 노출 횟수({num(viewPv)}회) 대비입니다.</span>
+        <span className="dpr-dim">
+          ※ 각 단계의 큰 숫자는 <b>사람 수</b>, 괄호는 <b>횟수</b>입니다.
+          한 사람이 여러 번 보면 횟수가 사람 수보다 큽니다.
+        </span>
       </div>
     </>
   );
