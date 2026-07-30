@@ -290,6 +290,18 @@ const DominanceSection = ({ dominance, funnel, days, period }) => {
 };
 
 // ── 퍼널 ───────────────────────────────────────────────────────────
+// 플랫폼이 유입 데이터를 안 주는 매장 안내.
+// 0 을 띄우면 '성과가 없었다'로 읽힌다 — 사실이 아니므로 사유를 그대로 쓴다.
+const TrafficUnavailable = () => (
+  <div className="dpr-act-note" style={{ lineHeight: 1.85 }}>
+    📊 <b>이 매장은 따종디엔핑에서 유입 데이터(노출·클릭·방문)를 제공하지 않습니다.</b><br />
+    상인 페이지의 데이터 대시보드에도 방문자·조회수 항목이 표시되지 않는 상태로,{' '}
+    <b>성과가 0이라는 뜻이 아니라 집계 자체가 열려 있지 않다는 뜻</b>입니다.<br />
+    플랫폼에 데이터 권한 개통을 요청해 두었으며, 열리는 즉시 다음 리포트부터 포함됩니다.<br />
+    그동안은 아래 <b>리뷰 여론 분석</b>으로 매장 상태를 확인해 주세요 — 리뷰는 정상적으로 수집되고 있습니다.
+  </div>
+);
+
 const FunnelSection = ({ funnel }) => {
   const f = funnel || {};
   const view = f.exposure || 0, clicks = f.click || 0, visit = f.visit || 0, intent = f.intent || 0, buy = f.buy || 0;
@@ -635,6 +647,11 @@ export default function DpReportPage() {
   const { store, period, days, funnel, dominance, adflow, cpc, reviews, series, generated_at: gen } = detail;
   const name = store?.name || `${data?.brandName || ''} ${data?.branchName || ''}`.trim();
   const gb = !!funnel?.groupbuy_on;
+  // 플랫폼이 유입 데이터를 안 주는 매장. 봇이 traffic_unavailable 로 표시해 준다.
+  // 예전 리포트에는 그 필드가 없으므로, 노출이 0 인데 기간까지 비어 있으면
+  // (정상 매장은 기간이 항상 채워진다) 같은 상황으로 본다.
+  const trafficNA = detail.traffic_unavailable === true
+    || (!funnel?.exposure && !String(period || '').replace(/[-~\s]/g, ''));
 
   return (
     <BrandCtx.Provider value={{ brand, isPartner }}>
@@ -659,28 +676,43 @@ export default function DpReportPage() {
           <AdflowSection adflow={adflow} name={name} cpc={cpc} />
         </Section>
 
+        {/* 플랫폼이 유입 데이터를 안 주는 매장이 있다. 그때 0 을 띄우면
+            '성과가 없었다'로 읽히므로, 숫자 자리를 사유 안내로 바꾸고
+            상권 비교·추이처럼 트래픽에 기대는 섹션은 아예 뺀다. */}
         <div className="dpr-kpis">
-          <div className="dpr-kpi"><div className="dpr-l">🎯 노출 <span className="dpr-sm">曝光</span></div><div className="dpr-v mono">{num(funnel?.exposure)}<small>명</small></div><div className="dpr-dd up">상권 {dominance?.rank}위</div></div>
-          <div className="dpr-kpi"><div className="dpr-l">👣 방문 <span className="dpr-sm">访问</span></div><div className="dpr-v mono">{num(funnel?.visit)}<small>명</small></div><div className="dpr-dd neu">클릭 유입</div></div>
-          <div className="dpr-kpi"><div className="dpr-l">🛒 관심 <span className="dpr-sm">意向</span></div><div className="dpr-v mono">{num(funnel?.intent)}<small>명</small></div><div className="dpr-dd neu">{funnel?.intent_rate}% 전환</div></div>
+          {!trafficNA && (
+            <div className="dpr-kpi"><div className="dpr-l">🎯 노출 <span className="dpr-sm">曝光</span></div><div className="dpr-v mono">{num(funnel?.exposure)}<small>명</small></div><div className="dpr-dd up">상권 {dominance?.rank}위</div></div>
+          )}
+          {!trafficNA && (
+            <div className="dpr-kpi"><div className="dpr-l">👣 방문 <span className="dpr-sm">访问</span></div><div className="dpr-v mono">{num(funnel?.visit)}<small>명</small></div><div className="dpr-dd neu">클릭 유입</div></div>
+          )}
+          {!trafficNA && (
+            <div className="dpr-kpi"><div className="dpr-l">🛒 관심 <span className="dpr-sm">意向</span></div><div className="dpr-v mono">{num(funnel?.intent)}<small>명</small></div><div className="dpr-dd neu">{funnel?.intent_rate}% 전환</div></div>
+          )}
+          <div className="dpr-kpi"><div className="dpr-l">💬 리뷰 <span className="dpr-sm">评价</span></div><div className="dpr-v mono">{num(reviews?.total)}<small>건</small></div><div className="dpr-dd neu">누적 평가</div></div>
           <div className="dpr-kpi"><div className="dpr-l">⭐ 호평률 <span className="dpr-sm">好评</span></div><div className="dpr-v mono">{reviews?.good_rate ?? '-'}<small>%</small></div><div className="dpr-dd up">{reviews?.avg_star ? `최근 평균 ★${+Number(reviews.avg_star).toFixed(2)}` : `${num(reviews?.good)}건`}</div></div>
         </div>
 
-        <Section icon="🏆" title="상권 지배력 (우리 vs 상권 평균)" note="竞争分析 실측 · 순위·배수·전월 대비">
-          <DominanceSection dominance={dominance} funnel={{ ...funnel, storeName: name }} days={days} period={period} />
-        </Section>
+        {!trafficNA && (
+          <Section icon="🏆" title="상권 지배력 (우리 vs 상권 평균)" note="竞争分析 실측 · 순위·배수·전월 대비">
+            <DominanceSection dominance={dominance} funnel={{ ...funnel, storeName: name }} days={days} period={period} />
+          </Section>
+        )}
 
-        <Section icon="🔻" title="유입 → 전환 퍼널 (노출·클릭·방문·관심·구매)" note="经营参谋 실측 · 최근 30일(월간) · 노출·방문·관심=사람수, 클릭=횟수">
-          <FunnelSection funnel={funnel} />
+        <Section icon="🔻" title="유입 → 전환 퍼널 (노출·클릭·방문·관심·구매)"
+                 note={trafficNA ? '플랫폼 데이터 미제공 매장' : '经营参谋 실측 · 최근 30일(월간) · 노출·방문·관심=사람수, 클릭=횟수'}>
+          {trafficNA ? <TrafficUnavailable /> : <FunnelSection funnel={funnel} />}
         </Section>
 
         <Section icon="🎁" title="团购(공동구매) — 노출·매출의 핵심 지렛대" note="따종디엔핑 할인 딜 상품 · 노출 가점 정책">
           <GroupbuySection gb={gb} name={name} />
         </Section>
 
-        <Section icon="📈" title="일자별 노출 추이 (우리 vs 상권 평균)" note="최근 30일 일자별 노출 도달 · 우리 매장 vs 상권 평균">
-          <TrendChart series={series} />
-        </Section>
+        {!trafficNA && (
+          <Section icon="📈" title="일자별 노출 추이 (우리 vs 상권 평균)" note="최근 30일 일자별 노출 도달 · 우리 매장 vs 상권 평균">
+            <TrendChart series={series} />
+          </Section>
+        )}
 
         <Section icon="💬" title="월간 리뷰 관리 (호평·악성 대응)" note="评价管理 실측 · 악성리뷰 답글 예시 포함">
           <ReviewSection reviews={reviews} />
