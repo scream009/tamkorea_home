@@ -8,6 +8,8 @@
  *  - Campaign_DB  : 계약월 = "2026. 4월"
  */
 
+import { blockedByAdminGate } from './_admin-auth.js';
+
 const AIRTABLE_API_KEY = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const AIRTABLE_BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
 
@@ -50,9 +52,10 @@ function extractString(val) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  // admin-board-api.js 와 같은 등급의 데이터(Campaign_DB·진행_DB_OLD 월별 전량)를
+  // 반환하므로 같은 게이트를 쓴다. 이름이 달라 그동안 점검 목록에서 빠져 있었다.
+  // CORS 헤더는 두지 않는다 — 관리자 화면은 같은 오리진에서 부른다.
+  if (blockedByAdminGate(req, res)) return;
 
   try {
     // 월 파라미터 (기본값 = 2604 / 4월)

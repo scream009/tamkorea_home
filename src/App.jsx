@@ -23,6 +23,7 @@ import SignupCreatorPage from './pages/auth/SignupCreatorPage';
 import SignupBusinessPage from './pages/auth/SignupBusinessPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminBoardPage from './pages/AdminBoardPage';
+import AdminGate from './components/AdminGate';
 import './App.css';
 
 function App() {
@@ -39,8 +40,10 @@ function App() {
           <Route path="/dp-report" element={<DpReportPage />} />
           <Route path="/manager" element={<RecruiterSchedulePage />} />
           <Route path="/partner" element={<ClientPartnerPage />} />
-          <Route path="/admin" element={<AdminDashboardPage />} />
-          <Route path="/admin/board" element={<AdminBoardPage />} />
+          {/* 정산·계약 데이터 화면은 게이트 뒤에 둔다. 서버(_admin-auth.js)가 실제로 막고,
+              이 래퍼는 키 입력 UI 를 준다. /admin/clients-link 는 자체 키 폼이 이미 있다. */}
+          <Route path="/admin" element={<AdminGate><AdminDashboardPage /></AdminGate>} />
+          <Route path="/admin/board" element={<AdminGate><AdminBoardPage /></AdminGate>} />
 
           {/* 일반 페이지: Layout (헤더/푸터) 포함 */}
           <Route path="/*" element={

@@ -4,6 +4,8 @@
 // 협력사 링크가 죽지 않아야 한다. 리네임이 끝나고 한동안 지나면 위 하나만 남긴다.
 // 지금 Airtable 에 실제로 있는 이름을 앞에 둔다 — 평소엔 첫 번째로 성공해서
 // 헛된 왕복이 없고, 리네임된 순간에만 두 번째로 넘어간다.
+import { escFormula } from './_admin-auth.js';
+
 const SHOW_FIELDS = ['공유표출', '협력사포함'];
 let showField = null;   // 함수 인스턴스가 살아 있는 동안 재사용
 
@@ -56,7 +58,8 @@ export default async function handler(req, res) {
       // 그 경우 어느 레코드가 잡히는지는 Airtable 내부 순서라 보장되지 않는다.
       // 1월 레코드가 잡히면 조회 가능 기간을 벗어나 링크가 통째로 죽는다.
       // 전부 받아서 **결정적으로** 고른다.
-      const tf = encodeURIComponent(`{협력사토큰}='${shareToken.replace(/'/g, "\'")}'`);
+      // 위 정규식(^[A-Za-z0-9]{6,32}$)이 이미 막지만, 이스케이프도 제대로 된 걸 쓴다.
+      const tf = encodeURIComponent(`{협력사토큰}='${escFormula(shareToken)}'`);
       const tu = `https://api.airtable.com/v0/${BASE_ID0}/${CAMP_TB0}`
         + `?filterByFormula=${tf}&fields%5B%5D=${encodeURIComponent('협력사')}`
         + `&fields%5B%5D=${encodeURIComponent('계약월')}&pageSize=100`;
@@ -139,7 +142,11 @@ export default async function handler(req, res) {
         message: '조회 가능 기간이 아닙니다 (전월·당월·다음달만 조회할 수 있습니다).',
       });
     }
-    const esc = (v) => String(v).replace(/'/g, "\'");
+    // ⚠️ 예전 코드는 `replace(/'/g, "\'")` 였는데 이건 **no-op** 이다 —
+    // JS 에서 "\'" 는 그냥 "'" 이라 작은따옴표를 자기 자신으로 바꿨다.
+    // ?name= 경로는 partnerName 을 비었는지만 검사하므로(위 98행) 수식이 열려 있었다.
+    // 백슬래시를 먼저 늘리지 않으면 `\` 로 끝나는 값이 다음 따옴표를 삼킨다.
+    const esc = escFormula;
 
     // 필터: 협력사 컬럼이 일치하는 레코드 검색
     // 토큰 링크는 레코드에서 읽은 협력사 원본값을 그대로 쓴다.

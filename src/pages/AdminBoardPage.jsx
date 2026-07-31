@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DndContext, closestCenter, DragOverlay, useSensor, useSensors, MouseSensor, TouchSensor } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { adminHeaders } from '../lib/adminKey';
 import './AdminBoardPage.css';
 
 // -------------------------------------------------------------
@@ -170,7 +171,7 @@ export default function AdminBoardPage() {
   useEffect(() => {
     async function init() {
       try {
-        const res = await fetch('/api/admin-board-api?action=campaigns');
+        const res = await fetch('/api/admin-board-api?action=campaigns', { headers: adminHeaders() });
         const camps = await res.json();
         setCampaigns(camps);
         
@@ -235,7 +236,10 @@ export default function AdminBoardPage() {
     if (!selectedStore) return;
     setLoadingData(true);
     try {
-      const res = await fetch(`/api/admin-board-api?action=progress&client=${encodeURIComponent(selectedStore)}`);
+      const res = await fetch(
+        `/api/admin-board-api?action=progress&client=${encodeURIComponent(selectedStore)}`,
+        { headers: adminHeaders() }
+      );
       const data = await res.json();
       data.forEach(p => {
         if (!p.fields['(원)정산월']) p.fields['(원)정산월'] = p.fields['정산월'];
@@ -376,7 +380,7 @@ export default function AdminBoardPage() {
     try {
       const res = await fetch('/api/admin-board-api?action=bulk_update', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: adminHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ updates })
       });
       if (!res.ok) throw new Error("서버 에러");

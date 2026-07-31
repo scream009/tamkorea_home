@@ -3,6 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, LabelList, Customized
 } from 'recharts';
+import { adminHeaders } from '../lib/adminKey';
 import './AdminDashboardPage.css';
 
 // ─── 체험단 유형 ─────────────────────────────────────────────
@@ -147,7 +148,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    fetch(`/api/admin-dashboard?month=${selectedMonth}`)
+    fetch(`/api/admin-dashboard?month=${selectedMonth}`, { headers: adminHeaders() })
       .then(r => r.json())
       .then(data => {
         if (data.error) throw new Error(data.error);
