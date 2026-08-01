@@ -428,7 +428,16 @@ export default async function handler(req, res) {
         // 오래된 실적이 전부 열린다. 링크를 준 달만 보여주는 것이 목적이다.
         const now = new Date();
         const nowK = now.getFullYear() * 12 + (now.getMonth() + 1);
-        const allowed = (k) => k >= nowK - 1 && k <= nowK + 1;
+        // ⚠️ 임시 예외 (2026-08-01) — 브랜드별 조회 하한.
+        // 양푼왕갈비는 6월 실적부터 공유 대상이라 6월 링크를 배포했는데,
+        // 위 규칙(전월·당월·다음달)은 8월 기준 하한이 7월이라
+        // 6월 링크에서 7월로 넘어간 순간 6월로 되돌아올 수 없었다(prev=null).
+        // 5월 레코드도 실제로 존재하므로 하한을 6월로 못 박아 그 이전은 계속 막는다.
+        // 근본 수정 = 계약 시작월(또는 '공유표출' 체크)을 하한으로 쓰는 방식.
+        const MONTH_FLOOR = [{ brand: '양푼왕갈비', floorK: 2026 * 12 + 6 }];
+        const ovr = MONTH_FLOOR.find((x) => brandName.includes(x.brand));
+        const minK = ovr ? Math.min(nowK - 1, ovr.floorK) : nowK - 1;
+        const allowed = (k) => k >= minK && k <= nowK + 1;
         const list = all
           .map((r) => ({ id: r.id, month: r.fields['계약월'] || '', k: key(r.fields['계약월']) }))
           .filter((x) => x.k > 0 && allowed(x.k));
