@@ -238,3 +238,53 @@ body:has(.dpr-page){padding-top:0!important;background:#0d0f1a}
   .dpr-conv{margin-left:0}
   .dpr-s-note{margin-left:0}
 }
+
+/* ── 현재 광고 설정 (예산·클릭단가·노출시간) ─────────────────────
+   CpcSection 안, 일예산 지표 바로 밑에 붙는다. 기존 카드와 같은 계열을 쓰되
+   '설정값'임이 구분되도록 점선 테두리로 묶는다(실적 숫자와 헷갈리면 안 된다). */
+.dpr-adset{margin-top:18px;padding:16px 17px;border-radius:14px;
+  border:1px dashed rgba(155,112,255,.38);background:rgba(116,52,255,.06)}
+.dpr-adset-h{font-size:.9rem;font-weight:800;margin-bottom:13px}
+.dpr-adset-h .dpr-sm{font-weight:500;color:var(--ts);font-size:.74rem;margin-left:5px}
+.dpr-adset-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:10px}
+.dpr-adset-c{padding:12px 13px;border-radius:11px;background:rgba(0,0,0,.24);
+  border:1px solid rgba(255,255,255,.07)}
+.dpr-adset-l{font-size:.74rem;color:var(--ts);margin-bottom:4px}
+.dpr-adset-l .dpr-sm{font-size:.66rem;opacity:.75}
+.dpr-adset-v{font-size:1.3rem;font-weight:800;letter-spacing:-.02em;line-height:1.2}
+.dpr-adset-v small{font-size:.72rem;font-weight:500;color:var(--ts);margin-left:2px}
+.dpr-adset-f{font-size:.71rem;color:#64708c;margin-top:3px}
+
+.dpr-adset-gauge{margin-top:14px}
+.dpr-adset-gt{display:flex;justify-content:space-between;align-items:baseline;
+  font-size:.79rem;color:var(--ts);gap:10px;flex-wrap:wrap;margin-bottom:7px}
+.dpr-adset-gt b{color:#fff;font-size:.88rem}
+.dpr-adset-bar{height:8px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+.dpr-adset-bar i{display:block;height:100%;border-radius:99px;
+  background:linear-gradient(90deg,var(--revu),var(--revu2))}
+.dpr-adset-bar i.full{background:linear-gradient(90deg,#c2410c,#f59f2e)}
+.dpr-adset-bar i.low{background:linear-gradient(90deg,#2563eb,#38bdf8)}
+
+.dpr-adset-hours{margin-top:14px}
+.dpr-adset-strip{display:grid;grid-template-columns:repeat(24,1fr);gap:2px}
+.dpr-adset-strip i{height:16px;border-radius:3px;background:rgba(255,255,255,.06)}
+.dpr-adset-strip i.on{background:linear-gradient(180deg,var(--revu2),var(--revu))}
+.dpr-adset-ticks{display:grid;grid-template-columns:repeat(24,1fr);gap:2px;margin-top:4px}
+.dpr-adset-ticks span{font-size:.58rem;color:#64708c;text-align:center}
+
+.dpr-adset-nudge{margin-top:15px;padding:14px 15px;border-radius:12px;
+  background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.09)}
+.dpr-adset-nudge .dpr-adset-nh{font-size:.89rem;font-weight:800;
+  display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.dpr-adset-nudge p{font-size:.84rem;color:var(--ts);margin-top:7px;line-height:1.75}
+.dpr-adset-pill{font-size:.68rem;font-weight:700;padding:3px 9px;border-radius:999px;
+  white-space:nowrap}
+.dpr-adset-nudge.warn .dpr-adset-pill{background:rgba(245,159,46,.16);color:#fbbf6e;
+  border:1px solid rgba(245,159,46,.32)}
+.dpr-adset-nudge.info .dpr-adset-pill{background:rgba(56,189,248,.14);color:#7dd3fc;
+  border:1px solid rgba(56,189,248,.32)}
+
+@media (max-width:560px){
+  .dpr-adset-ticks span:nth-child(even){visibility:hidden}
+  .dpr-adset-v{font-size:1.12rem}
+}

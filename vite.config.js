@@ -85,7 +85,9 @@ export default defineConfig({
       strict: false
     },
     proxy: {
-      '/api/admin-board-api': {
+      // dev-api.js 가 실제 배포될 핸들러 파일을 그대로 불러 3001 에서 돌린다.
+      // 이게 있어야 화면 변경을 **배포 전에** 확인할 수 있다.
+      '/api': {
         target: 'http://localhost:3001',
         changeOrigin: true
       }

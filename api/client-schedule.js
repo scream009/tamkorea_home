@@ -348,6 +348,45 @@ export default async function handler(req, res) {
       };
     }
 
+    // ── 광고 설정 (예산·클릭단가·노출시간) ─────────────────────
+    // ad_settings.py 가 推广通 포털에서 읽어 Campaign_DB 에 적재한다.
+    // 리포트가 "얼마 썼다"만 말하면 사장님이 손댈 곳이 안 보인다. 손잡이는 셋뿐이다
+    // — 예산 / 클릭단가 / 노출시간. 그 현재값을 같이 보여줘야 제안이 성립한다.
+    // ⚠️ 美团 단가(AD_단가_메이투안)는 수집만 하고 **내보내지 않는다**(Owner 지시).
+    let adSet = null;
+    {
+      const basic = cf['AD_기초예산'] ?? null;
+      const bid   = cf['AD_단가_따종'] ?? null;
+      const hours = cf['AD_노출시간'] || null;
+      if (basic != null || bid != null || hours) {
+        const ratio = cf['AD_주말상향률'] ?? null;
+        // 기초예산이 없으면 CPC_일예산으로 대체한다. 단 그 값은 '그날 적용된 예산'이라
+        // 주말엔 상향분이 섞여 있다 — 어디서 왔는지 프론트가 알 수 있게 표시해 준다.
+        const budget = basic != null ? basic : (cf['CPC_일예산'] ?? null);
+        const yst = cf['CPC_현재소진'] ?? null;
+        const useRate = budget ? Math.round((Number(yst) / Number(budget)) * 100) : null;
+        const hoursOn = cf['AD_주간노출시간'] ?? null;
+        const daysLeft = cf['CPC_소진예상일'] ?? null;
+        // 넛지 판정 — 매장 상태마다 손잡이가 다르다. 같은 문구를 전부에 뿌리면
+        // 넛지가 아니라 광고로 읽힌다.
+        let nudge = null;
+        if (useRate != null && useRate >= 95) {
+          nudge = 'budget_capped';        // 예산이 매일 바닥 → 충전·증액
+        } else if (useRate != null && useRate < 60) {
+          // 예산이 남는 건 돈이 모자란 게 아니라 노출 기회가 없다는 뜻이다.
+          // 시간이 이미 168h면 늘릴 곳이 없어 단가밖에 남지 않는다.
+          nudge = hoursOn != null && hoursOn >= 168 ? 'bid_only' : 'room_to_grow';
+        }
+        adSet = {
+          budget, budgetIsFallback: basic == null && budget != null,
+          floatRatio: ratio, peak: cf['AD_피크예산'] ?? null,
+          bid, hours, hoursOn, yesterday: yst, useRate, daysLeft,
+          checked: cf['AD_설정확인일'] || null,
+          nudge,
+        };
+      }
+    }
+
     let dpReport = null;
     if (cf['DP_기간']) {
       let detail = null;
@@ -460,6 +499,7 @@ export default async function handler(req, res) {
       siblings,
       partnerName,
       stats,
+      adSet,      // 광고 설정 — 리포트 화면(DpReportPage)이 쓴다
       scheduleItems: groupedScheduleItems,
       records: { influencer, experience, press, videoIssue },
       cpc,

@@ -87,7 +87,127 @@ const Stars = ({ v, low }) => {
 };
 
 // ── CPC 잔액 · 충전 ─────────────────────────────────────────────────
-const CpcSection = ({ cpc, funnel, dominance, store }) => {
+// ── 광고 설정 (예산·클릭단가·노출시간) ─────────────────────────
+// 리포트가 "얼마 썼다"만 말하면 사장님이 손댈 곳이 안 보인다.
+// 손잡이는 셋뿐이다 — 예산 / 클릭단가 / 노출시간. 현재값을 보여줘야 제안이 성립한다.
+// 넛지 판정(nudge)은 API 가 계산해 내려준다 — 화면은 문구만 고른다.
+const HOURS_LABEL = ['0', '', '', '3', '', '', '6', '', '', '9', '', '',
+                     '12', '', '', '15', '', '', '18', '', '', '21', '', ''];
+
+const AdSettings = ({ ad }) => {
+  const { brand } = useBrand();
+  if (!ad) return null;
+  const { budget, floatRatio, peak, bid, hours, hoursOn, yesterday, useRate, nudge } = ad;
+
+  // 노출시간 문자열("매일 11:00-21:00")에서 시작·끝을 뽑아 24칸으로 그린다.
+  // 요일마다 다른 매장은 문자열만 보여주고 막대는 생략한다(오해를 만들지 않는다).
+  let from = null, to = null;
+  const m = /^매일\s+(\d{2}):00-(\d{2}):00$/.exec(String(hours || ''));
+  if (m) { from = Number(m[1]); to = Number(m[2]); }
+
+  const NUDGE = {
+    budget_capped: {
+      pill: '검토 제안', cls: 'warn',
+      title: '예산이 매일 상한에 닿고 있습니다',
+      body: <>어제 하루 예산을 <b>전액 소진</b>했습니다. 광고가 아직 노출될 수 있는 시간에 예산이
+        먼저 끝나면, 그 뒤에 검색한 손님에게는 매장이 보이지 않습니다.
+        충전 시점과 함께 예산 조정도 한번 같이 보시면 좋겠습니다.</>,
+    },
+    room_to_grow: {
+      pill: '검토 제안', cls: 'info',
+      title: '예산이 남고 있습니다 — 노출 기회를 늘릴 수 있습니다',
+      body: <>예산이 부족한 게 아니라 <b>광고가 보일 기회 자체가 적다</b>는 뜻입니다.
+        노출 시간을 넓히거나 클릭 단가를 올리는 두 가지 방법이 있습니다.
+        어느 쪽이 효율적인지 {brand}가 상권 데이터로 확인해 제안드리겠습니다.
+        <b> 추가 비용 없이 설정만으로</b> 개선되는 구간일 수 있습니다.</>,
+    },
+    bid_only: {
+      pill: '검토 제안', cls: 'info',
+      title: '노출 시간은 이미 최대입니다 — 단가를 봐야 합니다',
+      body: <>노출 시간이 <b>24시간 전부</b> 열려 있어 더 늘릴 곳이 없고, 예산도 남습니다.
+        남는 설명은 <b>클릭 단가가 상권 경쟁가에 밀려 노출을 못 따오고 있다</b>는 쪽입니다.
+        단가를 얼마나 올리면 노출이 어디까지 회복되는지 확인해 제안드리겠습니다.</>,
+    },
+  }[nudge] || null;
+
+  return (
+    <div className="dpr-adset">
+      <div className="dpr-adset-h">⚙️ 현재 광고 설정 <span className="dpr-sm">推广通 실측</span></div>
+      <div className="dpr-adset-grid">
+        {budget != null && (
+          <div className="dpr-adset-c">
+            <div className="dpr-adset-l">{floatRatio ? '평일 예산' : '하루 예산'}</div>
+            <div className="dpr-adset-v mono">{num(budget)}<small>元</small></div>
+            <div className="dpr-adset-f">
+              {floatRatio && peak ? `주말·명절 ${num(peak)}元 (+${floatRatio}%)` : '주말 상향 미설정'}
+            </div>
+          </div>
+        )}
+        {yesterday != null && useRate != null && (
+          <div className="dpr-adset-c">
+            <div className="dpr-adset-l">어제 집행</div>
+            {/* 위 '어제 광고비 소진' 지표가 반올림 표시라 여기도 맞춘다(74.29元 → 74元) */}
+            <div className="dpr-adset-v mono">{num(Math.round(yesterday))}<small>元</small></div>
+            <div className="dpr-adset-f">예산의 {useRate}%</div>
+          </div>
+        )}
+        {bid != null && (
+          <div className="dpr-adset-c">
+            <div className="dpr-adset-l">클릭 단가 <span className="dpr-sm">出价</span></div>
+            <div className="dpr-adset-v mono">{bid}<small>元</small></div>
+            <div className="dpr-adset-f">입찰 상한</div>
+          </div>
+        )}
+        {hours && (
+          <div className="dpr-adset-c">
+            <div className="dpr-adset-l">노출 시간</div>
+            <div className="dpr-adset-v mono" style={{ fontSize: '1.05rem' }}>
+              {hours.replace('매일 ', '')}
+            </div>
+            <div className="dpr-adset-f">{hoursOn ? `주 ${hoursOn}시간` : '매일'}</div>
+          </div>
+        )}
+      </div>
+
+      {useRate != null && (
+        <div className="dpr-adset-gauge">
+          <div className="dpr-adset-gt">
+            <span>어제 예산 소진률</span>
+            <span><b>{useRate}%</b> · {num(yesterday)} / {num(budget)}元</span>
+          </div>
+          <div className="dpr-adset-bar">
+            <i className={useRate >= 95 ? 'full' : useRate < 60 ? 'low' : ''}
+               style={{ width: `${Math.min(useRate, 100)}%` }} />
+          </div>
+        </div>
+      )}
+
+      {from != null && (
+        <div className="dpr-adset-hours">
+          <div className="dpr-adset-strip">
+            {Array.from({ length: 24 }, (_, h) => (
+              <i key={h} className={h >= from && h < to ? 'on' : ''} />
+            ))}
+          </div>
+          <div className="dpr-adset-ticks">
+            {HOURS_LABEL.map((t, i) => <span key={i}>{t}</span>)}
+          </div>
+        </div>
+      )}
+
+      {NUDGE && (
+        <div className={`dpr-adset-nudge ${NUDGE.cls}`}>
+          <div className="dpr-adset-nh">
+            <span className="dpr-adset-pill">{NUDGE.pill}</span>{NUDGE.title}
+          </div>
+          <p>{NUDGE.body}</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const CpcSection = ({ cpc, funnel, dominance, store, adSet }) => {
   const { brand } = useBrand();
   if (!cpc) {
     return (
@@ -155,6 +275,8 @@ const CpcSection = ({ cpc, funnel, dominance, store }) => {
           style: budget ? {} : { fontSize: '.95rem', lineHeight: 1.35 } },
         { value: '1개', label: '활성 캠페인' },
       ]} />
+      {/* 일예산이 방금 위에 나왔으니, 그 바로 밑이 설정 상세의 제자리다 */}
+      <AdSettings ad={adSet} />
       {/* 광고비가 CPC 외 다른 상품으로도 나간다. 어디에 쓰였는지 그대로 보여준다. */}
       {Object.keys(cpc.by_product || {}).length > 0 && (
         <div className="dpr-foot-note" style={{ marginTop: 14 }}>
@@ -744,7 +866,8 @@ export default function DpReportPage() {
         </div>
 
         <Section icon="📢" title="CPC 광고 · 잔액 & 노출 기여" note="推广通 계정 실측 · 광고비는 元(RMB)">
-          <CpcSection cpc={cpc} funnel={funnel} dominance={dominance} store={store} />
+          <CpcSection cpc={cpc} funnel={funnel} dominance={dominance} store={store}
+                      adSet={data?.adSet} />
         </Section>
 
         <Section icon="🚀" title="광고 기여도 — 광고가 만든 노출·유입" note="推广通 광고 성과 vs 전체 트래픽 · 동일 기간 실측 비교">
