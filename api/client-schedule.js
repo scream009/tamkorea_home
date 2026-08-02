@@ -3,6 +3,8 @@
  * GET /api/client-schedule?campaignId=recXXXXXXXX
  */
 
+import { monthKey, inMonthWindow } from './_month-window.js';
+
 const TOKEN = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
 const CAMPAIGN_TABLE = encodeURIComponent('Campaign_DB');
@@ -610,30 +612,16 @@ export default async function handler(req, res) {
         const u = `https://api.airtable.com/v0/${BASE_ID}/${CAMPAIGN_TABLE}`
           + `?filterByFormula=${f}&pageSize=100&fields%5B%5D=${encodeURIComponent('계약월')}`;
         const all = await fetchAllRecords(u);
-        // "2026. 7월" → 정렬 키
-        const key = (v) => {
-          const m = String(v || '').match(/(\d{4})\D+(\d{1,2})/);
-          return m ? Number(m[1]) * 12 + Number(m[2]) : 0;
-        };
-        const cur = key(month);
-        // 조회 가능 기간 — 협력사 화면과 같은 규칙(전월·당월·다음달).
+        const cur = monthKey(month);
+        // 조회 가능 기간 — 협력사 화면과 같은 규칙(_month-window.js).
         // 이 제한이 없으면 7월 링크에서 6월 → 5월 → 4월 로 계속 거슬러 올라가
-        // 오래된 실적이 전부 열린다. 링크를 준 달만 보여주는 것이 목적이다.
-        const now = new Date();
-        const nowK = now.getFullYear() * 12 + (now.getMonth() + 1);
-        // ⚠️ 임시 예외 (2026-08-01) — 브랜드별 조회 하한.
-        // 양푼왕갈비는 6월 실적부터 공유 대상이라 6월 링크를 배포했는데,
-        // 위 규칙(전월·당월·다음달)은 8월 기준 하한이 7월이라
-        // 6월 링크에서 7월로 넘어간 순간 6월로 되돌아올 수 없었다(prev=null).
-        // 5월 레코드도 실제로 존재하므로 하한을 6월로 못 박아 그 이전은 계속 막는다.
-        // 근본 수정 = 계약 시작월(또는 '공유표출' 체크)을 하한으로 쓰는 방식.
-        const MONTH_FLOOR = [{ brand: '양푼왕갈비', floorK: 2026 * 12 + 6 }];
-        const ovr = MONTH_FLOOR.find((x) => brandName.includes(x.brand));
-        const minK = ovr ? Math.min(nowK - 1, ovr.floorK) : nowK - 1;
-        const allowed = (k) => k >= minK && k <= nowK + 1;
+        // 오래된 실적이 전부 열린다.
+        // 예전엔 여기에 브랜드별 하한(양푼왕갈비 6월)을 하드코딩해 뒀었다.
+        // 하한이 절대값(2026. 6월)으로 바뀌면서 그 예외가 필요 없어졌다 —
+        // 링크를 새로 배포할 때마다 브랜드를 한 줄씩 추가하던 문제도 같이 사라진다.
         const list = all
-          .map((r) => ({ id: r.id, month: r.fields['계약월'] || '', k: key(r.fields['계약월']) }))
-          .filter((x) => x.k > 0 && allowed(x.k));
+          .map((r) => ({ id: r.id, month: r.fields['계약월'] || '', k: monthKey(r.fields['계약월']) }))
+          .filter((x) => inMonthWindow(x.month));
         const prev = list.filter((x) => x.k === cur - 1)[0];
         const next = list.filter((x) => x.k === cur + 1)[0];
         siblings = {

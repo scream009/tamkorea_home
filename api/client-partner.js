@@ -5,6 +5,9 @@
 // 지금 Airtable 에 실제로 있는 이름을 앞에 둔다 — 평소엔 첫 번째로 성공해서
 // 헛된 왕복이 없고, 리네임된 순간에만 두 번째로 넘어간다.
 import { escFormula } from './_admin-auth.js';
+import {
+  monthKey, nowMonthKey, inMonthWindow, OUT_OF_RANGE_MESSAGE,
+} from './_month-window.js';
 
 const SHOW_FIELDS = ['공유표출', '협력사포함'];
 let showField = null;   // 함수 인스턴스가 살아 있는 동안 재사용
@@ -34,13 +37,9 @@ export default async function handler(req, res) {
     const BASE_ID0 = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
     const CAMP_TB0 = encodeURIComponent('Campaign_DB');
 
-    // "2026. 7월" → 정렬 가능한 정수. 월 비교는 여러 곳에서 쓴다.
-    const keyOf = (label) => {
-      const m = String(label || '').match(/(\d{4})\D+(\d{1,2})/);
-      return m ? Number(m[1]) * 12 + Number(m[2]) : 0;
-    };
-    const now0 = new Date();
-    const nowKey = now0.getFullYear() * 12 + (now0.getMonth() + 1);
+    // 월 비교는 여러 곳에서 쓴다. 허용 범위 규칙 자체는 _month-window.js 한 곳에 있다.
+    const keyOf = monthKey;
+    const nowKey = nowMonthKey();
 
     // ── 토큰 방식 (?t=...) ────────────────────────────────────
     // 협력사·계약월이 토큰에 묶여 있어 URL 을 고칠 수 없다.
@@ -81,14 +80,11 @@ export default async function handler(req, res) {
         });
       }
 
-      // 기준월: 조회 가능 기간(전월·당월·다음달) 안에서 오늘에 가장 가까운 달.
+      // 기준월: 조회 가능 기간 안에서 오늘에 가장 가까운 달.
       // 범위 안에 하나도 없으면 가장 최근 달을 준다 — 아래 범위 검사가
       // "조회 가능 기간이 아닙니다" 로 이유를 정확히 알려준다.
       const months = [...new Set(hits.map((r) => r.fields['계약월']).filter(Boolean))];
-      const inWindow = months.filter((m) => {
-        const k = keyOf(m);
-        return k > 0 && k >= nowKey - 1 && k <= nowKey + 1;
-      });
+      const inWindow = months.filter(inMonthWindow);
       const pick = (inWindow.length ? inWindow : months)
         .sort((a, b) => Math.abs(keyOf(a) - nowKey) - Math.abs(keyOf(b) - nowKey)
                      || keyOf(b) - keyOf(a))[0];
@@ -126,20 +122,13 @@ export default async function handler(req, res) {
     // 화면 버튼만 ±1 로 줄여도 month=2401 같이 직접 넣으면 옛 실적이 다 열린다.
     // 그래서 **서버가** 허용 범위를 정한다. 오래된 데이터는 값이 불완전해
     // 화면이 깨질 수 있어 노출 자체를 막는 것이 목적이다.
-    // 전월·당월·다음달 3개만 연다. 그보다 이전은 데이터가 불완전해
-    // 화면이 깨질 수 있고, 협력사에게 오래된 실적을 열어줄 이유도 없다.
-    const MONTHS_BACK = 1;
-    const MONTHS_FWD = 1;
-    // keyOf·nowKey 는 토큰 해석에서도 쓰므로 위에서 한 번만 정의한다.
-    const inRange = (label) => {
-      const k = keyOf(label);
-      return k > 0 && k >= nowKey - MONTHS_BACK && k <= nowKey + MONTHS_FWD;
-    };
-    if (monthQ && !inRange(monthQ)) {
+    // 하한은 절대값(2026. 6월)으로 고정돼 있다 — 상대 창이면 달이 바뀔 때마다
+    // 이미 배포한 링크가 창 밖으로 밀려나 죽는다. 규칙은 _month-window.js 참고.
+    if (monthQ && !inMonthWindow(monthQ)) {
       return res.status(200).json({
         partnerName: displayName, month: monthQ, months: [], campaigns: [],
         outOfRange: true,
-        message: '조회 가능 기간이 아닙니다 (전월·당월·다음달만 조회할 수 있습니다).',
+        message: OUT_OF_RANGE_MESSAGE,
       });
     }
     // ⚠️ 예전 코드는 `replace(/'/g, "\'")` 였는데 이건 **no-op** 이다 —
@@ -228,11 +217,8 @@ export default async function handler(req, res) {
         off = d.offset || null;
       } while (off);
       months = [...new Set(all.map(x => x.fields['계약월']).filter(Boolean))]
-        .filter(inRange)
-        .sort((a, b) => {
-          const p = (v) => { const m = String(v).match(/(\d{4})\D+(\d{1,2})/); return m ? +m[1] * 12 + +m[2] : 0; };
-          return p(a) - p(b);
-        });
+        .filter(inMonthWindow)
+        .sort((a, b) => monthKey(a) - monthKey(b));
     } catch (e) {
       console.error('[client-partner] months lookup failed:', e.message);
     }
