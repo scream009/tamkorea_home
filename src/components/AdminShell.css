@@ -1,5 +1,11 @@
 /* 관리자 공통 껍데기 — 왼쪽 메뉴 + 본문.
    기존 관리자 화면(AdminGate·AdminDashboard)의 어두운 보라 계열을 따른다. */
+
+/* 전역 body 에 내비 자리(padding-top:80px)와 흰 배경이 걸려 있다. 관리자 화면엔
+   사이트 내비가 없어서 그 자리가 흰 띠로 남는다(모바일에서 특히 눈에 띈다).
+   DpReportPage 가 쓰는 것과 같은 방식으로 이 화면에서만 걷어낸다. */
+body:has(.ash), body:has(.admin-gate) { padding-top: 0 !important; background: #0b0b0f; }
+
 .ash {
   min-height: 100vh;
   display: grid;

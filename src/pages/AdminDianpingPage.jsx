@@ -117,7 +117,51 @@ export default function AdminDianpingPage() {
         <span className="dpa-cnt">{rows.length}곳</span>
       </div>
 
-      {/* ── 목록 ── */}
+      {/* ── 목록 · 모바일(카드) ──
+          11칸 표를 가로로 밀어 보는 건 현장에서 못 쓴다. 폭이 좁으면 카드로 바꾼다.
+          같은 데이터를 두 번 그리지만, 표를 억지로 접는 CSS 보다 읽기 쉽다. */}
+      <div className="dpa-cards">
+        {rows.map((r) => (
+          <div key={r.officeId || r.id}
+               className={`dpa-card${open === r.officeId ? ' open' : ''}`}>
+            <button type="button" className="dpa-card-hd" onClick={() => toggle(r)}>
+              <div className="dpa-card-t">
+                <div className="dpa-nm">{r.name || '—'}</div>
+                <div className="dpa-card-sub">
+                  {r.category || '업종 미확인'}{r.cn ? ` · ${r.cn}` : ''}
+                </div>
+              </div>
+              <div className="dpa-card-badges">
+                {r.bad7 ? <span className="dpa-bad">악평 {r.bad7}</span> : null}
+                <span className={`dpa-st ${tone(r.status)}`}>{r.status || '—'}</span>
+              </div>
+            </button>
+
+            <div className="dpa-card-g">
+              <Cell k="잔액" v={won(r.balance)} strong />
+              <Cell k="일예산" v={won(r.budget)} />
+              <Cell k="클릭단가" v={r.bid == null ? '—' : `${Number(r.bid).toFixed(1)}元`} />
+              <Cell k="주말 할증" v={r.floatRatio == null ? '—' : `+${r.floatRatio}%`} />
+              <Cell k="노출시간" v={r.hours ? r.hours.replace('매일 ', '') : '—'} wide />
+              <Cell k="충전일" v={day(r.chargedAt)} />
+              <Cell
+                k="CPT"
+                v={r.cptExpire
+                  ? `${day(r.cptExpire)}${r.cptExpired ? ' · 만료' : (r.cptDaysLeft != null ? ` · D-${r.cptDaysLeft}` : '')}`
+                  : '미입력'}
+                danger={r.cptExpired}
+              />
+            </div>
+
+            {open === r.officeId && (
+              <Detail r={r} months={months[r.officeId]} loading={loadingM === r.officeId} />
+            )}
+          </div>
+        ))}
+        {!rows.length && <div className="dpa-empty">조건에 맞는 매장이 없습니다.</div>}
+      </div>
+
+      {/* ── 목록 · 데스크톱(표) ── */}
       <div className="dpa-wrap">
         <table className="dpa-tb">
           <thead>
@@ -252,4 +296,12 @@ function Detail({ r, months, loading }) {
 
 const Kv = ({ k, v }) => (
   <div className="dpa-kv"><span>{k}</span><b>{v || '—'}</b></div>
+);
+
+// 모바일 카드의 한 칸. wide 는 두 칸을 먹는다(노출시간처럼 긴 값).
+const Cell = ({ k, v, strong, wide, danger }) => (
+  <div className={`dpa-cell${wide ? ' wide' : ''}`}>
+    <span>{k}</span>
+    <b className={`${strong ? 'big' : ''}${danger ? ' danger' : ''}`}>{v}</b>
+  </div>
 );

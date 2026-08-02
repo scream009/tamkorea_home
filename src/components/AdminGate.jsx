@@ -69,7 +69,7 @@ export default function AdminGate({ children }) {
   if (status === 'open') return children;
 
   return (
-    <div style={styles.page}>
+    <div className="admin-gate" style={styles.page}>
       <div style={styles.card}>
         <div style={styles.logo}><span style={styles.dot} /> T A M K O R E A · ADMIN</div>
         <h1 style={styles.title}>관리자 인증</h1>

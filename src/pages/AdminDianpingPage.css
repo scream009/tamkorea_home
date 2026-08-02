@@ -106,4 +106,75 @@
 .dpa-link { color: #a78bfa; text-decoration: none; font-weight: 700; }
 .dpa-link:hover { text-decoration: underline; }
 
-@media (max-width: 700px) { .dpa { padding: 16px 12px 40px; } }
+/* ── 모바일 카드 ──────────────────────────────────
+   기본은 숨김. 좁은 화면에서만 표를 대신한다. */
+.dpa-cards { display: none; flex-direction: column; gap: 10px; }
+.dpa-card {
+  border: 1px solid rgba(255, 255, 255, .09); border-radius: 14px;
+  background: rgba(255, 255, 255, .03); overflow: hidden;
+}
+.dpa-card.open { border-color: rgba(168, 85, 247, .45); background: rgba(139, 92, 246, .09); }
+.dpa-card-hd {
+  width: 100%; display: flex; align-items: flex-start; gap: 10px; justify-content: space-between;
+  padding: 13px 14px 10px; background: none; border: none; cursor: pointer;
+  text-align: left; color: inherit; font: inherit;
+}
+.dpa-card-hd:focus-visible { outline: 2px solid #a78bfa; outline-offset: -3px; }
+.dpa-card-t { min-width: 0; }
+.dpa-card-t .dpa-nm { font-size: 14px; }
+.dpa-card-sub {
+  font-size: 11px; color: #6b7280; margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dpa-card-badges { display: flex; align-items: center; gap: 6px; flex: none; flex-wrap: wrap;
+                   justify-content: flex-end; }
+.dpa-card-g {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px;
+  background: rgba(255, 255, 255, .06); border-top: 1px solid rgba(255, 255, 255, .06);
+}
+.dpa-cell {
+  display: flex; flex-direction: column; gap: 2px; padding: 9px 13px;
+  background: #101017;
+}
+.dpa-cell.wide { grid-column: 1 / -1; }
+.dpa-cell span { font-size: 10.5px; color: #6b7280; }
+.dpa-cell b {
+  font-size: 13px; color: #e7e9f0; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.dpa-cell b.big { font-size: 15px; }
+.dpa-cell b.danger { color: #fca5a5; }
+.dpa-card .dpa-dt { padding: 14px; border-top: 1px solid rgba(168, 85, 247, .25); }
+
+/* ── 폭에 따른 전환 ────────────────────────────── */
+@media (max-width: 900px) {
+  .dpa { padding: 14px 12px 48px; }
+  .dpa-wrap { display: none; }          /* 표를 숨기고 */
+  .dpa-cards { display: flex; }         /* 카드를 보인다 */
+
+  /* 요약 타일 — 3열로 좁혀 한 화면에 다 들어오게 */
+  .dpa-sum { grid-template-columns: repeat(3, 1fr); gap: 7px; margin-bottom: 14px; }
+  .dpa-tile { padding: 10px 11px; border-radius: 11px; }
+  .dpa-tv { font-size: 1.2rem; }
+  .dpa-tl { font-size: 10.5px; }
+
+  /* 검색·필터 — 칩은 가로로 흘려 보낸다(줄바꿈으로 화면을 먹지 않게) */
+  .dpa-bar { gap: 8px; }
+  .dpa-q { max-width: none; flex: 1 1 100%; }
+  .dpa-chips {
+    flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+  .dpa-chips::-webkit-scrollbar { display: none; }
+  .dpa-chip { flex: none; }
+  .dpa-cnt { margin-left: 0; }
+
+  /* 펼친 상세 — 좁으면 2열, 월별 표는 가로 스크롤 유지 */
+  .dpa-dt-grid { grid-template-columns: repeat(2, 1fr); gap: 7px; }
+  .dpa-kv { padding: 8px 10px; }
+}
+
+@media (max-width: 380px) {
+  .dpa-sum { grid-template-columns: repeat(2, 1fr); }
+  .dpa-card-g { grid-template-columns: 1fr; }
+}
