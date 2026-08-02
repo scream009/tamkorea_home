@@ -205,3 +205,8 @@
 }
 .dpa-tg input { accent-color: #a855f7; width: 14px; height: 14px; cursor: pointer; }
 @media (max-width: 900px) { .dpa-sel { flex: 1 1 auto; } }
+
+/* 상태가 아직 없는 매장(编号 미등록 등) — '광고 미설정'과 구분한다.
+   둘을 뭉뚱그리면 "설정만 하면 되는 곳"과 "수집조차 안 된 곳"이 섞인다. */
+.dpa-st.none { background: rgba(255,255,255,.03); color: #4b5563;
+               border: 1px dashed rgba(255,255,255,.14); }

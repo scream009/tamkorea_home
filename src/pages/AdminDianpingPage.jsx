@@ -19,8 +19,19 @@ const won = (v) => (v == null ? '—' : `${Math.round(Number(v)).toLocaleString(
 const day = (v) => (v ? String(v).slice(0, 10) : '—');
 
 // 상태 칩 — 색은 의미를 담는다(정상/주의/멈춤/미설정)
-const TONE = { '🟢': 'ok', '🟡': 'warn', '🔴': 'bad', '⚪': 'idle' };
-const tone = (s) => TONE[String(s || '').trim().charAt(0)] || 'idle';
+//
+// ⚠️ 이모지로 판정하지 않는다. '🔴' 은 JS 에서 **2글자짜리 서로게이트 쌍**이라
+//    charAt(0) 이 '\ud83d' 를 돌려준다. 그래서 예전 코드는 모든 상태가 idle 로 떨어져
+//    충전필요·소진임박·정상 필터가 전부 0건이 됐다(실측).
+//    글자로 맞추면 이모지가 바뀌거나 빠져도 안전하다.
+const tone = (s) => {
+  const t = String(s || '');
+  if (t.includes('정상')) return 'ok';
+  if (t.includes('소진임박')) return 'warn';
+  if (t.includes('충전필요')) return 'bad';
+  if (t.includes('미집행') || t.includes('미설정')) return 'idle';
+  return 'none';                      // 상태가 아예 없는 매장 — idle 로 뭉뚱그리지 않는다
+};
 
 // Airtable 선택지 이름을 화면 표기로 바꾼다.
 // '미집행'은 결과처럼 읽히는데 실제로는 **예산이 책정되지 않은** 상태다
@@ -36,6 +47,7 @@ const FILTERS = [
   { k: 'warn', label: '소진임박' },
   { k: 'ok', label: '정상' },
   { k: 'idle', label: '광고 미설정' },
+  { k: 'none', label: '수집 전' },
   { k: 'review', label: '악평 있음' },
   { k: 'cpt', label: 'CPT 만료' },
 ];
