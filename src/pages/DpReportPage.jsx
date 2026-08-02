@@ -99,11 +99,21 @@ const AdSettings = ({ ad }) => {
   if (!ad) return null;
   const { budget, floatRatio, peak, bid, hours, hoursOn, yesterday, useRate, nudge } = ad;
 
-  // 노출시간 문자열("매일 11:00-21:00")에서 시작·끝을 뽑아 24칸으로 그린다.
-  // 요일마다 다른 매장은 문자열만 보여주고 막대는 생략한다(오해를 만들지 않는다).
-  let from = null, to = null;
-  const m = /^매일\s+(\d{2}):00-(\d{2}):00$/.exec(String(hours || ''));
-  if (m) { from = Number(m[1]); to = Number(m[2]); }
+  // 노출시간 문자열 → 24칸 막대.
+  // ⚠️ 한 구간(`매일 11:00-21:00`)만 있는 게 아니다. 점심·저녁을 갈라 트는 매장이
+  //    실제로 있다 — 단술 `00:00-03:00,16:00-24:00`, 연동골목집 `10:00-13:00,16:00-22:00`.
+  //    단일 구간만 받는 정규식이면 이런 매장은 막대가 통째로 안 그려진다.
+  //    요일마다 다른 매장(`월 … · 화 …`)은 24칸으로 표현이 안 되므로 막대를 생략한다.
+  const onHours = new Set();
+  const hStr = String(hours || '');
+  if (/^매일\s/.test(hStr)) {
+    for (const seg of hStr.replace(/^매일\s+/, '').split(',')) {
+      const m = /^(\d{1,2}):00-(\d{1,2}):00$/.exec(seg.trim());
+      if (!m) { onHours.clear(); break; }          // 하나라도 못 읽으면 통째로 포기
+      for (let h = Number(m[1]); h < Number(m[2]); h++) onHours.add(h);
+    }
+  }
+  const hasStrip = onHours.size > 0;
 
   const NUDGE = {
     // 잔액 0 — 위쪽에 이미 빨간 충전 배너가 크게 떠 있다. 같은 말을 반복하지 않고
@@ -179,7 +189,9 @@ const AdSettings = ({ ad }) => {
         {bid != null && (
           <div className="dpr-adset-c">
             <div className="dpr-adset-l">클릭 단가 <span className="dpr-sm">出价</span></div>
-            <div className="dpr-adset-v mono">{bid}<small>元</small></div>
+            {/* 포털이 8·5·6 처럼 정수로 주는 매장이 있어 그대로 쓰면 자릿수가 들쭉날쭉해진다.
+                단가 조정 단위(priceStep)가 0.1元 이므로 소수 한 자리로 통일한다. */}
+            <div className="dpr-adset-v mono">{Number(bid).toFixed(1)}<small>元</small></div>
             <div className="dpr-adset-f">입찰 상한</div>
           </div>
         )}
@@ -207,11 +219,11 @@ const AdSettings = ({ ad }) => {
         </div>
       )}
 
-      {from != null && (
+      {hasStrip && (
         <div className="dpr-adset-hours">
           <div className="dpr-adset-strip">
             {Array.from({ length: 24 }, (_, h) => (
-              <i key={h} className={h >= from && h < to ? 'on' : ''} />
+              <i key={h} className={onHours.has(h) ? 'on' : ''} />
             ))}
           </div>
           <div className="dpr-adset-ticks">
