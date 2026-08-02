@@ -33,6 +33,23 @@ const PRODUCT_KO = {
 const BrandCtx = React.createContext({ brand: 'Tam Korea', isPartner: false });
 const useBrand = () => React.useContext(BrandCtx);
 
+/**
+ * 문장 주어로 쓸 대행사 이름.
+ *
+ * 직영이면 'Tam Korea가' 처럼 이름을 넣지만, **협력사 화면에서는 비운다.**
+ * 협력사 이름이 리포트 앞머리에 반복해 박히면 양쪽 모두 부담스럽다(Owner 지적).
+ * 한국어는 주어를 생략해도 문장이 자연스러워, 빈 문자열이면 그대로 읽힌다.
+ *   직영   "Tam Korea가 매일 … 최적화하고 있습니다."
+ *   협력사 "매일 … 최적화하고 있습니다."
+ *
+ * ⚠️ 이름을 아예 못 쓰는 건 아니다. 서비스 신청처럼 **주체가 분명해야 하는 자리**
+ *    (리뷰관리 서비스·团购 대행)에는 brand 를 그대로 쓴다.
+ */
+const useSubject = () => {
+  const { brand, isPartner } = useBrand();
+  return isPartner ? '' : `${brand}가 `;
+};
+
 const Kko = ({ label }) => {
   const { isPartner } = useBrand();
   if (isPartner) return <span className="dpr-ask">담당 매니저에게 문의해 주세요</span>;
@@ -98,7 +115,7 @@ const HOURS_LABEL = ['0', '', '', '3', '', '', '6', '', '', '9', '', '',
  *  추정만 내밀면 약속처럼 읽히고, 사례만 내밀면 우리 매장 얘기가 아니게 된다.
  *  근거(소진 여력·광고 기여도)를 같이 적어 어디서 나온 숫자인지 보이게 한다. */
 const Upside = ({ p }) => {
-  const { brand } = useBrand();
+  const by = useSubject();
   if (!p) return null;
   const gain = p.expMax - p.expNow;
   return (
@@ -140,14 +157,14 @@ const Upside = ({ p }) => {
 
       <div className="dpr-up-note">
         ※ 순위는 <b>추정</b>입니다. 상권 경쟁 상황에 따라 달라질 수 있어 보장 수치가 아닙니다.{' '}
-        {brand}가 상권 데이터를 보고 어느 설정을 얼마나 조정할지 제안드리겠습니다.
+        {by}상권 데이터를 보고 어느 설정을 얼마나 조정할지 제안드리겠습니다.
       </div>
     </div>
   );
 };
 
 const AdSettings = ({ ad, upside }) => {
-  const { brand } = useBrand();
+  const by = useSubject();
   if (!ad) return null;
   const { budget, floatRatio, peak, bid, hours, hoursOn, yesterday, useRate, nudge } = ad;
 
@@ -191,7 +208,7 @@ const AdSettings = ({ ad, upside }) => {
       title: '잔액은 있으나 집행이 없었습니다',
       body: <>예산이 남아서가 아니라 광고가 <b>노출 기회를 얻지 못한</b> 경우입니다.
         노출 시간대에 상권 경쟁이 몰렸거나 입찰가가 밀렸을 수 있습니다.
-        {brand}가 원인을 확인해 알려드리겠습니다.</>,
+        {by}원인을 확인해 알려드리겠습니다.</>,
     },
     budget_capped: {
       pill: '검토 제안', cls: 'warn',
@@ -205,7 +222,7 @@ const AdSettings = ({ ad, upside }) => {
       title: '예산이 남고 있습니다 — 노출 기회를 늘릴 수 있습니다',
       body: <>예산이 부족한 게 아니라 <b>광고가 보일 기회 자체가 적다</b>는 뜻입니다.
         노출 시간을 넓히거나 클릭 단가를 올리는 두 가지 방법이 있습니다.
-        어느 쪽이 효율적인지 {brand}가 상권 데이터로 확인해 제안드리겠습니다.
+        어느 쪽이 효율적인지 {by}상권 데이터로 확인해 제안드리겠습니다.
         <b> 추가 비용 없이 설정만으로</b> 개선되는 구간일 수 있습니다.</>,
     },
     bid_only: {
@@ -300,7 +317,8 @@ const AdSettings = ({ ad, upside }) => {
 };
 
 const CpcSection = ({ cpc, funnel, dominance, store, adSet, projection }) => {
-  const { brand } = useBrand();
+  const { brand, isPartner } = useBrand();
+  const by = useSubject();          // 협력사 화면에서는 이름을 앞세우지 않는다
   if (!cpc) {
     return (
       <>
@@ -322,7 +340,7 @@ const CpcSection = ({ cpc, funnel, dominance, store, adSet, projection }) => {
     lvl = 'urgent'; tag = '비활성'; bs = '광고가 노출되지 않는 상태';
     recomTitle = '🔴 지금 광고가 꺼져 있습니다 — 충전이 필요합니다';
     recomBody = (
-      <>캠페인은 세팅돼 있으나 <b>잔액이 0원</b>이라 어제 {r0(yst)}元을 끝으로 노출이 멈췄습니다. 권장 충전액 <b>약 5,000元</b>(일예산×약7일). 충전만 해주시면 {brand}가 즉시 재개·운영합니다.</>
+      <>캠페인은 세팅돼 있으나 <b>잔액이 0원</b>이라 어제 {r0(yst)}元을 끝으로 노출이 멈췄습니다. 권장 충전액 <b>약 5,000元</b>(일예산×약7일). 충전만 해주시면 {by}즉시 재개·운영합니다.</>
     );
     contrib = (
       <>📉 <b>기회손실 발생 중</b> — 광고가 멈추면 상권 노출 순위가 하락하고, 인플루언서·체험단으로 만든 유입 모멘텀이 꺼집니다. 플랫폼 밖 <b>인플루언서 바이럴</b>과 플랫폼 안 <b>CPC 상단 노출</b>이 맞물릴 때 효과가 극대화됩니다.</>
@@ -339,7 +357,7 @@ const CpcSection = ({ cpc, funnel, dominance, store, adSet, projection }) => {
   } else {
     lvl = 'ok'; tag = '정상 운영'; bs = days ? `약 ${Math.round(days)}일분 여유` : '운영 양호';
     recomTitle = '🟢 안정적으로 운영 중';
-    recomBody = `${brand}가 매일 시간대별 클릭단가를 모니터링하며 점심·저녁 피크에 입찰가를 최적화하고 있습니다. 성수기(중국 연휴)엔 예산 상향으로 점유율 확대를 제안드립니다.`;
+    recomBody = `${by}매일 시간대별 클릭단가를 모니터링하며 점심·저녁 피크에 입찰가를 최적화하고 있습니다. 성수기(중국 연휴)엔 예산 상향으로 점유율 확대를 제안드립니다.`;
     contrib = (
       <>🔗 어제 <b>{r0(yst)}元</b>을 집행해 노출 도달 <b>{num(funnel?.exposure)}명</b>을 견인했습니다. 플랫폼 외부 <b>인플루언서·체험단 바이럴</b>과 내부 <b>CPC 상단 노출</b>이 맞물려 상권 노출 랭킹 <b>{dominance?.rank}위</b>를 방어하고 있습니다.</>
     );
@@ -362,7 +380,7 @@ const CpcSection = ({ cpc, funnel, dominance, store, adSet, projection }) => {
         { value: budget ? `${num(budget)}元/일`
                  : (cpc?.budget_status === 'not_set' ? '미책정'
                     : cpc?.budget_status === 'fetch_failed' ? '수집 실패'
-                    : `${brand} 최적 예산 추천`),
+                    : `최적 예산 추천`),
           label: '일예산 책정',
           style: budget ? {} : { fontSize: '.95rem', lineHeight: 1.35 } },
         { value: '1개', label: '활성 캠페인' },
@@ -385,10 +403,10 @@ const CpcSection = ({ cpc, funnel, dominance, store, adSet, projection }) => {
           </span>
         </div>
       )}
-      <div className="dpr-foot-note" style={{ marginTop: 14 }}>💡 <b>{brand} CPC 기여도</b> — {contrib}</div>
+      <div className="dpr-foot-note" style={{ marginTop: 14 }}>💡 <b>{isPartner ? 'CPC 기여도' : `${brand} CPC 기여도`}</b> — {contrib}</div>
       <CtaRow
         text={bal <= 0
-          ? `충전만 해주시면 ${brand}가 즉시 광고를 재개하고 운영·최적화까지 진행합니다.`
+          ? `충전만 해주시면 ${by}즉시 광고를 재개하고 운영·최적화까지 진행합니다.`
           : '소진 전 미리 충전하시면 광고 공백 없이 노출이 유지됩니다.'}
         label="광고비 충전 신청"
       />
