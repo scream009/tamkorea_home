@@ -554,7 +554,13 @@ export default function ClientPartnerPage() {
         const listRes = await fetch(
           `/api/client-partner?${q}` + (monthParam ? `&month=${encodeURIComponent(monthParam)}` : '')
         );
-        if (!listRes.ok) throw new Error(`협력사 조회 실패 (${listRes.status})`);
+        // 서버는 왜 막혔는지를 body 에 담아 준다(만료된 링크·여러 협력사에 걸린 토큰 등).
+        // 예전엔 그걸 읽지 않고 "협력사 조회 실패 (404)" 만 띄워서, 링크를 받은 쪽도
+        // 담당자도 원인을 알 수 없었다. 상태코드는 원인이 아니라 증상이다.
+        if (!listRes.ok) {
+          const reason = await listRes.json().then((b) => b?.error).catch(() => null);
+          throw new Error(reason || `협력사 조회 실패 (${listRes.status})`);
+        }
         const list = await listRes.json();
         setMonths(list.months || []);
         setPickedMonth(list.month || '');

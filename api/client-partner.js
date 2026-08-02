@@ -80,13 +80,19 @@ export default async function handler(req, res) {
         });
       }
 
-      // 기준월: 조회 가능 기간 안에서 오늘에 가장 가까운 달.
+      // 기준월: **직전 완료월**(전월)에 가장 가까운 달.
+      // 당월은 아직 진행 중이라 실적이 덜 찬 화면이 열린다. 협력사에게 보여 줄
+      // '메인'은 마감된 달이다(실측 2026-08-02: 좋아좋아 토큰 하나가 1~8월을
+      // 덮고 있어 8월로 떨어졌고, 공유해야 할 달은 7월이었다).
+      // 토큰이 한 달만 덮으면(대부분) 고를 것이 없어 그 달이 그대로 나온다 —
+      // 이 규칙은 여러 달을 덮는 토큰에서만 실제로 작동한다.
       // 범위 안에 하나도 없으면 가장 최근 달을 준다 — 아래 범위 검사가
       // "조회 가능 기간이 아닙니다" 로 이유를 정확히 알려준다.
       const months = [...new Set(hits.map((r) => r.fields['계약월']).filter(Boolean))];
       const inWindow = months.filter(inMonthWindow);
+      const targetKey = nowKey - 1;
       const pick = (inWindow.length ? inWindow : months)
-        .sort((a, b) => Math.abs(keyOf(a) - nowKey) - Math.abs(keyOf(b) - nowKey)
+        .sort((a, b) => Math.abs(keyOf(a) - targetKey) - Math.abs(keyOf(b) - targetKey)
                      || keyOf(b) - keyOf(a))[0];
       const rec0 = { fields: { 협력사: partners[0], 계약월: pick || '' } };
       const pf = rec0.fields['협력사'];
