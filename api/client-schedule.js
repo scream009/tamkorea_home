@@ -410,7 +410,10 @@ export default async function handler(req, res) {
     //      노출이 2배면 순위 숫자가 약 절반. 어디까지나 **추정**이라 화면에 그렇게 적는다.
     //   ③ 광고 기여도 — 노출 중 광고가 만든 비율. 높을수록 설정 변경이 그대로 반영된다.
     //      낮은 매장(자연 유입 위주)에 같은 제안을 하면 기대만 키운다.
-    const RANK_SLOPE = -0.93;      // ⚠️ 표본 21곳. 매장이 늘면 다시 재야 한다.
+    // 2026-08-02 실측 회귀: 같은 달 21곳의 log(노출)↔log(순위)
+    //   상관 r=-0.757, 기울기 -0.93 → 노출 2배면 순위 숫자가 약 절반.
+    // ⚠️ 매장이 늘거나 상권이 바뀌면 다시 재야 한다. 화면에도 이 수치를 근거로 밝힌다.
+    const RANK_SLOPE = -0.93, RANK_N = 21, RANK_R = '-0.76';
     const detailAdShare = (f) => {
       try {
         const j = JSON.parse(f['DP_리포트JSON'] || '{}');
@@ -430,9 +433,20 @@ export default async function handler(req, res) {
         const headroom = Math.min(100 / useRate, 4);      // 4배 넘는 추정은 과장이다
         const expMax = Math.round(expNow * headroom);
         const rankEst = Math.max(1, Math.round(rankNow * Math.pow(headroom, RANK_SLOPE)));
+        // 계산 근거를 그대로 내보낸다. "몇 명 더"만 던지면 고객이 검산할 수 없다.
+        //   지금 집행액으로 얻은 1元당 노출 × 책정 예산 = 도달 가능치
+        const perYuan = spent > 0 ? expNow / spent : null;
         projection = {
           useRate: Math.round(useRate), headroom: Number(headroom.toFixed(1)),
           expNow, expMax, rankNow, rankEst, adShare: adShare ?? null,
+          budget: Math.round(budget), spent: Math.round(spent),
+          unused: Math.round(budget - spent),
+          perYuan: perYuan ? Math.round(perYuan) : null,
+          sampleN: RANK_N, sampleR: RANK_R,
+          bid: cf['AD_단가_따종'] ?? null,
+          hours: cf['AD_주간노출시간'] ?? null,
+          // 주말 상향이 꺼져 있으면 그 자체가 '추가 예산 없이' 쓸 수 있는 손잡이다
+          weekendOff: !(Number(cf['AD_주말상향률']) > 0),
         };
 
         // 추정만 내밀면 "약속"으로 읽힌다. 같은 달 실측 중 목표 노출과 가장 가까운
@@ -451,14 +465,29 @@ export default async function handler(req, res) {
               + `?filterByFormula=${mf}&pageSize=100`
               + `&fields%5B%5D=${encodeURIComponent('DP_노출')}`
               + `&fields%5B%5D=${encodeURIComponent('DP_순위')}`
-              + `&fields%5B%5D=${encodeURIComponent('DP_매장코드')}`;
+              + `&fields%5B%5D=${encodeURIComponent('DP_매장코드')}`
+              + `&fields%5B%5D=${encodeURIComponent('AD_단가_따종')}`
+              + `&fields%5B%5D=${encodeURIComponent('AD_주간노출시간')}`;
             const all = await fetchAllRecords(purl);
             const me = cf['DP_매장코드'];
             const cand = all
               .filter((r) => r.fields['DP_매장코드'] !== me)
-              .map((r) => ({ exp: Number(r.fields['DP_노출']), rank: Number(r.fields['DP_순위']) }))
+              .map((r) => ({
+                exp: Number(r.fields['DP_노출']), rank: Number(r.fields['DP_순위']),
+                bid: Number(r.fields['AD_단가_따종']) || null,
+                hours: Number(r.fields['AD_주간노출시간']) || null,
+              }))
               // 나보다 노출이 많은 곳만 — '이만큼 올리면 이 정도'를 보여주는 자리다
               .filter((x) => x.exp > expNow && x.rank > 0);
+
+            // 어떤 설정을 얼마로? — 예측하지 않는다. **같은 업종에서 우리보다
+            // 노출이 많은 매장들이 실제로 쓰는 범위**를 보여 준다(관측이라 틀려도 거짓이 아니다).
+            const rng = (vals) => {
+              const v = vals.filter((x) => x > 0).sort((a, b) => a - b);
+              return v.length ? { lo: v[0], hi: v[v.length - 1], n: v.length } : null;
+            };
+            projection.peerBid = rng(cand.map((x) => x.bid));
+            projection.peerHours = rng(cand.map((x) => x.hours));
             if (cand.length) {
               cand.sort((a, b) => Math.abs(a.exp - expMax) - Math.abs(b.exp - expMax));
               const p = cand[0];

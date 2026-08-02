@@ -111,20 +111,66 @@ const Stars = ({ v, low }) => {
 const HOURS_LABEL = ['0', '', '', '3', '', '', '6', '', '', '9', '', '',
                      '12', '', '', '15', '', '', '18', '', '', '21', '', ''];
 
-/** 개선 여지 — 추정치와 실측 사례를 **나란히** 둔다.
- *  추정만 내밀면 약속처럼 읽히고, 사례만 내밀면 우리 매장 얘기가 아니게 된다.
- *  근거(소진 여력·광고 기여도)를 같이 적어 어디서 나온 숫자인지 보이게 한다. */
+/** 개선 여지 — 핵심은 **"추가 예산 없이"** 다.
+ *
+ *  "예산을 다 쓰면"은 돈을 더 내라는 말로 읽힌다(Owner 지적). 실제 상황은 반대로,
+ *  이미 책정해 둔 예산이 **안 쓰이고 남는** 것이다. 그 프레임을 문장 전체에 유지한다.
+ *
+ *  구성: 남는 예산 → 손댈 설정(같은 업종 실측 범위) → 도달 가능치(계산 근거 포함) → 실제 사례
+ *  설정 제안값은 **예측이 아니라 관측**이다 — 우리보다 노출이 많은 같은 업종 매장들이
+ *  실제로 쓰는 범위를 보여 준다. 우리가 "얼마로 올리면 얼마"라고 약속하지 않는다.
+ */
 const Upside = ({ p }) => {
   const by = useSubject();
   if (!p) return null;
   const gain = p.expMax - p.expNow;
+  const rng = (r, unit) => (r ? (r.lo === r.hi ? `${r.lo}${unit}` : `${r.lo}~${r.hi}${unit}`) : null);
+  const bidRange = rng(p.peerBid, '元');
+  const hourRange = rng(p.peerHours, '시간');
+
   return (
     <div className="dpr-upside">
       <div className="dpr-up-h">
         <span className="dpr-up-pill">개선 여지</span>
-        예산을 다 쓰면 노출을 <b>약 {p.headroom}배</b>까지 늘릴 수 있습니다
+        <b>추가 예산 없이</b> 노출을 약 {p.headroom}배까지 늘릴 수 있습니다
       </div>
 
+      {/* ① 남는 예산 — 더 내라가 아니라 '이미 낸 것이 안 쓰인다' */}
+      {p.budget > 0 && (
+        <p className="dpr-up-b">
+          하루 예산 <b>{num(p.budget)}元</b> 중 <b>{num(p.spent)}元({p.useRate}%)</b>만
+          집행되고 있습니다. 나머지 <b>{num(p.unused)}元</b>은 <b>이미 책정돼 있는데도 쓰이지 않고</b> 있습니다.
+        </p>
+      )}
+
+      {/* ② 손댈 설정 — 같은 업종 실측 범위로만 말한다 */}
+      {(bidRange || hourRange || p.weekendOff) && (
+        <div className="dpr-up-lev">
+          <div className="dpr-up-lev-h">조정해 볼 설정</div>
+          <ul>
+            {bidRange && (
+              <li>
+                <b>클릭 단가</b> — 현재 {p.bid}元. 같은 업종에서 노출이 더 많은 매장들은{' '}
+                <b>{bidRange}</b>대를 쓰고 있습니다.
+              </li>
+            )}
+            {hourRange && p.hours != null && (
+              <li>
+                <b>노출 시간</b> — 현재 주 {p.hours}시간. 같은 업종 상위 매장들은{' '}
+                <b>주 {hourRange}</b>입니다.
+              </li>
+            )}
+            {p.weekendOff && (
+              <li>
+                <b>주말·명절 상향</b> — 지금 꺼져 있습니다. 손님이 몰리는 날만 예산을 올려
+                두면 평일 예산은 그대로 두고 성수 요일만 강화할 수 있습니다.
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
+
+      {/* ③ 도달 가능치 + 계산 근거 */}
       <div className="dpr-up-row">
         <div className="dpr-up-c">
           <span>지금</span>
@@ -133,20 +179,23 @@ const Upside = ({ p }) => {
         </div>
         <div className="dpr-up-ar">→</div>
         <div className="dpr-up-c hi">
-          <span>예산 100% 집행 시</span>
+          <span>예산이 다 쓰였을 때</span>
           <b className="mono">{num(p.expMax)}<small>명</small></b>
           <i>상권 {p.rankEst}위권 <em>추정</em></i>
         </div>
       </div>
 
-      <p className="dpr-up-b">
-        지금은 하루 예산의 <b>{p.useRate}%</b>만 쓰이고 있습니다. 남는 예산이 그대로 노출로
-        바뀐다고 보면 <b>+{num(gain)}명</b>이 더 도달할 수 있는 계산입니다.
-        {p.adShare != null && (
-          <> 이 매장은 노출의 <b>{p.adShare}%</b>가 광고에서 나오고 있어,
-          설정을 바꾼 만큼이 비교적 곧바로 반영되는 편입니다.</>
-        )}
-      </p>
+      {p.perYuan != null && (
+        <div className="dpr-up-calc">
+          <b>계산 근거</b> — 지금 <b>{num(p.spent)}元</b>으로 <b>{num(p.expNow)}명</b>에 도달했으니
+          1元당 약 <b>{num(p.perYuan)}명</b>입니다. 같은 효율로 예산 <b>{num(p.budget)}元</b>이
+          쓰이면 <b>{num(p.expMax)}명</b> — 지금보다 <b>+{num(gain)}명</b>입니다.
+          {p.adShare != null && (
+            <> 이 매장은 노출의 <b>{p.adShare}%</b>가 광고에서 나와, 설정을 바꾼 만큼이
+            비교적 곧바로 반영되는 편입니다.</>
+          )}
+        </div>
+      )}
 
       {p.peer && (
         <div className="dpr-up-peer">
@@ -156,8 +205,13 @@ const Upside = ({ p }) => {
       )}
 
       <div className="dpr-up-note">
-        ※ 순위는 <b>추정</b>입니다. 상권 경쟁 상황에 따라 달라질 수 있어 보장 수치가 아닙니다.{' '}
-        {by}상권 데이터를 보고 어느 설정을 얼마나 조정할지 제안드리겠습니다.
+        ※ <b>순위 추정 방법</b> — 저희가 관리하는 따종디엔핑 매장 {p.sampleN || 21}곳의
+        같은 달 실측으로 <b>노출량과 상권 순위의 관계</b>를 계산했습니다
+        (상관계수 {p.sampleR || '-0.76'}, 노출이 2배면 순위가 약 절반). 그 관계에 이 매장의
+        도달 가능치를 대입한 값입니다.
+        <br />
+        상권 경쟁 상황에 따라 달라질 수 있어 <b>보장 수치가 아니며</b>, 설정값도 같은 업종의
+        실측 범위일 뿐 정답은 아닙니다. {by}매장 상황에 맞는 조정폭을 확인해 제안드리겠습니다.
       </div>
     </div>
   );
