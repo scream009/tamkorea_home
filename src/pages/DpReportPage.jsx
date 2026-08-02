@@ -113,7 +113,7 @@ const AdSettings = ({ ad }) => {
     no_balance: {
       pill: '안내', cls: 'warn',
       title: '잔액이 소진되어 광고가 나가지 않았습니다',
-      body: <>어제는 잔액이 없어 노출이 발생하지 않았고, 그래서 아래 집행액과 소진률이
+      body: <>잔액이 없어 노출이 발생하지 않았습니다. 아래 집행액과 소진률이
         0으로 표시됩니다. <b>광고 설정은 그대로 살아 있습니다</b> — 충전되면 별도 작업 없이
         지금 이 설정 그대로 바로 재개됩니다.</>,
     },
@@ -123,10 +123,10 @@ const AdSettings = ({ ad }) => {
       body: <>지금 집행 속도면 며칠 안에 노출이 멈춥니다. 광고가 멈추면 상권 노출 순위가
         내려가고 회복에는 시간이 걸립니다. 소진 전에 여유를 두시면 순위를 지킬 수 있습니다.</>,
     },
-    // 잔액은 있는데 어제 집행이 0 — 예산이 남는 것과는 원인이 다르다.
+    // 잔액은 있는데 집행이 0 — 예산이 남는 것과는 원인이 다르다.
     no_spend: {
       pill: '안내', cls: 'info',
-      title: '잔액은 있으나 어제 집행이 없었습니다',
+      title: '잔액은 있으나 집행이 없었습니다',
       body: <>예산이 남아서가 아니라 광고가 <b>노출 기회를 얻지 못한</b> 경우입니다.
         노출 시간대에 상권 경쟁이 몰렸거나 입찰가가 밀렸을 수 있습니다.
         {brand}가 원인을 확인해 알려드리겠습니다.</>,
@@ -134,7 +134,7 @@ const AdSettings = ({ ad }) => {
     budget_capped: {
       pill: '검토 제안', cls: 'warn',
       title: '예산이 매일 상한에 닿고 있습니다',
-      body: <>어제 하루 예산을 <b>전액 소진</b>했습니다. 광고가 아직 노출될 수 있는 시간에 예산이
+      body: <>하루 예산을 <b>전액 소진</b>했습니다. 광고가 아직 노출될 수 있는 시간에 예산이
         먼저 끝나면, 그 뒤에 검색한 손님에게는 매장이 보이지 않습니다.
         충전 시점과 함께 예산 조정도 한번 같이 보시면 좋겠습니다.</>,
     },
@@ -170,8 +170,8 @@ const AdSettings = ({ ad }) => {
         )}
         {yesterday != null && useRate != null && (
           <div className="dpr-adset-c">
-            <div className="dpr-adset-l">어제 집행</div>
-            {/* 위 '어제 광고비 소진' 지표가 반올림 표시라 여기도 맞춘다(74.29元 → 74元) */}
+            <div className="dpr-adset-l">일 집행액</div>
+            {/* 위 광고비 소진 지표가 반올림 표시라 여기도 맞춘다(74.29元 → 74元) */}
             <div className="dpr-adset-v mono">{num(Math.round(yesterday))}<small>元</small></div>
             <div className="dpr-adset-f">예산의 {useRate}%</div>
           </div>
@@ -197,7 +197,7 @@ const AdSettings = ({ ad }) => {
       {useRate != null && (
         <div className="dpr-adset-gauge">
           <div className="dpr-adset-gt">
-            <span>어제 예산 소진률</span>
+            <span>예산 소진률</span>
             <span><b>{useRate}%</b> · {num(yesterday)} / {num(budget)}元</span>
           </div>
           <div className="dpr-adset-bar">
