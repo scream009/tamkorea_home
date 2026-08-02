@@ -94,7 +94,59 @@ const Stars = ({ v, low }) => {
 const HOURS_LABEL = ['0', '', '', '3', '', '', '6', '', '', '9', '', '',
                      '12', '', '', '15', '', '', '18', '', '', '21', '', ''];
 
-const AdSettings = ({ ad }) => {
+/** 개선 여지 — 추정치와 실측 사례를 **나란히** 둔다.
+ *  추정만 내밀면 약속처럼 읽히고, 사례만 내밀면 우리 매장 얘기가 아니게 된다.
+ *  근거(소진 여력·광고 기여도)를 같이 적어 어디서 나온 숫자인지 보이게 한다. */
+const Upside = ({ p }) => {
+  const { brand } = useBrand();
+  if (!p) return null;
+  const gain = p.expMax - p.expNow;
+  return (
+    <div className="dpr-upside">
+      <div className="dpr-up-h">
+        <span className="dpr-up-pill">개선 여지</span>
+        예산을 다 쓰면 노출을 <b>약 {p.headroom}배</b>까지 늘릴 수 있습니다
+      </div>
+
+      <div className="dpr-up-row">
+        <div className="dpr-up-c">
+          <span>지금</span>
+          <b className="mono">{num(p.expNow)}<small>명</small></b>
+          <i>상권 {p.rankNow}위</i>
+        </div>
+        <div className="dpr-up-ar">→</div>
+        <div className="dpr-up-c hi">
+          <span>예산 100% 집행 시</span>
+          <b className="mono">{num(p.expMax)}<small>명</small></b>
+          <i>상권 {p.rankEst}위권 <em>추정</em></i>
+        </div>
+      </div>
+
+      <p className="dpr-up-b">
+        지금은 하루 예산의 <b>{p.useRate}%</b>만 쓰이고 있습니다. 남는 예산이 그대로 노출로
+        바뀐다고 보면 <b>+{num(gain)}명</b>이 더 도달할 수 있는 계산입니다.
+        {p.adShare != null && (
+          <> 이 매장은 노출의 <b>{p.adShare}%</b>가 광고에서 나오고 있어,
+          설정을 바꾼 만큼이 비교적 곧바로 반영되는 편입니다.</>
+        )}
+      </p>
+
+      {p.peer && (
+        <div className="dpr-up-peer">
+          📍 <b>실제 사례</b> — 같은 업종에서 노출 <b>{num(p.peer.exp)}명</b>인 매장은
+          현재 상권 <b>{p.peer.rank}위</b>입니다. <span className="dpr-dim">(같은 달 실측)</span>
+        </div>
+      )}
+
+      <div className="dpr-up-note">
+        ※ 순위는 <b>추정</b>입니다. 상권 경쟁 상황에 따라 달라질 수 있어 보장 수치가 아닙니다.{' '}
+        {brand}가 상권 데이터를 보고 어느 설정을 얼마나 조정할지 제안드리겠습니다.
+      </div>
+    </div>
+  );
+};
+
+const AdSettings = ({ ad, upside }) => {
   const { brand } = useBrand();
   if (!ad) return null;
   const { budget, floatRatio, peak, bid, hours, hoursOn, yesterday, useRate, nudge } = ad;
@@ -240,11 +292,14 @@ const AdSettings = ({ ad }) => {
           <p>{NUDGE.body}</p>
         </div>
       )}
+
+      {/* 근거가 있을 때만 붙는다 — 없으면 API 가 null 을 준다 */}
+      <Upside p={upside} />
     </div>
   );
 };
 
-const CpcSection = ({ cpc, funnel, dominance, store, adSet }) => {
+const CpcSection = ({ cpc, funnel, dominance, store, adSet, projection }) => {
   const { brand } = useBrand();
   if (!cpc) {
     return (
@@ -313,7 +368,7 @@ const CpcSection = ({ cpc, funnel, dominance, store, adSet }) => {
         { value: '1개', label: '활성 캠페인' },
       ]} />
       {/* 일예산이 방금 위에 나왔으니, 그 바로 밑이 설정 상세의 제자리다 */}
-      <AdSettings ad={adSet} />
+      <AdSettings ad={adSet} upside={projection} />
       {/* 광고비가 CPC 외 다른 상품으로도 나간다. 어디에 쓰였는지 그대로 보여준다. */}
       {Object.keys(cpc.by_product || {}).length > 0 && (
         <div className="dpr-foot-note" style={{ marginTop: 14 }}>
@@ -398,6 +453,8 @@ const AdflowSection = ({ adflow, name, cpc }) => {
 const DominanceSection = ({ dominance, funnel, days, period }) => {
   const d = dominance || {};
   const down = String(d.trend || '').startsWith('-');
+  // 가입 첫 달은 플랫폼이 전월비를 주지 않는다. '-'·'null'·빈값 모두 없는 것으로 본다.
+  const hasTrend = !!d.trend && !['-', 'null', 'undefined', '0', '0%'].includes(String(d.trend).trim());
   const mult = d.multiple;
   const dayAvg = d.daily_avg;
   const [begin, end] = String(period || '').split('~');
@@ -413,11 +470,22 @@ const DominanceSection = ({ dominance, funnel, days, period }) => {
       <Stat items={[
         { value: `${d.rank}위`, label: <>상권 노출 순위<br />({d.city} · {d.category})</>, color: '#9B70FF' },
         { value: mult != null ? `${mult}배` : '-', label: '상권 평균 대비 노출', color: '#34d399' },
-        { value: `${down ? '▼' : '▲'} ${d.trend}`, label: <>전월 대비 노출<br /><span style={{ fontSize: '.62rem' }}>(플랫폼 近30天)</span></>, color: down ? '#fca5a5' : '#6ee7b7' },
+        // 가입 첫 달은 비교 대상이 없어 전월비가 없다. 'null'·'▲ -' 같은 시스템 값이
+        // 고객 화면에 나가면 안 된다 — 없으면 '—' 로 두고 라벨로 이유를 알린다.
+        hasTrend
+          ? { value: `${down ? '▼' : '▲'} ${d.trend}`,
+              label: <>전월 대비 노출<br /><span style={{ fontSize: '.62rem' }}>(플랫폼 近30天)</span></>,
+              color: down ? '#fca5a5' : '#6ee7b7' }
+          : { value: '—',
+              label: <>전월 대비 노출<br /><span style={{ fontSize: '.62rem' }}>(첫 달 · 비교 대상 없음)</span></>,
+              color: '#94a3b8' },
         { value: `${num(dayAvg)}명`, label: '일평균 노출(사람)' },
       ]} />
       <div className="dpr-foot-note" style={{ marginTop: 14 }}>
-        💡 우리 매장은 <b>{d.city} {d.category}</b> 상권에서 노출 <b>{d.rank}위</b>, 노출량은 상권 평균의 <b>{mult}배</b>이며, 전월 대비 <b>{d.trend} {down ? '감소' : '증가'}</b>했습니다.{' '}
+        💡 우리 매장은 <b>{d.city} {d.category}</b> 상권에서 노출 <b>{d.rank}위</b>, 노출량은 상권 평균의 <b>{mult}배</b>
+        {hasTrend
+          ? <>이며, 전월 대비 <b>{d.trend} {down ? '감소' : '증가'}</b>했습니다.</>
+          : <>입니다. <b>이번이 첫 달</b>이라 전월 대비 수치는 다음 리포트부터 제공됩니다.</>}{' '}
         <span className="dpr-dim">※ 최근 30일({begin}~{end}, 조회 당일 제외) 기준 · 순위·전월비는 플랫폼 공식값(近30天)입니다.</span>
       </div>
 
@@ -904,7 +972,7 @@ export default function DpReportPage() {
 
         <Section icon="📢" title="CPC 광고 · 잔액 & 노출 기여" note="推广通 계정 실측 · 광고비는 元(RMB)">
           <CpcSection cpc={cpc} funnel={funnel} dominance={dominance} store={store}
-                      adSet={data?.adSet} />
+                      adSet={data?.adSet} projection={data?.projection} />
         </Section>
 
         <Section icon="🚀" title="광고 기여도 — 광고가 만든 노출·유입" note="推广通 광고 성과 vs 전체 트래픽 · 동일 기간 실측 비교">

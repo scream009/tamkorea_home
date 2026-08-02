@@ -6,6 +6,10 @@
 const TOKEN = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
 const CAMPAIGN_TABLE = encodeURIComponent('Campaign_DB');
+// Airtable formula 안 문자열 리터럴 이스케이프.
+// ⚠️ 백슬래시를 **먼저** 늘려야 한다. 순서를 바꾸면 `\` 로 끝나는 값이
+//    뒤따르는 따옴표를 삼켜 수식이 깨진다(_admin-auth.js 의 escFormula 와 같은 규칙).
+const escFormula = (v) => String(v ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 const RECORD_TABLE   = encodeURIComponent('진행_DB_OLD');
 
 async function atFetch(url) {
@@ -397,6 +401,82 @@ export default async function handler(req, res) {
       }
     }
 
+    // ── 개선 여지 추정 ────────────────────────────────────────
+    // "설정을 바꾸면 얼마나 오를까"를 숫자로 말한다. 근거가 없으면 아예 만들지 않는다.
+    //
+    // 세 축을 쓴다:
+    //   ① 소진 여력 — 예산 대비 실제 집행률의 역수. **산술이라 반박 여지가 없다.**
+    //   ② 노출↔순위 — 21곳 실측 회귀(2026-08-02, log-log r=-0.757, 기울기 -0.93).
+    //      노출이 2배면 순위 숫자가 약 절반. 어디까지나 **추정**이라 화면에 그렇게 적는다.
+    //   ③ 광고 기여도 — 노출 중 광고가 만든 비율. 높을수록 설정 변경이 그대로 반영된다.
+    //      낮은 매장(자연 유입 위주)에 같은 제안을 하면 기대만 키운다.
+    const RANK_SLOPE = -0.93;      // ⚠️ 표본 21곳. 매장이 늘면 다시 재야 한다.
+    const detailAdShare = (f) => {
+      try {
+        const j = JSON.parse(f['DP_리포트JSON'] || '{}');
+        return j?.adflow?.running ? j.adflow.imp_share : null;
+      } catch { return null; }
+    };
+    let projection = null;
+    try {
+      const expNow = Number(cf['DP_노출']) || 0;
+      const rankNow = Number(cf['DP_순위']) || 0;
+      const budget = Number(cf['AD_기초예산'] ?? cf['CPC_일예산']) || 0;
+      const spent = Number(cf['CPC_현재소진']) || 0;
+      const useRate = budget ? (spent / budget) * 100 : null;
+      const adShare = adSet && detailAdShare(cf);
+      // 여력이 없거나(이미 다 씀) 기준 수치가 없으면 제안하지 않는다
+      if (expNow > 0 && rankNow > 0 && useRate != null && useRate > 0 && useRate < 90) {
+        const headroom = Math.min(100 / useRate, 4);      // 4배 넘는 추정은 과장이다
+        const expMax = Math.round(expNow * headroom);
+        const rankEst = Math.max(1, Math.round(rankNow * Math.pow(headroom, RANK_SLOPE)));
+        projection = {
+          useRate: Math.round(useRate), headroom: Number(headroom.toFixed(1)),
+          expNow, expMax, rankNow, rankEst, adShare: adShare ?? null,
+        };
+
+        // 추정만 내밀면 "약속"으로 읽힌다. 같은 달 실측 중 목표 노출과 가장 가까운
+        // 매장의 순위를 함께 보여 준다 — 예측이 아니라 관측이라 틀려도 거짓이 아니다.
+        // ⚠️ **매장명은 절대 내보내지 않는다.** 다른 고객사의 계약 정보다.
+        // ⚠️ **같은 업종만** 쓴다. 순위는 상권 안에서 매겨지므로 업종이 다르면
+        //    비교가 성립하지 않는다(실측: 추정 36위인데 다른 상권 매장을 집어 '2위'가
+        //    나와 추정이 틀린 것처럼 보였다). 적합한 사례가 없으면 아예 안 보여준다.
+        const myCat = cf['DP_업종'];
+        if (myCat) {
+          try {
+            const mf = encodeURIComponent(
+              `AND({계약월}='${escFormula(month)}', {DP_업종}='${escFormula(myCat)}',`
+              + ` {DP_노출}>0, {DP_순위}>0)`);
+            const purl = `https://api.airtable.com/v0/${BASE_ID}/${CAMPAIGN_TABLE}`
+              + `?filterByFormula=${mf}&pageSize=100`
+              + `&fields%5B%5D=${encodeURIComponent('DP_노출')}`
+              + `&fields%5B%5D=${encodeURIComponent('DP_순위')}`
+              + `&fields%5B%5D=${encodeURIComponent('DP_매장코드')}`;
+            const all = await fetchAllRecords(purl);
+            const me = cf['DP_매장코드'];
+            const cand = all
+              .filter((r) => r.fields['DP_매장코드'] !== me)
+              .map((r) => ({ exp: Number(r.fields['DP_노출']), rank: Number(r.fields['DP_순위']) }))
+              // 나보다 노출이 많은 곳만 — '이만큼 올리면 이 정도'를 보여주는 자리다
+              .filter((x) => x.exp > expNow && x.rank > 0);
+            if (cand.length) {
+              cand.sort((a, b) => Math.abs(a.exp - expMax) - Math.abs(b.exp - expMax));
+              const p = cand[0];
+              // 목표와 동떨어진 사례를 들면 오히려 신뢰를 잃는다(±60% 안쪽만)
+              if (Math.abs(p.exp - expMax) <= expMax * 0.6) {
+                // ⚠️ 매장명은 절대 내보내지 않는다 — 다른 고객사의 계약 정보다.
+                projection.peer = { exp: p.exp, rank: p.rank, cat: myCat };
+              }
+            }
+          } catch (e) {
+            console.error('[client-schedule] peer 조회 실패:', e.message);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[client-schedule] projection 계산 실패:', e.message);
+    }
+
     let dpReport = null;
     if (cf['DP_기간']) {
       let detail = null;
@@ -510,6 +590,7 @@ export default async function handler(req, res) {
       partnerName,
       stats,
       adSet,      // 광고 설정 — 리포트 화면(DpReportPage)이 쓴다
+      projection, // 개선 여지 추정(근거 있을 때만 · 없으면 null)
       scheduleItems: groupedScheduleItems,
       records: { influencer, experience, press, videoIssue },
       cpc,
