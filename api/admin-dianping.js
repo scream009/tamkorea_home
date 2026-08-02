@@ -135,7 +135,9 @@ export default async function handler(req, res) {
 
     const rows = recs
       .map((r) => ({ id: r.id, slug: slugByCs[r.id] || null, ...toRow(r.fields) }))
-      .sort((a, b) => (b.bad7 ?? -1) - (a.bad7 ?? -1) || a.name.localeCompare(b.name, 'ko'));
+      // 기본은 가나다 — 목록의 첫 용도가 '그 매장 찾기' 다.
+      // 악평순 등 다른 기준은 화면에서 다시 정렬한다(전 매장을 통째로 내려주므로 서버 왕복 불필요).
+      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ko'));
 
     const slug = String(req.query.slug || '').trim();
     if (!slug) {

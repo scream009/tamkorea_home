@@ -41,6 +41,16 @@ const tone = (s) => {
 const STATUS_LABEL = { '⚪ 미집행': '⚪ 광고 미설정' };
 const label = (s) => STATUS_LABEL[String(s || '').trim()] || s || '—';
 
+// 정렬. 기본은 **가나다** 다 — 목록의 첫 용도가 '그 매장 찾기' 이기 때문이다.
+// 예전 기본값이던 악평순은 악평 0 곳이 대부분이라 사실상 무순으로 보여 찾기가 어려웠다.
+// 급한 곳부터 보는 용도는 정렬을 바꾸거나 위 필터 칩으로 간다.
+const SORTS = [
+  { k: 'name', label: '가나다순' },
+  { k: 'bad', label: '악평 많은 순' },
+  { k: 'days', label: '충전 시급한 순' },
+  { k: 'use', label: '소진률 낮은 순' },
+];
+
 const FILTERS = [
   { k: 'all', label: '전체' },
   { k: 'bad', label: '충전필요' },
@@ -58,6 +68,7 @@ export default function AdminDianpingPage() {
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState('all');
   const [cat, setCat] = useState('all');           // 업종 — 8종이라 칩 대신 드롭다운
+  const [sort, setSort] = useState('name');         // 정렬 — 기본 가나다
   const [group, setGroup] = useState(false);       // 업종별로 묶어 보기
   const [open, setOpen] = useState(null);          // 펼친 매장 officeId
   const [months, setMonths] = useState({});        // officeId → 월별 이력
@@ -91,7 +102,7 @@ export default function AdminDianpingPage() {
   const rows = useMemo(() => {
     const all = data?.rows || [];
     const kw = q.trim().toLowerCase();
-    return all.filter((r) => {
+    const hit = all.filter((r) => {
       if (kw && !`${r.name} ${r.cn} ${r.category || ''}`.toLowerCase().includes(kw)) return false;
       if (cat !== 'all' && (r.category || '미분류') !== cat) return false;
       if (filter === 'all') return true;
@@ -99,7 +110,8 @@ export default function AdminDianpingPage() {
       if (filter === 'cpt') return r.cptExpired;
       return tone(r.status) === filter;
     });
-  }, [data, q, filter, cat]);
+    return hit.sort(cmp(sort));
+  }, [data, q, filter, cat, sort]);
 
   async function toggle(r) {
     if (open === r.officeId) { setOpen(null); return; }
@@ -153,6 +165,10 @@ export default function AdminDianpingPage() {
                 aria-label="업종 선택">
           <option value="all">업종 전체 ({data.rows.length})</option>
           {cats.map(([c, k]) => <option key={c} value={c}>{c} ({k})</option>)}
+        </select>
+        <select className="dpa-sel" value={sort} onChange={(e) => setSort(e.target.value)}
+                aria-label="정렬 기준">
+          {SORTS.map((o) => <option key={o.k} value={o.k}>{o.label}</option>)}
         </select>
         <label className="dpa-tg">
           <input type="checkbox" checked={group} onChange={(e) => setGroup(e.target.checked)} />
@@ -392,6 +408,28 @@ function Detail({ r, months, loading }) {
 const Kv = ({ k, v }) => (
   <div className="dpa-kv"><span>{k}</span><b>{v || '—'}</b></div>
 );
+
+/** 정렬 비교자.
+ *  값이 없는 매장(아직 수집 전)을 0 으로 치면 '충전 시급 1위'처럼 보여 위험하다.
+ *  그래서 어떤 기준이든 **값 없음은 항상 뒤로** 보내고, 동률은 가나다로 푼다. */
+function cmp(kind) {
+  const ko = (a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ko');
+  if (kind === 'name') return ko;
+  // asc=true 면 작은 값이 위(충전 시급·소진률 낮은 순), false 면 큰 값이 위(악평)
+  const pick = {
+    bad: [(r) => r.bad7, false],
+    days: [(r) => r.daysLeft, true],
+    use: [(r) => (r.budget > 0 && r.spend != null ? r.spend / r.budget : null), true],
+  }[kind];
+  if (!pick) return ko;
+  const [val, asc] = pick;
+  return (a, b) => {
+    const x = val(a), y = val(b);
+    const nx = x == null || Number.isNaN(x), ny = y == null || Number.isNaN(y);
+    if (nx || ny) return nx && ny ? ko(a, b) : nx ? 1 : -1;   // 값 없음은 항상 뒤
+    return x === y ? ko(a, b) : (asc ? x - y : y - x);
+  };
+}
 
 /** 업종별로 묶어 보기. 끄면 한 덩어리로 돌려준다(머리글 없음). */
 function groupRows(rows, on) {
