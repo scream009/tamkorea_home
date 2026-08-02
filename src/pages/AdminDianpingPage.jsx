@@ -23,6 +23,19 @@ const day = (v) => (v ? String(v).slice(0, 10) : '—');
 // 그 뒤로 수집이 안 돌았을 뿐인데, 확인일에 복사 시각이 찍혀 '오늘 확인'으로 보였다.
 // 그래서 잔액 옆에 **언제 것인지**를 항상 붙인다. 모르면 '확인 안 됨'이라고 쓴다.
 const STALE_DAYS = 1.5;
+
+// ⚠️ Airtable 은 dateTime 을 **UTC(...Z)** 로 돌려준다. ISO 문자열을 그대로 잘라 쓰면
+//    9시간 어긋난 시각이 화면에 뜬다 — 21:37 에 수집한 잔액이 '12:37' 로 보였다
+//    (2026-08-02 Owner 지적). 반드시 한국 시간으로 바꿔 표시한다.
+const KST = (iso) => {
+  if (!iso) return null;
+  const t = new Date(iso);
+  if (Number.isNaN(t.getTime())) return String(iso).slice(0, 16).replace('T', ' ');
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(t).replace('T', ' ');
+};
 const ageOf = (iso) => {
   if (!iso) return null;
   const t = Date.parse(iso);
@@ -358,12 +371,12 @@ function Detail({ r, months, loading }) {
         <Kv k="일 소진" v={r.spend != null ? won(r.spend) : null} />
         <Kv k="소진 예상" v={r.daysLeft != null ? `약 ${r.daysLeft}일` : null} />
         <Kv k="악평 30일 / 누적" v={`${n(r.bad30)} / ${n(r.badTotal)}`} />
-        <Kv k="설정 확인" v={r.settingAt ? String(r.settingAt).slice(0, 16).replace('T', ' ') : null} />
+        <Kv k="설정 확인" v={KST(r.settingAt)} />
         <Kv k="잔액 확인"
             v={r.balanceAt
-              ? <>{String(r.balanceAt).slice(0, 16).replace('T', ' ')}<Age at={r.balanceAt} /></>
+              ? <>{KST(r.balanceAt)}<Age at={r.balanceAt} /></>
               : <span className="dpa-age none">확인 안 됨</span>} />
-        <Kv k="리뷰 확인" v={r.reviewAt ? String(r.reviewAt).slice(0, 16).replace('T', ' ') : null} />
+        <Kv k="리뷰 확인" v={KST(r.reviewAt)} />
         <Kv k="캠페인" v={CAMPAIGN[r.campaign] || null} />
       </div>
 
