@@ -37,16 +37,14 @@ export default async function handler(req, res) {
     const BASE_ID0 = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
     const CAMP_TB0 = encodeURIComponent('Campaign_DB');
 
-    // 월 비교는 여러 곳에서 쓴다. 허용 범위 규칙 자체는 _month-window.js 한 곳에 있다.
-    const keyOf = monthKey;
+    // 허용 범위 규칙 자체는 _month-window.js 한 곳에 있다.
     const nowKey = nowMonthKey();
 
     // ── 토큰 방식 (?t=...) ────────────────────────────────────
-    // 협력사·계약월이 토큰에 묶여 있어 URL 을 고칠 수 없다.
-    // 토큰은 Campaign_DB '협력사토큰' 에 있으므로 별도 매핑 테이블이 필요 없다.
+    // 토큰이 가리키는 것은 **협력사까지다. 계약월은 가리키지 않는다.**
+    // Campaign_DB '협력사토큰' 에 있으므로 별도 매핑 테이블이 필요 없다.
     const shareToken = (req.query.t || '').trim();
     let partnerName = req.query.name;
-    let tokenMonth = '';
 
     if (shareToken) {
       if (!/^[A-Za-z0-9]{6,32}$/.test(shareToken)) {
@@ -80,24 +78,18 @@ export default async function handler(req, res) {
         });
       }
 
-      // 기준월: **직전 완료월**(전월)에 가장 가까운 달.
-      // 당월은 아직 진행 중이라 실적이 덜 찬 화면이 열린다. 협력사에게 보여 줄
-      // '메인'은 마감된 달이다(실측 2026-08-02: 좋아좋아 토큰 하나가 1~8월을
-      // 덮고 있어 8월로 떨어졌고, 공유해야 할 달은 7월이었다).
-      // 토큰이 한 달만 덮으면(대부분) 고를 것이 없어 그 달이 그대로 나온다 —
-      // 이 규칙은 여러 달을 덮는 토큰에서만 실제로 작동한다.
-      // 범위 안에 하나도 없으면 가장 최근 달을 준다 — 아래 범위 검사가
-      // "조회 가능 기간이 아닙니다" 로 이유를 정확히 알려준다.
-      const months = [...new Set(hits.map((r) => r.fields['계약월']).filter(Boolean))];
-      const inWindow = months.filter(inMonthWindow);
-      const targetKey = nowKey - 1;
-      const pick = (inWindow.length ? inWindow : months)
-        .sort((a, b) => Math.abs(keyOf(a) - targetKey) - Math.abs(keyOf(b) - targetKey)
-                     || keyOf(b) - keyOf(a))[0];
-      const rec0 = { fields: { 협력사: partners[0], 계약월: pick || '' } };
-      const pf = rec0.fields['협력사'];
-      partnerName = Array.isArray(pf) ? pf[0] : pf;
-      tokenMonth = rec0.fields['계약월'] || '';
+      // 여기서 확정하는 것은 **협력사뿐**이다. 어느 달을 열지는 아래에서 정한다.
+      //
+      // 예전엔 토큰이 박힌 행의 계약월로 기본 월을 못 박았다. 그런데 토큰은
+      // 계약월마다 새로 발급돼 있다(실측 2026-08-02: 투어패스 6월 M2syA7fFgrxF ·
+      // 7월 pCAhHW7DKB3M · 8월 DFJ7qlItnhq2 — 전부 다른 토큰. 제주에코·웹플로우·
+      // 광고시홍보동도 같다. 좋아좋아만 단일 토큰이 1~8월을 덮는다).
+      // 그래서 한 번 공유한 링크가 그 달에 갇혔고, 달이 바뀔 때마다 새 링크를
+      // 다시 뿌려야 했다. 못 뿌린 협력사는 지난달 화면을 계속 보게 된다.
+      //
+      // 토큰을 '협력사 신분증'으로만 쓰면 이 문제가 통째로 사라진다 —
+      // 이미 뿌린 옛 링크까지 전부 되살아나고, 달은 알아서 따라온다.
+      partnerName = partners[0];
     }
 
     if (!partnerName) {
@@ -108,38 +100,9 @@ export default async function handler(req, res) {
     const BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
     const CAMP_TB = encodeURIComponent('Campaign_DB');
 
-    // 계약월 필터 — ?month=2026. 7월 처럼 넘기면 그 달 실적만.
-    // 협력사마다 계약월이 섞여 있어 월 구분 없이 보면 지난달 건까지 함께 나온다.
-    // ?month=2607 (YYMM) 또는 "2026. 7월" 둘 다 허용
-    const ymToLabel = (v) => {
-      const d = String(v || '').replace(/\D/g, '');
-      if (d.length === 4) return `20${d.slice(0, 2)}. ${Number(d.slice(2))}월`;
-      if (d.length === 6) return `${d.slice(0, 4)}. ${Number(d.slice(4))}월`;
-      return '';
-    };
-    const rawMonth = (req.query.month || '').trim();
-    // 토큰 링크는 그 토큰이 가리키는 계약월이 기본이다.
-    // month 를 함께 주면(월 버튼) 그 값을 쓰되, 아래에서 같은 협력사의
-    // 토큰이 있는 달인지 확인하므로 임의의 달로 넘어갈 수는 없다.
-    let monthQ = rawMonth ? (ymToLabel(rawMonth) || rawMonth) : tokenMonth;
-
-    // ── 조회 가능 기간 제한 ────────────────────────────────────
-    // 협력사 링크는 ?name=..&month=.. 조합이라 누구나 URL 을 고칠 수 있다.
-    // 화면 버튼만 ±1 로 줄여도 month=2401 같이 직접 넣으면 옛 실적이 다 열린다.
-    // 그래서 **서버가** 허용 범위를 정한다. 오래된 데이터는 값이 불완전해
-    // 화면이 깨질 수 있어 노출 자체를 막는 것이 목적이다.
-    // 하한은 절대값(2026. 6월)으로 고정돼 있다 — 상대 창이면 달이 바뀔 때마다
-    // 이미 배포한 링크가 창 밖으로 밀려나 죽는다. 규칙은 _month-window.js 참고.
-    if (monthQ && !inMonthWindow(monthQ)) {
-      return res.status(200).json({
-        partnerName: displayName, month: monthQ, months: [], campaigns: [],
-        outOfRange: true,
-        message: OUT_OF_RANGE_MESSAGE,
-      });
-    }
     // ⚠️ 예전 코드는 `replace(/'/g, "\'")` 였는데 이건 **no-op** 이다 —
     // JS 에서 "\'" 는 그냥 "'" 이라 작은따옴표를 자기 자신으로 바꿨다.
-    // ?name= 경로는 partnerName 을 비었는지만 검사하므로(위 98행) 수식이 열려 있었다.
+    // ?name= 경로는 partnerName 을 비었는지만 검사하므로 수식이 열려 있었다.
     // 백슬래시를 먼저 늘리지 않으면 `\` 로 끝나는 값이 다음 따옴표를 삼킨다.
     const esc = escFormula;
 
@@ -151,6 +114,67 @@ export default async function handler(req, res) {
       base = "{협력사}='제주에코'";
     } else {
       base = `{협력사}='${esc(partnerName)}'`;
+    }
+
+    // ── 이 협력사가 가진 계약월 ────────────────────────────────
+    // 화면의 월 버튼이자, 기본 월을 고르는 근거다. 그래서 **월 필터를 걸기 전에**
+    // 조회한다 — 월 필터를 건 결과에는 그 달만 남아 근거가 사라진다.
+    let months = [];
+    try {
+      const mUrl = `https://api.airtable.com/v0/${BASE_ID}/${CAMP_TB}`
+        + `?filterByFormula=${encodeURIComponent(base)}`
+        + `&fields[]=${encodeURIComponent('계약월')}&pageSize=100`;
+      let off = null, all = [];
+      do {
+        const r = await fetch(off ? `${mUrl}&offset=${off}` : mUrl,
+                              { headers: { Authorization: `Bearer ${TOKEN}` } });
+        if (!r.ok) break;
+        const d = await r.json();
+        all = all.concat(d.records || []);
+        off = d.offset || null;
+      } while (off);
+      months = [...new Set(all.map(x => x.fields['계약월']).filter(Boolean))]
+        .filter(inMonthWindow)
+        .sort((a, b) => monthKey(a) - monthKey(b));
+    } catch (e) {
+      console.error('[client-partner] months lookup failed:', e.message);
+    }
+
+    // 계약월 필터 — ?month=2026. 7월 처럼 넘기면 그 달 실적만.
+    // 협력사마다 계약월이 섞여 있어 월 구분 없이 보면 지난달 건까지 함께 나온다.
+    // ?month=2607 (YYMM) 또는 "2026. 7월" 둘 다 허용
+    const ymToLabel = (v) => {
+      const d = String(v || '').replace(/\D/g, '');
+      if (d.length === 4) return `20${d.slice(0, 2)}. ${Number(d.slice(2))}월`;
+      if (d.length === 6) return `${d.slice(0, 4)}. ${Number(d.slice(4))}월`;
+      return '';
+    };
+    const rawMonth = (req.query.month || '').trim();
+
+    // ── 기본 월 = 직전 완료월 ──────────────────────────────────
+    // 당월은 아직 진행 중이라 실적이 덜 찬 화면이 열린다. 협력사에게 보여 줄
+    // '메인'은 마감된 달이다. 그 달이 없으면 가장 가까운 달로 물러선다.
+    // 이 규칙이 링크를 영속시킨다 — 8월이 되면 7월을, 9월이 되면 8월을 연다.
+    // 월 버튼을 누르면(?month=) 그 값이 이기므로 지난달도 그대로 볼 수 있다.
+    const targetKey = nowKey - 1;
+    const defaultMonth = months.length
+      ? [...months].sort((a, b) =>
+          Math.abs(monthKey(a) - targetKey) - Math.abs(monthKey(b) - targetKey)
+          || monthKey(b) - monthKey(a))[0]
+      : '';
+    let monthQ = rawMonth ? (ymToLabel(rawMonth) || rawMonth) : defaultMonth;
+
+    // ── 조회 가능 기간 제한 ────────────────────────────────────
+    // 협력사 링크는 ?name=..&month=.. 조합이라 누구나 URL 을 고칠 수 있다.
+    // month=2401 같이 직접 넣으면 옛 실적이 다 열리므로 **서버가** 범위를 정한다.
+    // 하한은 절대값(2026. 6월)으로 고정 — 상대 창이면 달이 바뀔 때마다
+    // 이미 배포한 링크가 창 밖으로 밀려나 죽는다. 규칙은 _month-window.js 참고.
+    if (monthQ && !inMonthWindow(monthQ)) {
+      return res.status(200).json({
+        partnerName: displayName, month: monthQ, months, campaigns: [],
+        outOfRange: true,
+        message: OUT_OF_RANGE_MESSAGE,
+      });
     }
     // 체크된 캠페인만 노출한다.
     // 예전엔 '실적이 있으면 표시'로 추측했는데, 그러면 월초에 실적이 0이라
@@ -206,29 +230,7 @@ export default async function handler(req, res) {
       };
     });
 
-    // 화면에서 월을 고를 수 있도록 이 협력사가 가진 계약월 전체를 함께 준다.
-    // (월 필터가 걸려 있으면 결과에 그 달만 남으므로 별도로 한 번 더 조회한다)
-    let months = [];
-    try {
-      const mUrl = `https://api.airtable.com/v0/${BASE_ID}/${CAMP_TB}`
-        + `?filterByFormula=${encodeURIComponent(base)}`
-        + `&fields[]=${encodeURIComponent('계약월')}&pageSize=100`;
-      let off = null, all = [];
-      do {
-        const r = await fetch(off ? `${mUrl}&offset=${off}` : mUrl,
-                              { headers: { Authorization: `Bearer ${TOKEN}` } });
-        if (!r.ok) break;
-        const d = await r.json();
-        all = all.concat(d.records || []);
-        off = d.offset || null;
-      } while (off);
-      months = [...new Set(all.map(x => x.fields['계약월']).filter(Boolean))]
-        .filter(inMonthWindow)
-        .sort((a, b) => monthKey(a) - monthKey(b));
-    } catch (e) {
-      console.error('[client-partner] months lookup failed:', e.message);
-    }
-
+    // months 는 기본 월을 고르기 위해 위에서 이미 조회했다(월 필터 이전 시점).
     return res.status(200).json({
       partnerName: displayName, month: monthQ || null, months, campaigns,
       tokenMode: !!shareToken,
