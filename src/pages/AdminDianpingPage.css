@@ -210,3 +210,52 @@
    둘을 뭉뚱그리면 "설정만 하면 되는 곳"과 "수집조차 안 된 곳"이 섞인다. */
 .dpa-st.none { background: rgba(255,255,255,.03); color: #4b5563;
                border: 1px dashed rgba(255,255,255,.14); }
+
+/* ── 월별 리포트 · 모바일 카드 ──────────────────────
+   10칸 표는 좁은 화면에서 가로로 밀어도 잘려 보인다(실측). 월별로 한 덩이씩 쌓는다.
+   기본은 숨김 — 넓은 화면은 표가 더 읽기 쉽다. */
+.dpa-mcards { display: none; flex-direction: column; gap: 8px; }
+.dpa-mcard {
+  border: 1px solid rgba(255, 255, 255, .08); border-radius: 11px;
+  background: rgba(255, 255, 255, .025); overflow: hidden;
+}
+.dpa-mcard-h {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 12px;
+}
+.dpa-mcard-h b { font-size: 13px; color: #f3f4f6; }
+.dpa-mcard-p { display: block; font-size: 10.5px; color: #6b7280; margin-top: 2px;
+               font-variant-numeric: tabular-nums; }
+.dpa-mcard-h .dpa-link { font-size: 12px; white-space: nowrap; }
+.dpa-mcard-g {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+  background: rgba(255, 255, 255, .06); border-top: 1px solid rgba(255, 255, 255, .06);
+}
+.dpa-mcard-g .dpa-cell { padding: 8px 10px; background: #101017; }
+.dpa-mcard-g .dpa-cell b { font-size: 12.5px; }
+
+@media (max-width: 900px) {
+  .dpa-mwrap { display: none; }     /* 월별 표를 숨기고 */
+  .dpa-mcards { display: flex; }    /* 월별 카드를 보인다 */
+}
+@media (max-width: 380px) {
+  .dpa-mcard-g { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ── '누르면 상세' 안내 ──────────────────────────
+   상세가 있다는 걸 모르고 지나치는 경우가 많다(Owner 지적).
+   안내 한 줄 + 행마다 펼침 화살표로 두 번 알린다. */
+.dpa-hint {
+  font-size: 11.5px; color: #8b90a0; margin: 0 0 10px 2px;
+  display: flex; align-items: center; gap: 5px;
+}
+.dpa-hint b { color: #c4b5fd; font-weight: 700; }
+.dpa-th-h {
+  font-size: 9.5px; color: #6b7280; font-weight: 500; margin-left: 6px;
+  text-transform: none; letter-spacing: 0;
+}
+.dpa-caret {
+  color: #a78bfa; font-size: 9px; margin-right: 5px; flex: none;
+  display: inline-block; vertical-align: middle;
+}
+.dpa-card-badges .dpa-caret { margin-right: 0; margin-left: 2px; font-size: 10px; }

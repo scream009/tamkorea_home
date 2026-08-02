@@ -161,6 +161,9 @@ export default function AdminDianpingPage() {
         <span className="dpa-cnt">{rows.length}곳</span>
       </div>
 
+      {/* 상세가 있다는 걸 모르고 지나치는 경우가 많다 — 눌러야 안다는 걸 미리 알린다 */}
+      <div className="dpa-hint">👆 매장을 누르면 <b>상세 정보와 월별 리포트</b>가 열립니다</div>
+
       {/* ── 목록 · 모바일(카드) ──
           11칸 표를 가로로 밀어 보는 건 현장에서 못 쓴다. 폭이 좁으면 카드로 바꾼다.
           같은 데이터를 두 번 그리지만, 표를 억지로 접는 CSS 보다 읽기 쉽다. */}
@@ -181,6 +184,9 @@ export default function AdminDianpingPage() {
               <div className="dpa-card-badges">
                 {r.bad7 ? <span className="dpa-bad">악평 {r.bad7}</span> : null}
                 <span className={`dpa-st ${tone(r.status)}`}>{label(r.status)}</span>
+                <span className="dpa-caret" aria-hidden="true">
+                  {open === r.officeId ? '▲' : '▼'}
+                </span>
               </div>
             </button>
 
@@ -215,7 +221,7 @@ export default function AdminDianpingPage() {
         <table className="dpa-tb">
           <thead>
             <tr>
-              <th className="l">매장</th>
+              <th className="l">매장 <span className="dpa-th-h">클릭 → 상세</span></th>
               <th className="l">업종</th>
               <th>상태</th>
               <th>잔액</th>
@@ -240,7 +246,11 @@ export default function AdminDianpingPage() {
                     onClick={() => toggle(r)} tabIndex={0}
                     onKeyDown={(e) => { if (e.key === 'Enter') toggle(r); }}>
                   <td className="l">
-                    <div className="dpa-nm">{r.name || '—'}</div>
+                    <div className="dpa-nm">
+                      <span className="dpa-caret" aria-hidden="true">
+                        {open === r.officeId ? '▲' : '▼'}
+                      </span>{r.name || '—'}
+                    </div>
                     {r.cn && <div className="dpa-cn">{r.cn}</div>}
                   </td>
                   <td className="l dpa-dim">{r.category || '—'}</td>
@@ -312,6 +322,35 @@ function Detail({ r, months, loading }) {
 
       <div className="dpa-dt-h">계약월별 리포트</div>
       {loading && <div className="dpa-dim">불러오는 중…</div>}
+
+      {/* 모바일 — 10칸 표는 가로로 밀어도 잘려 보인다. 월별로 한 덩이씩 쌓는다. */}
+      {!loading && months && months.length > 0 && (
+        <div className="dpa-mcards">
+          {months.map((m) => (
+            <div className="dpa-mcard" key={m.id}>
+              <div className="dpa-mcard-h">
+                <div>
+                  <b>{m.month}</b>
+                  <span className="dpa-mcard-p">{m.period || '기간 미상'}</span>
+                </div>
+                {m.reportUrl
+                  ? <a className="dpa-link" href={m.reportUrl} target="_blank"
+                       rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>리포트 ↗</a>
+                  : <span className="dpa-dim">리포트 없음</span>}
+              </div>
+              <div className="dpa-mcard-g">
+                <Cell k="노출" v={n(m.exposure)} />
+                <Cell k="방문" v={n(m.visit)} />
+                <Cell k="상권 순위" v={m.rank ? `${m.rank}위` : '—'} />
+                <Cell k="전월비" v={m.mom || '—'} />
+                <Cell k="호평률" v={m.good != null ? `${m.good}%` : '—'} />
+                <Cell k="악평" v={n(m.bad)} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {!loading && months && months.length > 0 && (
         <div className="dpa-mwrap">
           <table className="dpa-mt">
