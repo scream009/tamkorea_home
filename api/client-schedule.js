@@ -410,10 +410,30 @@ export default async function handler(req, res) {
     //      노출이 2배면 순위 숫자가 약 절반. 어디까지나 **추정**이라 화면에 그렇게 적는다.
     //   ③ 광고 기여도 — 노출 중 광고가 만든 비율. 높을수록 설정 변경이 그대로 반영된다.
     //      낮은 매장(자연 유입 위주)에 같은 제안을 하면 기대만 키운다.
-    // 2026-08-02 실측 회귀: 같은 달 21곳의 log(노출)↔log(순위)
-    //   상관 r=-0.757, 기울기 -0.93 → 노출 2배면 순위 숫자가 약 절반.
-    // ⚠️ 매장이 늘거나 상권이 바뀌면 다시 재야 한다. 화면에도 이 수치를 근거로 밝힌다.
-    const RANK_SLOPE = -0.93, RANK_N = 21, RANK_R = '-0.76';
+    // 노출↔순위 회귀 — **하드코딩하지 않는다.** 같은 달 실측으로 매번 계산한다.
+    // 매장이 늘거나 상권 판도가 바뀌면 계수도 따라 움직여야 한다.
+    //
+    // 같은 업종끼리 보면 관계가 훨씬 뚜렷하다(실측: 烤肉 8곳 r=-0.95 vs 전체 21곳 r=-0.76).
+    // 다만 3곳짜리 업종에서 r=-0.99 가 나오는 건 우연이기 쉬워, **표본이 5곳 이상일 때만**
+    // 업종 계수를 쓰고 아니면 상권 전체로 물러선다. 화면에 표본 수는 적지 않으므로
+    // (개수가 적어 보이면 오히려 신뢰를 잃는다) 이 안전장치가 정직성을 대신 담보한다.
+    const MIN_CAT_N = 5;
+    const regress = (pairs) => {
+      const v = pairs.filter(([e, r]) => e > 0 && r > 0);
+      if (v.length < 3) return null;
+      const lx = v.map(([e]) => Math.log10(e));
+      const ly = v.map(([, r]) => Math.log10(r));
+      const mean = (a) => a.reduce((s, x) => s + x, 0) / a.length;
+      const mx = mean(lx), my = mean(ly);
+      let num = 0, dx = 0, dy = 0;
+      for (let i = 0; i < lx.length; i++) {
+        num += (lx[i] - mx) * (ly[i] - my);
+        dx += (lx[i] - mx) ** 2;
+        dy += (ly[i] - my) ** 2;
+      }
+      if (!dx || !dy) return null;
+      return { r: num / Math.sqrt(dx * dy), slope: num / dx, n: v.length };
+    };
     const detailAdShare = (f) => {
       try {
         const j = JSON.parse(f['DP_리포트JSON'] || '{}');
@@ -432,75 +452,82 @@ export default async function handler(req, res) {
       if (expNow > 0 && rankNow > 0 && useRate != null && useRate > 0 && useRate < 90) {
         const headroom = Math.min(100 / useRate, 4);      // 4배 넘는 추정은 과장이다
         const expMax = Math.round(expNow * headroom);
-        const rankEst = Math.max(1, Math.round(rankNow * Math.pow(headroom, RANK_SLOPE)));
         // 계산 근거를 그대로 내보낸다. "몇 명 더"만 던지면 고객이 검산할 수 없다.
         //   지금 집행액으로 얻은 1元당 노출 × 책정 예산 = 도달 가능치
         const perYuan = spent > 0 ? expNow / spent : null;
+
+        // 같은 달 실측을 **한 번만** 읽어 회귀·설정범위·사례를 모두 뽑는다.
+        const myCat = cf['DP_업종'] || '';
+        const myArea = cf['DP_상권'] || '';
+        let reg = null, scope = '', peerBid = null, peerHours = null, peer = null;
+        try {
+          const mf = encodeURIComponent(
+            `AND({계약월}='${escFormula(month)}', {DP_노출}>0, {DP_순위}>0)`);
+          const purl = `https://api.airtable.com/v0/${BASE_ID}/${CAMPAIGN_TABLE}`
+            + `?filterByFormula=${mf}&pageSize=100`
+            + `&fields%5B%5D=${encodeURIComponent('DP_노출')}`
+            + `&fields%5B%5D=${encodeURIComponent('DP_순위')}`
+            + `&fields%5B%5D=${encodeURIComponent('DP_매장코드')}`
+            + `&fields%5B%5D=${encodeURIComponent('DP_업종')}`
+            + `&fields%5B%5D=${encodeURIComponent('AD_단가_따종')}`
+            + `&fields%5B%5D=${encodeURIComponent('AD_주간노출시간')}`;
+          const all = (await fetchAllRecords(purl)).map((r) => ({
+            slug: r.fields['DP_매장코드'], cat: r.fields['DP_업종'] || '',
+            exp: Number(r.fields['DP_노출']), rank: Number(r.fields['DP_순위']),
+            bid: Number(r.fields['AD_단가_따종']) || null,
+            hours: Number(r.fields['AD_주간노출시간']) || null,
+          }));
+          const sameCat = all.filter((x) => myCat && x.cat === myCat);
+
+          // 업종 표본이 충분하면 업종 계수, 아니면 상권 전체로 물러선다.
+          const catReg = sameCat.length >= MIN_CAT_N
+            ? regress(sameCat.map((x) => [x.exp, x.rank])) : null;
+          reg = catReg || regress(all.map((x) => [x.exp, x.rank]));
+          // 상권명은 플랫폼이 중문으로 준다(济州岛). 고객 화면엔 한글로 내보낸다.
+          const AREA_KO = { '济州岛': '제주', '首尔': '서울', '釜山': '부산' };
+          const area = AREA_KO[myArea] || myArea;
+          scope = catReg ? `같은 업종${area ? ` · ${area} 상권` : ''}`
+                         : (area ? `${area} 상권` : '같은 상권');
+
+          // 설정 범위·사례는 **같은 업종에서 우리보다 노출이 많은 매장**만 본다.
+          // 순위는 상권 안에서 매겨지므로 업종이 다르면 비교가 성립하지 않는다.
+          const up = sameCat.filter((x) => x.slug !== cf['DP_매장코드'] && x.exp > expNow);
+          const rng = (vals) => {
+            const v = vals.filter((x) => x > 0).sort((a, b) => a - b);
+            return v.length ? { lo: v[0], hi: v[v.length - 1] } : null;
+          };
+          peerBid = rng(up.map((x) => x.bid));
+          peerHours = rng(up.map((x) => x.hours));
+          if (up.length) {
+            up.sort((a, b) => Math.abs(a.exp - expMax) - Math.abs(b.exp - expMax));
+            const c = up[0];
+            // 목표와 동떨어진 사례를 들면 오히려 신뢰를 잃는다(±60% 안쪽만)
+            // ⚠️ 매장명은 절대 내보내지 않는다 — 다른 고객사의 계약 정보다.
+            if (Math.abs(c.exp - expMax) <= expMax * 0.6) peer = { exp: c.exp, rank: c.rank };
+          }
+        } catch (e) {
+          console.error('[client-schedule] 비교군 조회 실패:', e.message);
+        }
+
+        // 회귀를 못 구했으면 순위 추정을 내지 않는다 — 근거 없는 숫자는 만들지 않는다.
+        const rankEst = reg
+          ? Math.max(1, Math.round(rankNow * Math.pow(headroom, reg.slope))) : null;
+
         projection = {
           useRate: Math.round(useRate), headroom: Number(headroom.toFixed(1)),
           expNow, expMax, rankNow, rankEst, adShare: adShare ?? null,
           budget: Math.round(budget), spent: Math.round(spent),
           unused: Math.round(budget - spent),
           perYuan: perYuan ? Math.round(perYuan) : null,
-          sampleN: RANK_N, sampleR: RANK_R,
+          // 표본 수는 내보내지 않는다(적어 보이면 오히려 신뢰를 잃는다).
+          // 대신 MIN_CAT_N 안전장치로 '표본이 적은 업종 계수'는 애초에 쓰지 않는다.
+          corr: reg ? reg.r.toFixed(2) : null, scope,
           bid: cf['AD_단가_따종'] ?? null,
           hours: cf['AD_주간노출시간'] ?? null,
           // 주말 상향이 꺼져 있으면 그 자체가 '추가 예산 없이' 쓸 수 있는 손잡이다
           weekendOff: !(Number(cf['AD_주말상향률']) > 0),
+          peerBid, peerHours, peer,
         };
-
-        // 추정만 내밀면 "약속"으로 읽힌다. 같은 달 실측 중 목표 노출과 가장 가까운
-        // 매장의 순위를 함께 보여 준다 — 예측이 아니라 관측이라 틀려도 거짓이 아니다.
-        // ⚠️ **매장명은 절대 내보내지 않는다.** 다른 고객사의 계약 정보다.
-        // ⚠️ **같은 업종만** 쓴다. 순위는 상권 안에서 매겨지므로 업종이 다르면
-        //    비교가 성립하지 않는다(실측: 추정 36위인데 다른 상권 매장을 집어 '2위'가
-        //    나와 추정이 틀린 것처럼 보였다). 적합한 사례가 없으면 아예 안 보여준다.
-        const myCat = cf['DP_업종'];
-        if (myCat) {
-          try {
-            const mf = encodeURIComponent(
-              `AND({계약월}='${escFormula(month)}', {DP_업종}='${escFormula(myCat)}',`
-              + ` {DP_노출}>0, {DP_순위}>0)`);
-            const purl = `https://api.airtable.com/v0/${BASE_ID}/${CAMPAIGN_TABLE}`
-              + `?filterByFormula=${mf}&pageSize=100`
-              + `&fields%5B%5D=${encodeURIComponent('DP_노출')}`
-              + `&fields%5B%5D=${encodeURIComponent('DP_순위')}`
-              + `&fields%5B%5D=${encodeURIComponent('DP_매장코드')}`
-              + `&fields%5B%5D=${encodeURIComponent('AD_단가_따종')}`
-              + `&fields%5B%5D=${encodeURIComponent('AD_주간노출시간')}`;
-            const all = await fetchAllRecords(purl);
-            const me = cf['DP_매장코드'];
-            const cand = all
-              .filter((r) => r.fields['DP_매장코드'] !== me)
-              .map((r) => ({
-                exp: Number(r.fields['DP_노출']), rank: Number(r.fields['DP_순위']),
-                bid: Number(r.fields['AD_단가_따종']) || null,
-                hours: Number(r.fields['AD_주간노출시간']) || null,
-              }))
-              // 나보다 노출이 많은 곳만 — '이만큼 올리면 이 정도'를 보여주는 자리다
-              .filter((x) => x.exp > expNow && x.rank > 0);
-
-            // 어떤 설정을 얼마로? — 예측하지 않는다. **같은 업종에서 우리보다
-            // 노출이 많은 매장들이 실제로 쓰는 범위**를 보여 준다(관측이라 틀려도 거짓이 아니다).
-            const rng = (vals) => {
-              const v = vals.filter((x) => x > 0).sort((a, b) => a - b);
-              return v.length ? { lo: v[0], hi: v[v.length - 1], n: v.length } : null;
-            };
-            projection.peerBid = rng(cand.map((x) => x.bid));
-            projection.peerHours = rng(cand.map((x) => x.hours));
-            if (cand.length) {
-              cand.sort((a, b) => Math.abs(a.exp - expMax) - Math.abs(b.exp - expMax));
-              const p = cand[0];
-              // 목표와 동떨어진 사례를 들면 오히려 신뢰를 잃는다(±60% 안쪽만)
-              if (Math.abs(p.exp - expMax) <= expMax * 0.6) {
-                // ⚠️ 매장명은 절대 내보내지 않는다 — 다른 고객사의 계약 정보다.
-                projection.peer = { exp: p.exp, rank: p.rank, cat: myCat };
-              }
-            }
-          } catch (e) {
-            console.error('[client-schedule] peer 조회 실패:', e.message);
-          }
-        }
       }
     } catch (e) {
       console.error('[client-schedule] projection 계산 실패:', e.message);

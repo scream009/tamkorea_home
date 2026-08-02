@@ -181,21 +181,36 @@ const Upside = ({ p }) => {
         <div className="dpr-up-c hi">
           <span>예산이 다 쓰였을 때</span>
           <b className="mono">{num(p.expMax)}<small>명</small></b>
-          <i>상권 {p.rankEst}위권 <em>추정</em></i>
+          {p.rankEst != null && <i>상권 {p.rankEst}위권 <em>추정</em></i>}
         </div>
       </div>
 
-      {p.perYuan != null && (
-        <div className="dpr-up-calc">
-          <b>계산 근거</b> — 지금 <b>{num(p.spent)}元</b>으로 <b>{num(p.expNow)}명</b>에 도달했으니
-          1元당 약 <b>{num(p.perYuan)}명</b>입니다. 같은 효율로 예산 <b>{num(p.budget)}元</b>이
-          쓰이면 <b>{num(p.expMax)}명</b> — 지금보다 <b>+{num(gain)}명</b>입니다.
-          {p.adShare != null && (
-            <> 이 매장은 노출의 <b>{p.adShare}%</b>가 광고에서 나와, 설정을 바꾼 만큼이
-            비교적 곧바로 반영되는 편입니다.</>
-          )}
-        </div>
-      )}
+      {/* 계산 근거 — 노출은 산술, 순위는 상관관계. 출처가 다르니 나눠 적는다.
+          뭉뚱그리면 '+N명'까지 추정치로 오해받는다. */}
+      <div className="dpr-up-calc">
+        <b>계산 근거</b>
+        {p.perYuan != null && (
+          <div className="dpr-up-calc-l">
+            <em>노출</em> 지금 <b>{num(p.spent)}元</b>으로 <b>{num(p.expNow)}명</b>에 도달 →
+            1元당 약 <b>{num(p.perYuan)}명</b>. 같은 효율로 예산 <b>{num(p.budget)}元</b>이
+            쓰이면 <b>{num(p.expMax)}명</b> — 지금보다 <b>+{num(gain)}명</b>입니다.
+            <span className="dpr-dim"> (산술 계산)</span>
+          </div>
+        )}
+        {p.rankEst != null && p.corr && (
+          <div className="dpr-up-calc-l">
+            <em>순위</em> {p.scope}의 같은 달 실측에서 <b>노출과 상권 순위의 상관계수 {p.corr}</b>.
+            이 관계에 위 도달 가능치를 대입하면 <b>{p.rankNow}위 → {p.rankEst}위권</b>입니다.
+            <span className="dpr-dim"> (추정)</span>
+          </div>
+        )}
+        {p.adShare != null && (
+          <div className="dpr-up-calc-l">
+            <em>반영도</em> 이 매장은 노출의 <b>{p.adShare}%</b>가 광고에서 나와,
+            설정을 바꾼 만큼이 비교적 곧바로 반영되는 편입니다.
+          </div>
+        )}
+      </div>
 
       {p.peer && (
         <div className="dpr-up-peer">
@@ -205,13 +220,9 @@ const Upside = ({ p }) => {
       )}
 
       <div className="dpr-up-note">
-        ※ <b>순위 추정 방법</b> — 저희가 관리하는 따종디엔핑 매장 {p.sampleN || 21}곳의
-        같은 달 실측으로 <b>노출량과 상권 순위의 관계</b>를 계산했습니다
-        (상관계수 {p.sampleR || '-0.76'}, 노출이 2배면 순위가 약 절반). 그 관계에 이 매장의
-        도달 가능치를 대입한 값입니다.
-        <br />
-        상권 경쟁 상황에 따라 달라질 수 있어 <b>보장 수치가 아니며</b>, 설정값도 같은 업종의
-        실측 범위일 뿐 정답은 아닙니다. {by}매장 상황에 맞는 조정폭을 확인해 제안드리겠습니다.
+        ※ 순위는 <b>추정</b>이며 상권 경쟁 상황에 따라 달라질 수 있어 <b>보장 수치가 아닙니다</b>.
+        설정값도 같은 업종의 실측 범위일 뿐 정답은 아닙니다.{' '}
+        {by}매장 상황에 맞는 조정폭을 확인해 제안드리겠습니다.
       </div>
     </div>
   );

@@ -328,3 +328,6 @@ body:has(.dpr-page){padding-top:0!important;background:#0d0f1a}
   line-height:1.75;color:var(--ts);background:rgba(255,255,255,.03);
   border-left:2px solid rgba(155,112,255,.5)}
 .dpr-up-calc b{color:#e7e9f0}
+.dpr-up-calc-l{margin-top:6px}
+.dpr-up-calc-l em{font-style:normal;display:inline-block;min-width:52px;font-size:.72rem;
+  font-weight:700;color:#c4b5fd;margin-right:6px}
