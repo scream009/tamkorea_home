@@ -13,19 +13,29 @@ import './AdminDianpingPage.css';
  */
 
 const n = (v) => (v == null || v === '' ? '—' : Number(v).toLocaleString());
-const won = (v) => (v == null ? '—' : `${Number(v).toLocaleString()}元`);
+// 금액은 정수로 끊는다. 포털이 2153.17 처럼 소수를 주는데, 화면에서 자릿수가
+// 들쭉날쭉해 비교가 어렵다. 元 단위 이하는 판단에 영향이 없다.
+const won = (v) => (v == null ? '—' : `${Math.round(Number(v)).toLocaleString()}元`);
 const day = (v) => (v ? String(v).slice(0, 10) : '—');
 
-// 상태 칩 — 색은 의미를 담는다(정상/주의/멈춤/미집행)
+// 상태 칩 — 색은 의미를 담는다(정상/주의/멈춤/미설정)
 const TONE = { '🟢': 'ok', '🟡': 'warn', '🔴': 'bad', '⚪': 'idle' };
 const tone = (s) => TONE[String(s || '').trim().charAt(0)] || 'idle';
+
+// Airtable 선택지 이름을 화면 표기로 바꾼다.
+// '미집행'은 결과처럼 읽히는데 실제로는 **예산이 책정되지 않은** 상태다
+// (캠페인이 없어 충전해도 광고가 안 나간다). Airtable Meta API 가 선택지 이름 변경을
+// 막아(422) DB 값은 그대로 두고 표기만 바꾼다. 나중에 Airtable 화면에서 이름을 고치면
+// 이 매핑은 저절로 무의미해진다.
+const STATUS_LABEL = { '⚪ 미집행': '⚪ 광고 미설정' };
+const label = (s) => STATUS_LABEL[String(s || '').trim()] || s || '—';
 
 const FILTERS = [
   { k: 'all', label: '전체' },
   { k: 'bad', label: '충전필요' },
   { k: 'warn', label: '소진임박' },
   { k: 'ok', label: '정상' },
-  { k: 'idle', label: '미집행' },
+  { k: 'idle', label: '광고 미설정' },
   { k: 'review', label: '악평 있음' },
   { k: 'cpt', label: 'CPT 만료' },
 ];
@@ -35,6 +45,8 @@ export default function AdminDianpingPage() {
   const [err, setErr] = useState('');
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState('all');
+  const [cat, setCat] = useState('all');           // 업종 — 8종이라 칩 대신 드롭다운
+  const [group, setGroup] = useState(false);       // 업종별로 묶어 보기
   const [open, setOpen] = useState(null);          // 펼친 매장 officeId
   const [months, setMonths] = useState({});        // officeId → 월별 이력
   const [loadingM, setLoadingM] = useState(null);
@@ -54,17 +66,28 @@ export default function AdminDianpingPage() {
     return () => { alive = false; };
   }, []);
 
+  // 업종 목록 — 매장 수 많은 순. 8종이라 칩으로 늘리면 지저분해 드롭다운으로 둔다.
+  const cats = useMemo(() => {
+    const m = new Map();
+    for (const r of (data?.rows || [])) {
+      const c = r.category || '미분류';
+      m.set(c, (m.get(c) || 0) + 1);
+    }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  }, [data]);
+
   const rows = useMemo(() => {
     const all = data?.rows || [];
     const kw = q.trim().toLowerCase();
     return all.filter((r) => {
       if (kw && !`${r.name} ${r.cn} ${r.category || ''}`.toLowerCase().includes(kw)) return false;
+      if (cat !== 'all' && (r.category || '미분류') !== cat) return false;
       if (filter === 'all') return true;
       if (filter === 'review') return (r.bad7 || 0) > 0;
       if (filter === 'cpt') return r.cptExpired;
       return tone(r.status) === filter;
     });
-  }, [data, q, filter]);
+  }, [data, q, filter, cat]);
 
   async function toggle(r) {
     if (open === r.officeId) { setOpen(null); return; }
@@ -97,7 +120,7 @@ export default function AdminDianpingPage() {
         <Tile label="정상 운영" value={s.running} tone="ok" />
         <Tile label="소진 임박" value={s.lowBalance} tone="warn" />
         <Tile label="충전 필요" value={s.needCharge} tone="bad" />
-        <Tile label="미집행" value={s.idle} tone="idle" />
+        <Tile label="광고 미설정" value={s.idle} tone="idle" />
         <Tile label="최근 7일 악평" value={s.bad7Total} tone={s.bad7Total ? 'warn' : 'idle'} />
       </div>
 
@@ -114,6 +137,15 @@ export default function AdminDianpingPage() {
                     onClick={() => setFilter(f.k)}>{f.label}</button>
           ))}
         </div>
+        <select className="dpa-sel" value={cat} onChange={(e) => setCat(e.target.value)}
+                aria-label="업종 선택">
+          <option value="all">업종 전체 ({data.rows.length})</option>
+          {cats.map(([c, k]) => <option key={c} value={c}>{c} ({k})</option>)}
+        </select>
+        <label className="dpa-tg">
+          <input type="checkbox" checked={group} onChange={(e) => setGroup(e.target.checked)} />
+          업종별 묶기
+        </label>
         <span className="dpa-cnt">{rows.length}곳</span>
       </div>
 
@@ -121,7 +153,10 @@ export default function AdminDianpingPage() {
           11칸 표를 가로로 밀어 보는 건 현장에서 못 쓴다. 폭이 좁으면 카드로 바꾼다.
           같은 데이터를 두 번 그리지만, 표를 억지로 접는 CSS 보다 읽기 쉽다. */}
       <div className="dpa-cards">
-        {rows.map((r) => (
+        {groupRows(rows, group).map(({ head, items }) => (
+          <React.Fragment key={head || '_'}>
+            {head && <div className="dpa-gh">{head} <span>{items.length}</span></div>}
+            {items.map((r) => (
           <div key={r.officeId || r.id}
                className={`dpa-card${open === r.officeId ? ' open' : ''}`}>
             <button type="button" className="dpa-card-hd" onClick={() => toggle(r)}>
@@ -133,7 +168,7 @@ export default function AdminDianpingPage() {
               </div>
               <div className="dpa-card-badges">
                 {r.bad7 ? <span className="dpa-bad">악평 {r.bad7}</span> : null}
-                <span className={`dpa-st ${tone(r.status)}`}>{r.status || '—'}</span>
+                <span className={`dpa-st ${tone(r.status)}`}>{label(r.status)}</span>
               </div>
             </button>
 
@@ -157,6 +192,8 @@ export default function AdminDianpingPage() {
               <Detail r={r} months={months[r.officeId]} loading={loadingM === r.officeId} />
             )}
           </div>
+            ))}
+          </React.Fragment>
         ))}
         {!rows.length && <div className="dpa-empty">조건에 맞는 매장이 없습니다.</div>}
       </div>
@@ -180,7 +217,12 @@ export default function AdminDianpingPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {groupRows(rows, group).map(({ head, items }) => (
+              <React.Fragment key={head || '_'}>
+                {head && (
+                  <tr className="dpa-ghr"><td colSpan={11}>{head} <span>{items.length}</span></td></tr>
+                )}
+                {items.map((r) => (
               <React.Fragment key={r.officeId || r.id}>
                 <tr className={`dpa-row${open === r.officeId ? ' open' : ''}`}
                     onClick={() => toggle(r)} tabIndex={0}
@@ -190,7 +232,7 @@ export default function AdminDianpingPage() {
                     {r.cn && <div className="dpa-cn">{r.cn}</div>}
                   </td>
                   <td className="l dpa-dim">{r.category || '—'}</td>
-                  <td><span className={`dpa-st ${tone(r.status)}`}>{r.status || '—'}</span></td>
+                  <td><span className={`dpa-st ${tone(r.status)}`}>{label(r.status)}</span></td>
                   <td className="num">{won(r.balance)}</td>
                   <td className="num dpa-dim">{day(r.chargedAt)}</td>
                   <td className="num">{won(r.budget)}</td>
@@ -217,6 +259,8 @@ export default function AdminDianpingPage() {
                     </td>
                   </tr>
                 )}
+              </React.Fragment>
+                ))}
               </React.Fragment>
             ))}
             {!rows.length && (
@@ -297,6 +341,20 @@ function Detail({ r, months, loading }) {
 const Kv = ({ k, v }) => (
   <div className="dpa-kv"><span>{k}</span><b>{v || '—'}</b></div>
 );
+
+/** 업종별로 묶어 보기. 끄면 한 덩어리로 돌려준다(머리글 없음). */
+function groupRows(rows, on) {
+  if (!on) return [{ head: null, items: rows }];
+  const m = new Map();
+  for (const r of rows) {
+    const c = r.category || '미분류';
+    if (!m.has(c)) m.set(c, []);
+    m.get(c).push(r);
+  }
+  return [...m.entries()]
+    .sort((a, b) => b[1].length - a[1].length)
+    .map(([head, items]) => ({ head, items }));
+}
 
 // 모바일 카드의 한 칸. wide 는 두 칸을 먹는다(노출시간처럼 긴 값).
 const Cell = ({ k, v, strong, wide, danger }) => (
