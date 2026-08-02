@@ -26,7 +26,8 @@ if (!process.env.TAMLINK_API_KEY && process.env.VITE_AT_TOKEN) {
 const app = express();
 app.use(express.json());
 
-const ROUTES = ['client-schedule', 'client-report', 'client-list', 'client-partner'];
+const ROUTES = ['client-schedule', 'client-report', 'client-list', 'client-partner',
+                'admin-dianping', 'admin-check', 'admin-dashboard', 'admin-board-api'];
 for (const name of ROUTES) {
   app.all(`/api/${name}`, async (req, res) => {
     try {

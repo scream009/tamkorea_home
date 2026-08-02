@@ -1,0 +1,109 @@
+/* 따종 고객 현황 — 스캔하고 조작하는 화면이라 타이포보다 정보 밀도를 우선한다.
+   상태는 색과 형태 둘 다로 표시한다(색만 쓰면 색약 사용자가 못 읽는다). */
+.dpa { padding: 22px 26px 60px; }
+.dpa-msg { padding: 60px 26px; color: #9ca3af; font-size: 14px; }
+.dpa-msg.err { color: #fca5a5; }
+.dpa-dim { color: #6b7280; }
+
+/* ── 요약 타일 ── */
+.dpa-sum {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px; margin-bottom: 18px;
+}
+.dpa-tile {
+  padding: 14px 15px; border-radius: 13px;
+  background: rgba(255, 255, 255, .035);
+  border: 1px solid rgba(255, 255, 255, .08);
+}
+.dpa-tv { font-size: 1.55rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.15;
+          font-variant-numeric: tabular-nums; }
+.dpa-tl { font-size: 11.5px; color: #9ca3af; margin-top: 3px; }
+.dpa-tile.ok   { border-color: rgba(16, 185, 129, .35); }
+.dpa-tile.ok   .dpa-tv { color: #34d399; }
+.dpa-tile.warn { border-color: rgba(245, 159, 46, .35); }
+.dpa-tile.warn .dpa-tv { color: #fbbf24; }
+.dpa-tile.bad  { border-color: rgba(239, 68, 68, .35); }
+.dpa-tile.bad  .dpa-tv { color: #f87171; }
+.dpa-tile.idle .dpa-tv { color: #6b7280; }
+
+/* ── 검색·필터 ── */
+.dpa-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.dpa-q {
+  flex: 1 1 220px; max-width: 320px; padding: 9px 12px; border-radius: 9px; font-size: 13px;
+  background: rgba(0, 0, 0, .35); border: 1px solid rgba(255, 255, 255, .12);
+  color: #fff; outline: none;
+}
+.dpa-q:focus { border-color: rgba(168, 85, 247, .55); }
+.dpa-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.dpa-chip {
+  padding: 6px 11px; border-radius: 999px; font-size: 12px; cursor: pointer;
+  background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .1);
+  color: #9ca3af;
+}
+.dpa-chip:hover { color: #e7e9f0; }
+.dpa-chip.on {
+  background: linear-gradient(135deg, rgba(139, 92, 246, .3), rgba(168, 85, 247, .18));
+  border-color: rgba(168, 85, 247, .5); color: #fff; font-weight: 700;
+}
+.dpa-cnt { margin-left: auto; font-size: 12px; color: #6b7280; }
+
+/* ── 표 ── */
+.dpa-wrap { overflow-x: auto; border: 1px solid rgba(255, 255, 255, .08); border-radius: 14px; }
+.dpa-tb { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 1040px; }
+.dpa-tb th, .dpa-tb td { padding: 10px 11px; text-align: right; white-space: nowrap; }
+.dpa-tb th.l, .dpa-tb td.l { text-align: left; }
+.dpa-tb thead th {
+  font-size: 11px; color: #6b7280; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .04em; border-bottom: 1px solid rgba(255, 255, 255, .1);
+  background: rgba(0, 0, 0, .25); position: sticky; top: 0; z-index: 1;
+}
+.dpa-tb td.num { font-variant-numeric: tabular-nums; }
+.dpa-row { cursor: pointer; border-top: 1px solid rgba(255, 255, 255, .05); }
+.dpa-row:hover { background: rgba(255, 255, 255, .035); }
+.dpa-row.open { background: rgba(139, 92, 246, .1); }
+.dpa-row:focus-visible { outline: 2px solid #a78bfa; outline-offset: -2px; }
+.dpa-nm { font-weight: 700; color: #f3f4f6; }
+.dpa-cn { font-size: 10.5px; color: #4b5563; margin-top: 1px; }
+.dpa-hrs { font-variant-numeric: tabular-nums; font-size: 11.5px; color: #9ca3af; }
+
+/* 상태 — 색 + 글자 둘 다 */
+.dpa-st { padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.dpa-st.ok   { background: rgba(16, 185, 129, .14); color: #34d399; border: 1px solid rgba(16, 185, 129, .3); }
+.dpa-st.warn { background: rgba(245, 159, 46, .14); color: #fbbf24; border: 1px solid rgba(245, 159, 46, .3); }
+.dpa-st.bad  { background: rgba(239, 68, 68, .14); color: #f87171; border: 1px solid rgba(239, 68, 68, .3); }
+.dpa-st.idle { background: rgba(255, 255, 255, .05); color: #9ca3af; border: 1px solid rgba(255, 255, 255, .12); }
+
+.dpa-bad {
+  display: inline-block; min-width: 22px; padding: 2px 7px; border-radius: 7px;
+  background: rgba(239, 68, 68, .16); color: #fca5a5; font-weight: 800;
+}
+.dpa-cpt { font-size: 11.5px; color: #9ca3af; }
+.dpa-cpt.bad { color: #fca5a5; font-weight: 700; }
+.dpa-empty { text-align: center; padding: 40px; color: #6b7280; }
+
+/* ── 펼친 상세 ── */
+.dpa-detail > td { padding: 0 !important; background: rgba(0, 0, 0, .3); }
+.dpa-dt { padding: 18px 20px; border-top: 1px solid rgba(168, 85, 247, .25); }
+.dpa-dt-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  gap: 9px; margin-bottom: 18px;
+}
+.dpa-kv {
+  display: flex; flex-direction: column; gap: 2px; padding: 9px 11px; border-radius: 9px;
+  background: rgba(255, 255, 255, .03); border: 1px solid rgba(255, 255, 255, .06);
+}
+.dpa-kv span { font-size: 10.5px; color: #6b7280; }
+.dpa-kv b { font-size: 12.5px; color: #e7e9f0; font-variant-numeric: tabular-nums; }
+.dpa-dt-h { font-size: 12.5px; font-weight: 700; color: #c4b5fd; margin-bottom: 8px; }
+.dpa-mwrap { overflow-x: auto; }
+.dpa-mt { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 780px; }
+.dpa-mt th, .dpa-mt td { padding: 7px 10px; text-align: right; white-space: nowrap; }
+.dpa-mt th.l, .dpa-mt td.l { text-align: left; }
+.dpa-mt thead th { font-size: 10.5px; color: #6b7280; font-weight: 600;
+                   border-bottom: 1px solid rgba(255, 255, 255, .08); }
+.dpa-mt tbody tr + tr td { border-top: 1px solid rgba(255, 255, 255, .04); }
+.dpa-mt td.num { font-variant-numeric: tabular-nums; }
+.dpa-link { color: #a78bfa; text-decoration: none; font-weight: 700; }
+.dpa-link:hover { text-decoration: underline; }
+
+@media (max-width: 700px) { .dpa { padding: 16px 12px 40px; } }

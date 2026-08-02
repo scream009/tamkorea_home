@@ -1,0 +1,255 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { adminHeaders } from '../lib/adminKey';
+import './AdminDianpingPage.css';
+
+/**
+ * 따종디엔핑 고객 현황 (1단계 — 보기 전용)
+ *
+ * 데이터는 CS_DB 한 곳에서만 온다("지금 어떤 상태인가").
+ * 계약월별 이력은 행을 펼쳤을 때만 Campaign_DB 에서 따로 읽는다 — 목록을 무겁게 두지 않는다.
+ *
+ * 2단계에서 일예산·단가를 이 화면에서 고치면 포털에 반영하는 걸로 확장한다.
+ * 그때를 대비해 planId(캠페인ID)를 이미 내려받아 두고 있다.
+ */
+
+const n = (v) => (v == null || v === '' ? '—' : Number(v).toLocaleString());
+const won = (v) => (v == null ? '—' : `${Number(v).toLocaleString()}元`);
+const day = (v) => (v ? String(v).slice(0, 10) : '—');
+
+// 상태 칩 — 색은 의미를 담는다(정상/주의/멈춤/미집행)
+const TONE = { '🟢': 'ok', '🟡': 'warn', '🔴': 'bad', '⚪': 'idle' };
+const tone = (s) => TONE[String(s || '').trim().charAt(0)] || 'idle';
+
+const FILTERS = [
+  { k: 'all', label: '전체' },
+  { k: 'bad', label: '충전필요' },
+  { k: 'warn', label: '소진임박' },
+  { k: 'ok', label: '정상' },
+  { k: 'idle', label: '미집행' },
+  { k: 'review', label: '악평 있음' },
+  { k: 'cpt', label: 'CPT 만료' },
+];
+
+export default function AdminDianpingPage() {
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState('');
+  const [q, setQ] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [open, setOpen] = useState(null);          // 펼친 매장 officeId
+  const [months, setMonths] = useState({});        // officeId → 월별 이력
+  const [loadingM, setLoadingM] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch('/api/admin-dianping', { headers: adminHeaders() });
+        if (!r.ok) throw new Error(r.status === 404 ? '접근 권한이 없습니다.' : `불러오지 못했습니다 (${r.status})`);
+        const j = await r.json();
+        if (alive) setData(j);
+      } catch (e) {
+        if (alive) setErr(e.message);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const rows = useMemo(() => {
+    const all = data?.rows || [];
+    const kw = q.trim().toLowerCase();
+    return all.filter((r) => {
+      if (kw && !`${r.name} ${r.cn} ${r.category || ''}`.toLowerCase().includes(kw)) return false;
+      if (filter === 'all') return true;
+      if (filter === 'review') return (r.bad7 || 0) > 0;
+      if (filter === 'cpt') return r.cptExpired;
+      return tone(r.status) === filter;
+    });
+  }, [data, q, filter]);
+
+  async function toggle(r) {
+    if (open === r.officeId) { setOpen(null); return; }
+    setOpen(r.officeId);
+    if (months[r.officeId]) return;      // 이미 받아온 매장은 다시 부르지 않는다
+    if (!r.slug) { setMonths((m) => ({ ...m, [r.officeId]: [] })); return; }
+    const slug = r.slug;
+    setLoadingM(r.officeId);
+    try {
+      const resp = await fetch(`/api/admin-dianping?slug=${encodeURIComponent(slug)}`,
+                               { headers: adminHeaders() });
+      const j = await resp.json();
+      setMonths((m) => ({ ...m, [r.officeId]: j.months || [] }));
+    } catch {
+      setMonths((m) => ({ ...m, [r.officeId]: [] }));
+    } finally {
+      setLoadingM(null);
+    }
+  }
+
+  if (err) return <div className="dpa-msg err">{err}</div>;
+  if (!data) return <div className="dpa-msg">불러오는 중…</div>;
+
+  const s = data.summary || {};
+  return (
+    <div className="dpa">
+      {/* ── 요약 ── */}
+      <div className="dpa-sum">
+        <Tile label="따종 매장" value={s.total} />
+        <Tile label="정상 운영" value={s.running} tone="ok" />
+        <Tile label="소진 임박" value={s.lowBalance} tone="warn" />
+        <Tile label="충전 필요" value={s.needCharge} tone="bad" />
+        <Tile label="미집행" value={s.idle} tone="idle" />
+        <Tile label="최근 7일 악평" value={s.bad7Total} tone={s.bad7Total ? 'warn' : 'idle'} />
+      </div>
+
+      {/* ── 검색·필터 ── */}
+      <div className="dpa-bar">
+        <input
+          className="dpa-q" value={q} onChange={(e) => setQ(e.target.value)}
+          placeholder="매장명·중문명·업종으로 검색" aria-label="매장 검색"
+        />
+        <div className="dpa-chips">
+          {FILTERS.map((f) => (
+            <button key={f.k} type="button"
+                    className={`dpa-chip${filter === f.k ? ' on' : ''}`}
+                    onClick={() => setFilter(f.k)}>{f.label}</button>
+          ))}
+        </div>
+        <span className="dpa-cnt">{rows.length}곳</span>
+      </div>
+
+      {/* ── 목록 ── */}
+      <div className="dpa-wrap">
+        <table className="dpa-tb">
+          <thead>
+            <tr>
+              <th className="l">매장</th>
+              <th className="l">업종</th>
+              <th>상태</th>
+              <th>잔액</th>
+              <th>충전일</th>
+              <th>일예산</th>
+              <th>단가</th>
+              <th>주말</th>
+              <th className="l">노출시간</th>
+              <th>악평 7일</th>
+              <th className="l">CPT</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <React.Fragment key={r.officeId || r.id}>
+                <tr className={`dpa-row${open === r.officeId ? ' open' : ''}`}
+                    onClick={() => toggle(r)} tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter') toggle(r); }}>
+                  <td className="l">
+                    <div className="dpa-nm">{r.name || '—'}</div>
+                    {r.cn && <div className="dpa-cn">{r.cn}</div>}
+                  </td>
+                  <td className="l dpa-dim">{r.category || '—'}</td>
+                  <td><span className={`dpa-st ${tone(r.status)}`}>{r.status || '—'}</span></td>
+                  <td className="num">{won(r.balance)}</td>
+                  <td className="num dpa-dim">{day(r.chargedAt)}</td>
+                  <td className="num">{won(r.budget)}</td>
+                  <td className="num">{r.bid == null ? '—' : `${Number(r.bid).toFixed(1)}元`}</td>
+                  <td className="num">{r.floatRatio == null ? '—' : `+${r.floatRatio}%`}</td>
+                  <td className="l dpa-hrs">{r.hours ? r.hours.replace('매일 ', '') : '—'}</td>
+                  <td className="num">
+                    {r.bad7 ? <span className="dpa-bad">{r.bad7}</span> : <span className="dpa-dim">0</span>}
+                  </td>
+                  <td className="l">
+                    {r.cptExpire
+                      ? <span className={r.cptExpired ? 'dpa-cpt bad' : 'dpa-cpt'}>
+                          {day(r.cptExpire)}{r.cptDaysLeft != null && (r.cptExpired
+                            ? ' · 만료' : ` · D-${r.cptDaysLeft}`)}
+                        </span>
+                      : <span className="dpa-dim">미입력</span>}
+                  </td>
+                </tr>
+
+                {open === r.officeId && (
+                  <tr className="dpa-detail">
+                    <td colSpan={11}>
+                      <Detail r={r} months={months[r.officeId]} loading={loadingM === r.officeId} />
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            ))}
+            {!rows.length && (
+              <tr><td colSpan={11} className="dpa-empty">조건에 맞는 매장이 없습니다.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function Tile({ label, value, tone: t }) {
+  return (
+    <div className={`dpa-tile${t ? ` ${t}` : ''}`}>
+      <div className="dpa-tv">{value ?? '—'}</div>
+      <div className="dpa-tl">{label}</div>
+    </div>
+  );
+}
+
+function Detail({ r, months, loading }) {
+  return (
+    <div className="dpa-dt">
+      <div className="dpa-dt-grid">
+        <Kv k="포털 계정" v={r.officeId} />
+        <Kv k="캠페인 ID" v={r.planId} />
+        <Kv k="주간 노출" v={r.hoursOn ? `${r.hoursOn}시간 / 168` : null} />
+        <Kv k="피크 예산" v={r.peak ? won(r.peak) : null} />
+        <Kv k="일 소진" v={r.spend != null ? won(r.spend) : null} />
+        <Kv k="소진 예상" v={r.daysLeft != null ? `약 ${r.daysLeft}일` : null} />
+        <Kv k="악평 30일 / 누적" v={`${n(r.bad30)} / ${n(r.badTotal)}`} />
+        <Kv k="설정 확인" v={r.settingAt ? String(r.settingAt).slice(0, 16).replace('T', ' ') : null} />
+        <Kv k="잔액 확인" v={r.balanceAt ? String(r.balanceAt).slice(0, 16).replace('T', ' ') : null} />
+        <Kv k="리뷰 확인" v={r.reviewAt ? String(r.reviewAt).slice(0, 16).replace('T', ' ') : null} />
+      </div>
+
+      <div className="dpa-dt-h">계약월별 리포트</div>
+      {loading && <div className="dpa-dim">불러오는 중…</div>}
+      {!loading && months && months.length > 0 && (
+        <div className="dpa-mwrap">
+          <table className="dpa-mt">
+            <thead>
+              <tr><th className="l">계약월</th><th className="l">기간</th><th>노출</th><th>방문</th>
+                  <th>순위</th><th>전월비</th><th>호평률</th><th>악평</th><th>광고비</th><th>리포트</th></tr>
+            </thead>
+            <tbody>
+              {months.map((m) => (
+                <tr key={m.id}>
+                  <td className="l"><b>{m.month}</b></td>
+                  <td className="l dpa-dim">{m.period || '—'}</td>
+                  <td className="num">{n(m.exposure)}</td>
+                  <td className="num">{n(m.visit)}</td>
+                  <td className="num">{m.rank ? `${m.rank}위` : '—'}</td>
+                  <td className="num dpa-dim">{m.mom || '—'}</td>
+                  <td className="num">{m.good != null ? `${m.good}%` : '—'}</td>
+                  <td className="num">{n(m.bad)}</td>
+                  <td className="num">{m.spend != null ? won(m.spend) : '—'}</td>
+                  <td>
+                    {m.reportUrl
+                      ? <a className="dpa-link" href={m.reportUrl} target="_blank"
+                           rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>열기 ↗</a>
+                      : <span className="dpa-dim">없음</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {!loading && months && !months.length && (
+        <div className="dpa-dim">기록된 계약월이 없습니다.</div>
+      )}
+    </div>
+  );
+}
+
+const Kv = ({ k, v }) => (
+  <div className="dpa-kv"><span>{k}</span><b>{v || '—'}</b></div>
+);
