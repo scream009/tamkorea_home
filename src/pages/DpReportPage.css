@@ -328,6 +328,15 @@ body:has(.dpr-page){padding-top:0!important;background:#0d0f1a}
   line-height:1.75;color:var(--ts);background:rgba(255,255,255,.03);
   border-left:2px solid rgba(155,112,255,.5)}
 .dpr-up-calc b{color:#e7e9f0}
-.dpr-up-calc-l{margin-top:6px}
-.dpr-up-calc-l em{font-style:normal;display:inline-block;min-width:52px;font-size:.72rem;
-  font-weight:700;color:#c4b5fd;margin-right:6px}
+/* 라벨과 본문을 2단 그리드로 — inline-block 이면 줄바꿈된 본문이 라벨 아래로
+   파고들어 '(추정)' 같은 꼬리가 왼쪽 끝에 매달린다(실측). */
+.dpr-up-calc-l{display:grid;grid-template-columns:3.6rem 1fr;gap:8px;
+  align-items:start;margin-top:7px}
+.dpr-up-calc-l em{font-style:normal;font-size:.72rem;font-weight:700;color:#c4b5fd;
+  white-space:nowrap;padding-top:2px}
+/* '(산술 계산)' 이 괄호 중간에서 끊기지 않게 */
+.dpr-up-calc-l .dpr-dim{white-space:nowrap}
+@media (max-width:520px){
+  .dpr-up-calc-l{grid-template-columns:1fr;gap:2px}
+  .dpr-up-calc-l .dpr-dim{white-space:normal}
+}

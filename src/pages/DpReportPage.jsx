@@ -179,7 +179,7 @@ const Upside = ({ p }) => {
         </div>
         <div className="dpr-up-ar">→</div>
         <div className="dpr-up-c hi">
-          <span>예산이 다 쓰였을 때</span>
+          <span>일 예산을 다 활용했을 때</span>
           <b className="mono">{num(p.expMax)}<small>명</small></b>
           {p.rankEst != null && <i>상권 {p.rankEst}위권 <em>추정</em></i>}
         </div>
@@ -191,23 +191,32 @@ const Upside = ({ p }) => {
         <b>계산 근거</b>
         {p.perYuan != null && (
           <div className="dpr-up-calc-l">
-            <em>노출</em> 지금 <b>{num(p.spent)}元</b>으로 <b>{num(p.expNow)}명</b>에 도달 →
-            1元당 약 <b>{num(p.perYuan)}명</b>. 같은 효율로 예산 <b>{num(p.budget)}元</b>이
-            쓰이면 <b>{num(p.expMax)}명</b> — 지금보다 <b>+{num(gain)}명</b>입니다.
-            <span className="dpr-dim"> (산술 계산)</span>
+            <em>노출</em>
+            <span>
+              지금 <b>{num(p.spent)}元</b>으로 <b>{num(p.expNow)}명</b>에 도달 →
+              1元당 약 <b>{num(p.perYuan)}명</b>. 같은 효율로 일 예산 <b>{num(p.budget)}元</b>을
+              다 활용하면 <b>{num(p.expMax)}명</b> — 지금보다 <b>+{num(gain)}명</b>입니다.
+              <span className="dpr-dim">(산술 계산)</span>
+            </span>
           </div>
         )}
         {p.rankEst != null && p.corr && (
           <div className="dpr-up-calc-l">
-            <em>순위</em> {p.scope}의 같은 달 실측에서 <b>노출과 상권 순위의 상관계수 {p.corr}</b>.
-            이 관계에 위 도달 가능치를 대입하면 <b>{p.rankNow}위 → {p.rankEst}위권</b>입니다.
-            <span className="dpr-dim"> (추정)</span>
+            <em>순위</em>
+            <span>
+              {p.scope}의 같은 달 실측에서 <b>노출과 상권 순위의 상관계수 {p.corr}</b>.
+              이 관계에 위 도달 가능치를 대입하면 <b>{p.rankNow}위 → {p.rankEst}위권</b>입니다.{' '}
+              <span className="dpr-dim">(추정)</span>
+            </span>
           </div>
         )}
         {p.adShare != null && (
           <div className="dpr-up-calc-l">
-            <em>반영도</em> 이 매장은 노출의 <b>{p.adShare}%</b>가 광고에서 나와,
-            설정을 바꾼 만큼이 비교적 곧바로 반영되는 편입니다.
+            <em>반영도</em>
+            <span>
+              이 매장은 노출의 <b>{p.adShare}%</b>가 광고에서 나와,
+              설정을 바꾼 만큼이 비교적 곧바로 반영되는 편입니다.
+            </span>
           </div>
         )}
       </div>
