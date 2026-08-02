@@ -367,11 +367,21 @@ export default async function handler(req, res) {
         const useRate = budget ? Math.round((Number(yst) / Number(budget)) * 100) : null;
         const hoursOn = cf['AD_주간노출시간'] ?? null;
         const daysLeft = cf['CPC_소진예상일'] ?? null;
-        // 넛지 판정 — 매장 상태마다 손잡이가 다르다. 같은 문구를 전부에 뿌리면
-        // 넛지가 아니라 광고로 읽힌다.
+        // ── 넛지 판정 ──────────────────────────────────────────
+        // ⚠️ 소진률 하나로 판단하면 안 된다. 잔액이 0이면 광고가 꺼져 어제 집행도 0 이고,
+        //    그게 '예산이 남는다'로 읽혀 충전이 필요한 매장에 "노출을 늘리세요"라는
+        //    엉뚱한 제안이 나갔다(실측: 제주육림 — 잔액 0·소진 0 인데 room_to_grow).
+        //    그래서 **잔액 → 집행여부 → 소진률** 순으로 걸러 낸다.
+        const bal = cf['CPC_현재잔액'] ?? null;
         let nudge = null;
-        if (useRate != null && useRate >= 95) {
-          nudge = 'budget_capped';        // 예산이 매일 바닥 → 충전·증액
+        if (bal != null && Number(bal) <= 0) {
+          nudge = 'no_balance';           // 광고 꺼짐 — 설정 얘기보다 충전이 먼저
+        } else if (daysLeft != null && Number(daysLeft) <= 3) {
+          nudge = 'low_balance';          // 곧 멈춘다
+        } else if (useRate != null && useRate >= 95) {
+          nudge = 'budget_capped';        // 예산이 매일 바닥 → 증액 검토
+        } else if (yst != null && Number(yst) <= 0) {
+          nudge = 'no_spend';             // 잔액은 있는데 집행 0 — 예산 문제가 아니다
         } else if (useRate != null && useRate < 60) {
           // 예산이 남는 건 돈이 모자란 게 아니라 노출 기회가 없다는 뜻이다.
           // 시간이 이미 168h면 늘릴 곳이 없어 단가밖에 남지 않는다.
