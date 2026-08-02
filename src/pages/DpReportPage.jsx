@@ -240,7 +240,7 @@ const Upside = ({ p }) => {
 const AdSettings = ({ ad, upside }) => {
   const by = useSubject();
   if (!ad) return null;
-  const { budget, floatRatio, peak, bid, hours, hoursOn, yesterday, useRate, nudge } = ad;
+  const { budget, floatRatio, peak, bid, hours, hoursOn, yesterday, useRate, nudge, paused } = ad;
 
   // 노출시간 문자열 → 24칸 막대.
   // ⚠️ 한 구간(`매일 11:00-21:00`)만 있는 게 아니다. 점심·저녁을 갈라 트는 매장이
@@ -259,6 +259,18 @@ const AdSettings = ({ ad, upside }) => {
   const hasStrip = onHours.size > 0;
 
   const NUDGE = {
+    // 캠페인 정지 — 잔액·소진률로는 설명이 안 되는 상태다. 잔액이 넉넉해도 한 푼도
+    // 안 나간다(실측 2026-08-02 함덕찜: 잔액 3,000元·예산 150元·단가 10.78元).
+    // 원인이 우리 쪽 설정 실수처럼 읽히지 않게 **플랫폼 자동 조치**임을 먼저 밝히고,
+    // 설정이 살아 있다는 사실로 닫는다. 충전을 권하는 문구는 넣지 않는다 — 돈 문제가 아니다.
+    paused: {
+      pill: '안내', cls: 'warn',
+      title: '광고가 일시정지 상태였습니다',
+      body: <>집행 내역이 오래 없는 캠페인을 <b>플랫폼이 자동으로 정지</b>시킨 상태로,
+        이 기간에는 광고 노출이 발생하지 않았습니다. 잔액이 남아 있어도 마찬가지입니다.
+        <b> 예산·클릭 단가·노출 시간 설정은 그대로 남아 있어</b> 재개하면 아래 설정 그대로
+        곧바로 다시 나갑니다. {by}재개 처리해 드리겠습니다.</>,
+    },
     // 잔액 0 — 위쪽에 이미 빨간 충전 배너가 크게 떠 있다. 같은 말을 반복하지 않고
     // '아래 숫자가 0인 이유'만 사실로 설명한다.
     // ⚠️ "충전이 먼저입니다" 같은 판단·지시는 쓰지 않는다. 우리끼리 하는 말이지
@@ -310,7 +322,12 @@ const AdSettings = ({ ad, upside }) => {
 
   return (
     <div className="dpr-adset">
-      <div className="dpr-adset-h">⚙️ 현재 광고 설정 <span className="dpr-sm">推广通 실측</span></div>
+      {/* 정지 중이면 아래 숫자들은 '지금 돌고 있는 값'이 아니라 '멈춘 채 남아 있는 값'이다.
+          그 구분이 없으면 예산 150元이 매일 나가고 있는 것으로 읽힌다. */}
+      <div className="dpr-adset-h">
+        ⚙️ 현재 광고 설정 <span className="dpr-sm">推广通 실측</span>
+        {paused && <span className="dpr-adset-paused">일시정지 중 · 설정값 유지</span>}
+      </div>
       <div className="dpr-adset-grid">
         {budget != null && (
           <div className="dpr-adset-c">

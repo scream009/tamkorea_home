@@ -27,6 +27,7 @@ const day = (v) => (v ? String(v).slice(0, 10) : '—');
 const tone = (s) => {
   const t = String(s || '');
   if (t.includes('정상')) return 'ok';
+  if (t.includes('정지')) return 'paused';
   if (t.includes('소진임박')) return 'warn';
   if (t.includes('충전필요')) return 'bad';
   if (t.includes('미집행') || t.includes('미설정')) return 'idle';
@@ -39,6 +40,13 @@ const tone = (s) => {
 // 막아(422) DB 값은 그대로 두고 표기만 바꾼다. 나중에 Airtable 화면에서 이름을 고치면
 // 이 매핑은 저절로 무의미해진다.
 const STATUS_LABEL = { '⚪ 미집행': '⚪ 광고 미설정' };
+
+// 캠페인 자체의 상태. 잔액과 별개다 — paused 는 '설정은 살아 있고 스위치만 꺼짐'.
+const CAMPAIGN = {
+  running: '집행 중',
+  paused: '⏸️ 정지 — 설정은 유지됨',
+  none: '없음 (충전해도 안 나감)',
+};
 const label = (s) => STATUS_LABEL[String(s || '').trim()] || s || '—';
 
 // 정렬. 기본은 **가나다** 다 — 목록의 첫 용도가 '그 매장 찾기' 이기 때문이다.
@@ -56,6 +64,7 @@ const FILTERS = [
   { k: 'bad', label: '충전필요' },
   { k: 'warn', label: '소진임박' },
   { k: 'ok', label: '정상' },
+  { k: 'paused', label: '정지' },
   { k: 'idle', label: '광고 미설정' },
   { k: 'none', label: '수집 전' },
   { k: 'review', label: '악평 있음' },
@@ -144,6 +153,7 @@ export default function AdminDianpingPage() {
         <Tile label="정상 운영" value={s.running} tone="ok" />
         <Tile label="소진 임박" value={s.lowBalance} tone="warn" />
         <Tile label="충전 필요" value={s.needCharge} tone="bad" />
+        <Tile label="정지" value={s.paused} tone="paused" />
         <Tile label="광고 미설정" value={s.idle} tone="idle" />
         <Tile label="최근 7일 악평" value={s.bad7Total} tone={s.bad7Total ? 'warn' : 'idle'} />
       </div>
@@ -334,7 +344,20 @@ function Detail({ r, months, loading }) {
         <Kv k="설정 확인" v={r.settingAt ? String(r.settingAt).slice(0, 16).replace('T', ' ') : null} />
         <Kv k="잔액 확인" v={r.balanceAt ? String(r.balanceAt).slice(0, 16).replace('T', ' ') : null} />
         <Kv k="리뷰 확인" v={r.reviewAt ? String(r.reviewAt).slice(0, 16).replace('T', ' ') : null} />
+        <Kv k="캠페인" v={CAMPAIGN[r.campaign] || null} />
       </div>
+
+      {/* 정지 사유 — 포털 원문 그대로 둔다. 번역만 붙여서 판단은 사람이 하게 한다.
+          '왜 꺼졌나'에 따라 대응이 갈린다(무소비 자동정지 vs 심사·위반). */}
+      {r.campaign === 'paused' && r.pauseReason && (
+        <div className="dpa-reason">
+          ⏸️ <b>정지 사유</b> — {r.pauseReason}
+          {r.pauseReason.includes('长期无消耗') && (
+            <> <br />집행 내역이 오래 없어 플랫폼이 자동 정지시킨 경우입니다.
+              포털에서 <b>恢复推广</b>(추진 재개)을 누르면 지금 설정 그대로 다시 나갑니다.</>
+          )}
+        </div>
+      )}
 
       <div className="dpa-dt-h">계약월별 리포트</div>
       {loading && <div className="dpa-dim">불러오는 중…</div>}

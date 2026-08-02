@@ -377,8 +377,15 @@ export default async function handler(req, res) {
         //    엉뚱한 제안이 나갔다(실측: 제주육림 — 잔액 0·소진 0 인데 room_to_grow).
         //    그래서 **잔액 → 집행여부 → 소진률** 순으로 걸러 낸다.
         const bal = cf['CPC_현재잔액'] ?? null;
+        //    캠페인이 **정지**돼 있으면 잔액도 소진률도 의미가 없다. 설정은 멀쩡히
+        //    살아 있고 광고만 꺼져 있는 상태다(실측 2026-08-02 함덕찜: 잔액 3,000元·
+        //    예산 150元·단가 10.78元인데 "长期无消耗" 로 시스템이 정지시켰다).
+        //    잔액부터 보면 '정상'으로 읽혀 정반대로 알린다 → 정지를 맨 앞에 둔다.
+        const paused = String(cf['AD_캠페인상태'] || '') === 'paused';
         let nudge = null;
-        if (bal != null && Number(bal) <= 0) {
+        if (paused) {
+          nudge = 'paused';
+        } else if (bal != null && Number(bal) <= 0) {
           nudge = 'no_balance';           // 광고 꺼짐 — 설정 얘기보다 충전이 먼저
         } else if (daysLeft != null && Number(daysLeft) <= 3) {
           nudge = 'low_balance';          // 곧 멈춘다
@@ -396,6 +403,7 @@ export default async function handler(req, res) {
           floatRatio: ratio, peak: cf['AD_피크예산'] ?? null,
           bid, hours, hoursOn, yesterday: yst, useRate, daysLeft,
           checked: cf['AD_설정확인일'] || null,
+          paused,
           nudge,
         };
       }

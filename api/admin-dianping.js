@@ -68,6 +68,10 @@ function toRow(f) {
     shopType: f['DP_상점유형'] ?? null,
     // 계정
     status: f['DP_광고상태'] || null,
+    // 캠페인 자체의 상태 — 잔액과 별개다. paused 는 '설정은 살아 있고 꺼져 있음'.
+    campaign: f['DP_캠페인상태'] || null,
+    pauseReason: f['DP_정지사유'] || null,
+    campaignCnt: f['DP_캠페인수'] ?? null,
     balance: f['DP_잔액'] ?? null,
     spend: f['DP_일소진'] ?? null,
     daysLeft: f['DP_소진예상일'] ?? null,
@@ -96,7 +100,8 @@ function toRow(f) {
 const CS_FIELDS = [
   'DP-office_ID', '매장명_검색용', '고객사명(필수)', '지점명(필수)', 'DP_중문명',
   'DP_업종', 'DP_업종_한글', 'DP_상점유형',
-  'DP_광고상태', 'DP_잔액', 'DP_일소진', 'DP_소진예상일', 'DP_최근충전일', 'DP_잔액확인일',
+  'DP_광고상태', 'DP_캠페인상태', 'DP_정지사유', 'DP_캠페인수',
+  'DP_잔액', 'DP_일소진', 'DP_소진예상일', 'DP_최근충전일', 'DP_잔액확인일',
   'DP_일예산', 'DP_주말할증', 'DP_피크예산', 'DP_클릭단가', 'DP_노출시간',
   'DP_주간노출시간', 'DP_캠페인ID', 'DP_설정확인일',
   'DP_CPT_만료일', 'DP_CPT_상태', 'DP_악평_7일', 'DP_악평_30일', 'DP_악평_누적', 'DP_리뷰확인일',
@@ -150,6 +155,7 @@ export default async function handler(req, res) {
           running: n((r) => r.status && r.status.includes('정상')),
           lowBalance: n((r) => r.status && r.status.includes('소진임박')),
           needCharge: n((r) => r.status && r.status.includes('충전필요')),
+          paused: n((r) => r.status && r.status.includes('정지')),
           idle: n((r) => r.status && r.status.includes('미집행')),
           cptExpired: n((r) => r.cptExpired),
           bad7Total: rows.reduce((s, r) => s + (r.bad7 || 0), 0),

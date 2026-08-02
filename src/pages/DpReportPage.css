@@ -340,3 +340,11 @@ body:has(.dpr-page){padding-top:0!important;background:#0d0f1a}
   .dpr-up-calc-l{grid-template-columns:1fr;gap:2px}
   .dpr-up-calc-l .dpr-dim{white-space:normal}
 }
+
+/* 일시정지 배지 — 설정값이 '지금 나가고 있는 값'으로 읽히면 안 된다 */
+.dpr-adset-paused{margin-left:8px;padding:2px 8px;border-radius:999px;
+  font-size:.68rem;font-weight:700;letter-spacing:.02em;
+  color:#fbbf24;background:rgba(251,191,36,.13);border:1px solid rgba(251,191,36,.32)}
+@media (max-width:520px){
+  .dpr-adset-paused{display:block;width:fit-content;margin:6px 0 0}
+}

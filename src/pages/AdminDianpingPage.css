@@ -259,3 +259,14 @@
   display: inline-block; vertical-align: middle;
 }
 .dpa-card-badges .dpa-caret { margin-right: 0; margin-left: 2px; font-size: 10px; }
+
+/* 정지 — '충전필요(빨강)'와 헷갈리면 안 된다. 돈 문제가 아니라 스위치 문제다.
+   설정이 살아 있다는 뜻이 전해지도록 경고색이 아닌 호박색 계열로 둔다. */
+.dpa-tile.paused { border-color: rgba(251, 191, 36, .35); }
+.dpa-tile.paused .dpa-tv { color: #fbbf24; }
+.dpa-st.paused { background: rgba(251, 191, 36, .14); color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, .34); }
+/* 정지 사유 — 포털 원문(중국어)이라 길다. 줄바꿈을 허용한다. */
+.dpa-reason { margin-top: 6px; padding: 7px 10px; border-radius: 8px; font-size: .78rem;
+  color: #fde68a; background: rgba(251, 191, 36, .10);
+  border-left: 2px solid rgba(251, 191, 36, .45); overflow-wrap: anywhere; }
