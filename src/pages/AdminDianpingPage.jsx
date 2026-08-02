@@ -18,6 +18,23 @@ const n = (v) => (v == null || v === '' ? '—' : Number(v).toLocaleString());
 const won = (v) => (v == null ? '—' : `${Math.round(Number(v)).toLocaleString()}元`);
 const day = (v) => (v ? String(v).slice(0, 10) : '—');
 
+// 값이 얼마나 묵었나. **숫자만 보여주면 안 된다** — 2026-08-02 사고의 핵심이다.
+// 한라갈치 잔액이 화면엔 5,250元 인데 포털은 407.10元 이었다. 값은 7/29 에 맞았고
+// 그 뒤로 수집이 안 돌았을 뿐인데, 확인일에 복사 시각이 찍혀 '오늘 확인'으로 보였다.
+// 그래서 잔액 옆에 **언제 것인지**를 항상 붙인다. 모르면 '확인 안 됨'이라고 쓴다.
+const STALE_DAYS = 1.5;
+const ageOf = (iso) => {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  return Number.isNaN(t) ? null : (Date.now() - t) / 86400000;
+};
+const Age = ({ at }) => {
+  const d = ageOf(at);
+  if (d == null) return <span className="dpa-age none">확인 안 됨</span>;
+  if (d < STALE_DAYS) return null;                 // 신선하면 굳이 표시하지 않는다
+  return <span className="dpa-age">{d < 1 ? '오늘' : `${Math.floor(d)}일 전`}</span>;
+};
+
 // 상태 칩 — 색은 의미를 담는다(정상/주의/멈춤/미설정)
 //
 // ⚠️ 이모지로 판정하지 않는다. '🔴' 은 JS 에서 **2글자짜리 서로게이트 쌍**이라
@@ -217,7 +234,7 @@ export default function AdminDianpingPage() {
             </button>
 
             <div className="dpa-card-g">
-              <Cell k="잔액" v={won(r.balance)} strong />
+              <Cell k="잔액" v={<>{won(r.balance)}<Age at={r.balanceAt} /></>} strong />
               <Cell k="일예산" v={won(r.budget)} />
               <Cell k="클릭단가" v={r.bid == null ? '—' : `${Number(r.bid).toFixed(1)}元`} />
               <Cell k="주말 할증" v={r.floatRatio == null ? '—' : `+${r.floatRatio}%`} />
@@ -281,7 +298,7 @@ export default function AdminDianpingPage() {
                   </td>
                   <td className="l dpa-dim">{r.category || '—'}</td>
                   <td><span className={`dpa-st ${tone(r.status)}`}>{label(r.status)}</span></td>
-                  <td className="num">{won(r.balance)}</td>
+                  <td className="num">{won(r.balance)}<Age at={r.balanceAt} /></td>
                   <td className="num dpa-dim">{day(r.chargedAt)}</td>
                   <td className="num">{won(r.budget)}</td>
                   <td className="num">{r.bid == null ? '—' : `${Number(r.bid).toFixed(1)}元`}</td>
@@ -342,7 +359,10 @@ function Detail({ r, months, loading }) {
         <Kv k="소진 예상" v={r.daysLeft != null ? `약 ${r.daysLeft}일` : null} />
         <Kv k="악평 30일 / 누적" v={`${n(r.bad30)} / ${n(r.badTotal)}`} />
         <Kv k="설정 확인" v={r.settingAt ? String(r.settingAt).slice(0, 16).replace('T', ' ') : null} />
-        <Kv k="잔액 확인" v={r.balanceAt ? String(r.balanceAt).slice(0, 16).replace('T', ' ') : null} />
+        <Kv k="잔액 확인"
+            v={r.balanceAt
+              ? <>{String(r.balanceAt).slice(0, 16).replace('T', ' ')}<Age at={r.balanceAt} /></>
+              : <span className="dpa-age none">확인 안 됨</span>} />
         <Kv k="리뷰 확인" v={r.reviewAt ? String(r.reviewAt).slice(0, 16).replace('T', ' ') : null} />
         <Kv k="캠페인" v={CAMPAIGN[r.campaign] || null} />
       </div>

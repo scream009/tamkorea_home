@@ -270,3 +270,12 @@
 .dpa-reason { margin-top: 6px; padding: 7px 10px; border-radius: 8px; font-size: .78rem;
   color: #fde68a; background: rgba(251, 191, 36, .10);
   border-left: 2px solid rgba(251, 191, 36, .45); overflow-wrap: anywhere; }
+
+/* 수집 신선도 — 오래된 숫자가 최신처럼 보이면 잘못된 판단으로 이어진다.
+   잔액이 5일 묵은 줄 모르고 '소진임박'으로 읽으면 실제로는 이미 0 일 수 있다. */
+.dpa-age { margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 10px;
+  font-weight: 700; white-space: nowrap; vertical-align: middle;
+  color: #fbbf24; background: rgba(251, 191, 36, .12);
+  border: 1px solid rgba(251, 191, 36, .3); }
+.dpa-age.none { color: #9ca3af; background: rgba(156, 163, 175, .12);
+  border-color: rgba(156, 163, 175, .3); }
