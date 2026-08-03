@@ -675,11 +675,14 @@ export default function ClientSchedulePage() {
                               const statusStr = String(ev.status || '');
                               const isCancelled = statusStr.includes('취소');
                               const isNoShow = statusStr.includes('노쇼');
+                              // 일정이 바뀐 예약. 블록은 바뀐 날짜에 그려지므로
+                              // 표시가 없으면 고객사는 변경 사실을 알 수 없다.
+                              const isChanged = !!ev.changedFrom && !isCancelled && !isNoShow;
                               const d = ev.reserveDate ? new Date(ev.reserveDate) : null;
                               const time = (d && !Number.isNaN(d.getTime()))
                                 ? `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
                                 : '';
-                              const ariaLabel = `${time ? time + ' ' : ''}${displayType}${ev.totalPax ? ' ' + ev.totalPax + '명' : ''}${isCancelled ? ' 취소' : ''}${isNoShow ? ' 노쇼' : ''}`;
+                              const ariaLabel = `${time ? time + ' ' : ''}${displayType}${ev.totalPax ? ' ' + ev.totalPax + '명' : ''}${isCancelled ? ' 취소' : ''}${isNoShow ? ' 노쇼' : ''}${isChanged ? ' 일정 변경됨' : ''}`;
                               return (
                                 <button
                                   type="button"
@@ -698,6 +701,7 @@ export default function ClientSchedulePage() {
                                     {ev.totalPax ? <span className="ev-pax">({ev.totalPax}명)</span> : null}
                                     {isCancelled && <span className="ev-tag-cancel">취소</span>}
                                     {isNoShow    && <span className="ev-tag-noshow">노쇼</span>}
+                                    {isChanged   && <span className="ev-tag-change">변경</span>}
                                   </span>
                                 </button>
                               );
@@ -981,15 +985,54 @@ export default function ClientSchedulePage() {
             </div>
             
             <div className="modal-body">
+              {/* 취소·노쇼는 제일 먼저 알려야 한다. 일시·인원부터 읽고 나서
+                  뒤늦게 '취소된 건'임을 알면 이미 준비를 시작한 뒤다. */}
+              {(String(selectedEvent.status || '').includes('취소')
+                || String(selectedEvent.status || '').includes('노쇼')) && (
+                <div className="modal-alert modal-alert--cancel">
+                  <Info className="w-4 h-4 flex-shrink-0" />
+                  <div>
+                    <b>
+                      {String(selectedEvent.status).includes('노쇼')
+                        ? '방문자가 오지 않은 건입니다 (노쇼)'
+                        : String(selectedEvent.status).includes('고객사')
+                          ? '식당 측 사정으로 취소된 예약입니다'
+                          : '방문자 측 사정으로 취소된 예약입니다'}
+                    </b>
+                    {selectedEvent.cancelNote && <div className="mt-1">사유 · {selectedEvent.cancelNote}</div>}
+                    <div className="mt-1 opacity-80">실적 집계에는 포함되지 않습니다.</div>
+                  </div>
+                </div>
+              )}
+
+              {/* 일정이 바뀐 예약 — 원래 언제였는지 함께 보여 준다 */}
+              {selectedEvent.changedFrom && (
+                <div className="modal-alert modal-alert--change">
+                  <CalendarIcon className="w-4 h-4 flex-shrink-0" />
+                  <div>
+                    <b>일정이 변경된 예약입니다</b>
+                    <div className="mt-1">
+                      {new Date(selectedEvent.changedFrom).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      {selectedEvent.changedPaxFrom ? ` · ${selectedEvent.changedPaxFrom}명` : ''}
+                      {' → '}
+                      <b>
+                        {new Date(selectedEvent.reserveDate).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {selectedEvent.totalPax ? ` · ${selectedEvent.totalPax}명` : ''}
+                      </b>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="detail-row">
                 <span className="detail-label"><CalendarIcon className="w-4 h-4" /> 예약 일시</span>
                 <span className="detail-value text-white font-medium">
-                  {!isNaN(new Date(selectedEvent.reserveDate).getTime()) 
+                  {!isNaN(new Date(selectedEvent.reserveDate).getTime())
                     ? new Date(selectedEvent.reserveDate).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                     : '시간 미정'}
                 </span>
               </div>
-              
+
               <div className="detail-row">
                 <span className="detail-label"><Users className="w-4 h-4" /> 방문 인원</span>
                 <span className="detail-value">{selectedEvent.totalPax ? `${selectedEvent.totalPax}명` : '미정'}</span>
@@ -1003,7 +1046,11 @@ export default function ClientSchedulePage() {
               <div className="detail-row">
                 <span className="detail-label"><Info className="w-4 h-4" /> 예약 메시지 / 메모</span>
                 <span className="detail-value memo-box" style={{ whiteSpace: 'pre-wrap' }}>
-                  {generateDynamicMemo(selectedEvent, campaignName, brandName, branchName)}
+                  {/* 변경된 예약은 예약봇이 식당에 보낸 변경 안내문을 그대로 보여 준다.
+                      기존 예약 + 변경 내용이 한 덩어리로 들어 있어, 고객사가 받은
+                      카톡과 같은 내용이 화면에서도 확인된다. */}
+                  {selectedEvent.changeMessage
+                    || generateDynamicMemo(selectedEvent, campaignName, brandName, branchName)}
                 </span>
               </div>
 

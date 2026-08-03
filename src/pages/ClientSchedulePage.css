@@ -430,7 +430,8 @@
 .event-press { background: rgba(16, 185, 129, 0.22); color: #6ee7b7; border-left: 2px solid #10b981; }
 
 .ev-tag-cancel,
-.ev-tag-noshow {
+.ev-tag-noshow,
+.ev-tag-change {
   font-size: 8.5px;
   font-weight: 700;
   padding: 1px 5px;
@@ -449,6 +450,36 @@
   background: rgba(245, 158, 11, 0.28);
   color: #fcd34d;
   border: 1px solid rgba(245, 158, 11, 0.45);
+}
+/* 일정이 바뀐 예약. 취소·노쇼(빨강·주황)와 구분되게 파랑 계열로 둔다 —
+   문제가 생긴 건이 아니라 '확정된 새 일정'이라는 뜻이기 때문이다. */
+.ev-tag-change {
+  background: rgba(59, 130, 246, 0.28);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.45);
+}
+
+/* 상세 팝업 상단 안내 — 취소·변경은 일시·인원보다 먼저 눈에 들어와야 한다 */
+.modal-alert {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.55;
+  margin-bottom: 14px;
+}
+.modal-alert b { font-weight: 700; }
+.modal-alert--cancel {
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.32);
+  color: #fca5a5;
+}
+.modal-alert--change {
+  background: rgba(59, 130, 246, 0.14);
+  border: 1px solid rgba(59, 130, 246, 0.32);
+  color: #bfdbfe;
 }
 
 /* Status Indicators */

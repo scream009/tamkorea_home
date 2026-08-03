@@ -287,6 +287,19 @@ export default async function handler(req, res) {
            || (inTeam ? pickNote(inTeam['고객전달메모']) : '')
            || pickNote(f['변경/취소 내용']))
         : '';
+
+      // ── 변경 이력 ────────────────────────────────────────────
+      // 달력 블록은 변경된 일시에 그려지는데, 그것만 보면 고객사는 예약이
+      // 바뀌었다는 사실 자체를 알 수 없다. "원래 7/18 이었는데?" 라는 문의가
+      // 그래서 생긴다. 원래 값과 변경 안내문을 함께 내려보내 화면에서 알린다.
+      const chSrc = inTeam || f;
+      const changedFrom = (chSrc['변경일시'] && chSrc['예약일시']
+        && chSrc['변경일시'] !== chSrc['예약일시']) ? chSrc['예약일시'] : '';
+      const changedPaxFrom = (changedFrom && chSrc['변경인원'] != null
+        && chSrc['변경인원'] !== chSrc['총인원']) ? chSrc['총인원'] : null;
+      // 변경메시지는 '▼ 기존 예약 … ▼ 변경 요청 내용' 을 담은 완성형 Formula.
+      // 예약봇이 식당에 실제로 보낸 문구라, 고객사가 받은 카톡과 같은 내용이다.
+      const changeMessage = changedFrom ? String(chSrc['변경메시지'] || '') : '';
       
       // 캠페인 레벨(Campaign_DB) 폴백
       if (xhsCount === undefined) xhsCount = cf['XHS_건수'] || cf['샤오홍슈 건수'];
@@ -311,7 +324,10 @@ export default async function handler(req, res) {
         memo,
         xhsCount,
         dpCount,
-        cancelNote
+        cancelNote,
+        changedFrom,
+        changedPaxFrom,
+        changeMessage
       };
 
       // 달력용 통합 리스트 (그룹핑)
