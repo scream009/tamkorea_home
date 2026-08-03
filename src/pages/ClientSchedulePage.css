@@ -451,14 +451,14 @@
   color: #fcd34d;
   border: 1px solid rgba(245, 158, 11, 0.45);
 }
-/* 일정이 바뀐 예약. 취소(빨강)·노쇼(주황)와 확실히 갈리는 시안으로 둔다 —
-   문제가 생긴 건이 아니라 '확정된 새 일정'이라는 뜻이기 때문이다.
-   어두운 배경에서 가장 먼저 눈에 걸리는 색이라 놓치지 않는다. */
+/* 일정이 바뀐 예약 — 노랑.
+   유형 색(인플=보라 / 체험=파랑 / 기자=초록)과 겹치지 않는 몇 안 되는 자리다.
+   노쇼(주황 #f59e0b)와는 색조가 가깝지만, 변경 뱃지는 취소·노쇼가 아닐 때만
+   붙으므로(JSX 의 isChanged) 한 블록에 같이 뜨는 일이 없다. */
 .ev-tag-change {
-  background: rgba(6, 182, 212, 0.42);
-  color: #a5f3fc;
-  border: 1px solid rgba(34, 211, 238, 0.75);
-  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.18);
+  background: rgba(250, 204, 21, 0.26);
+  color: #fef08a;
+  border: 1px solid rgba(250, 204, 21, 0.55);
 }
 
 /* 상세 팝업 상단 안내 — 취소·변경은 일시·인원보다 먼저 눈에 들어와야 한다.
@@ -483,10 +483,10 @@
   color: #fecaca;
 }
 .modal-alert--change {
-  background: rgba(6, 182, 212, 0.22);
-  border: 1px solid rgba(34, 211, 238, 0.45);
-  border-left: 4px solid #22d3ee;
-  color: #cffafe;
+  background: rgba(250, 204, 21, 0.16);
+  border: 1px solid rgba(250, 204, 21, 0.42);
+  border-left: 4px solid #facc15;
+  color: #fef9c3;
 }
 
 /* Status Indicators */
