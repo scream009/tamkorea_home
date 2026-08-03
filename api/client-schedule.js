@@ -149,6 +149,39 @@ export default async function handler(req, res) {
       }
     }
 
+    // ── 2.7 예약입력_DB (팀 단위 원본) ────────────────────────
+    // 달력에 보여 줄 '예약 내용'의 원본은 예약입력_DB 다. 담당자가 팀 단위로
+    // 여기에 입력하고, 오토메이션이 인플별로 쪼개 진행_DB_OLD 를 만든다.
+    // 쪼개는 과정에서 값이 깨지는 일이 있어(실측: 예약일시가 자정으로 소실되거나
+    // 타임스탬프가 섞여 들어간 건 16건) 원본을 직접 읽는다.
+    // ⚠️ 상태(취소·노쇼)와 정산월은 그대로 진행_DB_OLD 를 쓴다.
+    //    예약입력_DB 는 '예약 시점' 테이블이라 노쇼가 0건이고(방문 후 판정),
+    //    취소도 절반만 반영된다. 그것으로 달력을 만들면 취소된 예약이 살아난다.
+    // 매칭은 팀명생성기(매장명_MMDD_인플ID). 예약봇 캐스케이드가 쓰는 키와 같다.
+    // 짝을 못 찾으면 아래 로직이 기존 값을 그대로 쓰므로 과거 달도 안전하다.
+    const resvInputMap = {};
+    try {
+      const teamKeys = [...new Set(
+        allRecords.map((r) => nospace(r.fields['팀명생성기'])).filter(Boolean)
+      )];
+      for (let i = 0; i < teamKeys.length; i += 20) {
+        const chunk = teamKeys.slice(i, i + 20);
+        const orParts = chunk
+          .map((k) => `SUBSTITUTE({팀명생성기}, " ", "")='${escFormula(k)}'`)
+          .join(',');
+        const url = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent('예약입력_DB')}`
+          + `?filterByFormula=${encodeURIComponent(`OR(${orParts})`)}&pageSize=100`;
+        const recs = await fetchAllRecords(url);
+        recs.forEach((r) => {
+          const k = nospace(r.fields['팀명생성기']);
+          if (k && !resvInputMap[k]) resvInputMap[k] = r.fields;
+        });
+      }
+    } catch (e) {
+      // 실패해도 화면은 떠야 한다. 기존 값으로 그리면 된다.
+      console.error('[client-schedule] 예약입력_DB 조회 실패:', e.message);
+    }
+
     // ── 정산월이 다른 실적 제거 ────────────────────────────────
     // Airtable 의 '귀속 정산월' 링크가 여러 캠페인에 걸린 레코드가 많다(실측 636건).
     // 링크만 믿으면 6월에 방문한 인플루언서가 6·7·8월 화면에 모두 나온다.
@@ -193,7 +226,7 @@ export default async function handler(req, res) {
       const dyResult  = f['DY_Result']  || '';
       const status    = f['진행상태']   || '진행전';
       const shootId   = f['Shoot_ID']   || '';
-      const reserveDate = f['예약일시'] || null;
+      let reserveDate = f['예약일시'] || null;
 
       // 예약테이블(Shadow Group) 데이터와 매핑
       const resvLinks = f['예약팀명_DB'] || [];
@@ -213,6 +246,39 @@ export default async function handler(req, res) {
         if (resvData.xhsCount !== undefined) xhsCount = resvData.xhsCount;
         if (resvData.dpCount !== undefined) dpCount = resvData.dpCount;
       }
+
+      // ── 예약입력_DB(팀 단위 원본)가 있으면 표시값을 그것으로 덮는다 ──
+      // 변경 예약은 예약일시를 그대로 두고 변경일시에 새 값을 넣는 설계라
+      // (예약봇 정책: 예약일시=원본 / 변경일시=변경후), 변경일시를 먼저 본다.
+      // 이 처리가 없으면 변경된 예약이 옛 시각으로 계속 표시된다(실측 110건).
+      const inTeam = resvInputMap[nospace(f['팀명생성기'])];
+      if (inTeam) {
+        const d = inTeam['변경일시'] || inTeam['예약일시'];
+        if (d) reserveDate = d;
+        const pax = inTeam['변경인원'] ?? inTeam['총인원'];
+        if (pax !== undefined && pax !== null && pax !== '') totalPax = pax;
+        if (inTeam['인원메모']) memo = inTeam['인원메모'];
+        if (inTeam['XHS_건수'] !== undefined) xhsCount = inTeam['XHS_건수'];
+        if (inTeam['DP_건수'] !== undefined) dpCount = inTeam['DP_건수'];
+      }
+
+      // 취소·노쇼 사유 — 담당자가 적어 둔 경우에만 달력에 함께 보여 준다.
+      // '변경/취소 내용' 은 섭외담당이 사유를 적는 칸인데, 예약봇이 여기에
+      // 변경메시지 전문을 덮어써 왔다(실측 101건 중 96건이 봇 복사본).
+      // 봇 복사본은 【매장명】으로 시작하는 예약 안내문이라 고객 화면에 그대로
+      // 노출되면 안 된다. 사람이 쓴 짧은 사유만 통과시킨다.
+      const pickNote = (v) => {
+        const s = String(v || '').trim();
+        if (!s || s === '-') return '';
+        if (s.includes('【') || s.length > 60) return '';   // 봇이 복사한 메시지 전문
+        if (s.startsWith('⚠')) return '';                   // 시스템 경고문
+        return s;
+      };
+      const cancelNote = (status.includes('취소') || status.includes('노쇼'))
+        ? (pickNote(f['변경/취소 내용'])
+           || pickNote(f['고객전달메모'])
+           || (inTeam ? pickNote(inTeam['고객전달메모']) : ''))
+        : '';
       
       // 캠페인 레벨(Campaign_DB) 폴백
       if (xhsCount === undefined) xhsCount = cf['XHS_건수'] || cf['샤오홍슈 건수'];
@@ -236,7 +302,8 @@ export default async function handler(req, res) {
         totalPax,
         memo,
         xhsCount,
-        dpCount
+        dpCount,
+        cancelNote
       };
 
       // 달력용 통합 리스트 (그룹핑)
