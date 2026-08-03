@@ -12,7 +12,8 @@ import { NavLink, useLocation } from 'react-router-dom';
  */
 
 const MENU = [
-  { to: '/admin', label: '담당자별 실적', desc: '월실적 조정', icon: '📊', end: true },
+  { to: '/admin', label: '목표·실적', desc: '월별 고객사', icon: '🎯', end: true },
+  { to: '/admin/dashboard', label: '담당자별 실적', desc: '월실적 조정', icon: '📊' },
   { to: '/admin/dianping', label: '따종 고객 현황', desc: '광고·리뷰 상태', icon: '🏮' },
   { to: '/admin/board', label: '예약 보드', desc: '순서 조정', icon: '🗂️' },
 ];

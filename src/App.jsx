@@ -22,6 +22,7 @@ import RecruiterSchedulePage from './pages/RecruiterSchedulePage';
 import SignupCreatorPage from './pages/auth/SignupCreatorPage';
 import SignupBusinessPage from './pages/auth/SignupBusinessPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import AdminTargetsPage from './pages/AdminTargetsPage';
 import AdminBoardPage from './pages/AdminBoardPage';
 import AdminGate from './components/AdminGate';
 import AdminShell from './components/AdminShell';
@@ -46,7 +47,10 @@ function App() {
           {/* 정산·계약 데이터 화면은 게이트 뒤에 둔다. 서버(_admin-auth.js)가 실제로 막고,
               이 래퍼는 키 입력 UI 를 준다. /admin/clients-link 는 자체 키 폼이 이미 있다. */}
           {/* 관리자 화면은 AdminShell(왼쪽 메뉴) 안에 둔다 — 화면이 늘어도 네비는 한 곳에서만 정의된다 */}
-          <Route path="/admin" element={<AdminGate><AdminShell><AdminDashboardPage /></AdminShell></AdminGate>} />
+          {/* /admin 은 대표·관리자가 먼저 보는 화면이다 — 목표·실적이 첫 화면이 된다.
+              담당자별 실적(구 대시보드)은 /admin/dashboard 로 내렸다. */}
+          <Route path="/admin" element={<AdminGate><AdminShell><AdminTargetsPage /></AdminShell></AdminGate>} />
+          <Route path="/admin/dashboard" element={<AdminGate><AdminShell><AdminDashboardPage /></AdminShell></AdminGate>} />
           <Route path="/admin/dianping" element={<AdminGate><AdminShell><AdminDianpingPage /></AdminShell></AdminGate>} />
           <Route path="/admin/board" element={<AdminGate><AdminShell><AdminBoardPage /></AdminShell></AdminGate>} />
 
