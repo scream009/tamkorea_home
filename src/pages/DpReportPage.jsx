@@ -239,8 +239,13 @@ const Upside = ({ p }) => {
 
 const AdSettings = ({ ad, upside }) => {
   const by = useSubject();
-  if (!ad) return null;
-  const { budget, floatRatio, peak, bid, hours, hoursOn, yesterday, useRate, nudge, paused } = ad;
+  // 설정 수집이 안 된 매장이라도 **개선 여지는 따로 산다.**
+  // 예산·소진액은 CPC 수집(별도 경로)에서 오므로 포털 설정이 비어도 계산이 성립한다.
+  // 예전엔 여기서 통째로 return null 해, 예산이 남는 매장에 정작 그 안내가
+  // 안 나갔다(2026-08-03 용담밭담). 설정 카드만 접고 제안은 그대로 내보낸다.
+  if (!ad) return upside ? <div className="dpr-adset"><Upside p={upside} /></div> : null;
+  const { budget, floatRatio, peak, bid, hours, hoursOn, yesterday, useRate, nudge, paused,
+          hasSettings } = ad;
 
   // 노출시간 문자열 → 24칸 막대.
   // ⚠️ 한 구간(`매일 11:00-21:00`)만 있는 게 아니다. 점심·저녁을 갈라 트는 매장이
@@ -333,8 +338,13 @@ const AdSettings = ({ ad, upside }) => {
           <div className="dpr-adset-c">
             <div className="dpr-adset-l">{floatRatio ? '평일 예산' : '하루 예산'}</div>
             <div className="dpr-adset-v mono">{num(budget)}<small>元</small></div>
+            {/* 설정 미수집 매장에 '주말 상향 미설정'이라 적으면 안 된다 —
+                안 걸려 있는 게 아니라 아직 못 읽어 온 것이다. 그럴 땐
+                이 숫자의 출처(그날 적용된 예산)만 밝힌다. */}
             <div className="dpr-adset-f">
-              {floatRatio && peak ? `주말·명절 ${num(peak)}元 (+${floatRatio}%)` : '주말 상향 미설정'}
+              {floatRatio && peak ? `주말·명절 ${num(peak)}元 (+${floatRatio}%)`
+                : hasSettings === false ? '따종디엔핑 적용 예산'
+                : '주말 상향 미설정'}
             </div>
           </div>
         )}

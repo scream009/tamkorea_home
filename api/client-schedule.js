@@ -360,15 +360,27 @@ export default async function handler(req, res) {
     // — 예산 / 클릭단가 / 노출시간. 그 현재값을 같이 보여줘야 제안이 성립한다.
     // ⚠️ 美团 단가(AD_단가_메이투안)는 수집만 하고 **내보내지 않는다**(Owner 지시).
     let adSet = null;
+    // 포털 설정을 **실제로 수집했는가**. 이 구분이 없으면 '못 가져온 것'을
+    // '꺼져 있는 것'으로 단정하게 된다 — 주말 상향이 대표적이다.
+    let adFetched = false;
     {
       const basic = cf['AD_기초예산'] ?? null;
       const bid   = cf['AD_단가_따종'] ?? null;
       const hours = cf['AD_노출시간'] || null;
-      if (basic != null || bid != null || hours) {
-        const ratio = cf['AD_주말상향률'] ?? null;
-        // 기초예산이 없으면 CPC_일예산으로 대체한다. 단 그 값은 '그날 적용된 예산'이라
-        // 주말엔 상향분이 섞여 있다 — 어디서 왔는지 프론트가 알 수 있게 표시해 준다.
-        const budget = basic != null ? basic : (cf['CPC_일예산'] ?? null);
+      const ratio = cf['AD_주말상향률'] ?? null;
+      // 기초예산이 없으면 CPC_일예산으로 대체한다. 단 그 값은 '그날 적용된 예산'이라
+      // 주말엔 상향분이 섞여 있다 — 어디서 왔는지 프론트가 알 수 있게 표시해 준다.
+      const budget = basic != null ? basic : (cf['CPC_일예산'] ?? null);
+      // ⚠️ 게이트에 **budget 을 반드시 포함**한다. AD_* 세 개만 보면, ad_settings.py 가
+      //    아직 안 돈 신규 계약월(추가 당일 등)은 셋 다 비어 adSet 이 통째로 null 이 되고,
+      //    그러면 프론트의 AdSettings 가 즉시 return null 하면서 그 안에 들어 있는
+      //    **소진률 게이지·넛지·'개선 여지'(Upside) 가 전부 사라진다.**
+      //    예산이 남는 매장에 정작 그 안내가 안 나가는 게 이 경로였다
+      //    (실측 2026-08-03 용담밭담 8월: CPC_일예산 120元·소진 34元(28%)인데 화면 공백).
+      //    CPC_일예산만 있어도 예산/소진률/넛지는 전부 성립한다 — 단가·시간 카드는
+      //    프론트가 값이 있을 때만 그리므로 비어 있어도 깨지지 않는다.
+      adFetched = basic != null || bid != null || hours != null;
+      if (adFetched || budget != null) {
         const yst = cf['CPC_현재소진'] ?? null;
         const useRate = budget ? Math.round((Number(yst) / Number(budget)) * 100) : null;
         const hoursOn = cf['AD_주간노출시간'] ?? null;
@@ -402,6 +414,7 @@ export default async function handler(req, res) {
         }
         adSet = {
           budget, budgetIsFallback: basic == null && budget != null,
+          hasSettings: adFetched,   // false = 설정 미수집 → '미설정'이라 단정하면 안 된다
           floatRatio: ratio, peak: cf['AD_피크예산'] ?? null,
           bid, hours, hoursOn, yesterday: yst, useRate, daysLeft,
           checked: cf['AD_설정확인일'] || null,
@@ -534,8 +547,10 @@ export default async function handler(req, res) {
           corr: reg ? reg.r.toFixed(2) : null, scope,
           bid: cf['AD_단가_따종'] ?? null,
           hours: cf['AD_주간노출시간'] ?? null,
-          // 주말 상향이 꺼져 있으면 그 자체가 '추가 예산 없이' 쓸 수 있는 손잡이다
-          weekendOff: !(Number(cf['AD_주말상향률']) > 0),
+          // 주말 상향이 꺼져 있으면 그 자체가 '추가 예산 없이' 쓸 수 있는 손잡이다.
+          // 단 **설정을 수집한 매장만** 판단한다 — 미수집(빈 값)을 '꺼짐'으로 읽으면
+          // 실제로는 켜 둔 매장에 "지금 꺼져 있습니다"라고 고객 화면에 적게 된다.
+          weekendOff: adFetched && !(Number(cf['AD_주말상향률']) > 0),
           peerBid, peerHours, peer,
         };
       }
