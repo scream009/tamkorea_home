@@ -251,17 +251,17 @@ export default async function handler(req, res) {
       // 예약봇 V7 은 변경이 확정돼도 예약일시를 원본으로 두고 변경일시에만
       // 새 값을 남긴다. 달력이 예약일시만 읽어 변경된 예약이 옛 시각으로
       // 계속 표시됐다(실측 110건).
-      // 어느 쪽을 보여줄지는 설계서(RESERVATION_LIFECYCLE_AUTOMATION_DESIGN v1.3)
-      // 의 '표시일시' 규칙을 따른다 — IF(진행상태="변경확정", 변경일시, 예약일시).
-      // 변경요청 중이거나 취소·노쇼로 끝난 건은 원래 예약 시각을 보여줘야 한다.
-      // (취소된 건을 변경일시로 옮기면 다음 달로 날아가는 경우가 생긴다)
+      // 변경일시가 있으면 그것이 최신 예약 시각이다. 상태는 보지 않는다.
+      // 설계서(v1.3 §4.1.4)에는 IF(진행상태="변경확정", 변경일시, 예약일시) 로
+      // 적혀 있지만 그건 변경요청 → 사람이 변경확정 하던 V5 시절 규칙이다.
+      // V6 부터 봇이 변경요청을 발송 즉시 변경확정으로 바꾸므로 '변경요청'
+      // 상태는 데이터에 남지 않고(실측 0건), 상태 조건을 걸면 변경 뒤 취소된
+      // 건이 옛 시각으로 표시된다(용담밭담 함덕점 7월: 최종 8/5 인데 7/5 로 표시).
       const inTeam = resvInputMap[nospace(f['팀명생성기'])];
       if (inTeam) {
-        const confirmed = String(inTeam['진행상태'] || '').includes('변경확정');
-        const d = (confirmed && inTeam['변경일시']) ? inTeam['변경일시'] : inTeam['예약일시'];
+        const d = inTeam['변경일시'] || inTeam['예약일시'];
         if (d) reserveDate = d;
-        const pax = (confirmed && inTeam['변경인원'] != null)
-          ? inTeam['변경인원'] : inTeam['총인원'];
+        const pax = inTeam['변경인원'] ?? inTeam['총인원'];
         if (pax !== undefined && pax !== null && pax !== '') totalPax = pax;
         if (inTeam['인원메모']) memo = inTeam['인원메모'];
         if (inTeam['XHS_건수'] !== undefined) xhsCount = inTeam['XHS_건수'];
@@ -280,10 +280,12 @@ export default async function handler(req, res) {
         if (s.startsWith('⚠')) return '';                   // 시스템 경고문
         return s;
       };
+      // '고객전달메모' 가 실제 사유란이다 — 담당자가 여기 적으면 예약봇이
+      // 취소·노쇼 안내문 뒤에 붙여 고객사에 발송한다({memo_line}).
       const cancelNote = (status.includes('취소') || status.includes('노쇼'))
-        ? (pickNote(f['변경/취소 내용'])
-           || pickNote(f['고객전달메모'])
-           || (inTeam ? pickNote(inTeam['고객전달메모']) : ''))
+        ? (pickNote(f['고객전달메모'])
+           || (inTeam ? pickNote(inTeam['고객전달메모']) : '')
+           || pickNote(f['변경/취소 내용']))
         : '';
       
       // 캠페인 레벨(Campaign_DB) 폴백
