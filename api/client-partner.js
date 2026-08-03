@@ -45,6 +45,8 @@ export default async function handler(req, res) {
     // Campaign_DB '협력사토큰' 에 있으므로 별도 매핑 테이블이 필요 없다.
     const shareToken = (req.query.t || '').trim();
     let partnerName = req.query.name;
+    // 토큰이 가리키는 계약월. 기본 월을 고를 때 직전 완료월보다 우선한다.
+    let tokenMonth = '';
 
     if (shareToken) {
       if (!/^[A-Za-z0-9]{6,32}$/.test(shareToken)) {
@@ -90,6 +92,17 @@ export default async function handler(req, res) {
       // 토큰을 '협력사 신분증'으로만 쓰면 이 문제가 통째로 사라진다 —
       // 이미 뿌린 옛 링크까지 전부 되살아나고, 달은 알아서 따라온다.
       partnerName = partners[0];
+
+      // 다만 '알아서 따라오는 달'(= 직전 완료월)이 늘 맞지는 않는다.
+      // 6월 계약분이 아직 진행 중인 협력사에 6월 링크를 보내도 7월이 열렸다.
+      // 토큰은 계약월마다 따로 발급돼 있으므로(투어패스 6·7·8월 전부 다른 토큰)
+      // 토큰이 가리키는 달을 기본값으로 삼으면 '원하는 달로 공유'가 성립한다.
+      // 한 토큰이 여러 달에 걸쳐 있으면(좋아좋아 1~8월 단일 토큰) 단정할 수
+      // 없으므로 종전대로 직전 완료월로 물러선다. ?month= 가 오면 그쪽이 이긴다.
+      const tokenMonths = [...new Set(hits.map((r) => one(r.fields['계약월'])).filter(Boolean))];
+      if (tokenMonths.length === 1 && inMonthWindow(tokenMonths[0])) {
+        tokenMonth = tokenMonths[0];
+      }
     }
 
     if (!partnerName) {
@@ -157,11 +170,16 @@ export default async function handler(req, res) {
     // 이 규칙이 링크를 영속시킨다 — 8월이 되면 7월을, 9월이 되면 8월을 연다.
     // 월 버튼을 누르면(?month=) 그 값이 이기므로 지난달도 그대로 볼 수 있다.
     const targetKey = nowKey - 1;
-    const defaultMonth = months.length
+    const fallbackMonth = months.length
       ? [...months].sort((a, b) =>
           Math.abs(monthKey(a) - targetKey) - Math.abs(monthKey(b) - targetKey)
           || monthKey(b) - monthKey(a))[0]
       : '';
+    // 토큰이 특정 달을 가리키면 그 달을 연다(= 원하는 달로 링크를 공유할 수 있다).
+    // 그 달이 이 협력사 목록에 없으면(계약이 사라졌거나 표출이 꺼진 경우)
+    // 빈 화면이 열리지 않도록 직전 완료월로 물러선다.
+    const defaultMonth = (tokenMonth && months.includes(tokenMonth))
+      ? tokenMonth : fallbackMonth;
     let monthQ = rawMonth ? (ymToLabel(rawMonth) || rawMonth) : defaultMonth;
 
     // ── 조회 가능 기간 제한 ────────────────────────────────────
