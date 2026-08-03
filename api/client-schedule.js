@@ -248,14 +248,20 @@ export default async function handler(req, res) {
       }
 
       // ── 예약입력_DB(팀 단위 원본)가 있으면 표시값을 그것으로 덮는다 ──
-      // 변경 예약은 예약일시를 그대로 두고 변경일시에 새 값을 넣는 설계라
-      // (예약봇 정책: 예약일시=원본 / 변경일시=변경후), 변경일시를 먼저 본다.
-      // 이 처리가 없으면 변경된 예약이 옛 시각으로 계속 표시된다(실측 110건).
+      // 예약봇 V7 은 변경이 확정돼도 예약일시를 원본으로 두고 변경일시에만
+      // 새 값을 남긴다. 달력이 예약일시만 읽어 변경된 예약이 옛 시각으로
+      // 계속 표시됐다(실측 110건).
+      // 어느 쪽을 보여줄지는 설계서(RESERVATION_LIFECYCLE_AUTOMATION_DESIGN v1.3)
+      // 의 '표시일시' 규칙을 따른다 — IF(진행상태="변경확정", 변경일시, 예약일시).
+      // 변경요청 중이거나 취소·노쇼로 끝난 건은 원래 예약 시각을 보여줘야 한다.
+      // (취소된 건을 변경일시로 옮기면 다음 달로 날아가는 경우가 생긴다)
       const inTeam = resvInputMap[nospace(f['팀명생성기'])];
       if (inTeam) {
-        const d = inTeam['변경일시'] || inTeam['예약일시'];
+        const confirmed = String(inTeam['진행상태'] || '').includes('변경확정');
+        const d = (confirmed && inTeam['변경일시']) ? inTeam['변경일시'] : inTeam['예약일시'];
         if (d) reserveDate = d;
-        const pax = inTeam['변경인원'] ?? inTeam['총인원'];
+        const pax = (confirmed && inTeam['변경인원'] != null)
+          ? inTeam['변경인원'] : inTeam['총인원'];
         if (pax !== undefined && pax !== null && pax !== '') totalPax = pax;
         if (inTeam['인원메모']) memo = inTeam['인원메모'];
         if (inTeam['XHS_건수'] !== undefined) xhsCount = inTeam['XHS_건수'];
