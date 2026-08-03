@@ -991,17 +991,13 @@ export default function ClientSchedulePage() {
                 || String(selectedEvent.status || '').includes('노쇼')) && (
                 <div className="modal-alert modal-alert--cancel">
                   <Info className="w-4 h-4 flex-shrink-0" />
-                  <div>
-                    <b>
-                      {String(selectedEvent.status).includes('노쇼')
-                        ? '방문자가 오지 않은 건입니다 (노쇼)'
-                        : String(selectedEvent.status).includes('고객사')
-                          ? '식당 측 사정으로 취소된 예약입니다'
-                          : '방문자 측 사정으로 취소된 예약입니다'}
-                    </b>
-                    {selectedEvent.cancelNote && <div className="mt-1">사유 · {selectedEvent.cancelNote}</div>}
-                    <div className="mt-1 opacity-80">실적 집계에는 포함되지 않습니다.</div>
-                  </div>
+                  <b>
+                    {String(selectedEvent.status).includes('노쇼')
+                      ? '방문자가 오지 않은 건입니다 (노쇼)'
+                      : String(selectedEvent.status).includes('고객사')
+                        ? '식당 측 사정으로 취소된 예약입니다'
+                        : '방문자 측 사정으로 취소된 예약입니다'}
+                  </b>
                 </div>
               )}
 
