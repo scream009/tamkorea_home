@@ -56,18 +56,16 @@ const BUCKETS = {
   late: '지연',
 };
 
-/* ── 건 단위 분류 ──
-   detail 튜플: [0]Shoot_ID [1]담당 [2]제출상태 [3]진행상태 [4]유형
-                [5]정산월 [6]방문MM.DD [7]인플 [8]dl(기한까지 남은 날) [9]recId */
+/* ── 건 단위 분류 — detail 은 서버가 내려주는 객체 (staff-board.js 참조) ── */
 function typeOf(d) {
-  const t = String(d[4] || '');
+  const t = String(d.ty || '');
   // '기자→체험' 같은 전환 유형은 마지막(현재) 유형으로 센다
   return t.includes('→') ? t.split('→').pop().trim() : t;
 }
 function bucketOf(d) {
-  const st = String(d[3] || '');
+  const st = String(d.st || '');
   if (st.includes('취소') || st.includes('노쇼')) return 'cancel';
-  const sub = String(d[2] || '');
+  const sub = String(d.sub || '');
   if (sub.includes('제출완료') || sub.includes('✅')
     || st.includes('업로드완료') || st.includes('송부완료')) return 'upload';
   return 'visit';
@@ -78,8 +76,8 @@ function inBucket(d, bucket) {
   if (bucket === 'visit') return b !== 'cancel';   // 섭외수량 = 취소 뺀 전부
   if (bucket === 'upload') return b === 'upload';
   if (bucket === 'cancel') return b === 'cancel';
-  if (bucket === 'pend') return d[8] !== null && b !== 'upload';
-  if (bucket === 'late') return d[8] !== null && d[8] < 0 && b !== 'upload';
+  if (bucket === 'pend') return d.dl !== null && b !== 'upload';
+  if (bucket === 'late') return d.dl !== null && d.dl < 0 && b !== 'upload';
   return true;
 }
 
@@ -88,7 +86,7 @@ function filterDetails(cell, { type, recruiter }) {
     const ty = typeOf(d);
     if (!VISIBLE_TYPES.includes(ty)) return false;
     if (type && ty !== type) return false;
-    if (recruiter && d[1] !== recruiter) return false;
+    if (recruiter && d.mgr !== recruiter) return false;
     return true;
   });
 }
@@ -98,9 +96,30 @@ function countsOf(ds) {
     const b = bucketOf(d);
     if (b === 'cancel') cx += 1;
     else { vis += 1; if (b === 'upload') up += 1; }
-    if (d[8] !== null && b !== 'upload') { pend += 1; if (d[8] < 0) late += 1; }
+    if (d.dl !== null && b !== 'upload') { pend += 1; if (d.dl < 0) late += 1; }
   });
   return { vis, up, cx, pend, late };
+}
+
+/** 비고(richText)가 마크다운 이스케이프("2026\\.")를 물고 온다 — 표시할 때만 벗긴다 */
+function unescapeMd(s) {
+  return String(s || '').replace(/\\([\\.`*_{}[\]()#+\-!>])/g, '$1');
+}
+
+/** 클립보드 복사 — http 환경·구형 브라우저 폴백 포함 */
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+  }
 }
 
 /** 유형 하나의 숫자 4종 — 담당자 필터 없으면 rollup, 있으면 건 목록 계산 */
@@ -151,6 +170,8 @@ export default function StaffBoardPage() {
   const [sort, setSort] = useState('late');       // late | pace | name
   const [expanded, setExpanded] = useState(null); // 고객사명
   const [sel, setSel] = useState(null);           // {month, type|null, bucket|null}
+  const [infoFor, setInfoFor] = useState(null);   // ⓘ 업체정보 카드가 열린 고객사명
+  const [memoEdits, setMemoEdits] = useState({}); // {recId: 저장된 메모} — 재조회 전 낙관 반영
 
   const load = useCallback(async (m) => {
     setLoading(true);
@@ -162,6 +183,7 @@ export default function StaffBoardPage() {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `서버 오류 (${res.status})`);
       setData(body);
+      setMemoEdits({});
     } catch (e) {
       setError(e.message || '불러오지 못했습니다.');
     } finally {
@@ -169,10 +191,21 @@ export default function StaffBoardPage() {
     }
   }, []);
 
+  const saveMemo = useCallback(async (id, memo) => {
+    const res = await fetch('/api/staff-board', {
+      method: 'POST',
+      headers: staffHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ action: 'memo', id, memo }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || '메모 저장에 실패했습니다.');
+    setMemoEdits((prev) => ({ ...prev, [id]: memo }));
+  }, []);
+
   useEffect(() => { load(month); }, [month, load]);
   // 월이 바뀌면 3개월 창 자체가 밀리므로 펼침을 접는다.
   // 담당자·유형 필터 변경 때는 접지 않는다 — 보던 세부리스트가 새 필터로 갱신만 된다.
-  useEffect(() => { setExpanded(null); setSel(null); }, [month]);
+  useEffect(() => { setExpanded(null); setSel(null); setInfoFor(null); }, [month]);
 
   const focus = data?.months?.[1] || month;
   const el = data?.el?.[focus] ?? 0;
@@ -338,6 +371,13 @@ export default function StaffBoardPage() {
                   >
                     <div className="stb-name">
                       <b>{r.n}</b>
+                      <button
+                        type="button"
+                        className={`stb-info-btn ${infoFor === r.n ? 'on' : ''}`}
+                        title="제공내역·영업시간·주의사항 등 업체 정보"
+                        onClick={(e) => { e.stopPropagation(); setInfoFor(infoFor === r.n ? null : r.n); }}
+                      >ⓘ</button>
+                      {cell.add === 1 && <span className="stb-chip stb-chip-add" title="목표량 넘어도 추가 섭외 가능">추가OK</span>}
                       {r.p && <span className="stb-chip stb-chip-p">{r.p}</span>}
                     </div>
 
@@ -401,6 +441,10 @@ export default function StaffBoardPage() {
                     </div>
                   </div>
 
+                  {infoFor === r.n && (
+                    <StoreInfo row={r} cell={cell} onClose={() => setInfoFor(null)} />
+                  )}
+
                   {open && (
                     <Expand
                       row={r}
@@ -410,6 +454,8 @@ export default function StaffBoardPage() {
                       recruiter={recruiter}
                       sel={sel}
                       setSel={setSel}
+                      memoEdits={memoEdits}
+                      onSaveMemo={saveMemo}
                     />
                   )}
                 </React.Fragment>
@@ -457,8 +503,67 @@ function MiniCell({ cell, el, flt }) {
   );
 }
 
+/* ── ⓘ 업체 정보 카드 — 섭외 전에 봐야 하는 것들. 전체 복사 지원 ── */
+function storeInfoText(row, cell) {
+  const i = row.info || {};
+  const lines = [
+    `[${row.n}]${i.cn ? ` ${i.cn}` : ''}`,
+    [i.open && `영업 ${i.open}`, i.brk && `브레이크 ${i.brk}`, i.peak && `피크 ${i.peak}`]
+      .filter(Boolean).join(' · '),
+    [i.rest && `휴무 ${i.rest}`, i.visitOk && `방문가능 ${i.visitOk}`].filter(Boolean).join(' · '),
+    i.give && `제공내역: ${i.give}`,
+    i.warn && `섭외주의: ${i.warn}`,
+    i.note && `비고: ${i.note}`,
+    cell?.memo && `계약비고: ${cell.memo}`,
+    cell?.add === 1 ? '※ 목표량 초과 추가 섭외 가능' : '',
+  ];
+  return lines.filter(Boolean).join('\n');
+}
+
+function StoreInfo({ row, cell, onClose }) {
+  const i = row.info;
+  return (
+    <div className="stb-sinfo" onClick={(e) => e.stopPropagation()}>
+      <div className="stb-sinfo-h">
+        <b>{row.n}</b>
+        {i?.cn && <span className="stb-sinfo-cn">{i.cn}</span>}
+        {cell?.add === 1
+          ? <span className="stb-chip stb-chip-add">목표 초과 추가 가능</span>
+          : <span className="stb-chip">추가 여부 미표시</span>}
+        <CopyBtn label="📋 전체 복사" text={storeInfoText(row, cell)} title="업체 정보 전체 복사" />
+        <button className="stb-ghost stb-x" onClick={onClose}>닫기</button>
+      </div>
+      {!i
+        ? <div className="stb-sinfo-empty">CS_DB 에 연결된 업체 정보가 없습니다.</div>
+        : (
+          <div className="stb-sinfo-grid">
+            <InfoItem k="영업시간" v={i.open} />
+            <InfoItem k="브레이크" v={i.brk} />
+            <InfoItem k="피크타임" v={i.peak} />
+            <InfoItem k="정기휴무" v={i.rest} />
+            <InfoItem k="방문가능" v={i.visitOk} />
+            <InfoItem k="제공내역" v={i.give} wide />
+            <InfoItem k="섭외주의" v={i.warn} wide warn />
+            <InfoItem k="비고" v={i.note} wide />
+            {cell?.memo && <InfoItem k="계약비고" v={cell.memo} wide />}
+          </div>
+        )}
+    </div>
+  );
+}
+
+function InfoItem({ k, v, wide, warn }) {
+  if (!v) return null;
+  return (
+    <div className={`stb-sinfo-it ${wide ? 'wide' : ''} ${warn ? 'warn2' : ''}`}>
+      <i>{k}</i>
+      <span>{v}</span>
+    </div>
+  );
+}
+
 /* ── 펼침 — 앞뒤월 요약 블록 먼저, 요소를 누르면 세부리스트 ── */
-function Expand({ row, months, el, flt, recruiter, sel, setSel }) {
+function Expand({ row, months, el, flt, recruiter, sel, setSel, memoEdits, onSaveMemo }) {
   return (
     <div className="stb-det" onClick={(e) => e.stopPropagation()}>
       <div className="stb-blks">
@@ -517,6 +622,8 @@ function Expand({ row, months, el, flt, recruiter, sel, setSel }) {
           cell={row.m[sel.month]}
           sel={sel}
           recruiter={recruiter}
+          memoEdits={memoEdits}
+          onSaveMemo={onSaveMemo}
           onClose={() => setSel(null)}
         />
       )}
@@ -524,7 +631,7 @@ function Expand({ row, months, el, flt, recruiter, sel, setSel }) {
   );
 }
 
-function DetailList({ cell, sel, recruiter, onClose }) {
+function DetailList({ cell, sel, recruiter, memoEdits, onSaveMemo, onClose }) {
   const ds = filterDetails(cell, { type: sel.type, recruiter })
     .filter((d) => inBucket(d, sel.bucket));
   return (
@@ -543,12 +650,21 @@ function DetailList({ cell, sel, recruiter, onClose }) {
           <table>
             <thead>
               <tr>
-                <th>#</th><th>담당</th><th>유형</th><th>진행상태</th>
-                <th>방문일</th><th>인플</th><th>제출</th><th className="stb-th-dl">기한</th>
+                <th>#</th><th>담당</th><th>유형</th><th>상태</th>
+                <th>방문일시</th><th>대표인플</th><th>인플</th>
+                <th>인원·건수</th><th>제출링크</th><th className="stb-th-memo">메모</th>
+                <th>전달</th><th className="stb-th-dl">기한</th>
               </tr>
             </thead>
             <tbody>
-              {ds.map((d) => <DetailRow key={d[9]} d={d} />)}
+              {ds.map((d) => (
+                <DetailRow
+                  key={d.id}
+                  d={d}
+                  memoVal={memoEdits[d.id] !== undefined ? memoEdits[d.id] : d.memo}
+                  onSaveMemo={onSaveMemo}
+                />
+              ))}
             </tbody>
           </table>
         )}
@@ -556,24 +672,142 @@ function DetailList({ cell, sel, recruiter, onClose }) {
   );
 }
 
-function DetailRow({ d }) {
-  const [shootId, mgr, submit, status, type, , visitMD, infl, dl] = d;
-  const submitted = submit.includes('제출완료') || submit.includes('✅');
-  let dlNode = <span className="stb-mut">—</span>;
-  if (dl !== null && !submitted) {
-    if (dl < 0) dlNode = <span className="bad">D+{-dl}</span>;
-    else if (dl <= 2) dlNode = <span className="warn">D-{dl}</span>;
-    else dlNode = <span className="stb-mut">D-{dl}</span>;
+/** 제출 링크 칩 — 마우스 올리면 전체 URL(title), 클릭하면 새 탭 */
+function ResultLink({ label, url }) {
+  if (!url) return null;
+  return (
+    <a
+      className="stb-lnk"
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      title={url}
+      onClick={(e) => e.stopPropagation()}
+    >{label}</a>
+  );
+}
+
+/** 복사 버튼 — 누르면 ✓ 로 1.5초 표시 */
+function CopyBtn({ label, text, title }) {
+  const [ok, setOk] = useState(false);
+  if (!text) return null;
+  return (
+    <button
+      type="button"
+      className={`stb-copy ${ok ? 'ok2' : ''}`}
+      title={`${title}\n\n${text.slice(0, 300)}`}
+      onClick={async (e) => {
+        e.stopPropagation();
+        await copyText(text);
+        setOk(true);
+        setTimeout(() => setOk(false), 1500);
+      }}
+    >{ok ? '✓ 복사됨' : label}</button>
+  );
+}
+
+/** 메모(비고) — 클릭하면 그 자리에서 편집, Airtable 에 바로 저장 */
+function MemoCell({ value, onSave }) {
+  const [edit, setEdit] = useState(false);
+  const [txt, setTxt] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const shown = unescapeMd(value);
+
+  if (!edit) {
+    return (
+      <button
+        type="button"
+        className={`stb-memo ${shown ? '' : 'empty'}`}
+        title={shown ? `${shown}\n\n클릭하면 수정` : '클릭해서 메모 입력'}
+        onClick={(e) => { e.stopPropagation(); setTxt(shown); setErr(''); setEdit(true); }}
+      >{shown || '＋ 메모'}</button>
+    );
   }
   return (
-    <tr className={dl !== null && dl < 0 && !submitted ? 'stb-tr-late' : ''}>
-      <td className="stb-td-id">{shootId || '—'}</td>
-      <td>{mgr || '—'}</td>
-      <td>{type || '—'}</td>
-      <td>{status || '—'}</td>
-      <td>{visitMD || '—'}</td>
-      <td className="stb-td-infl">{infl || '—'}</td>
-      <td>{submitted ? <span className="ok">완료</span> : (submit || '대기')}</td>
+    <div className="stb-memo-ed" onClick={(e) => e.stopPropagation()}>
+      <textarea
+        value={txt}
+        onChange={(e) => setTxt(e.target.value)}
+        rows={2}
+        autoFocus
+        disabled={busy}
+      />
+      {err && <div className="stb-memo-err">{err}</div>}
+      <div className="stb-memo-btns">
+        <button
+          type="button"
+          disabled={busy}
+          className="stb-memo-save"
+          onClick={async () => {
+            setBusy(true); setErr('');
+            try { await onSave(txt.trim()); setEdit(false); }
+            catch (e2) { setErr(e2.message); }
+            finally { setBusy(false); }
+          }}
+        >{busy ? '저장 중…' : '저장'}</button>
+        <button type="button" disabled={busy} onClick={() => setEdit(false)}>취소</button>
+      </div>
+    </div>
+  );
+}
+
+function DetailRow({ d, memoVal, onSaveMemo }) {
+  const submitted = d.sub.includes('제출완료') || d.sub.includes('✅');
+  let dlNode = <span className="stb-mut">—</span>;
+  if (d.dl !== null && !submitted) {
+    if (d.dl < 0) dlNode = <span className="bad">D+{-d.dl}</span>;
+    else if (d.dl <= 2) dlNode = <span className="warn">D-{d.dl}</span>;
+    else dlNode = <span className="stb-mut">D-{d.dl}</span>;
+  }
+  const hasResult = d.rx || d.rd || d.ry;
+  return (
+    <tr className={d.dl !== null && d.dl < 0 && !submitted ? 'stb-tr-late' : ''}>
+      <td className="stb-td-id">{d.sid || '—'}</td>
+      <td>{d.mgr || '—'}</td>
+      <td>{d.ty || '—'}</td>
+      <td>{d.st || '—'}</td>
+      <td className="stb-td-when">
+        {d.visit || '—'}
+        {d.chg && <div className="stb-chg" title="변경일시">변경 {d.chg}</div>}
+      </td>
+      <td className="stb-td-infl">{d.lead || '—'}</td>
+      <td className="stb-td-infl">
+        {d.ilink
+          ? (
+            <a
+              href={d.ilink}
+              target="_blank"
+              rel="noreferrer"
+              title={`샤오홍슈 홈 열기\n${d.ilink}`}
+              onClick={(e) => e.stopPropagation()}
+            >{d.infl || '링크'}</a>
+          )
+          : (d.infl || '—')}
+      </td>
+      <td className="stb-td-cnt">
+        {d.pax !== '' ? `${d.pax}명` : '—'}
+        {d.paxChg !== '' && d.paxChg !== d.pax && <span className="orange">→{d.paxChg}</span>}
+        <div className="stb-cnt2">小{d.nx === '' ? 0 : d.nx} 大{d.nd === '' ? 0 : d.nd}</div>
+      </td>
+      <td className="stb-td-lnks">
+        {hasResult
+          ? (
+            <span className="stb-lnks">
+              <ResultLink label="小红" url={d.rx} />
+              <ResultLink label="大众" url={d.rd} />
+              <ResultLink label="抖音" url={d.ry} />
+            </span>
+          )
+          : <span className="stb-mut">—</span>}
+      </td>
+      <td className="stb-td-memo">
+        <MemoCell value={memoVal} onSave={(t) => onSaveMemo(d.id, t)} />
+      </td>
+      <td className="stb-td-give">
+        <CopyBtn label="🔗 링크" text={d.give} title="인플 전달용 제출 링크 복사" />
+        <CopyBtn label="📋 가이드" text={d.guide} title="촬영 가이드 복사" />
+      </td>
       <td className="stb-td-dl">{dlNode}</td>
     </tr>
   );
