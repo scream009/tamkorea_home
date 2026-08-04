@@ -169,6 +169,10 @@ button.stb-cnum:hover{border-color:var(--accent);background:rgba(139,92,246,.12)
   background:#151827;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .stb-dlist-h b{font-family:var(--mono);font-size:.78rem;color:var(--accent2)}
 .stb-chip-b{color:#DDD6FE;border-color:rgba(139,92,246,.5);background:rgba(139,92,246,.15)}
+.stb-seg-sm button{padding:.2rem .5rem;font-size:.7rem;font-family:var(--mono)}
+.stb-done{display:inline-flex;align-items:center;font-size:.64rem;font-weight:700;color:#6EE7B7;
+  background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.45);border-radius:999px;
+  padding:.1rem .5rem;white-space:nowrap}
 .stb-det-cnt{font-family:var(--mono);font-size:.68rem;color:var(--muted)}
 .stb-x{margin-left:auto}
 .stb-dlist-empty{padding:1rem;text-align:center;color:var(--muted);font-size:.78rem}

@@ -44,9 +44,10 @@ function shortMonth(v) {
   return p ? `${p.n}월` : v;
 }
 
-/* ── 보드 범위 ── */
-const VISIBLE_TYPES = ['체험', '기자'];          // 인플 제외
-const RECRUITERS = ['HH', 'LH', 'AN', 'FB'];
+/* ── 보드 범위 — 오직 체험단. 인플·기자단은 이 보드가 다루지 않는다 ── */
+const VISIBLE_TYPES = ['체험'];
+// FB 는 인플 입력용 계정이라 담당자 버튼에서 뺀다 (기록에 있으면 '담당' 열에는 그대로 보인다)
+const RECRUITERS = ['HH', 'LH', 'AN'];
 
 const BUCKETS = {
   visit: '섭외(방문)',
@@ -164,8 +165,6 @@ export default function StaffBoardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [recruiter, setRecruiter] = useState('');
   const [lateOnly, setLateOnly] = useState(false);
   const [sort, setSort] = useState('late');       // late | pace | name
   const [expanded, setExpanded] = useState(null); // 고객사명
@@ -209,7 +208,8 @@ export default function StaffBoardPage() {
 
   const focus = data?.months?.[1] || month;
   const el = data?.el?.[focus] ?? 0;
-  const flt = useMemo(() => ({ type: typeFilter, recruiter }), [typeFilter, recruiter]);
+  // 담당자별 보기는 세부리스트 안의 버튼으로 한다 — 보드 숫자는 항상 정산 기준(rollup) 하나.
+  const flt = useMemo(() => ({ type: '', recruiter: '' }), []);
 
   /* ── 필터·정렬된 행 ── */
   const rows = useMemo(() => {
@@ -280,24 +280,6 @@ export default function StaffBoardPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <div className="stb-seg">
-              {['', ...RECRUITERS].map((r) => (
-                <button
-                  key={r || '전체'}
-                  className={recruiter === r ? 'on' : ''}
-                  onClick={() => setRecruiter(r)}
-                >{r || '담당 전체'}</button>
-              ))}
-            </div>
-            <div className="stb-seg">
-              {['', ...VISIBLE_TYPES].map((t) => (
-                <button
-                  key={t || '전체'}
-                  className={typeFilter === t ? 'on' : ''}
-                  onClick={() => setTypeFilter(t)}
-                >{t || '유형 전체'}</button>
-              ))}
-            </div>
             <button
               className={`stb-latebtn ${lateOnly ? 'on' : ''}`}
               onClick={() => setLateOnly((v) => !v)}
@@ -383,12 +365,11 @@ export default function StaffBoardPage() {
 
                     <MiniCell cell={r.m[data.months[0]]} el={data.el[data.months[0]]} flt={flt} />
 
-                    {/* 선택월 — 유형별 바 + 숫자줄 */}
+                    {/* 선택월 — 체험단 바 + 숫자줄 */}
                     <div className="stb-main">
                       {VISIBLE_TYPES
-                        .filter((k) => !typeFilter || k === typeFilter)
                         .map((k) => {
-                          const n = typeNums(cell, k, recruiter);
+                          const n = typeNums(cell, k, '');
                           if (!n) return null;
                           const pc = paceClass(n.tg ? n.vis / n.tg : 0, el, n.tg);
                           return (
@@ -412,6 +393,11 @@ export default function StaffBoardPage() {
                                 <NumBtn label="취" value={n.cx} cls={n.cx > 0 ? 'orange' : 'mut'} title="취소·노쇼"
                                   on={() => openSel(r.n, { month: focus, type: k, bucket: 'cancel' })}
                                   active={open && sel?.month === focus && sel?.type === k && sel?.bucket === 'cancel'} />
+                                {n.tg > 0 && n.vis >= n.tg && (
+                                  <span className="stb-done" title="이번 달 목표를 채웠습니다. 신규 예약은 다음 달 정산월로 입력하세요.">
+                                    ✅ 섭외완료 · 다음달 입력
+                                  </span>
+                                )}
                               </div>
                             </div>
                           );
@@ -425,7 +411,7 @@ export default function StaffBoardPage() {
                         ? (
                           <button
                             className="stb-badge-late"
-                            onClick={(e) => { e.stopPropagation(); openSel(r.n, { month: focus, type: typeFilter || null, bucket: 'late' }); }}
+                            onClick={(e) => { e.stopPropagation(); openSel(r.n, { month: focus, type: null, bucket: 'late' }); }}
                             title="지연 목록 보기"
                           >{r.agg.late}</button>
                         )
@@ -433,7 +419,7 @@ export default function StaffBoardPage() {
                           ? (
                             <button
                               className="stb-badge-pend"
-                              onClick={(e) => { e.stopPropagation(); openSel(r.n, { month: focus, type: typeFilter || null, bucket: 'pend' }); }}
+                              onClick={(e) => { e.stopPropagation(); openSel(r.n, { month: focus, type: null, bucket: 'pend' }); }}
                               title="제출대기 목록 보기"
                             >{r.agg.pend}</button>
                           )
@@ -451,7 +437,6 @@ export default function StaffBoardPage() {
                       months={data.months}
                       el={data.el}
                       flt={flt}
-                      recruiter={recruiter}
                       sel={sel}
                       setSel={setSel}
                       memoEdits={memoEdits}
@@ -467,8 +452,7 @@ export default function StaffBoardPage() {
         <footer className="stb-foot">
           숫자줄: 목=목표 · 섭=섭외(방문, 취소 제외) · 업=업로드 완료 · 취=취소·노쇼 — 숫자를 누르면 해당 목록만.
           진행바 = 섭외(옅음)·업로드(짙음) / 목표 · 세로선 = 월 경과 기준 ·
-          지연 = 방문 후 7일 초과 미제출 건
-          {recruiter && ' · 담당자 필터 중에는 섭·업·취를 그 담당자 건만 다시 센다 (목표는 매장 목표)'}
+          지연 = 방문 후 7일 초과 미제출 건 · 담당자별 보기는 세부리스트 안의 HH/LH/AN 버튼
         </footer>
       </div>
     </div>
@@ -563,7 +547,7 @@ function InfoItem({ k, v, wide, warn }) {
 }
 
 /* ── 펼침 — 앞뒤월 요약 블록 먼저, 요소를 누르면 세부리스트 ── */
-function Expand({ row, months, el, flt, recruiter, sel, setSel, memoEdits, onSaveMemo }) {
+function Expand({ row, months, el, flt, sel, setSel, memoEdits, onSaveMemo }) {
   return (
     <div className="stb-det" onClick={(e) => e.stopPropagation()}>
       <div className="stb-blks">
@@ -580,9 +564,8 @@ function Expand({ row, months, el, flt, recruiter, sel, setSel, memoEdits, onSav
                 <span className="stb-blk-el">경과 {Math.round((el[m] ?? 0) * 100)}%</span>
               </div>
               {VISIBLE_TYPES
-                .filter((k) => !flt.type || k === flt.type)
                 .map((k) => {
-                  const n = typeNums(cell, k, recruiter);
+                  const n = typeNums(cell, k, '');
                   if (!n) return null;
                   const pc = paceClass(n.tg ? n.vis / n.tg : 0, el[m] ?? 0, n.tg);
                   const isSel = (b) => active && sel?.type === k && sel?.bucket === b;
@@ -596,20 +579,25 @@ function Expand({ row, months, el, flt, recruiter, sel, setSel, memoEdits, onSav
                         on={() => setSel({ month: m, type: k, bucket: 'upload' })} active={isSel('upload')} />
                       <NumBtn label="취" value={n.cx} cls={n.cx > 0 ? 'orange' : 'mut'} title="취소·노쇼"
                         on={() => setSel({ month: m, type: k, bucket: 'cancel' })} active={isSel('cancel')} />
+                      {n.tg > 0 && n.vis >= n.tg && (
+                        <span className="stb-done" title="이 달 목표를 채웠습니다. 신규 예약은 다음 달 정산월로 입력하세요.">
+                          ✅ 완료 · 다음달
+                        </span>
+                      )}
                     </div>
                   );
                 })}
               <div className="stb-blk-f">
                 <NumBtn label="대기" value={agg.pend} cls={agg.pend > 0 ? 'warn' : 'mut'} title="제출대기"
-                  on={() => setSel({ month: m, type: flt.type || null, bucket: 'pend' })}
+                  on={() => setSel({ month: m, type: null, bucket: 'pend' })}
                   active={active && sel?.bucket === 'pend'} />
                 <NumBtn label="지연" value={agg.late} cls={agg.late > 0 ? 'bad' : 'mut'} title="마감 넘긴 미제출"
-                  on={() => setSel({ month: m, type: flt.type || null, bucket: 'late' })}
+                  on={() => setSel({ month: m, type: null, bucket: 'late' })}
                   active={active && sel?.bucket === 'late'} />
                 <button
                   type="button"
                   className={`stb-cnum stb-all ${active && !sel?.bucket ? 'sel' : ''}`}
-                  onClick={() => setSel({ month: m, type: flt.type || null, bucket: null })}
+                  onClick={() => setSel({ month: m, type: null, bucket: null })}
                 >전체 목록</button>
               </div>
             </div>
@@ -621,7 +609,6 @@ function Expand({ row, months, el, flt, recruiter, sel, setSel, memoEdits, onSav
         <DetailList
           cell={row.m[sel.month]}
           sel={sel}
-          recruiter={recruiter}
           memoEdits={memoEdits}
           onSaveMemo={onSaveMemo}
           onClose={() => setSel(null)}
@@ -631,16 +618,28 @@ function Expand({ row, months, el, flt, recruiter, sel, setSel, memoEdits, onSav
   );
 }
 
-function DetailList({ cell, sel, recruiter, memoEdits, onSaveMemo, onClose }) {
-  const ds = filterDetails(cell, { type: sel.type, recruiter })
+function DetailList({ cell, sel, memoEdits, onSaveMemo, onClose }) {
+  // 담당자별 보기 — 표 안에서 바로 전환한다 (FB 는 인플 입력용이라 버튼 없음)
+  const [mgr, setMgr] = useState('');
+  const base = filterDetails(cell, { type: sel.type, recruiter: '' })
     .filter((d) => inBucket(d, sel.bucket));
+  const ds = mgr ? base.filter((d) => d.mgr === mgr) : base;
   return (
     <div className="stb-dlist">
       <div className="stb-dlist-h">
         <b>{sel.month}</b>
         {sel.type && <span className="stb-chip">{sel.type}</span>}
         <span className="stb-chip stb-chip-b">{sel.bucket ? BUCKETS[sel.bucket] : '전체'}</span>
-        {recruiter && <span className="stb-chip">{recruiter}</span>}
+        <div className="stb-seg stb-seg-sm">
+          <button className={mgr === '' ? 'on' : ''} onClick={() => setMgr('')}>
+            전체 {base.length}
+          </button>
+          {RECRUITERS.map((r) => (
+            <button key={r} className={mgr === r ? 'on' : ''} onClick={() => setMgr(r)}>
+              {r} {base.filter((d) => d.mgr === r).length}
+            </button>
+          ))}
+        </div>
         <span className="stb-det-cnt">{ds.length}건</span>
         <button className="stb-ghost stb-x" onClick={onClose}>닫기</button>
       </div>
