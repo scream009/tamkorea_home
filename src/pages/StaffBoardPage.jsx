@@ -170,7 +170,9 @@ export default function StaffBoardPage() {
   }, []);
 
   useEffect(() => { load(month); }, [month, load]);
-  useEffect(() => { setExpanded(null); setSel(null); }, [month, typeFilter, recruiter]);
+  // 월이 바뀌면 3개월 창 자체가 밀리므로 펼침을 접는다.
+  // 담당자·유형 필터 변경 때는 접지 않는다 — 보던 세부리스트가 새 필터로 갱신만 된다.
+  useEffect(() => { setExpanded(null); setSel(null); }, [month]);
 
   const focus = data?.months?.[1] || month;
   const el = data?.el?.[focus] ?? 0;
@@ -419,7 +421,7 @@ export default function StaffBoardPage() {
         <footer className="stb-foot">
           숫자줄: 목=목표 · 섭=섭외(방문, 취소 제외) · 업=업로드 완료 · 취=취소·노쇼 — 숫자를 누르면 해당 목록만.
           진행바 = 섭외(옅음)·업로드(짙음) / 목표 · 세로선 = 월 경과 기준 ·
-          지연 = 제출마감(없으면 방문+7일)을 넘긴 미제출 건
+          지연 = 방문 후 7일 초과 미제출 건
           {recruiter && ' · 담당자 필터 중에는 섭·업·취를 그 담당자 건만 다시 센다 (목표는 매장 목표)'}
         </footer>
       </div>

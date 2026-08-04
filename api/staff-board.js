@@ -12,7 +12,8 @@
  *
  * 지연 판정 (건 단위):
  *   제출 안 됐고, 취소·노쇼·종결이 아니고, 방문일이 지났으면 "제출 대기(pend)".
- *   기한 = 제출마감일, 없으면 방문일 + 7일. dl = 기한까지 남은 날 수(음수 = 지연).
+ *   기한 = 방문일 + 7일 (Owner 확정 2026-08-04: 지연 = 방문 후 7일 초과 미제출.
+ *   제출마감일 필드는 쓰지 않는다 — 기준을 하나로 통일). dl = 기한까지 남은 날(음수 = 지연).
  *
  * 게이트는 _staff-auth.js. 조회 전용(GET) — 쓰기는 Phase 2 부터 별도 파일로 만든다.
  * CORS 헤더는 두지 않는다. 같은 오리진에서만 부른다.
@@ -42,8 +43,11 @@ const CAMPAIGN_FIELDS = [
 //    필드가 있다. 여기 목록은 전부 실측 스키마(_raw_schema.json) 기준.
 const PROGRESS_FIELDS = [
   'Shoot_ID', '예약_ID', '제출상태', '진행상태', '유형',
-  '정산월', '예약일시', 'XHS_ID', '대표인플_ID', '제출마감일',
+  '정산월', '예약일시', 'XHS_ID', '대표인플_ID',
 ];
+
+/** 방문 후 며칠까지 업로드를 기다려주는가 — 넘기면 지연 */
+const UPLOAD_GRACE_DAYS = 7;
 
 /* ── 월 계산 — admin-targets.js 와 같은 표기("2026. 7월")를 쓴다 ── */
 const MONTH_RE = /^(\d{4})\.\s*(\d{1,2})월$/;
@@ -155,8 +159,7 @@ function pendInfo(g, today) {
   const visit = dayNum(g['예약일시'], true);
   if (visit === null || visit > today) return null;   // 방문 전이면 대기가 아니다
 
-  const deadline = dayNum(g['제출마감일'], false) ?? (visit + 7);
-  return { dl: deadline - today };                    // 음수 = 지연 일수
+  return { dl: (visit + UPLOAD_GRACE_DAYS) - today }; // 음수 = 지연 일수
 }
 
 /* ── 조회 ────────────────────────────────────────────────── */
