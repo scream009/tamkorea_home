@@ -31,7 +31,7 @@ export default defineConfig([
   // 여기서 선언해야 한다. 이게 없으면 no-undef 가 계속 떠서 배포 전 lint 게이트가
   // 무의미해진다(백색화면 2건이 lint 로 잡힐 수 있었던 사고 이력).
   {
-    files: ['api/**/*.js', 'vite.config.js', 'dev-server.js'],
+    files: ['api/**/*.js', 'vite.config.js', 'dev-server.js', 'dev-api.js'],
     languageOptions: { globals: globals.node },
   },
 ])
