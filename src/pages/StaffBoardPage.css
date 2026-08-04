@@ -173,6 +173,16 @@ button.stb-cnum:hover{border-color:var(--accent);background:rgba(139,92,246,.12)
 .stb-done{display:inline-flex;align-items:center;font-size:.64rem;font-weight:700;color:#6EE7B7;
   background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.45);border-radius:999px;
   padding:.1rem .5rem;white-space:nowrap}
+
+/* 업로드지연 보기 — 행 안 지연 건 칩 */
+.stb-latein{display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;
+  border-top:1px dashed rgba(239,68,68,.3);padding-top:.3rem;margin-top:.1rem}
+.stb-latechip{display:inline-flex;align-items:baseline;gap:.3rem;font-size:.68rem;
+  color:#FCA5A5;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.4);
+  border-radius:999px;padding:.12rem .5rem;cursor:pointer;font-family:inherit;transition:.13s;
+  max-width:11rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stb-latechip:hover{background:rgba(239,68,68,.22)}
+.stb-latechip b{font-family:var(--mono);font-weight:800}
 .stb-det-cnt{font-family:var(--mono);font-size:.68rem;color:var(--muted)}
 .stb-x{margin-left:auto}
 .stb-dlist-empty{padding:1rem;text-align:center;color:var(--muted);font-size:.78rem}

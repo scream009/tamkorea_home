@@ -165,7 +165,8 @@ export default function StaffBoardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const [lateOnly, setLateOnly] = useState(false);
+  const [recruiter, setRecruiter] = useState('');   // 지연·대기 카운트와 목록의 기본 담당자
+  const [statusFilter, setStatusFilter] = useState(''); // '' | pace(섭외지연) | late(업로드지연) | done(완료)
   const [sort, setSort] = useState('late');       // late | pace | name
   const [expanded, setExpanded] = useState(null); // 고객사명
   const [sel, setSel] = useState(null);           // {month, type|null, bucket|null}
@@ -211,31 +212,59 @@ export default function StaffBoardPage() {
   // 담당자별 보기는 세부리스트 안의 버튼으로 한다 — 보드 숫자는 항상 정산 기준(rollup) 하나.
   const flt = useMemo(() => ({ type: '', recruiter: '' }), []);
 
-  /* ── 필터·정렬된 행 ── */
-  const rows = useMemo(() => {
+  /* ── 필터 전 단계 행 — 숫자는 rollup, 지연·대기만 담당자 기준 재계산 ── */
+  const baseRows = useMemo(() => {
     if (!data?.rows) return [];
     const q = search.trim().toLowerCase();
-    const out = data.rows
+    return data.rows
       .filter((r) => r.m[focus])
       .filter((r) => !q || r.n.toLowerCase().includes(q))
-      .map((r) => ({ ...r, agg: aggOf(r.m[focus], flt) }))
-      // 표시 유형(체험·기자) 기준으로 아무것도 없는 매장(인플 전용 등)은 뺀다
-      .filter((r) => r.agg && (r.agg.tg > 0 || r.agg.vis > 0 || r.agg.cx > 0))
-      .filter((r) => !lateOnly || r.agg.late > 0);
+      .map((r) => {
+        const cell = r.m[focus];
+        const agg = aggOf(cell, flt);
+        if (!agg || !(agg.tg > 0 || agg.vis > 0 || agg.cx > 0)) return null;
+        const rc = recruiter ? countsOf(filterDetails(cell, { type: '', recruiter })) : null;
+        return {
+          ...r,
+          agg,
+          late2: rc ? rc.late : agg.late,   // 담당자 선택 시 그 담당자 건만
+          pend2: rc ? rc.pend : agg.pend,
+          paceBehind: agg.tg > 0 && agg.vis < agg.tg && (agg.pct - el) < -0.05,
+          done: agg.tg > 0 && agg.vis >= agg.tg,
+        };
+      })
+      .filter(Boolean);
+  }, [data, focus, search, flt, recruiter, el]);
+
+  /* ── 상태 필터 카운트 (버튼 뱃지용) ── */
+  const statusCounts = useMemo(() => ({
+    pace: baseRows.filter((r) => r.paceBehind).length,
+    late: baseRows.filter((r) => r.late2 > 0).length,
+    done: baseRows.filter((r) => r.done).length,
+  }), [baseRows]);
+
+  /* ── 상태 필터 + 정렬 ── */
+  const rows = useMemo(() => {
+    const out = baseRows.filter((r) => {
+      if (statusFilter === 'pace') return r.paceBehind;
+      if (statusFilter === 'late') return r.late2 > 0;
+      if (statusFilter === 'done') return r.done;
+      return true;
+    });
     if (sort === 'name') out.sort((a, b) => a.n.localeCompare(b.n, 'ko'));
     else if (sort === 'pace') out.sort((a, b) => (a.agg.pct - el) - (b.agg.pct - el));
-    else out.sort((a, b) => (b.agg.late - a.agg.late)
-      || (b.agg.pend - a.agg.pend)
+    else out.sort((a, b) => (b.late2 - a.late2)
+      || (b.pend2 - a.pend2)
       || ((a.agg.pct - el) - (b.agg.pct - el)));
     return out;
-  }, [data, focus, search, flt, lateOnly, sort, el]);
+  }, [baseRows, statusFilter, sort, el]);
 
   /* ── KPI (필터 반영, 선택월) ── */
   const kpi = useMemo(() => {
     const sum = { n: rows.length, tg: 0, vis: 0, up: 0, pend: 0, late: 0 };
     rows.forEach((r) => {
       sum.tg += r.agg.tg; sum.vis += r.agg.vis; sum.up += r.agg.up;
-      sum.pend += r.agg.pend; sum.late += r.agg.late;
+      sum.pend += r.pend2; sum.late += r.late2;
     });
     return sum;
   }, [rows]);
@@ -280,13 +309,34 @@ export default function StaffBoardPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <button
-              className={`stb-latebtn ${lateOnly ? 'on' : ''}`}
-              onClick={() => setLateOnly((v) => !v)}
-              title="마감을 넘긴 미제출 건이 있는 고객사만"
-            >
-              🔴 지연 {kpi.late > 0 ? kpi.late : ''}
-            </button>
+            <div className="stb-seg">
+              {['', ...RECRUITERS].map((r) => (
+                <button
+                  key={r || '전체'}
+                  className={recruiter === r ? 'on' : ''}
+                  title="지연·대기 숫자와 세부리스트를 이 담당자 기준으로"
+                  onClick={() => setRecruiter(r)}
+                >{r || '담당 전체'}</button>
+              ))}
+            </div>
+            <div className="stb-seg">
+              <button className={statusFilter === '' ? 'on' : ''} onClick={() => setStatusFilter('')}>전체</button>
+              <button
+                className={`${statusFilter === 'pace' ? 'on' : ''}`}
+                title="목표 미달 + 진도가 월 경과보다 뒤처진 매장"
+                onClick={() => setStatusFilter(statusFilter === 'pace' ? '' : 'pace')}
+              >🟠 섭외지연 {statusCounts.pace || ''}</button>
+              <button
+                className={`${statusFilter === 'late' ? 'on' : ''}`}
+                title="방문 후 7일 넘도록 미제출 건이 있는 매장"
+                onClick={() => setStatusFilter(statusFilter === 'late' ? '' : 'late')}
+              >🔴 업로드지연 {statusCounts.late || ''}</button>
+              <button
+                className={`${statusFilter === 'done' ? 'on' : ''}`}
+                title="섭외가 목표에 도달한 매장"
+                onClick={() => setStatusFilter(statusFilter === 'done' ? '' : 'done')}
+              >✅ 완료 {statusCounts.done || ''}</button>
+            </div>
             <div className="stb-seg stb-sort">
               <button className={sort === 'late' ? 'on' : ''} onClick={() => setSort('late')}>지연순</button>
               <button className={sort === 'pace' ? 'on' : ''} onClick={() => setSort('pace')}>진도순</button>
@@ -402,26 +452,47 @@ export default function StaffBoardPage() {
                             </div>
                           );
                         })}
+
+                      {/* 업로드지연 보기 — 지연 건을 행 안에서 바로 보여준다 */}
+                      {statusFilter === 'late' && r.late2 > 0 && (
+                        <div className="stb-latein" onClick={(e) => e.stopPropagation()}>
+                          {filterDetails(cell, { type: '', recruiter })
+                            .filter((d) => inBucket(d, 'late'))
+                            .slice(0, 8)
+                            .map((d) => (
+                              <button
+                                key={d.id}
+                                type="button"
+                                className="stb-latechip"
+                                title={`${d.mgr} · ${d.st} · 방문 ${d.visit}${d.infl ? `\n${d.infl}` : ''}`}
+                                onClick={() => openSel(r.n, { month: focus, type: null, bucket: 'late' })}
+                              >
+                                {d.infl || d.lead || d.sid}<b>D+{-d.dl}</b>
+                              </button>
+                            ))}
+                          {r.late2 > 8 && <span className="stb-mut">+{r.late2 - 8}</span>}
+                        </div>
+                      )}
                     </div>
 
                     <MiniCell cell={r.m[data.months[2]]} el={data.el[data.months[2]]} flt={flt} />
 
                     <div className="stb-late">
-                      {r.agg.late > 0
+                      {r.late2 > 0
                         ? (
                           <button
                             className="stb-badge-late"
                             onClick={(e) => { e.stopPropagation(); openSel(r.n, { month: focus, type: null, bucket: 'late' }); }}
-                            title="지연 목록 보기"
-                          >{r.agg.late}</button>
+                            title={`지연 목록 보기${recruiter ? ` (${recruiter})` : ''}`}
+                          >{r.late2}</button>
                         )
-                        : r.agg.pend > 0
+                        : r.pend2 > 0
                           ? (
                             <button
                               className="stb-badge-pend"
                               onClick={(e) => { e.stopPropagation(); openSel(r.n, { month: focus, type: null, bucket: 'pend' }); }}
-                              title="제출대기 목록 보기"
-                            >{r.agg.pend}</button>
+                              title={`제출대기 목록 보기${recruiter ? ` (${recruiter})` : ''}`}
+                            >{r.pend2}</button>
                           )
                           : <span className="stb-mut">—</span>}
                     </div>
@@ -439,6 +510,7 @@ export default function StaffBoardPage() {
                       flt={flt}
                       sel={sel}
                       setSel={setSel}
+                      initMgr={recruiter}
                       memoEdits={memoEdits}
                       onSaveMemo={saveMemo}
                     />
@@ -452,7 +524,8 @@ export default function StaffBoardPage() {
         <footer className="stb-foot">
           숫자줄: 목=목표 · 섭=섭외(방문, 취소 제외) · 업=업로드 완료 · 취=취소·노쇼 — 숫자를 누르면 해당 목록만.
           진행바 = 섭외(옅음)·업로드(짙음) / 목표 · 세로선 = 월 경과 기준 ·
-          지연 = 방문 후 7일 초과 미제출 건 · 담당자별 보기는 세부리스트 안의 HH/LH/AN 버튼
+          지연 = 방문 후 7일 초과 미제출 건 · 섭외지연 = 목표 미달 + 진도가 월 경과보다 뒤처짐 ·
+          담당자를 고르면 지연·대기 숫자와 목록이 그 담당자 것만 (목·섭·업·취 숫자는 매장 전체)
         </footer>
       </div>
     </div>
@@ -547,7 +620,7 @@ function InfoItem({ k, v, wide, warn }) {
 }
 
 /* ── 펼침 — 앞뒤월 요약 블록 먼저, 요소를 누르면 세부리스트 ── */
-function Expand({ row, months, el, flt, sel, setSel, memoEdits, onSaveMemo }) {
+function Expand({ row, months, el, flt, sel, setSel, initMgr, memoEdits, onSaveMemo }) {
   return (
     <div className="stb-det" onClick={(e) => e.stopPropagation()}>
       <div className="stb-blks">
@@ -609,6 +682,7 @@ function Expand({ row, months, el, flt, sel, setSel, memoEdits, onSaveMemo }) {
         <DetailList
           cell={row.m[sel.month]}
           sel={sel}
+          initMgr={initMgr}
           memoEdits={memoEdits}
           onSaveMemo={onSaveMemo}
           onClose={() => setSel(null)}
@@ -618,9 +692,15 @@ function Expand({ row, months, el, flt, sel, setSel, memoEdits, onSaveMemo }) {
   );
 }
 
-function DetailList({ cell, sel, memoEdits, onSaveMemo, onClose }) {
-  // 담당자별 보기 — 표 안에서 바로 전환한다 (FB 는 인플 입력용이라 버튼 없음)
-  const [mgr, setMgr] = useState('');
+function DetailList({ cell, sel, initMgr, memoEdits, onSaveMemo, onClose }) {
+  // 담당자별 보기 — 표 안에서 바로 전환한다 (FB 는 인플 입력용이라 버튼 없음).
+  // 헤더에서 담당자를 골라뒀으면 그걸 기본값으로 물고, 헤더가 바뀌면 따라간다.
+  const [mgr, setMgr] = useState(initMgr || '');
+  const [prevInit, setPrevInit] = useState(initMgr);
+  if (prevInit !== initMgr) {
+    setPrevInit(initMgr);
+    setMgr(initMgr || '');
+  }
   const base = filterDetails(cell, { type: sel.type, recruiter: '' })
     .filter((d) => inBucket(d, sel.bucket));
   const ds = mgr ? base.filter((d) => d.mgr === mgr) : base;
