@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { staffHeaders } from '../lib/staffKey';
 import StaffNav from '../components/StaffNav';
+import StaffGame from '../components/StaffGame';
 import './StaffBoardPage.css';
 
 /**
@@ -538,6 +539,9 @@ export default function StaffBoardPage() {
           지연 = 방문 후 7일 초과 미제출 건 · 섭외지연 = 목표 미달 + 진도가 월 경과보다 뒤처짐 ·
           담당자를 고르면 지연·대기 숫자와 목록이 그 담당자 것만 (목·섭·업·취 숫자는 매장 전체)
         </footer>
+
+        {/* 스태프 아케이드 — 접힌 배너가 기본, 업무 화면을 침범하지 않는다 */}
+        <StaffGame />
       </div>
     </div>
   );
