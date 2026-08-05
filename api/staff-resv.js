@@ -409,6 +409,30 @@ export default async function handler(req, res) {
         res.status(200).json(await buildMeta());
         return;
       }
+      if (req.query.mode === 'infls') {
+        // 인플 조회 화면용 확장 목록 (읽기 전용)
+        const recs = await fetchAll(T_INFL, {
+          fields: ['XHS_ID(필수)', '유형(필수)', '섭외_ID(필수)', 'XHS_link1(필수)',
+            'PAL(필수)', 'WC_ID', '연락처', '지역', '닉네임'],
+        });
+        const infls = recs
+          .map((r) => ({
+            id: r.id,
+            xid: one(r.fields['XHS_ID(필수)']),
+            ty: one(r.fields['유형(필수)']),
+            mgr: one(r.fields['섭외_ID(필수)']),
+            link: one(r.fields['XHS_link1(필수)']),
+            pal: num(r.fields['PAL(필수)']),
+            wc: one(r.fields['WC_ID']),
+            phone: one(r.fields['연락처']),
+            region: one(r.fields['지역']),
+            nick: one(r.fields['닉네임']),
+          }))
+          .filter((i) => i.xid)
+          .sort((a, b) => b.pal - a.pal);
+        res.status(200).json({ infls });
+        return;
+      }
       const storeId = String(req.query.store || '');
       if (isRec(storeId)) {
         const base = parseMonth(req.query.month) ? String(req.query.month) : currentMonth();

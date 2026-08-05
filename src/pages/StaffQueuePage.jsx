@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import { staffHeaders } from '../lib/staffKey';
+import StaffNav from '../components/StaffNav';
 import './StaffQueuePage.css';
 
 /**
@@ -37,6 +37,14 @@ function stClass(st) {
   if (st === '변경요청') return 'warn';
   if (CANCELLED.includes(st)) return 'bad';
   return 'etc';
+}
+
+/** ISO(UTC) → datetime-local 값(KST 벽시계) — 수정 모달 프리필용 */
+function isoToLocal(iso) {
+  if (!iso) return '';
+  const t = new Date(iso);
+  if (Number.isNaN(t.getTime())) return '';
+  return new Date(t.getTime() + 9 * 3600 * 1000).toISOString().slice(0, 16);
 }
 
 export default function StaffQueuePage() {
@@ -113,6 +121,39 @@ export default function StaffQueuePage() {
         || it.sid.toLowerCase().includes(q));
   }, [data, tab, mgr, search]);
 
+  /* 카드·행이 같은 액션을 쓴다 */
+  function handlersFor(it) {
+    return {
+      send: () => {
+        if (window.confirm(`[${it.store}] 예약 메시지를 발송할까요?\n예약봇이 다음 폴링에서 카톡을 보냅니다.`)) {
+          act({ action: 'send', id: it.id }, '발송 대기열에 올렸습니다');
+        }
+      },
+      edit: () => setModal({ kind: 'edit', item: it }),
+      modify: () => setModal({ kind: 'modify', item: it }),
+      cancel: () => setModal({ kind: 'cancel', item: it }),
+      confirmChange: () => {
+        if (window.confirm(`[${it.store}] 변경을 확정할까요?\n예약일시가 변경일시로 이관되고 카톡 발송은 없습니다.`)) {
+          act({ action: 'confirmChange', id: it.id }, '변경확정 처리했습니다');
+        }
+      },
+      remove: () => {
+        if (window.confirm(`[${it.store}] 이 예약을 삭제할까요?\n발송된 적 없는 예약요청 건만 삭제되며, 분할된 진행 건도 함께 지워집니다.`)) {
+          act({ action: 'remove', id: it.id }, '삭제했습니다');
+        }
+      },
+      unsend: () => {
+        if (window.confirm(
+          `[${it.store}] 발송 대기를 취소하고 되돌릴까요?\n\n`
+          + `⚠️ 봇이 방금 집어간 직후라면 취소가 무시되고 발송될 수 있습니다.\n`
+          + `취소 후 이 건이 '확정·진행'으로 넘어가는지 잠시 확인하세요.`
+        )) {
+          act({ action: 'unsend', id: it.id }, '발송 대기에서 내렸습니다 — 확정·진행 탭으로 넘어가지 않는지 확인하세요');
+        }
+      },
+    };
+  }
+
   return (
     <div className="stq-root">
       <div className="stq-wrap">
@@ -124,8 +165,7 @@ export default function StaffQueuePage() {
             {data?.who && <span className="stq-who">{data.who}</span>}
           </div>
           <div className="stq-nav">
-            <Link className="stq-ghost" to="/staff">진도 보드</Link>
-            <Link className="stq-ghost" to="/staff/new">＋ 예약입력</Link>
+            <StaffNav current="queue" />
             <button className="stq-ghost" onClick={load} title="새로고침">⟳</button>
           </div>
         </header>
@@ -162,41 +202,22 @@ export default function StaffQueuePage() {
         )}
 
         {!loading && !error && items.length > 0 && (
-          <div className="stq-grid">
-            {items.map((it) => (
-              <QueueCard
-                key={it.id}
-                it={it}
-                busy={busyId === it.id}
-                onSend={() => {
-                  if (window.confirm(`[${it.store}] 예약 메시지를 발송할까요?\n예약봇이 다음 폴링에서 카톡을 보냅니다.`)) {
-                    act({ action: 'send', id: it.id }, '발송 대기열에 올렸습니다');
-                  }
-                }}
-                onModify={() => setModal({ kind: 'modify', item: it })}
-                onCancel={() => setModal({ kind: 'cancel', item: it })}
-                onConfirmChange={() => {
-                  if (window.confirm(`[${it.store}] 변경을 확정할까요?\n예약일시가 변경일시로 이관되고 카톡 발송은 없습니다.`)) {
-                    act({ action: 'confirmChange', id: it.id }, '변경확정 처리했습니다');
-                  }
-                }}
-                onRemove={() => {
-                  if (window.confirm(`[${it.store}] 이 예약을 삭제할까요?\n발송된 적 없는 예약요청 건만 삭제되며, 분할된 진행 건도 함께 지워집니다.`)) {
-                    act({ action: 'remove', id: it.id }, '삭제했습니다');
-                  }
-                }}
-                onUnsend={() => {
-                  if (window.confirm(
-                    `[${it.store}] 발송 대기를 취소하고 되돌릴까요?\n\n`
-                    + `⚠️ 봇이 방금 집어간 직후라면 취소가 무시되고 발송될 수 있습니다.\n`
-                    + `취소 후 이 건이 '확정·진행'으로 넘어가는지 잠시 확인하세요.`
-                  )) {
-                    act({ action: 'unsend', id: it.id }, '발송 대기에서 내렸습니다 — 확정·진행 탭으로 넘어가지 않는지 확인하세요');
-                  }
-                }}
-              />
-            ))}
-          </div>
+          // 발송·처리 대기 탭 = 발송문 중심 카드 / 확정·진행·취소·전체 = 컴팩트 행
+          (tab === 'ok' || tab === 'cancel' || tab === 'all')
+            ? (
+              <div className="stq-rows">
+                {items.map((it) => (
+                  <ListRow key={it.id} it={it} busy={busyId === it.id} h={handlersFor(it)} />
+                ))}
+              </div>
+            )
+            : (
+              <div className="stq-grid">
+                {items.map((it) => (
+                  <QueueCard key={it.id} it={it} busy={busyId === it.id} h={handlersFor(it)} />
+                ))}
+              </div>
+            )
         )}
 
         <footer className="stq-foot">
@@ -205,6 +226,14 @@ export default function StaffQueuePage() {
         </footer>
       </div>
 
+      {modal?.kind === 'edit' && (
+        <EditModal
+          item={modal.item}
+          busy={busyId === modal.item.id}
+          onClose={() => setModal(null)}
+          onSubmit={(v) => act({ action: 'edit', id: modal.item.id, ...v }, '수정했습니다 (분할된 진행 건도 동기화)')}
+        />
+      )}
       {modal?.kind === 'modify' && (
         <ModifyModal
           item={modal.item}
@@ -227,7 +256,7 @@ export default function StaffQueuePage() {
   );
 }
 
-function QueueCard({ it, busy, onSend, onModify, onCancel, onConfirmChange, onRemove, onUnsend }) {
+function QueueCard({ it, busy, h }) {
   const [openMsg, setOpenMsg] = useState(false);
   const t = tabOf(it);
   const msg = ((t === 'chgReq' || t === 'cancel') && it.chgMsg && !it.chgMsg.includes('변경일시가 입력되지'))
@@ -262,41 +291,159 @@ function QueueCard({ it, busy, onSend, onModify, onCancel, onConfirmChange, onRe
       )}
 
       <div className="stq-btns">
-        {t === 'wait' && (
-          <>
-            <button className="stq-primary" disabled={busy} onClick={onSend}>📤 전송</button>
-            <button className="stq-b" disabled={busy} onClick={onModify}>✏️ 변경</button>
-            <button className="stq-b warn" disabled={busy} onClick={onCancel}>🚫 취소·노쇼</button>
-            <button className="stq-b bad" disabled={busy} onClick={onRemove}>🗑 삭제</button>
-          </>
-        )}
-        {t === 'sent' && (
-          <>
-            <span className="stq-stuck-hint">
-              봇이 처리하면 <b>예약확정</b>으로 바뀝니다. 여기 오래 머물면
-              예약봇(PC 앱) 실행 여부를 확인하세요.
-            </span>
-            <button className="stq-b" disabled={busy} onClick={onUnsend}>↩ 발송취소 (대기로)</button>
-          </>
-        )}
-        {t === 'ok' && (
-          <>
-            <button className="stq-b" disabled={busy} onClick={onModify}>✏️ 변경</button>
-            <button className="stq-b warn" disabled={busy} onClick={onCancel}>🚫 취소·노쇼</button>
-          </>
-        )}
-        {t === 'chgReq' && it.sent === 0 && (
-          <>
-            <button className="stq-primary" disabled={busy} onClick={onConfirmChange}>✅ 변경확정</button>
-            <button className="stq-b warn" disabled={busy} onClick={onCancel}>🚫 취소·노쇼</button>
-          </>
-        )}
-        {t === 'chgReq' && it.sent === 1 && (
-          <>
-            <span className="stq-stuck-hint">변경 안내 발송 대기 — 봇 처리 후 변경확정 하세요</span>
-            <button className="stq-b" disabled={busy} onClick={onUnsend}>↩ 발송취소</button>
-          </>
-        )}
+        <ActionButtons t={t} it={it} busy={busy} h={h} />
+      </div>
+    </div>
+  );
+}
+
+/* 상태별 액션 — 발송 전(wait)엔 변경·취소가 아니라 **전체 수정·삭제**가 맞다:
+   고객에게 나간 적 없으므로 안내 발송이 필요 없다 (Owner 확정 2026-08-05) */
+function ActionButtons({ t, it, busy, h }) {
+  if (t === 'wait') {
+    return (
+      <>
+        <button className="stq-primary" disabled={busy} onClick={h.send}>📤 전송</button>
+        <button className="stq-b" disabled={busy} onClick={h.edit}>✏️ 수정</button>
+        <button className="stq-b bad" disabled={busy} onClick={h.remove}>🗑 삭제</button>
+      </>
+    );
+  }
+  if (t === 'sent') {
+    return (
+      <>
+        <span className="stq-stuck-hint">
+          봇이 처리하면 <b>예약확정</b>으로 바뀝니다. 여기 오래 머물면
+          예약봇(PC 앱) 실행 여부를 확인하세요.
+        </span>
+        <button className="stq-b" disabled={busy} onClick={h.unsend}>↩ 발송취소 (대기로)</button>
+      </>
+    );
+  }
+  if (t === 'ok') {
+    return (
+      <>
+        <button className="stq-b" disabled={busy} onClick={h.modify}>✏️ 변경</button>
+        <button className="stq-b warn" disabled={busy} onClick={h.cancel}>🚫 취소·노쇼</button>
+      </>
+    );
+  }
+  if (t === 'chgReq' && it.sent === 0) {
+    return (
+      <>
+        <button className="stq-primary" disabled={busy} onClick={h.confirmChange}>✅ 변경확정</button>
+        <button className="stq-b warn" disabled={busy} onClick={h.cancel}>🚫 취소·노쇼</button>
+      </>
+    );
+  }
+  if (t === 'chgReq' && it.sent === 1) {
+    return (
+      <>
+        <span className="stq-stuck-hint">변경 안내 발송 대기 — 봇 처리 후 변경확정 하세요</span>
+        <button className="stq-b" disabled={busy} onClick={h.unsend}>↩ 발송취소</button>
+      </>
+    );
+  }
+  return null;   // cancel(취소·노쇼) — 액션 없음
+}
+
+/* 컴팩트 행 — 확정·진행처럼 "볼 일 많고 액션 적은" 상태용. 클릭하면 발송문 펼침 */
+function ListRow({ it, busy, h }) {
+  const [open, setOpen] = useState(false);
+  const t = tabOf(it);
+  const msg = ((t === 'chgReq' || t === 'cancel') && it.chgMsg && !it.chgMsg.includes('변경일시가 입력되지'))
+    ? it.chgMsg : it.msg;
+  return (
+    <div className={`stq-row-wrap ${busy ? 'busy' : ''}`}>
+      <div className="stq-row" onClick={() => setOpen((v) => !v)}>
+        <span className={`stq-st ${stClass(it.st)}`}>{it.st}</span>
+        <b className="stq-row-store">{it.store || '—'}</b>
+        <span className="stq-row-id">{it.sid}</span>
+        <span className="stq-row-meta">{it.mgr} · {it.ty} · {it.mon}</span>
+        <span className="stq-row-when">
+          🗓 {it.when || '—'}
+          {it.chgWhen && <i className="stq-chg"> 변경 {it.chgWhen}</i>}
+        </span>
+        <span className="stq-row-cnt">
+          {it.pax !== '' ? `${it.pax}명` : '—'} · 小{it.nx === '' ? 0 : it.nx} 大{it.nd === '' ? 0 : it.nd}
+        </span>
+        <span className="stq-row-btns" onClick={(e) => e.stopPropagation()}>
+          <ActionButtons t={t} it={it} busy={busy} h={h} />
+        </span>
+      </div>
+      {open && (
+        <div className="stq-row-detail">
+          {it.infls && <div className="stq-infls">{it.infls}</div>}
+          {it.clientMemo && <div className="stq-cmemo">📨 {it.clientMemo}</div>}
+          {msg && <pre className="stq-row-msg">{msg}</pre>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── 전체 수정 모달 — 발송 전 예약요청 전용 ── */
+function EditModal({ item, busy, onClose, onSubmit }) {
+  const [when, setWhen] = useState(isoToLocal(item.whenRaw));
+  const [pax, setPax] = useState(item.pax === '' ? 1 : item.pax);
+  const [nx, setNx] = useState(item.nx === '' ? 0 : item.nx);
+  const [nd, setNd] = useState(item.nd === '' ? 0 : item.nd);
+  const [mgr, setMgr] = useState(RECRUITERS.includes(item.mgr) ? item.mgr : '');
+  const [type, setType] = useState(['체험', '인플', '기자'].includes(item.ty) ? item.ty : '');
+  const [paxMemo, setPaxMemo] = useState(item.paxMemo || '');
+  const [clientMemo, setClientMemo] = useState(item.clientMemo || '');
+  return (
+    <div className="stq-overlay" onClick={onClose}>
+      <div className="stq-modal" onClick={(e) => e.stopPropagation()}>
+        <h3>✏️ 전체 수정 — {item.store}</h3>
+        <p className="stq-modal-sub">
+          발송 전이라 모든 항목을 자유롭게 고칠 수 있습니다. 예약일시·담당·유형은
+          분할된 진행 건에도 함께 반영됩니다.
+        </p>
+        <label>예약일시 (한국시각)</label>
+        <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
+        <div className="stq-modal-row3">
+          <div>
+            <label>총인원</label>
+            <input type="number" min="1" value={pax} onChange={(e) => setPax(e.target.value)} />
+          </div>
+          <div>
+            <label>小红 건수</label>
+            <input type="number" min="0" value={nx} onChange={(e) => setNx(e.target.value)} />
+          </div>
+          <div>
+            <label>大众 건수</label>
+            <input type="number" min="0" value={nd} onChange={(e) => setNd(e.target.value)} />
+          </div>
+        </div>
+        <label>담당자</label>
+        <div className="stq-cancel-opts stq-hseg">
+          {RECRUITERS.map((m) => (
+            <button key={m} type="button" className={mgr === m ? 'on' : ''} onClick={() => setMgr(m)}>{m}</button>
+          ))}
+        </div>
+        <label>유형</label>
+        <div className="stq-cancel-opts stq-hseg">
+          {['체험', '인플', '기자'].map((tt) => (
+            <button key={tt} type="button" className={type === tt ? 'on' : ''} onClick={() => setType(tt)}>{tt}</button>
+          ))}
+        </div>
+        <label>인원 메모 <span className="stq-opt">(선택)</span></label>
+        <input value={paxMemo} onChange={(e) => setPaxMemo(e.target.value)} />
+        <label>고객 전달 메모 <span className="stq-opt">(선택)</span></label>
+        <textarea rows={2} value={clientMemo} onChange={(e) => setClientMemo(e.target.value)} />
+        <p className="stq-modal-sub" style={{ marginTop: '.6rem' }}>
+          ※ 정산월·매장·인플 변경은 여기서 하지 않습니다 — 정산월은 월 이동 기능(예정),
+          매장·인플이 틀렸으면 삭제 후 다시 입력하세요 (유령 방지).
+        </p>
+        <div className="stq-modal-btns">
+          <button
+            className="stq-primary"
+            disabled={busy}
+            onClick={() => onSubmit({ when, pax, nx, nd, mgr, type, paxMemo, clientMemo })}
+          >{busy ? '저장 중…' : '저장'}</button>
+          <button className="stq-b" disabled={busy} onClick={onClose}>닫기</button>
+        </div>
       </div>
     </div>
   );

@@ -1,0 +1,12 @@
+/* 담당자 공통 메뉴 — staff 팔레트와 동일 토큰 */
+.snav{display:inline-flex;background:#12151D;border:1px solid #2F3646;border-radius:9px;
+  overflow:hidden;flex-shrink:0}
+.snav-it{display:inline-block;padding:.38rem .8rem;font-size:.78rem;font-weight:600;
+  color:#B7BCCB;text-decoration:none;transition:.13s;border-right:1px solid #1C202B}
+.snav-it:last-child{border-right:0}
+.snav-it:hover{color:#E9EBF2;background:#191D28}
+.snav-it.on{background:#2A2340;color:#DDD6FE;font-weight:800;box-shadow:inset 0 -2px 0 #8B5CF6}
+@media (max-width:700px){
+  .snav{width:100%;justify-content:stretch}
+  .snav-it{flex:1;text-align:center;padding:.38rem .3rem}
+}

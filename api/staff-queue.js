@@ -127,7 +127,10 @@ function kstDT(iso) {
 /* ── 목록 ─────────────────────────────────────────────────── */
 async function buildQueue() {
   const months = currentMonths3();
-  const formula = `OR(${months.map((m) => `{정산월}='${escFormula(m)}'`).join(',')})`;
+  // 창 = 정산월 ±1개월 + **처리 대기 상태는 월 무관 전부** —
+  // 과거 월에 남은 예약요청·변경요청이 월 창에 잘려 안 보이던 문제 (Owner 지적 2026-08-05)
+  const formula = `OR(${months.map((m) => `{정산월}='${escFormula(m)}'`).join(',')},`
+    + `{진행상태}='예약요청',{진행상태}='긴급예약',{진행상태}='변경요청')`;
   const recs = await fetchAll(T_ENTRY, { formula, fields: ENTRY_FIELDS });
 
   const items = recs.map((r) => {
@@ -141,6 +144,7 @@ async function buildQueue() {
       mon: one(f['정산월']),
       store: `${one(f['고객명'])} ${one(f['지점명'])}`.trim() || one(f['매장코드_텍스트']),
       when: kstDT(f['예약일시']),
+      whenRaw: f['예약일시'] || '',   // 수정 모달 프리필용 (ISO)
       chgWhen: kstDT(f['변경일시']),
       pax: f['총인원'] ?? '',
       chgPax: f['변경인원'] ?? '',
@@ -174,6 +178,14 @@ async function patchEntry(id, fields) {
     body: JSON.stringify({ fields, typecast: false }),
   });
 }
+async function patchProgressAll(records) {
+  for (let k = 0; k < records.length; k += 10) {
+    await at(`/${encodeURIComponent(T_PROGRESS)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ records: records.slice(k, k + 10), typecast: false }),
+    });
+  }
+}
 
 /* 전송 — 자동발송체크만 켠다. 봇이 다음 폴링에서 집어간다. */
 async function actSend(body) {
@@ -202,6 +214,81 @@ async function actUnsend(body) {
   if (!f['자동발송체크']) return { ok: true, already: 1 };
   await patchEntry(id, { 자동발송체크: false });
   return { ok: true };
+}
+
+/* 전체 수정 — **발송 전 예약요청만.** 고객에게 나간 적 없으므로 임의 수정이 로직상 맞다
+   (Owner 확정 2026-08-05). 발송 후에는 modify(변경요청) 경로를 쓴다.
+   ⚠️ 예약일시를 바꾸면 팀명생성기(formula, MMDD 포함)가 바뀐다 —
+   자식(진행_DB_OLD)을 **구 키로 먼저 찾아놓고** 부모·자식을 함께 고쳐 키 정합을 유지한다. */
+async function actEdit(body) {
+  const id = String(body.id || '');
+  if (!isRec(id)) throw Object.assign(new Error('레코드가 올바르지 않습니다.'), { status: 400 });
+  const f = await getEntry(id);
+  const st = one(f['진행상태']);
+  if (!SENDABLE.includes(st) || f['자동발송체크']) {
+    throw Object.assign(
+      new Error('발송 전 예약요청·긴급예약만 전체 수정할 수 있습니다. 발송된 건은 [변경]을 쓰세요.'),
+      { status: 409 },
+    );
+  }
+
+  const fields = {};
+  const childFields = {};   // 자식에게도 맞춰야 하는 공유 필드
+
+  const when = String(body.when || '');
+  if (when) {
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(when)) {
+      throw Object.assign(new Error('예약일시 형식이 올바르지 않습니다.'), { status: 400 });
+    }
+    const iso = new Date(`${when}:00+09:00`).toISOString();
+    fields['예약일시'] = iso;
+    childFields['예약일시'] = iso;
+  }
+  if (body.pax !== undefined && body.pax !== null && body.pax !== '') {
+    fields['총인원'] = Math.max(1, Math.round(Number(body.pax) || 1));
+  }
+  if (body.nx !== undefined && body.nx !== null && body.nx !== '') {
+    fields['XHS_건수'] = Math.max(0, Math.round(Number(body.nx) || 0));
+  }
+  if (body.nd !== undefined && body.nd !== null && body.nd !== '') {
+    fields['DP_건수'] = Math.max(0, Math.round(Number(body.nd) || 0));
+  }
+  const mgr = String(body.mgr || '');
+  if (mgr) {
+    if (!['HH', 'LH', 'AN', 'FB'].includes(mgr)) {
+      throw Object.assign(new Error('담당자가 올바르지 않습니다.'), { status: 400 });
+    }
+    fields['예약_ID'] = mgr;
+    childFields['예약_ID'] = mgr;
+  }
+  const type = String(body.type || '');
+  if (type) {
+    if (!['체험', '인플', '기자'].includes(type)) {
+      throw Object.assign(new Error('유형이 올바르지 않습니다.'), { status: 400 });
+    }
+    fields['유형'] = type;
+    childFields['유형'] = type;
+  }
+  if (body.paxMemo !== undefined) fields['인원메모'] = String(body.paxMemo || '').trim().slice(0, 200);
+  if (body.clientMemo !== undefined) fields['고객전달메모'] = String(body.clientMemo || '').trim().slice(0, 1000);
+
+  if (!Object.keys(fields).length) return { ok: true, changed: 0 };
+
+  // 자식을 구 키로 먼저 확보 (부모를 고치면 키가 바뀌어 못 찾는다)
+  let children = [];
+  const teamKey = one(f['팀명생성기']);
+  if (teamKey && Object.keys(childFields).length) {
+    children = await fetchAll(T_PROGRESS, {
+      formula: `{팀명생성기}='${escFormula(teamKey)}'`,
+      fields: ['진행상태'],
+    });
+  }
+
+  await patchEntry(id, fields);
+  if (children.length && Object.keys(childFields).length) {
+    await patchProgressAll(children.map((c) => ({ id: c.id, fields: childFields })));
+  }
+  return { ok: true, changed: Object.keys(fields).length, children: children.length };
 }
 
 /* 변경 — 변경일시·변경인원 + 상태 변경요청 + 발송 트리거 */
@@ -317,6 +404,7 @@ export default async function handler(req, res) {
       const map = {
         send: actSend,
         unsend: actUnsend,
+        edit: actEdit,
         modify: actModify,
         confirmChange: actConfirmChange,
         cancel: actCancel,
