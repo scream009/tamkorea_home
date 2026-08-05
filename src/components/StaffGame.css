@@ -5,7 +5,7 @@
   display:flex;align-items:center;gap:.8rem;margin-top:1.6rem;padding:.75rem 1rem;
   background:linear-gradient(135deg,rgba(139,92,246,.14),rgba(168,85,247,.06));
   border:1px solid rgba(139,92,246,.35);border-radius:12px;cursor:pointer;
-  transition:.2s;user-select:none;
+  transition:.2s;-webkit-user-select:none;user-select:none;
 }
 .sgm-banner:hover{border-color:var(--accent,#8B5CF6);transform:translateY(-1px);
   box-shadow:0 6px 20px rgba(139,92,246,.22)}
@@ -45,8 +45,25 @@
 .sgm-stage{position:relative;display:flex;justify-content:center;background:#0E1016;min-height:430px}
 .sgm-canvas{display:block;touch-action:none;cursor:crosshair}
 
+/* ── 동료 위챗 알림 카드 — 버프 발동 시 우상단에서 슬라이드인 ── */
+.sgm-buddy{position:absolute;top:.6rem;right:.6rem;left:auto;max-width:15.5rem;z-index:5;
+  display:flex;gap:.55rem;align-items:flex-start;padding:.55rem .7rem;border-radius:12px;
+  background:rgba(18,21,29,.94);border:1px solid var(--bc,#8B5CF6);
+  box-shadow:0 8px 26px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.03) inset;
+  animation:sgmBuddyIn .32s cubic-bezier(.2,1.4,.4,1),sgmBuddyOut .3s ease-in 3.1s forwards;
+  pointer-events:none}
+@keyframes sgmBuddyIn{from{transform:translate(14px,-8px) scale(.85);opacity:0}to{transform:none;opacity:1}}
+@keyframes sgmBuddyOut{to{transform:translate(10px,-6px) scale(.92);opacity:0}}
+.sgm-buddy-av{font-size:1.6rem;line-height:1;filter:drop-shadow(0 0 6px var(--bc,#8B5CF6))}
+.sgm-buddy-txt{display:flex;flex-direction:column;gap:.15rem;min-width:0}
+.sgm-buddy-txt b{font-size:.78rem;font-weight:800;color:#fff;white-space:nowrap}
+.sgm-buddy-txt b i{font-style:normal;font-weight:600;font-size:.64rem;color:var(--bc,#C4B5FD);margin-left:.3rem}
+.sgm-buddy-txt span{font-size:.7rem;color:#D7DAE6;line-height:1.35}
+.sgm-buddy-txt em{font-style:normal;font-size:.64rem;font-weight:700;color:var(--bc,#FDE68A)}
+
 .sgm-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;gap:.55rem;background:rgba(14,16,22,.82);backdrop-filter:blur(3px);
+  justify-content:center;gap:.55rem;background:rgba(14,16,22,.82);
+  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
   padding:1rem;text-align:center}
 .sgm-overlay h3{margin:0;font-size:1.15rem;font-weight:800;color:var(--ink,#E9EBF2);letter-spacing:-.01em}
 .sgm-sub{margin:0;font-size:.76rem;color:var(--ink2,#B7BCCB)}

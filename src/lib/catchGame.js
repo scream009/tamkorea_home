@@ -3,21 +3,26 @@
  *
  * 섭외자(보라 캐릭터)를 좌우로 움직여 하늘에서 내려오는 인플루언서를 잡는다.
  * 실무의 고통을 그대로 옮겼다:
- *   - 😈 먹튀는 처음엔 착한 인플(🤳)처럼 보이다가 중간에 본색을 드러낸다
+ *   - 😈 먹튀는 착한 인플(🤳)로 위장하다가 **캐치 직전**에 본색을 드러낸다(놀람 연출)
  *   - 👻 노쇼는 좌우로 흔들리며 떨어져 피하기 어렵다 (예측 불가가 컨셉)
+ *   - 😵 길 잃은 인플은 갈지자로 헤매고, 🏃 딴 지점 인플은 중간에 순간이동한다
+ *   - 👑 대형 인플을 잡으면 잭팟 연출(컨페티+배너), 🧧 는 红包雨
+ *   - 15~25초마다 동료(HH·LH·AN·QN·GG) 위챗 알림이 떠서 버프를 준다
+ *   - 배경에는 "사장님이 통역까지 불러놓고 대기 중" 류의 시나리오 멘트가 흐른다
  *   - 놓친 착한 인플은 경쟁사가 데려간다 (콤보 리셋)
  *
  * 중독 공식(조사 반영): 원축 조작 + 짧은 라운드 + 즉시 재시작(Dino/Flappy),
- * 희귀 보상(👑·☕ = 가변 보상), 콤보 배수, 시간 비례 난이도.
- * 게임 주스: 파티클·화면흔들림·히트스톱·플로팅 점수·squash/stretch·시선 추적.
+ * 희귀 보상(👑🧧☕ = 가변 보상), 콤보 배수, 시간 비례 난이도.
+ * 게임 주스: 파티클·화면흔들림·히트스톱·플로팅 점수·squash/stretch·시선 추적·이지백 팝.
  *
- * React 와의 경계: 엔진은 캔버스 안만 그린다. 시작/게임오버 오버레이와
- * 리더보드는 컴포넌트(StaffGame.jsx) 몫이다. onOver(score, stats) 로 알린다.
+ * React 와의 경계: 엔진은 캔버스 안만 그린다. 시작/게임오버 오버레이와 리더보드,
+ * 동료 위챗 카드(DOM)는 컴포넌트(StaffGame.jsx) 몫이다. onOver·onBuddy 로 알린다.
  */
 
 const TAU = Math.PI * 2;
 const H = 430;                 // 논리 높이 고정 — 폭만 컨테이너를 따른다
 const GROUND = 34;             // 바닥 바 높이
+const CATCH_Y = H - GROUND - 46;
 const EMOJI_FONT = '"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
 const SANS = '"Pretendard","Malgun Gothic",system-ui,sans-serif';
 
@@ -28,20 +33,24 @@ const TYPES = {
   late:   { emoji: '⏰', pts: 30,  kind: 'good', ring: '#FBBF24' },
   crown:  { emoji: '👑', pts: 500, kind: 'good', ring: '#F59E0B', fast: 1.55, r: 24 },
   coffee: { emoji: '☕', pts: 0,   kind: 'bonus', ring: '#34D399', slow: 0.8 },
+  hong:   { emoji: '🧧', pts: 88,  kind: 'good', ring: '#EF4444', slow: 0.9 },              // 잡으면 红包雨!!
+  lost:   { emoji: '😵', pts: 120, kind: 'good', ring: '#38BDF8', wander: 1, slow: 0.85 },  // 길을 못 찾는다
+  branch: { emoji: '🏃', pts: 130, kind: 'good', ring: '#FB923C', tele: 1 },                // 다른 지점으로 순간이동
   runner: { emoji: '😈', pts: -150, kind: 'bad', ring: '#F87171', disguise: '🤳' },
   noshow: { emoji: '👻', pts: 0,   kind: 'bad', ring: '#F87171', sway: 1 },
 };
 
-function spawnTable(level) {
+function spawnTable(level, lucky) {
   const bad = Math.min(level - 1, 6);        // 레벨이 오를수록 세상이 험해진다
+  const lk = lucky ? 4 : 1;                  // 好运 버프 — 희귀템 확률 UP
   return [
-    ['selfie', 34], ['video', 15], ['late', 9],
-    ['crown', 3.5], ['coffee', 3],
+    ['selfie', 28], ['video', 13], ['late', 8], ['lost', 6], ['branch', 5],
+    ['crown', 3.5 * lk], ['coffee', 3 * lk], ['hong', 1.8 * lk],
     ['runner', 7 + bad * 1.6], ['noshow', 7 + bad * 1.2],
   ];
 }
-function pickType(level) {
-  const tbl = spawnTable(level);
+function pickType(level, lucky) {
+  const tbl = spawnTable(level, lucky);
   let sum = 0;
   for (const [, w] of tbl) sum += w;
   let roll = Math.random() * sum;
@@ -49,18 +58,49 @@ function pickType(level) {
   return 'selfie';
 }
 
-/* ── 이벤트 문구 — 매번 다른 말이 나와야 안 질린다 ── */
+/* ── 이벤트 문구 — 매번 다른 말이 나와야 안 질린다. 트렌디 중국어 섞음 ── */
 const MSG = {
-  runner: ['먹튀 발생!! 위챗 차단 완료 😤', '제공만 받고 잠수… 또 당했다', '"영상은요?" …읽씹당했다 💔', '먹튀범 프로필까지 삭제됐다'],
-  noshow: ['노쇼… 사장님께 뭐라고 하지 😭', '예약시간에 안 나타났다', '말도 없이 일찍 가버렸다', '전화도 안 받는다…'],
-  crown:  ['대형 인플 섭외!! 오늘 회식 각 🎉', '팔로워 50만!! 사장님 함박웃음', 'VIP 섭외 성공! 월목표 클리어급'],
+  runner: ['먹튀 발생!! 위챗 차단 완료 😤', '제공만 받고 잠수… 또 당했다', '"영상은요?" …읽씹당했다 💔',
+    '먹튀범 프로필까지 삭제됐다', '跑单了! (먹튀닝겐 발생) 프로필도 지웠다 😤', '已读不回… 결국 위챗 차단 완료'],
+  noshow: ['노쇼… 사장님께 뭐라고 하지 😭', '예약시간에 안 나타났다', '말도 없이 일찍 가버렸다',
+    '전화도 안 받는다…', '人跑了 (사람이 사라졌다)… 노쇼 확정 👻'],
+  crown: ['대형 인플 섭외!! 오늘 회식 각 🎉', '팔로워 50만!! 사장님 함박웃음', 'VIP 섭외 성공! 월목표 클리어급',
+    '哇塞!! 대형 인플 섭외 — 绝绝子 ✨', '恭喜发财 🧧 오늘 매출 UP 각'],
   coffee: ['커피 수혈 완료 ☕ 기운이 났다!', '동료가 사준 커피… 눈물난다 ☕'],
-  late:   ['늦었지만… 왔으니 됐다 ⏰', '1시간 지각. 그래도 왔다'],
-  miss:   ['앗, 경쟁사에 뺏겼다! 😱', '놓쳤다… 다른 에이전시로 갔다', 'DM 보냈는데 늦었다…'],
-  dodge:  ['휴, 잘 걸렀다 😮‍💨', '촉이 왔다. 거르길 잘했다'],
+  late: ['늦었지만… 왔으니 됐다 ⏰', '1시간 지각. 그래도 왔다'],
+  hong: ['🧧 红包雨!! 오늘 운수 대통', '红包 받았다 — 팀 회식 기금 적립 💰'],
+  lost: ['간신히 길 찾아줬다 🧭', '지도 보내줬다… 그래도 왔다 😮‍💨', '헤매다 헤매다 결국 도착 😵‍💫'],
+  branch: ['3호점 갔다가 부랴부랴 옴 🏃💦', '지점 헷갈렸다더니 결국 왔다', '딴 매장 갔다가 겨우 귀환 🏃'],
+  miss: ['앗, 경쟁사에 뺏겼다! 😱', '놓쳤다… 다른 에이전시로 갔다', 'DM 보냈는데 늦었다…'],
+  lostMiss: ['결국 길을 잃고 사라졌다… 😭', '헤매다가 포기했다… 😔'],
+  dodge: ['휴, 잘 걸렀다 😮‍💨', '촉이 왔다. 거르길 잘했다'],
 };
-const COMBO_MSG = ['연속 섭외!', '섭외 물올랐다!!', '섭외의 신 강림 ✨', '위챗이 불탄다!!!'];
+const COMBO_MSG = ['연속 섭외!', '섭외 물올랐다!!', '섭외의 신 강림 ✨', '위챗이 불탄다!!!', '666666 콤보 미쳤다', 'yyds 섭외의 신 강림'];
+/** 배경 시나리오 멘트 — 캐치와 무관하게 주기적으로 흐른다 (실무 애환 그대로) */
+const SCENARIO = [
+  '사장님이 통역까지 불러놓고 대기 중… 위챗은 진동벨 수준 📳',
+  '남친 카톡 씹었다고 삐짐ㅠㅠ 지금 그럴 때가 아닌데…',
+  '와 이런 애도 인플이라고? 내가 찍어도 이거보단 낫겠다 🤳',
+  '已读不回… (읽씹) 3시간째 감감무소식 😤',
+  '老板娘 눈빛이 무섭다… 오늘 안에 섭외 각 나와야 하는데',
+  '别拖了! (그만 좀 끌어!) 사장님 발 동동 구르는 중',
+  '위챗 메시지 100개… 하나도 답이 없다 📵',
+];
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+/** 동료 위챗 알림 — 위챗 프로필의 페르소나를 재미있게 응용(실명·사진 그대로 쓰지 않음) */
+const BUDDIES = [
+  { key: 'HH', name: '엘레인', tag: '🌸 만년 통화중', avatar: '🐻',
+    line: '언니 나 지금 콜 중이라ㅠㅠ 대신 좀 캐치해줘! 📞', buff: '콜찬스 · 캐치범위 UP', color: '#F9A8D4' },
+  { key: 'LH', name: '해피맘', tag: '💐 행복충전소', avatar: '💐',
+    line: '오늘도 행복하게 가자~ 🌷 부케 부적 충전!', buff: '부케 부적 · 하트·보너스', color: '#F472B6' },
+  { key: 'AN', name: '프리지아', tag: '🍀 好运 RADIANT', avatar: '🍀',
+    line: '오늘 운세 대박이래! 好运 타임 발동 ✨', buff: '好运 타임 · 희귀템 UP', color: '#34D399' },
+  { key: 'QN', name: '金姐(사장님)', tag: '🕶️ 오늘도 대기중', avatar: '🕶️',
+    line: '이번엔 대형 인플 좀 잡아와~ 💕 (보너스 걸었다)', buff: '사장님 보너스 · 점수 UP', color: '#FDE68A' },
+  { key: 'GG', name: 'Andy 대표', tag: '😎 직접 출동', avatar: '😎',
+    line: '다들 오늘도 고생 많다! 내가 지원 간다 🕶️', buff: '대표 서포트 · 캐치 보너스', color: '#93C5FD' },
+];
 
 /* ── 미니 신디사이저 — 에셋 없이 효과음. 기본은 무음 ── */
 class Synth {
@@ -86,23 +126,26 @@ class Synth {
     o.start(t); o.stop(t + dur + 0.02);
   }
   catch_() { this.beep(660, 0.07, 'square', 0.035, 220); }
-  crown() { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => this.beep(f, 0.09, 'triangle', 0.05), i * 70)); }
+  crown() { [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => this.beep(f, 0.1, 'triangle', 0.05), i * 65)); }
   bad() { this.beep(200, 0.22, 'sawtooth', 0.05, -120); }
   coffee() { this.beep(880, 0.1, 'sine', 0.05, 160); }
   levelup() { [440, 587, 880].forEach((f, i) => setTimeout(() => this.beep(f, 0.08, 'triangle', 0.04), i * 60)); }
+  buddy() { [740, 988].forEach((f, i) => setTimeout(() => this.beep(f, 0.08, 'sine', 0.04), i * 90)); }
   over() { [392, 311, 233].forEach((f, i) => setTimeout(() => this.beep(f, 0.25, 'triangle', 0.05), i * 180)); }
 }
 
 export default class CatchGame {
   /**
    * @param {HTMLCanvasElement} canvas
-   * @param {{ onOver:(score:number, stats:object)=>void, onScore?:(score:number)=>void, highScore?:number }} opts
+   * @param {{ onOver:(score:number, stats:object)=>void, onScore?:(score:number)=>void,
+   *           onBuddy?:(buddy:object)=>void, highScore?:number }} opts
    */
   constructor(canvas, opts) {
     this.cv = canvas;
     this.cx = canvas.getContext('2d');
     this.onOver = opts.onOver;
     this.onScore = opts.onScore || (() => {});
+    this.onBuddy = opts.onBuddy || (() => {});
     this.highScore = opts.highScore || 0;
     this.synth = new Synth();
 
@@ -161,9 +204,11 @@ export default class CatchGame {
     this.spawnIn = 0.7;
     this.items = [];
     this.parts = [];            // 파티클
+    this.rain = [];             // 코스메틱 비 (红包雨·컨페티) — 캐치 판정 없음
     this.floats = [];           // 플로팅 텍스트
     this.toast = null;          // { text, t }
-    this.banner = null;         // 레벨업 배너 { text, t }
+    this.ticker = null;         // 배경 시나리오 멘트 { text, t }
+    this.banner = null;         // 레벨업·잭팟 배너 { text, t, dur, kind }
     this.shake = 0;
     this.flash = null;          // { color, t }
     this.pause = 0;             // 히트스톱(초)
@@ -171,6 +216,12 @@ export default class CatchGame {
     this.pvx = 0;
     this.squash = 0;
     this.overDelay = 0;
+    this.buddyIn = 10 + Math.random() * 6;    // 첫 알림까지
+    this.tickerIn = 5 + Math.random() * 4;    // 첫 시나리오 멘트까지
+    this.buffWide = 0;          // HH — 캐치범위 확대
+    this.buffLucky = 0;         // AN — 희귀템 확률 UP
+    this.buffMult = 0;          // QN — 점수 배수 추가
+    this.buffBonus = 0;         // GG — 캐치당 고정 보너스
     this.stats = { caught: 0, crowns: 0, runners: 0, noshows: 0, maxCombo: 0, time: 0 };
   }
 
@@ -207,7 +258,7 @@ export default class CatchGame {
   }
 
   _spawn() {
-    const name = pickType(this.level);
+    const name = pickType(this.level, this.buffLucky > 0);
     const ty = TYPES[name];
     const r = ty.r || 20;
     const speed = (105 + 21 * (this.level - 1)) * (0.85 + Math.random() * 0.4)
@@ -221,8 +272,28 @@ export default class CatchGame {
       vrot: (Math.random() - 0.5) * 1.6,
       swayP: Math.random() * TAU,
       revealed: !ty.disguise,
-      revealY: H * (0.32 + Math.random() * 0.2),
+      // 먹튀는 캐치 라인 바로 위에서 본색을 드러낸다 — "잡기 직전" 놀람 연출
+      revealY: CATCH_Y - (28 + Math.random() * 55),
+      teleY: H * (0.22 + Math.random() * 0.28),
+      teleported: false,
+      popT: 0,
     });
+  }
+
+  _spawnRain(emoji, n) {
+    for (let i = 0; i < n; i += 1) {
+      this.rain.push({
+        emoji,
+        x: Math.random() * this.w,
+        y: -20 - Math.random() * 140,
+        vy: 90 + Math.random() * 80,
+        vx: (Math.random() - 0.5) * 40,
+        rot: Math.random() * TAU,
+        vrot: (Math.random() - 0.5) * 3,
+        t: 0,
+        life: 1.3 + Math.random() * 0.6,
+      });
+    }
   }
 
   _burst(x, y, color, n = 12, spread = 220) {
@@ -243,6 +314,24 @@ export default class CatchGame {
   _toast(text) { this.toast = { text, t: 0 }; }
 
   _comboMult() { return Math.min(1 + Math.floor(this.combo / 5) * 0.5, 3); }
+
+  /** 동료 위챗 알림 — 랜덤 1명이 버프를 주고 간다 */
+  _fireBuddy() {
+    const b = BUDDIES[Math.floor(Math.random() * BUDDIES.length)];
+    switch (b.key) {
+      case 'HH': this.buffWide = 4.5; break;
+      case 'LH':
+        if (this.hearts < this.maxHearts) { this.hearts += 1; }
+        else { this.score += 80; this._float(this.px, H - GROUND - 70, '+80', '#F9A8D4'); }
+        break;
+      case 'AN': this.buffLucky = 5.5; break;
+      case 'QN': this.buffMult = 5; break;
+      case 'GG': this.buffBonus = 5; break;
+      default: break;
+    }
+    this.synth.buddy();
+    this.onBuddy(b);
+  }
 
   _catch(it) {
     const { ty } = it;
@@ -284,22 +373,41 @@ export default class CatchGame {
     this.combo += 1;
     this.stats.caught += 1;
     this.stats.maxCombo = Math.max(this.stats.maxCombo, this.combo);
-    const mult = this._comboMult();
-    const got = Math.round(ty.pts * mult);
+    const mult = this._comboMult() + (this.buffMult > 0 ? 0.5 : 0);
+    const got = Math.round(ty.pts * mult) + (this.buffBonus > 0 ? 30 : 0);
     this.score += got;
     this._float(it.x, it.y, `+${got}`, it.name === 'crown' ? '#FDE68A' : '#C4B5FD', it.name === 'crown');
+
     if (it.name === 'crown') {
+      // 대형 인플 체험 섭외 — 잭팟! 오늘 회식 각
       this.stats.crowns += 1;
       this._toast(pick(MSG.crown));
-      this._burst(it.x, it.y, '#FDE68A', 22, 300);
-      this.flash = { color: 'rgba(245,158,11,0.12)', t: 0 };
-      this.pause = Math.max(this.pause, 0.09);
+      this.banner = { text: '🎉 잭팟!! 대형 인플 섭외 성공!!', t: 0, dur: 1.8, kind: 'jackpot' };
+      this._burst(it.x, it.y, '#FDE68A', 26, 320);
+      this._spawnRain('🎉', 16);
+      this.flash = { color: 'rgba(245,158,11,0.16)', t: 0 };
+      this.shake = Math.max(this.shake, 0.22);
+      this.pause = Math.max(this.pause, 0.12);
       this.synth.crown();
+    } else if (it.name === 'hong') {
+      this._toast(pick(MSG.hong));
+      this._spawnRain('🧧', 12);
+      this._burst(it.x, it.y, '#EF4444', 14, 240);
+      this.synth.coffee();
+    } else if (it.name === 'lost') {
+      if (Math.random() < 0.7) this._toast(pick(MSG.lost));
+      this._burst(it.x, it.y, ty.ring, 10);
+      this.synth.catch_();
+    } else if (it.name === 'branch') {
+      if (Math.random() < 0.7) this._toast(pick(MSG.branch));
+      this._burst(it.x, it.y, ty.ring, 10);
+      this.synth.catch_();
     } else {
       if (it.name === 'late') this._toast(pick(MSG.late));
       this._burst(it.x, it.y, ty.ring, 10);
       this.synth.catch_();
     }
+
     if (this.combo > 0 && this.combo % 5 === 0) {
       this._float(this.px, H - GROUND - 86, pick(COMBO_MSG), '#DDD6FE', true);
     }
@@ -322,7 +430,7 @@ export default class CatchGame {
     const lv = 1 + Math.floor(this.t / 20);
     if (lv > this.level) {
       this.level = lv;
-      this.banner = { text: `${lv}개월차 섭외자!`, t: 0 };
+      this.banner = { text: `${lv}개월차 섭외자!`, t: 0, dur: 1.4, kind: 'level' };
       this.synth.levelup();
     }
 
@@ -332,6 +440,19 @@ export default class CatchGame {
       this._spawn();
       this.spawnIn = Math.max(0.34, 0.92 - (this.level - 1) * 0.07)
         * (0.75 + Math.random() * 0.5);
+    }
+
+    // 동료 위챗 알림
+    this.buddyIn -= dt;
+    if (this.buddyIn <= 0) {
+      this._fireBuddy();
+      this.buddyIn = 16 + Math.random() * 9;
+    }
+    // 배경 시나리오 멘트
+    this.tickerIn -= dt;
+    if (this.tickerIn <= 0) {
+      this.ticker = { text: pick(SCENARIO), t: 0 };
+      this.tickerIn = 9 + Math.random() * 7;
     }
 
     // 캐릭터 이동 — 키보드 우선, 없으면 포인터 추적
@@ -350,19 +471,35 @@ export default class CatchGame {
     this.px = Math.max(34, Math.min(this.w - 34, this.px));
 
     // 아이템
-    const catchY = H - GROUND - 46;
+    const wide = this.buffWide > 0 ? 20 : 0;
     for (let i = this.items.length - 1; i >= 0; i -= 1) {
       const it = this.items[i];
       it.y += it.vy * dt;
       it.rot += it.vrot * dt;
+      if (it.popT > 0) it.popT = Math.max(0, it.popT - dt);
       if (it.ty.sway) it.x += Math.sin(this.t * 3.1 + it.swayP) * 46 * dt;
+      if (it.ty.wander) it.x += (Math.sin(this.t * 2.3 + it.swayP) + Math.sin(this.t * 5.7 + it.swayP * 2)) * 28 * dt;
+      if (it.ty.tele && !it.teleported && it.y >= it.teleY) {
+        // 딴 지점으로 순간이동 — "3호점 갔다더니" 그 상황
+        it.teleported = true;
+        this._burst(it.x, it.y, '#FB923C', 10, 150);
+        it.x = it.r + 8 + Math.random() * (this.w - (it.r + 8) * 2);
+        this._burst(it.x, it.y, '#FB923C', 10, 150);
+        this._float(it.x, it.y - 20, '휙!', '#FB923C');
+      }
+      it.x = Math.max(it.r + 4, Math.min(this.w - it.r - 4, it.x));
+
       if (!it.revealed && it.y >= it.revealY) {
-        it.revealed = true;                    // 먹튀, 본색을 드러내다
-        this._float(it.x, it.y - 18, '!', '#F87171', true);
+        it.revealed = true;                    // 먹튀, 잡기 직전 본색을 드러내다
+        it.popT = 0.22;
+        this._float(it.x, it.y - 22, '!?', '#F87171', true);
+        this._burst(it.x, it.y, '#F87171', 14, 200);
+        this.shake = Math.max(this.shake, 0.18);
         this.synth.beep(520, 0.09, 'square', 0.045, -180);
       }
+
       // 캐치 판정
-      if (it.y > catchY && it.y < catchY + 52 && Math.abs(it.x - this.px) < 34 + it.r * 0.5) {
+      if (it.y > CATCH_Y && it.y < CATCH_Y + 52 && Math.abs(it.x - this.px) < 34 + wide + it.r * 0.5) {
         this._catch(it);
         this.items.splice(i, 1);
         if (this.state !== 'run') return;
@@ -373,7 +510,7 @@ export default class CatchGame {
         this.items.splice(i, 1);
         if (it.ty.kind === 'good' && it.name !== 'late') {
           this.combo = 0;
-          if (Math.random() < 0.35) this._toast(pick(MSG.miss));
+          if (Math.random() < 0.35) this._toast(it.name === 'lost' ? pick(MSG.lostMiss) : pick(MSG.miss));
           this._burst(it.x, H - GROUND - 6, '#4B5563', 6, 90);
         } else if (it.ty.kind === 'bad' && Math.random() < 0.12) {
           this._toast(pick(MSG.dodge));
@@ -385,9 +522,14 @@ export default class CatchGame {
   _updateFx(dt) {
     this.squash = Math.max(0, this.squash - dt);
     this.shake = Math.max(0, this.shake - dt);
+    this.buffWide = Math.max(0, this.buffWide - dt);
+    this.buffLucky = Math.max(0, this.buffLucky - dt);
+    this.buffMult = Math.max(0, this.buffMult - dt);
+    this.buffBonus = Math.max(0, this.buffBonus - dt);
     if (this.flash && (this.flash.t += dt) > 0.25) this.flash = null;
     if (this.toast && (this.toast.t += dt) > 1.9) this.toast = null;
-    if (this.banner && (this.banner.t += dt) > 1.4) this.banner = null;
+    if (this.ticker && (this.ticker.t += dt) > 3.0) this.ticker = null;
+    if (this.banner && (this.banner.t += dt) > (this.banner.dur || 1.4)) this.banner = null;
     for (let i = this.parts.length - 1; i >= 0; i -= 1) {
       const p = this.parts[i];
       p.t += dt;
@@ -398,6 +540,12 @@ export default class CatchGame {
       const f = this.floats[i];
       f.t += dt;
       if (f.t > 1.1) this.floats.splice(i, 1);
+    }
+    for (let i = this.rain.length - 1; i >= 0; i -= 1) {
+      const r = this.rain[i];
+      r.t += dt;
+      if (r.t > r.life || r.y > H + 30) { this.rain.splice(i, 1); continue; }
+      r.x += r.vx * dt; r.y += r.vy * dt; r.rot += r.vrot * dt;
     }
   }
 
@@ -415,6 +563,13 @@ export default class CatchGame {
     this._updateFx(dt);
     this._draw();
     this.raf = requestAnimationFrame(this._loop);
+  }
+
+  /** ease-out-back — 배너 팝에 살짝 오버슈트를 줘서 "통통 튀는" 느낌 */
+  _easeOutBack(x) {
+    const c1 = 1.70158;
+    const c3 = c1 + 1;
+    return 1 + c3 * (x - 1) ** 3 + c1 * (x - 1) ** 2;
   }
 
   /* ── 그리기 ───────────────────────────────────────────── */
@@ -450,6 +605,20 @@ export default class CatchGame {
     cx.fillStyle = 'rgba(139,92,246,0.35)';
     cx.fillRect(-20, H - GROUND, w + 40, 2);
 
+    // 코스메틱 비 — 红包雨·잭팟 컨페티 (판정 없음, 아이템보다 뒤)
+    for (const r of this.rain) {
+      const a = r.t < 0.15 ? r.t / 0.15 : (r.t > r.life - 0.3 ? Math.max(0, (r.life - r.t) / 0.3) : 1);
+      cx.save();
+      cx.globalAlpha = a;
+      cx.translate(r.x, r.y);
+      cx.rotate(r.rot);
+      cx.font = `18px ${EMOJI_FONT}`;
+      cx.textAlign = 'center';
+      cx.textBaseline = 'middle';
+      cx.fillText(r.emoji, 0, 0);
+      cx.restore();
+    }
+
     // 아이템
     for (const it of this.items) this._drawItem(it);
 
@@ -467,50 +636,84 @@ export default class CatchGame {
     }
     cx.globalAlpha = 1;
 
-    // 플로팅 텍스트
+    // 플로팅 텍스트 — big 은 살짝 흔들리며 발광
     for (const f of this.floats) {
       const a = 1 - f.t / 1.1;
+      cx.save();
       cx.globalAlpha = Math.min(1, a * 1.6);
+      cx.translate(f.x, f.y - f.t * 42);
+      if (f.big) {
+        cx.rotate(Math.sin(f.t * 18) * 0.06);
+        cx.shadowColor = f.color;
+        cx.shadowBlur = 10;
+      }
       cx.font = `${f.big ? 800 : 700} ${f.big ? 20 : 14}px ${SANS}`;
       cx.fillStyle = f.color;
       cx.textAlign = 'center';
-      cx.fillText(f.text, f.x, f.y - f.t * 42);
+      cx.fillText(f.text, 0, 0);
+      cx.restore();
     }
     cx.globalAlpha = 1;
 
-    // 토스트
+    // 토스트 — 캐치 이벤트 반응
     if (this.toast) {
-      const a = this.toast.t < 0.15 ? this.toast.t / 0.15
-        : this.toast.t > 1.5 ? Math.max(0, (1.9 - this.toast.t) / 0.4) : 1;
+      const tt = this.toast.t;
+      const a = tt < 0.15 ? tt / 0.15 : tt > 1.5 ? Math.max(0, (1.9 - tt) / 0.4) : 1;
+      const scale = tt < 0.15 ? 0.85 + 0.15 * (tt / 0.15) : 1;
+      cx.save();
       cx.globalAlpha = a;
+      cx.translate(w / 2, H - GROUND - 118);
+      cx.scale(scale, scale);
       cx.font = `700 13px ${SANS}`;
       const tw = cx.measureText(this.toast.text).width;
-      const bx = w / 2;
-      const by = H - GROUND - 118;
       cx.fillStyle = 'rgba(22,25,34,0.92)';
       cx.strokeStyle = 'rgba(139,92,246,0.5)';
       cx.beginPath();
-      cx.roundRect(bx - tw / 2 - 12, by - 17, tw + 24, 26, 13);
+      cx.roundRect(-tw / 2 - 12, -17, tw + 24, 26, 13);
       cx.fill(); cx.stroke();
       cx.fillStyle = '#E9EBF2';
       cx.textAlign = 'center';
-      cx.fillText(this.toast.text, bx, by + 1);
+      cx.fillText(this.toast.text, 0, 1);
+      cx.restore();
       cx.globalAlpha = 1;
     }
 
-    // 레벨업 배너
-    if (this.banner) {
-      const p = this.banner.t / 1.4;
-      const scale = p < 0.15 ? 0.6 + (p / 0.15) * 0.4 : 1;
-      cx.globalAlpha = p > 0.75 ? (1 - p) / 0.25 : 1;
+    // 배경 시나리오 티커 — 캐치와 무관하게 흐르는 실무 애환 멘트
+    if (this.ticker) {
+      const tt = this.ticker.t;
+      const a = tt < 0.2 ? tt / 0.2 : tt > 2.6 ? Math.max(0, (3.0 - tt) / 0.4) : 1;
       cx.save();
-      cx.translate(w / 2, H * 0.34);
-      cx.scale(scale, scale);
-      cx.font = `800 26px ${SANS}`;
+      cx.globalAlpha = a * 0.94;
+      cx.font = `600 11px ${SANS}`;
+      const tw = cx.measureText(this.ticker.text).width;
+      const bx = w / 2; const by = 60;
+      cx.fillStyle = 'rgba(20,16,30,0.7)';
+      cx.strokeStyle = 'rgba(249,115,22,0.4)';
+      cx.beginPath();
+      cx.roundRect(bx - tw / 2 - 10, by - 14, tw + 20, 22, 11);
+      cx.fill(); cx.stroke();
+      cx.fillStyle = '#FDBA74';
       cx.textAlign = 'center';
-      cx.fillStyle = '#DDD6FE';
-      cx.shadowColor = 'rgba(139,92,246,0.8)';
-      cx.shadowBlur = 18;
+      cx.fillText(this.ticker.text, bx, by + 3);
+      cx.restore();
+      cx.globalAlpha = 1;
+    }
+
+    // 레벨업·잭팟 배너
+    if (this.banner) {
+      const dur = this.banner.dur || 1.4;
+      const p = this.banner.t / dur;
+      const jp = this.banner.kind === 'jackpot';
+      const overshoot = p < 0.2 ? this._easeOutBack(p / 0.2) : 1;
+      cx.save();
+      cx.globalAlpha = p > 0.8 ? Math.max(0, (1 - p) / 0.2) : 1;
+      cx.translate(w / 2, H * (jp ? 0.3 : 0.34));
+      cx.scale(overshoot, overshoot);
+      cx.font = `800 ${jp ? 28 : 26}px ${SANS}`;
+      cx.textAlign = 'center';
+      cx.fillStyle = jp ? '#FDE68A' : '#DDD6FE';
+      cx.shadowColor = jp ? 'rgba(245,158,11,0.9)' : 'rgba(139,92,246,0.8)';
+      cx.shadowBlur = jp ? 26 : 18;
       cx.fillText(this.banner.text, 0, 0);
       cx.restore();
       cx.globalAlpha = 1;
@@ -532,9 +735,11 @@ export default class CatchGame {
     const { cx } = this;
     const showEmoji = it.revealed ? it.ty.emoji : it.ty.disguise;
     const isBadShown = it.revealed && it.ty.kind === 'bad';
+    const pop = it.popT > 0 ? 1 + (it.popT / 0.22) * 0.5 : 1;  // 본색 드러날 때 살짝 부풀었다 가라앉음
     cx.save();
     cx.translate(it.x, it.y);
     cx.rotate(Math.sin(it.rot) * 0.25);
+    cx.scale(pop, pop);
 
     // 버블
     cx.beginPath();
@@ -681,7 +886,7 @@ export default class CatchGame {
 
     // 콤보
     if (this.combo >= 2) {
-      const mult = this._comboMult();
+      const mult = this._comboMult() + (this.buffMult > 0 ? 0.5 : 0);
       cx.font = `800 ${13 + Math.min(this.combo, 12)}px ${SANS}`;
       cx.fillStyle = mult >= 3 ? '#FDE68A' : '#DDD6FE';
       cx.fillText(`COMBO ×${this.combo}${mult > 1 ? ` (점수 ${mult}배)` : ''}`, w / 2, 46);
@@ -697,5 +902,18 @@ export default class CatchGame {
       hx -= 22;
     }
     cx.globalAlpha = 1;
+
+    // 활성 버프 아이콘 — 동료 지원 중임을 한눈에
+    const buffs = [
+      this.buffWide > 0 && '📞',
+      this.buffLucky > 0 && '🍀',
+      this.buffMult > 0 && '💕',
+      this.buffBonus > 0 && '😎',
+    ].filter(Boolean);
+    if (buffs.length) {
+      cx.font = `13px ${EMOJI_FONT}`;
+      cx.textAlign = 'right';
+      cx.fillText(buffs.join(' '), w - 12, 50);
+    }
   }
 }

@@ -20,11 +20,14 @@ const SND_KEY = 'tk_game_snd';
 const LEGEND = [
   { e: '🤳', name: '참한 인플', desc: '+100' },
   { e: '🎬', name: '영상장인', desc: '+150' },
-  { e: '👑', name: '대형 인플', desc: '+500 · 빠름!' },
+  { e: '👑', name: '대형 인플', desc: '+500 · 잭팟 연출!' },
+  { e: '🧧', name: '홍바오', desc: '+88 · 红包雨' },
   { e: '⏰', name: '지각 인플', desc: '+30 (그래도 왔다)' },
+  { e: '😵', name: '길 잃은 인플', desc: '+120 · 갈지자로 헤맨다' },
+  { e: '🏃', name: '딴 지점 인플', desc: '+130 · 중간에 순간이동' },
   { e: '☕', name: '커피', desc: '하트 +1' },
-  { e: '😈', name: '먹튀', desc: '잡으면 하트 -1 · 착한 척 위장!' },
-  { e: '👻', name: '노쇼', desc: '잡으면 하트 -1 · 흔들리며 낙하' },
+  { e: '😈', name: '먹튀', desc: '잡기 직전 본색! 하트 -1' },
+  { e: '👻', name: '노쇼', desc: '하트 -1 · 흔들리며 낙하' },
 ];
 
 function comma(n) { return String(n ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
@@ -41,9 +44,11 @@ export default function StaffGame() {
   const [lb, setLb] = useState(null);          // { who, top, best } | null
   const [lbErr, setLbErr] = useState(false);
   const [result, setResult] = useState(null);  // { score, stats, rank, newBest, saved }
+  const [buddy, setBuddy] = useState(null);     // 동료 위챗 알림 카드 { key,name,tag,avatar,line,buff,color }
   const canvasRef = useRef(null);
   const engineRef = useRef(null);
   const bestRef = useRef(0);
+  const buddyTimerRef = useRef(null);
 
   const loadLb = useCallback(async () => {
     try {
@@ -92,11 +97,21 @@ export default function StaffGame() {
         setUi('over');
         submitRef.current(score, stats);
       },
+      onBuddy: (b) => {
+        clearTimeout(buddyTimerRef.current);
+        setBuddy(b);
+        buddyTimerRef.current = setTimeout(() => setBuddy(null), 3400);
+      },
       highScore: bestRef.current,
     });
     engine.setMuted(!snd);
     engineRef.current = engine;
-    return () => { engine.destroy(); engineRef.current = null; };
+    return () => {
+      engine.destroy();
+      engineRef.current = null;
+      clearTimeout(buddyTimerRef.current);
+      setBuddy(null);
+    };
     // snd 는 아래 별도 effect 로 반영 — 토글마다 엔진을 다시 만들지 않는다
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -172,6 +187,17 @@ export default function StaffGame() {
         <div className="sgm-stage">
           <canvas ref={canvasRef} className="sgm-canvas" />
 
+          {buddy && (
+            <div className="sgm-buddy" style={{ '--bc': buddy.color }} key={buddy.key + buddy.line}>
+              <span className="sgm-buddy-av">{buddy.avatar}</span>
+              <div className="sgm-buddy-txt">
+                <b>{buddy.name} <i>{buddy.tag}</i></b>
+                <span>{buddy.line}</span>
+                <em>✨ {buddy.buff}</em>
+              </div>
+            </div>
+          )}
+
           {ui === 'idle' && (
             <div className="sgm-overlay">
               <h3>하늘에서 인플루언서가 내려온다!</h3>
@@ -187,6 +213,7 @@ export default function StaffGame() {
               </div>
               <button type="button" className="sgm-start" onClick={start}>게임 시작 (Space)</button>
               <p className="sgm-ctl">← → 또는 마우스·터치로 이동 · 5연속 캐치마다 점수 배수 UP</p>
+              <p className="sgm-ctl">가끔 동료(HH·LH·AN·QN·GG) 위챗 알림이 뜨면 버프 찬스! 👑 대형 인플은 잭팟 연출</p>
             </div>
           )}
 
