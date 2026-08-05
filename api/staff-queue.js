@@ -133,7 +133,8 @@ async function buildQueue() {
   // 방문 전이면 변경·취소 대상이므로 놓치면 안 된다.
   const formula = `OR(${months.map((m) => `{정산월}='${escFormula(m)}'`).join(',')},`
     + `{진행상태}='예약요청',{진행상태}='긴급예약',{진행상태}='변경요청',`
-    + `IS_AFTER({예약일시},NOW()))`;
+    + `IS_AFTER({예약일시},NOW()),`
+    + `{자동발송체크}=TRUE())`;   // 봇 대기(체크된 것)는 상태·월 무관 전부 — 봇 차례 탭의 완전성
   const recs = await fetchAll(T_ENTRY, { formula, fields: ENTRY_FIELDS });
 
   const items = recs.map((r) => {

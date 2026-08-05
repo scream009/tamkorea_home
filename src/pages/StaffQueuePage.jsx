@@ -17,18 +17,20 @@ const RECRUITERS = ['HH', 'LH', 'AN', 'FB'];
 const SENDABLE = ['예약요청', '긴급예약'];
 const CANCELLED = ['취소_방문자', '취소_고객사', '노쇼'];
 
+/* 분류 기준 = 상태가 아니라 **지금 누구 차례인가** (Owner 협의 2026-08-05).
+   내 차례: 미체크 & 사람 액션 필요 (전송 안 누른 예약 + 봇이 차단·회수한 변경요청) — 실수① "까먹음"
+   봇 대기: 자동발송체크 켜진 전부 (예약·변경·취소·노쇼 무관) — 실수② "봇 에러를 모름" */
 const TABS = [
-  { key: 'wait', label: '📤 발송대기' },
-  { key: 'sent', label: '⏳ 봇 처리중' },
-  { key: 'chgReq', label: '🔄 변경요청' },
+  { key: 'todo', label: '🖐 내 차례' },
+  { key: 'bot', label: '🤖 봇 대기' },
   { key: 'ok', label: '✅ 확정·진행' },
   { key: 'cancel', label: '🚫 취소·노쇼' },
   { key: 'all', label: '전체' },
 ];
 
 function tabOf(it) {
-  if (SENDABLE.includes(it.st)) return it.sent ? 'sent' : 'wait';
-  if (it.st === '변경요청') return 'chgReq';
+  if (it.sent) return 'bot';                                       // 체크됨 = 봇 차례
+  if (SENDABLE.includes(it.st) || it.st === '변경요청') return 'todo'; // 사람 차례
   if (CANCELLED.includes(it.st)) return 'cancel';
   return 'ok';   // 예약확정·변경확정·촬영완료·업로드완료·송부완료 등 진행 계열
 }
@@ -54,7 +56,7 @@ export default function StaffQueuePage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState('wait');
+  const [tab, setTab] = useState('todo');
   const [mgr, setMgr] = useState('');
   const [search, setSearch] = useState('');
   const [busyId, setBusyId] = useState('');
@@ -77,6 +79,15 @@ export default function StaffQueuePage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // 60초 자동 새로고침 — 봇 대기가 안 빠지는 걸(봇 에러) 사람이 바로 보게.
+  // 탭이 백그라운드면 쉰다.
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (document.visibilityState === 'visible') load();
+    }, 60000);
+    return () => clearInterval(t);
+  }, [load]);
 
   function flash(msg) {
     setToast(msg);
@@ -104,7 +115,7 @@ export default function StaffQueuePage() {
   }, [load]);
 
   const counts = useMemo(() => {
-    const c = { wait: 0, sent: 0, chgReq: 0, ok: 0, cancel: 0, all: 0 };
+    const c = { todo: 0, bot: 0, ok: 0, cancel: 0, all: 0 };
     (data?.items || []).forEach((it) => {
       if (mgr && it.mgr !== mgr) return;
       c[tabOf(it)] += 1;
@@ -223,7 +234,7 @@ export default function StaffQueuePage() {
         )}
 
         {!loading && !error && items.length > 0 && (
-          // 발송·처리 대기 탭 = 발송문 중심 카드 / 확정·진행·취소·전체 = 컴팩트 행
+          // 내 차례·봇 대기 = 발송문 중심 카드 / 확정·진행·취소·전체 = 컴팩트 행
           (tab === 'ok' || tab === 'cancel' || tab === 'all')
             ? (
               <div className="stq-rows">
@@ -242,8 +253,10 @@ export default function StaffQueuePage() {
         )}
 
         <footer className="stq-foot">
-          전송 = 자동발송체크 ON → 예약봇이 카톡 발송 + 진행 건 캐스케이드 · 변경 = 변경일시 필수(없으면 봇이 차단) ·
-          취소·노쇼는 여기서만 (고객 안내 발송 포함) · 삭제 = 발송 전 예약요청만
+          🖐 내 차례 = 사람이 눌러야 할 것 (미발송 예약 + 차단·회수된 변경요청) ·
+          🤖 봇 대기 = 자동발송체크 켜진 전부, 오래 머물면 예약봇 확인 ·
+          취소·노쇼 안내도 발송 전엔 봇 대기에 보임 · 60초마다 자동 새로고침 ·
+          삭제 = 발송 전 예약요청만
         </footer>
       </div>
 
@@ -277,13 +290,19 @@ export default function StaffQueuePage() {
   );
 }
 
+function msgOf(it) {
+  // 변경·취소·노쇼는 변경메시지 우선 (봇과 같은 규칙), 차단 경고문이면 예약메시지 폴백
+  return ((it.st === '변경요청' || CANCELLED.includes(it.st))
+    && it.chgMsg && !it.chgMsg.includes('변경일시가 입력되지'))
+    ? it.chgMsg : it.msg;
+}
+
 function QueueCard({ it, busy, h }) {
   const [openMsg, setOpenMsg] = useState(false);
   const t = tabOf(it);
-  const msg = ((t === 'chgReq' || t === 'cancel') && it.chgMsg && !it.chgMsg.includes('변경일시가 입력되지'))
-    ? it.chgMsg : it.msg;
+  const msg = msgOf(it);
   return (
-    <div className={`stq-card ${busy ? 'busy' : ''} ${t === 'sent' ? 'stuck' : ''}`}>
+    <div className={`stq-card ${busy ? 'busy' : ''} ${t === 'bot' ? 'stuck' : ''}`}>
       <div className="stq-card-h">
         <b>{it.store || '—'}</b>
         <span className={`stq-st ${stClass(it.st)}`}>{it.st}</span>
@@ -317,10 +336,10 @@ function QueueCard({ it, busy, h }) {
   );
 }
 
-/* 상태별 액션 — 발송 전(wait)엔 변경·취소가 아니라 **전체 수정·삭제**가 맞다:
-   고객에게 나간 적 없으므로 안내 발송이 필요 없다 (Owner 확정 2026-08-05) */
+/* 상태별 액션 — 분류는 "누구 차례"(todo/bot), 버튼은 진행상태로 세분한다.
+   발송 전 예약엔 변경·취소가 아니라 전체 수정·삭제 (고객에게 나간 적 없음 — Owner 확정) */
 function ActionButtons({ t, it, busy, h }) {
-  if (t === 'wait') {
+  if (t === 'todo' && SENDABLE.includes(it.st)) {
     return (
       <>
         <button className="stq-primary" disabled={busy} onClick={h.send}>📤 전송</button>
@@ -330,14 +349,33 @@ function ActionButtons({ t, it, busy, h }) {
       </>
     );
   }
-  if (t === 'sent') {
+  if (t === 'todo' && it.st === '변경요청') {
     return (
       <>
         <span className="stq-stuck-hint">
-          봇이 처리하면 <b>예약확정</b>으로 바뀝니다. 여기 오래 머물면
-          예약봇(PC 앱) 실행 여부를 확인하세요.
+          봇이 차단(변경일시 없음)했거나 발송취소된 변경요청 — 확인이 필요합니다
         </span>
-        <button className="stq-b" disabled={busy} onClick={h.unsend}>↩ 발송취소 (대기로)</button>
+        <button className="stq-b" disabled={busy} onClick={h.modify}>✏️ 변경 다시 요청</button>
+        <button className="stq-b" disabled={busy} onClick={h.confirmChange}>✅ 발송 없이 확정</button>
+        <button className="stq-b warn" disabled={busy} onClick={h.cancel}>🚫 취소·노쇼</button>
+      </>
+    );
+  }
+  if (t === 'bot') {
+    const canUnsend = SENDABLE.includes(it.st) || it.st === '변경요청';
+    return (
+      <>
+        <span className="stq-stuck-hint">
+          {it.st === '변경요청'
+            ? <>봇이 변경 안내를 발송하면 <b>자동으로 변경확정</b>까지 처리합니다.</>
+            : CANCELLED.includes(it.st)
+              ? <>봇이 취소·노쇼 안내를 발송합니다.</>
+              : <>봇이 처리하면 <b>예약확정</b>으로 바뀝니다.</>}
+          {' '}여기 오래 머물면 예약봇(PC 앱) 실행 여부를 확인하세요.
+        </span>
+        {canUnsend && (
+          <button className="stq-b" disabled={busy} onClick={h.unsend}>↩ 발송취소 (대기로)</button>
+        )}
       </>
     );
   }
@@ -350,33 +388,14 @@ function ActionButtons({ t, it, busy, h }) {
       </>
     );
   }
-  if (t === 'chgReq' && it.sent === 0) {
-    return (
-      <>
-        <button className="stq-primary" disabled={busy} onClick={h.confirmChange}>✅ 변경확정</button>
-        <button className="stq-b warn" disabled={busy} onClick={h.cancel}>🚫 취소·노쇼</button>
-      </>
-    );
-  }
-  if (t === 'chgReq' && it.sent === 1) {
-    return (
-      <>
-        <span className="stq-stuck-hint">
-          변경 안내 발송 대기 — 봇이 발송하면 <b>자동으로 변경확정</b>까지 처리합니다
-        </span>
-        <button className="stq-b" disabled={busy} onClick={h.unsend}>↩ 발송취소</button>
-      </>
-    );
-  }
-  return null;   // cancel(취소·노쇼) — 액션 없음
+  return null;   // cancel(취소·노쇼 완료) — 액션 없음
 }
 
 /* 컴팩트 행 — 확정·진행처럼 "볼 일 많고 액션 적은" 상태용. 클릭하면 발송문 펼침 */
 function ListRow({ it, busy, h }) {
   const [open, setOpen] = useState(false);
   const t = tabOf(it);
-  const msg = ((t === 'chgReq' || t === 'cancel') && it.chgMsg && !it.chgMsg.includes('변경일시가 입력되지'))
-    ? it.chgMsg : it.msg;
+  const msg = msgOf(it);
   return (
     <div className={`stq-row-wrap ${busy ? 'busy' : ''}`}>
       <div className="stq-row" onClick={() => setOpen((v) => !v)}>
