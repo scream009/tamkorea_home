@@ -156,32 +156,32 @@ export default function AdminStoresPage() {
   const opts = data?.options;
 
   return (
-    <div className="ads-root">
-      <header className="ads-head">
-        <h1>🏪 고객사 등록 <span className="ads-sub">CS_DB · 계약·목표</span></h1>
-        <button className="ads-primary" onClick={pickNew}>＋ 신규 고객사</button>
+    <div className="cst-root">
+      <header className="cst-head">
+        <h1>🏪 고객사 등록 <span className="cst-sub">CS_DB · 계약·목표</span></h1>
+        <button className="cst-primary" onClick={pickNew}>＋ 신규 고객사</button>
       </header>
 
-      {error && <div className="ads-error">{error}</div>}
+      {error && <div className="cst-error">{error}</div>}
 
-      <div className="ads-grid">
+      <div className="cst-grid">
         {/* ── 좌: 목록 ── */}
-        <aside className="ads-list">
-          <div className="ads-tools">
+        <aside className="cst-list">
+          <div className="cst-tools">
             <input placeholder="고객사·중문명 검색" value={q} onChange={(e) => setQ(e.target.value)} />
-            <div className="ads-seg">
+            <div className="cst-seg">
               {[['use', '사용'], ['off', '미사용'], ['all', '전체']].map(([v, l]) => (
                 <button key={v} className={useFilter === v ? 'on' : ''} onClick={() => setUseFilter(v)}>{l}</button>
               ))}
             </div>
-            <span className="ads-cnt">{list.length}곳</span>
+            <span className="cst-cnt">{list.length}곳</span>
           </div>
-          <div className="ads-rows">
-            {!data && !error && <div className="ads-empty">불러오는 중…</div>}
+          <div className="cst-rows">
+            {!data && !error && <div className="cst-empty">불러오는 중…</div>}
             {list.map((s) => (
               <button
                 key={s.id}
-                className={`ads-row ${sel === s.id ? 'on' : ''} ${s.use ? '' : 'off'}`}
+                className={`cst-row ${sel === s.id ? 'on' : ''} ${s.use ? '' : 'off'}`}
                 onClick={() => pick(s)}
               >
                 <b>{s.client} {s.branch}</b>
@@ -197,7 +197,7 @@ export default function AdminStoresPage() {
         </aside>
 
         {/* ── 우: 폼 ── */}
-        <section className="ads-form">
+        <section className="cst-form">
           <h2>
             {sel === null ? '왼쪽에서 고객사를 선택하거나 신규 등록'
               : sel === '' ? '신규 고객사 등록'
@@ -205,7 +205,7 @@ export default function AdminStoresPage() {
           </h2>
 
           {sel !== null && (
-            <div className="ads-tabs">
+            <div className="cst-tabs">
               <button className={tab === 'info' ? 'on' : ''} onClick={() => setTab('info')}>
                 🏪 고객사 정보
               </button>
@@ -222,20 +222,20 @@ export default function AdminStoresPage() {
 
           {sel !== null && tab === 'info' && (
             <>
-              <div className="ads-sec">기본 정보</div>
-              <div className="ads-r2">
+              <div className="cst-sec">기본 정보</div>
+              <div className="cst-r2">
                 <label>고객사명 <b className="rq">*</b><input value={form.client} onChange={set('client')} /></label>
                 <label>지점명 <b className="rq">*</b><input value={form.branch} onChange={set('branch')} /></label>
               </div>
-              <div className="ads-r2">
+              <div className="cst-r2">
                 <label>중문명<input value={form.cn} onChange={set('cn')} placeholder="샤오홍슈 노출명" /></label>
-                <label className="ads-check">
+                <label className="cst-check">
                   <input type="checkbox" checked={!!form.use}
                     onChange={(e) => setForm((f) => ({ ...f, use: e.target.checked ? 1 : 0 }))} />
                   사용 (해제 시 담당자 매장 목록 하단으로)
                 </label>
               </div>
-              <div className="ads-r3">
+              <div className="cst-r3">
                 <label>분류
                   <select value={form.cls} onChange={set('cls')}>
                     <option value="">—</option>
@@ -256,17 +256,17 @@ export default function AdminStoresPage() {
                 </label>
               </div>
 
-              <div className="ads-sec">운영 정보 <span className="ads-hint">— 담당자 예약폼·ⓘ카드에 그대로 뜹니다</span></div>
-              <div className="ads-r2">
+              <div className="cst-sec">운영 정보 <span className="cst-hint">— 담당자 예약폼·ⓘ카드에 그대로 뜹니다</span></div>
+              <div className="cst-r2">
                 <label>영업시간 <b className="rq">*</b><input value={form.open} onChange={set('open')} placeholder="10:00 - 21:00" /></label>
                 <label>브레이크타임 <b className="rq">*</b><input value={form.brk} onChange={set('brk')} placeholder="없으면 '-'" /></label>
               </div>
-              <div className="ads-r2">
+              <div className="cst-r2">
                 <label>피크타임<input value={form.peak} onChange={set('peak')} /></label>
                 <label>방문가능시간<input value={form.visitOk} onChange={set('visitOk')} /></label>
               </div>
-              <label className="ads-block">정기휴무
-                <div className="ads-days">
+              <label className="cst-block">정기휴무
+                <div className="cst-days">
                   {opts?.rest.map((d) => (
                     <button
                       key={d}
@@ -281,17 +281,17 @@ export default function AdminStoresPage() {
                 </div>
               </label>
 
-              <div className="ads-sec">섭외 정보</div>
-              <label className="ads-block">제공내역<textarea rows={2} value={form.give} onChange={set('give')} /></label>
-              <label className="ads-block">촬영대본 (拍摄剧本)<textarea rows={4} value={form.script} onChange={set('script')} /></label>
-              <label className="ads-block">섭외주의사항<textarea rows={2} value={form.warn} onChange={set('warn')} /></label>
-              <div className="ads-r2">
+              <div className="cst-sec">섭외 정보</div>
+              <label className="cst-block">제공내역<textarea rows={2} value={form.give} onChange={set('give')} /></label>
+              <label className="cst-block">촬영대본 (拍摄剧本)<textarea rows={4} value={form.script} onChange={set('script')} /></label>
+              <label className="cst-block">섭외주의사항<textarea rows={2} value={form.warn} onChange={set('warn')} /></label>
+              <div className="cst-r2">
                 <label>톡방명<input value={form.talkName} onChange={set('talkName')} /></label>
                 <label>톡방링크<input value={form.talkLink} onChange={set('talkLink')} placeholder="https://…" /></label>
               </div>
-              <label className="ads-block">비고<input value={form.note} onChange={set('note')} /></label>
+              <label className="cst-block">비고<input value={form.note} onChange={set('note')} /></label>
 
-              <button className="ads-primary ads-save" disabled={busy} onClick={saveStore}>
+              <button className="cst-primary cst-save" disabled={busy} onClick={saveStore}>
                 {busy ? '저장 중…' : sel ? '고객사 정보 저장' : '고객사 등록'}
               </button>
             </>
@@ -302,10 +302,10 @@ export default function AdminStoresPage() {
             <>
               {sel && (
                 <>
-                  <div className="ads-sec">계약·목표 <span className="ads-hint">— Campaign_DB. 있으면 수정(원본·이력 보존), 없으면 생성</span></div>
-                  {contracts === null && <div className="ads-empty">계약 불러오는 중…</div>}
+                  <div className="cst-sec">계약·목표 <span className="cst-hint">— Campaign_DB. 있으면 수정(원본·이력 보존), 없으면 생성</span></div>
+                  {contracts === null && <div className="cst-empty">계약 불러오는 중…</div>}
                   {contracts && contracts.length > 0 && (
-                    <table className="ads-ctable">
+                    <table className="cst-ctable">
                       <thead>
                         <tr><th>계약월</th><th>인플</th><th>체험</th><th>기자</th><th className="num">총예산</th><th>최근 수정</th></tr>
                       </thead>
@@ -319,7 +319,7 @@ export default function AdminStoresPage() {
                             }))}
                             title="클릭하면 아래 폼에 불러옵니다"
                           >
-                            <td>{c.month}{!c.ct && <em className="ads-ghost-tag">유형없음</em>}</td>
+                            <td>{c.month}{!c.ct && <em className="cst-ghost-tag">유형없음</em>}</td>
                             <td>{c.infl} <s>/{c.inflVis}</s></td>
                             <td>{c.exp} <s>/{c.expVis}</s></td>
                             <td>{c.rep} <s>/{c.repDone}</s></td>
@@ -331,10 +331,10 @@ export default function AdminStoresPage() {
                     </table>
                   )}
                   {contracts && contracts.length === 0 && (
-                    <div className="ads-empty">계약이 없습니다 — 아래에서 첫 계약을 등록하세요.</div>
+                    <div className="cst-empty">계약이 없습니다 — 아래에서 첫 계약을 등록하세요.</div>
                   )}
 
-                  <div className="ads-r3">
+                  <div className="cst-r3">
                     <label>계약월 <b className="rq">*</b>
                       <select value={cForm.month} onChange={(e) => setCForm((f) => ({ ...f, month: e.target.value }))}>
                         {monthChoices().map((m) => <option key={m} value={m}>{m}</option>)}
@@ -351,7 +351,7 @@ export default function AdminStoresPage() {
                         onChange={(e) => setCForm((f) => ({ ...f, budget: e.target.value }))} />
                     </label>
                   </div>
-                  <div className="ads-r3">
+                  <div className="cst-r3">
                     {[['infl', '인플 목표'], ['exp', '체험 목표'], ['rep', '기자 목표']].map(([k, l]) => (
                       <label key={k}>{l}
                         <input type="number" min="0" value={cForm[k]}
@@ -359,13 +359,13 @@ export default function AdminStoresPage() {
                       </label>
                     ))}
                   </div>
-                  <label className="ads-block">메모 (이력에 남음)
+                  <label className="cst-block">메모 (이력에 남음)
                     <input value={cForm.memo} onChange={(e) => setCForm((f) => ({ ...f, memo: e.target.value }))} />
                   </label>
-                  <button className="ads-primary" disabled={cBusy || !cForm.by} onClick={saveContract}>
+                  <button className="cst-primary" disabled={cBusy || !cForm.by} onClick={saveContract}>
                     {cBusy ? '저장 중…' : '계약·목표 저장'}
                   </button>
-                  {!cForm.by && <span className="ads-hint"> 수정자를 선택해야 저장됩니다</span>}
+                  {!cForm.by && <span className="cst-hint"> 수정자를 선택해야 저장됩니다</span>}
                 </>
               )}
             </>
@@ -373,7 +373,7 @@ export default function AdminStoresPage() {
         </section>
       </div>
 
-      {toast && <div className="ads-toast">{toast}</div>}
+      {toast && <div className="cst-toast">{toast}</div>}
     </div>
   );
 }
