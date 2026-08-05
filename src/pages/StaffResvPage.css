@@ -128,6 +128,28 @@ textarea.srv-input{resize:vertical}
 .srv-sug{position:absolute;top:.35rem;right:.4rem;font-style:normal;font-size:.58rem;font-weight:700;
   color:var(--accent2);border:1px solid rgba(139,92,246,.5);border-radius:999px;padding:.03rem .35rem}
 
+/* ── 신규 인플 모달 ── */
+.srv-nav{margin-left:auto;display:flex;gap:.4rem}
+.srv-newinfl{margin-left:.5rem;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.45);
+  border-radius:7px;color:#DDD6FE;font-size:.66rem;font-weight:700;padding:.12rem .5rem;
+  cursor:pointer;font-family:inherit;transition:.13s}
+.srv-newinfl:hover{background:rgba(139,92,246,.3)}
+.srv-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);
+  display:flex;align-items:center;justify-content:center;z-index:50;padding:1rem}
+.srv-modal{width:100%;max-width:26rem;max-height:90vh;overflow-y:auto;background:#161927;
+  border:1px solid rgba(139,92,246,.5);border-radius:14px;padding:1.1rem 1.2rem;
+  box-shadow:0 24px 60px rgba(0,0,0,.6)}
+.srv-modal h3{margin:0 0 .3rem;font-size:.95rem}
+.srv-modal-sub{margin:0 0 .8rem;font-size:.72rem;color:var(--muted)}
+.srv-modal label{display:block;font-size:.7rem;font-weight:700;color:var(--ink2);margin:.55rem 0 .25rem}
+.srv-modal input{width:100%;box-sizing:border-box;background:#0E1119;border:1px solid var(--line2);
+  border-radius:8px;color:var(--ink);padding:.4rem .55rem;font-size:.8rem;font-family:inherit;outline:none}
+.srv-modal input:focus{border-color:var(--accent)}
+.srv-modal-row{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+.srv-seg-sm button{padding:.3rem .55rem;font-size:.74rem}
+.srv-modal-btns{display:flex;gap:.45rem;margin-top:1rem}
+.srv-dup{margin-top:.4rem;display:inline-block;border-color:rgba(16,185,129,.5);color:#6EE7B7}
+
 /* ── 완료 화면 ── */
 .srv-done{background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.45);border-radius:14px;
   padding:1.4rem 1.5rem;max-width:34rem;margin:1.5rem auto}

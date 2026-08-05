@@ -75,6 +75,7 @@
   border:1px solid var(--line2);border-radius:999px;padding:.06rem .42rem;white-space:nowrap}
 .stb-chip-p{color:#6EE7B7;border-color:rgba(16,185,129,.45);background:rgba(16,185,129,.12)}
 .stb-chip-add{color:#93C5FD;border-color:rgba(59,130,246,.5);background:rgba(59,130,246,.12);font-weight:700}
+.stb-chip-chk{color:#FDE68A;border-color:rgba(234,179,8,.5);background:rgba(234,179,8,.12);font-weight:700;cursor:help}
 .stb-info-btn{background:transparent;border:0;color:var(--muted);font-size:.85rem;cursor:pointer;
   padding:0 .1rem;line-height:1;transition:.13s;font-family:inherit}
 .stb-info-btn:hover,.stb-info-btn.on{color:var(--accent2)}

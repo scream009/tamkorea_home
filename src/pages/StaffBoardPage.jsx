@@ -344,6 +344,7 @@ export default function StaffBoardPage() {
               <button className={sort === 'name' ? 'on' : ''} onClick={() => setSort('name')}>이름순</button>
             </div>
             <Link className="stb-newbtn" to="/staff/new">＋ 신규예약</Link>
+            <Link className="stb-ghost" to="/staff/queue">발송 큐</Link>
             <button className="stb-ghost" onClick={() => load(month)} title="새로고침">⟳</button>
             <button className="stb-ghost" onClick={logout} title="키 지우고 나가기">나가기</button>
           </div>
@@ -420,6 +421,12 @@ export default function StaffBoardPage() {
                         >＋</Link>
                       )}
                       {cell.add === 1 && <span className="stb-chip stb-chip-add" title="목표량 넘어도 추가 섭외 가능">추가OK</span>}
+                      {(cell.chk === 1 || cell.notice) && (
+                        <span
+                          className="stb-chip stb-chip-chk"
+                          title={cell.notice ? `관리자 전달사항:\n${cell.notice}` : '관리자 확인요망'}
+                        >🔔{cell.notice ? ' 전달' : ' 확인'}</span>
+                      )}
                       {r.p && <span className="stb-chip stb-chip-p">{r.p}</span>}
                     </div>
 
@@ -613,6 +620,7 @@ function StoreInfo({ row, cell, onClose }) {
             <InfoItem k="섭외주의" v={i.warn} wide warn />
             <InfoItem k="비고" v={i.note} wide />
             {cell?.memo && <InfoItem k="계약비고" v={cell.memo} wide />}
+            {cell?.notice && <InfoItem k="🔔 전달사항" v={cell.notice} wide warn />}
           </div>
         )}
     </div>

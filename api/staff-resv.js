@@ -273,6 +273,11 @@ async function createEntry(body) {
   if (paxMemo) fields['인원메모'] = paxMemo;
   const clientMemo = String(body.clientMemo || '').trim().slice(0, 1000);
   if (clientMemo) fields['고객전달메모'] = clientMemo;
+  // 서귀포잠수함처럼 동행자 영문이름이 필수인 매장이 있다 — 양식 "Abc + Def + Ghi"
+  const engNames = String(body.engNames || '').trim().slice(0, 500);
+  if (engNames) fields['영문이름'] = engNames;
+  const note = String(body.note || '').trim().slice(0, 300);
+  if (note) fields['비고'] = note;
 
   const created = await at(`/${encodeURIComponent(T_ENTRY)}`, {
     method: 'POST',
@@ -280,6 +285,57 @@ async function createEntry(body) {
   });
 
   return { ok: true, id: created.records[0].id, month, store: guard.info.name };
+}
+
+/* ── 신규 인플 등록 — 예약입력 중 미등록 인플을 그 자리에서 만든다 ──
+   Softr ④신규인플 폼과 같은 대상(INFL_DB). XHS_ID 중복은 거부한다 (마스터 중복 방지). */
+async function createInfl(body) {
+  const xid = String(body.xid || '').trim().slice(0, 100);
+  if (!xid) throw Object.assign(new Error('小红书账号(XHS_ID)을 입력하세요.'), { status: 400 });
+
+  const mgr = String(body.mgr || '');
+  if (!MGRS.includes(mgr)) throw Object.assign(new Error('섭외_ID를 선택하세요.'), { status: 400 });
+
+  const link = String(body.link || '').trim().slice(0, 500);
+  if (!/^https?:\/\//.test(link)) {
+    throw Object.assign(new Error('小红书链接은 http(s):// 로 시작해야 합니다.'), { status: 400 });
+  }
+  const pal = Math.max(0, Math.round(Number(body.pal) || 0));
+  if (!pal) throw Object.assign(new Error('小红书粉丝(팔로워 수)를 입력하세요.'), { status: 400 });
+
+  // 중복 방지 — 같은 XHS_ID 가 이미 있으면 그 레코드를 알려준다
+  const dup = await fetchAll(T_INFL, {
+    formula: `{XHS_ID(필수)}='${xid.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`,
+    fields: ['XHS_ID(필수)'],
+  });
+  if (dup.length) {
+    throw Object.assign(
+      new Error(`'${xid}' 는 이미 등록된 인플루언서입니다. 검색해서 선택하세요.`),
+      { status: 409, dupId: dup[0].id },
+    );
+  }
+
+  const fields = {
+    'XHS_ID(필수)': xid,
+    '섭외_ID(필수)': mgr,
+    'XHS_link1(필수)': link,
+    'PAL(필수)': pal,
+  };
+  const type = String(body.type || '').trim();
+  if (type) fields['유형(필수)'] = type;
+  const wc = String(body.wc || '').trim().slice(0, 100);
+  if (wc) fields['WC_ID'] = wc;
+  const phone = String(body.phone || '').trim().slice(0, 50);
+  if (phone) fields['연락처'] = phone;
+  const nick = String(body.nick || '').trim().slice(0, 100);
+  if (nick) fields['닉네임'] = nick;
+
+  const created = await at(`/${encodeURIComponent(T_INFL)}`, {
+    method: 'POST',
+    body: JSON.stringify({ records: [{ fields }], typecast: false }),
+  });
+  const rec = created.records[0];
+  return { ok: true, infl: { id: rec.id, xid, wc, pal } };
 }
 
 /* ── 핸들러 ── */
@@ -314,6 +370,10 @@ export default async function handler(req, res) {
         res.status(200).json(await createEntry(body));
         return;
       }
+      if (body.action === 'createInfl') {
+        res.status(200).json(await createInfl(body));
+        return;
+      }
       res.status(400).json({ error: '알 수 없는 요청입니다.' });
       return;
     }
@@ -323,8 +383,9 @@ export default async function handler(req, res) {
   } catch (e) {
     // 정산월·유형 등 단일선택에 없는 값이면 Airtable 이 choice 오류를 낸다 — 사람 말로 번역
     const msg = /choice|option/i.test(e.message || '')
-      ? `${e.message} — Airtable '예약입력_DB' 의 단일선택(정산월 등)에 해당 항목이 없습니다. Airtable 에서 옵션을 먼저 추가해 주세요.`
+      ? `${e.message} — Airtable 단일선택(정산월·유형 등)에 해당 항목이 없습니다. Airtable 에서 옵션을 먼저 추가해 주세요.`
       : (e.message || '처리 중 오류가 발생했습니다.');
-    res.status(e.status || 500).json({ error: msg });
+    // 중복 인플이면 기존 레코드 ID 를 같이 준다 — 클라이언트가 바로 선택할 수 있게
+    res.status(e.status || 500).json({ error: msg, ...(e.dupId ? { dupId: e.dupId } : {}) });
   }
 }

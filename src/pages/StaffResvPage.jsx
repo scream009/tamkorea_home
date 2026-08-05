@@ -177,6 +177,9 @@ export default function StaffResvPage() {
   const [lead, setLead] = useState('');
   const [paxMemo, setPaxMemo] = useState('');
   const [clientMemo, setClientMemo] = useState('');
+  const [engNames, setEngNames] = useState('');
+  const [note, setNote] = useState('');
+  const [inflModal, setInflModal] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [done, setDone] = useState(null);
@@ -271,7 +274,7 @@ export default function StaffResvPage() {
         body: JSON.stringify({
           action: 'create',
           store, mgr, type, status, month, when, pax, nx, nd,
-          lead, infls: inflSel, paxMemo, clientMemo,
+          lead, infls: inflSel, paxMemo, clientMemo, engNames, note,
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -295,7 +298,16 @@ export default function StaffResvPage() {
     setLead('');
     setPaxMemo('');
     setClientMemo('');
+    setEngNames('');
+    setNote('');
     if (store) selectStore(store);   // 실적 카드 갱신
+  }
+
+  /* 신규 인플 등록 완료 → 목록에 넣고 바로 선택 */
+  function onInflCreated(infl) {
+    setMeta((prev) => ({ ...prev, infls: [infl, ...prev.infls] }));
+    changeInfls([...inflSel, infl.id]);
+    setInflModal(false);
   }
 
   const selInfls = (meta?.infls || []).filter((i) => inflSel.includes(i.id));
@@ -309,7 +321,10 @@ export default function StaffResvPage() {
             <h1>예약입력</h1>
             <span className="srv-scope">예약입력_DB → 자동 분할</span>
           </div>
-          <Link className="srv-ghost" to="/staff">← 진도 보드</Link>
+          <div className="srv-nav">
+            <Link className="srv-ghost" to="/staff">진도 보드</Link>
+            <Link className="srv-ghost" to="/staff/queue">발송 큐</Link>
+          </div>
         </header>
 
         {metaErr && <div className="srv-error">{metaErr}</div>}
@@ -411,7 +426,10 @@ export default function StaffResvPage() {
                 </div>
               </div>
 
-              <label className="srv-lb">참여 인플루언서 * <span className="srv-hint">선택한 수만큼 진행 건이 만들어집니다</span></label>
+              <label className="srv-lb">
+                참여 인플루언서 * <span className="srv-hint">선택한 수만큼 진행 건이 만들어집니다</span>
+                <button type="button" className="srv-newinfl" onClick={() => setInflModal(true)}>＋ 신규 인플 등록</button>
+              </label>
               <InflPicker infls={meta.infls} sel={inflSel} onChange={changeInfls} />
 
               {inflSel.length > 1 && (
@@ -431,6 +449,14 @@ export default function StaffResvPage() {
               <textarea className="srv-input" rows={2} value={clientMemo}
                 placeholder="예약 메시지에 함께 전달할 내용"
                 onChange={(e) => setClientMemo(e.target.value)} />
+
+              <label className="srv-lb">영문이름 <span className="srv-hint">서귀포잠수함 등 동행 필수 매장 — 양식: Abc + Def + Ghi</span></label>
+              <input className="srv-input" value={engNames} placeholder="Abc + Def + Ghi"
+                onChange={(e) => setEngNames(e.target.value)} />
+
+              <label className="srv-lb">예약 메모</label>
+              <input className="srv-input" value={note} placeholder="내부 메모 (비고)"
+                onChange={(e) => setNote(e.target.value)} />
 
               {err && <div className="srv-error">{err}</div>}
 
@@ -514,6 +540,135 @@ export default function StaffResvPage() {
             </div>
           </div>
         )}
+
+        {inflModal && meta && (
+          <InflRegModal
+            mgrs={meta.options.mgrs}
+            defaultMgr={mgr}
+            onClose={() => setInflModal(false)}
+            onCreated={onInflCreated}
+            onPickExisting={(dupId) => {
+              if (!inflSel.includes(dupId)) changeInfls([...inflSel, dupId]);
+              setInflModal(false);
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── 신규 인플 등록 모달 — Softr ④와 같은 필수 항목 (INFL_DB) ── */
+const INFL_TYPES = ['체험단', '인플'];
+
+function InflRegModal({ mgrs, defaultMgr, onClose, onCreated, onPickExisting }) {
+  const [xid, setXid] = useState('');
+  const [link, setLink] = useState('');
+  const [pal, setPal] = useState('');
+  const [mgr, setMgr] = useState(defaultMgr || '');
+  const [type, setType] = useState('체험단');
+  const [wc, setWc] = useState('');
+  const [phone, setPhone] = useState('');
+  const [nick, setNick] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [dupId, setDupId] = useState('');
+
+  const can = xid.trim() && /^https?:\/\//.test(link.trim()) && Number(pal) > 0 && mgr;
+
+  async function submit() {
+    setBusy(true);
+    setErr('');
+    setDupId('');
+    try {
+      const res = await fetch('/api/staff-resv', {
+        method: 'POST',
+        headers: staffHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ action: 'createInfl', xid, link, pal, mgr, type, wc, phone, nick }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (body.dupId) setDupId(body.dupId);
+        throw new Error(body.error || `등록 실패 (${res.status})`);
+      }
+      onCreated(body.infl);
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="srv-overlay" onClick={onClose}>
+      <div className="srv-modal" onClick={(e) => e.stopPropagation()}>
+        <h3>＋ 신규 인플 등록</h3>
+        <p className="srv-modal-sub">INFL_DB 에 바로 등록되고, 이 예약의 참여자로 선택됩니다.</p>
+
+        <label>小红书账号 (XHS_ID) *</label>
+        <input value={xid} onChange={(e) => setXid(e.target.value)} autoFocus />
+
+        <label>小红书链接 *</label>
+        <input value={link} placeholder="https://…" onChange={(e) => setLink(e.target.value)} />
+
+        <div className="srv-modal-row">
+          <div>
+            <label>小红书粉丝 (팔로워) *</label>
+            <input type="number" min="1" value={pal} onChange={(e) => setPal(e.target.value)} />
+          </div>
+          <div>
+            <label>섭외_ID *</label>
+            <div className="srv-seg srv-seg-sm">
+              {mgrs.map((m) => (
+                <button key={m} type="button" className={mgr === m ? 'on' : ''} onClick={() => setMgr(m)}>{m}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="srv-modal-row">
+          <div>
+            <label>유형</label>
+            <div className="srv-seg srv-seg-sm">
+              {INFL_TYPES.map((t) => (
+                <button key={t} type="button" className={type === t ? 'on' : ''} onClick={() => setType(t)}>{t}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label>预约微信 (WC_ID)</label>
+            <input value={wc} onChange={(e) => setWc(e.target.value)} />
+          </div>
+        </div>
+
+        <div className="srv-modal-row">
+          <div>
+            <label>연락처</label>
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </div>
+          <div>
+            <label>닉네임</label>
+            <input value={nick} onChange={(e) => setNick(e.target.value)} />
+          </div>
+        </div>
+
+        {err && (
+          <div className="srv-error">
+            {err}
+            {dupId && (
+              <button type="button" className="srv-ghost srv-dup" onClick={() => onPickExisting(dupId)}>
+                기존 인플 선택하기
+              </button>
+            )}
+          </div>
+        )}
+
+        <div className="srv-modal-btns">
+          <button type="button" className="srv-primary" disabled={!can || busy} onClick={submit}>
+            {busy ? '등록 중…' : '등록 + 선택'}
+          </button>
+          <button type="button" className="srv-ghost" disabled={busy} onClick={onClose}>닫기</button>
+        </div>
       </div>
     </div>
   );
