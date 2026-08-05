@@ -11,6 +11,8 @@
  * 응답에 settlementMonth + settlementMonthShort + recruiterId 부착.
  */
 
+import { composeSentMessage } from './_resv-message.js';
+
 const TOKEN = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
 const RECORD_TABLE = encodeURIComponent('진행_DB_OLD');
@@ -185,6 +187,8 @@ export default async function handler(req, res) {
             specialNote: r.fields['특이사항'] || r.fields['인원메모'] || r.fields['비고'] || '',
             reservationMsg: r.fields['예약메시지'] || r.fields['예약 메시지'] || '',
             modificationMsg: normalizeModMsg(r.fields['변경메시지'] || r.fields['변경 메시지']),
+            // 취소·노쇼 안내문에 붙는 사유. rollup 이라 배열로 온다(빈 칸이면 [null]).
+            customerMemo: r.fields['고객전달메모'] || '',
           };
         });
       }
@@ -253,11 +257,14 @@ export default async function handler(req, res) {
       let memo = f['특이사항'] || f['인원메모'] || f['비고'] || '';
       let xhsCount = f['XHS_건수'];
       let dpCount = f['DP_건수'];
-      // 예약/변경 메시지 — 오직 예약테이블이 SoT. 진행_DB_OLD 직접 read 안 함.
-      // (자동 송출기가 취소·노쇼 안내문을 예약메시지에 붙이고, 변경 시 변경메시지에
-      //  원본 메시지를 포함해 다시 생성해주는 구조)
+      // 예약/변경 메시지 본문 — 예약테이블이 SoT. 진행_DB_OLD 직접 read 안 함.
+      // ⚠️ 예전 주석은 "자동 송출기가 취소·노쇼 안내문을 예약메시지에 붙인다"고 했지만
+      //    사실이 아니다. 예약메시지는 Formula 라 봇이 쓸 수 없고, 안내문은 발송 직전
+      //    Python 이 조립하고 버린다. 그래서 취소 건도 원본 예약문만 떠 있었다.
+      //    → 아래에서 봇과 같은 규칙으로 최종 발송문을 복원한다(_resv-message.js).
       let reservationMsg = '';
       let modificationMsg = '';
+      let customerMemo = f['고객전달메모'] || '';   // 봇이 캐스케이드로 복사해 둔 값
 
       const teamId = resvLinks.length > 0 ? resvLinks[0] : rec.id;
 
@@ -269,7 +276,16 @@ export default async function handler(req, res) {
         if (r.dpCount !== undefined) dpCount = r.dpCount;
         reservationMsg = r.reservationMsg || '';
         modificationMsg = r.modificationMsg || '';   // placeholder는 resvMap 단계에서 ''로 정규화됨
+        if (!customerMemo) customerMemo = r.customerMemo || '';
       }
+
+      // 취소·노쇼면 담당자도 '내가 뭘 보냈는지'를 그대로 봐야 한다.
+      const { sentMessage, noticeTail } = composeSentMessage({
+        status,
+        reservationMsg,
+        changeMessage: modificationMsg,
+        customerMemo,
+      });
 
       xhsCount = xhsCount !== undefined ? xhsCount : 1;
       dpCount  = dpCount  !== undefined ? dpCount  : 0;
@@ -296,6 +312,8 @@ export default async function handler(req, res) {
         memo,
         reservationMsg,
         modificationMsg,
+        sentMessage,   // 취소·노쇼일 때만 채워진다(본문 확보 실패 시 '')
+        noticeTail,    // 본문을 못 찾은 경우 화면이 자체 본문 뒤에 붙일 안내문
         // v2 신규
         settlementMonth,           // "2026-04"
         settlementMonthShort,      // 4

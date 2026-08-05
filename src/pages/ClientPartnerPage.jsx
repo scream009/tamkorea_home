@@ -15,7 +15,8 @@ import {
   Info
 } from 'lucide-react';
 import { CpcBanner, DpReportEntry } from './ClientSchedulePage';
-import './ClientSchedulePage.css'; 
+import { resolveEventMessage, eventMessageLabel } from '../lib/eventMessage';
+import './ClientSchedulePage.css';
 import './ClientReportPage.css';
 
 // Airtable 을 브라우저에서 직접 부르지 않는다.
@@ -473,9 +474,13 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
                 <span className="detail-value">{selectedEvent.displayIds?.length > 0 ? selectedEvent.displayIds.join(', ') : selectedEvent.displayId}</span>
               </div>
               <div className="detail-row">
-                <span className="detail-label"><Info className="w-4 h-4" /> 예약 메시지 / 메모</span>
+                <span className="detail-label">
+                  <Info className="w-4 h-4" /> {eventMessageLabel(selectedEvent.status)}
+                </span>
                 <span className="detail-value memo-box" style={{ whiteSpace: 'pre-wrap' }}>
-                  {generateDynamicMemo(selectedEvent)}
+                  {/* 고객사 화면(/schedule)과 같은 규칙 — 예약봇이 실제로 보낸 문구.
+                      취소·노쇼면 취소 안내까지 붙은 최종 발송문이 나온다. */}
+                  {resolveEventMessage(selectedEvent, generateDynamicMemo(selectedEvent))}
                 </span>
               </div>
               {selectedEvent.xhsResults && selectedEvent.xhsResults.length > 0 && (

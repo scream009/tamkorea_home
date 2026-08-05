@@ -14,6 +14,7 @@ import {
   Filter,
   MessageSquare,
 } from 'lucide-react';
+import { eventMessageLabel } from '../lib/eventMessage';
 import './ClientSchedulePage.css';
 import './RecruiterSchedulePage.css';
 
@@ -766,10 +767,17 @@ export default function RecruiterSchedulePage() {
                 <div className="detail-row">
                   <span className="detail-label">
                     <MessageSquare className="w-4 h-4" />
-                    {selectedEvent.modificationMsg ? '변경 메시지' : '예약 메시지'}
+                    {/* 취소·노쇼는 봇이 마지막으로 보낸 안내문이 곧 그 예약의 최종 상태다.
+                        원본 예약문만 띄우면 담당자도 '뭘 보냈는지' 확인할 수 없다.
+                        sentMessage 는 취소·노쇼일 때만 채워진다. */}
+                    {selectedEvent.sentMessage
+                      ? eventMessageLabel(selectedEvent.status)
+                      : selectedEvent.modificationMsg ? '변경 메시지' : '예약 메시지'}
                   </span>
                   <span className="detail-value memo-box" style={{ whiteSpace: 'pre-wrap' }}>
-                    {selectedEvent.modificationMsg || selectedEvent.reservationMsg}
+                    {selectedEvent.sentMessage
+                      || ((selectedEvent.modificationMsg || selectedEvent.reservationMsg)
+                          + (selectedEvent.noticeTail ? `\n\n${selectedEvent.noticeTail}` : ''))}
                   </span>
                 </div>
               )}

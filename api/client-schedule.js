@@ -4,6 +4,7 @@
  */
 
 import { monthKey, inMonthWindow } from './_month-window.js';
+import { composeSentMessage } from './_resv-message.js';
 
 const TOKEN = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
@@ -143,7 +144,12 @@ export default async function handler(req, res) {
             pax: r.fields['방문 인원'] || r.fields['방문인원'] || r.fields['# 방문 인원'] || r.fields['# 방문인원'] || '',
             xhsCount: r.fields['XHS_건수'],
             dpCount: r.fields['DP_건수'],
-            specialNote: r.fields['특이사항'] || r.fields['인원메모'] || r.fields['비고'] || ''
+            specialNote: r.fields['특이사항'] || r.fields['인원메모'] || r.fields['비고'] || '',
+            // 취소·노쇼 안내문 복원용. 예약입력_DB 를 못 찾은 건(팀명생성기 불일치)의
+            // 유일한 본문 공급원이다 — 이 테이블은 링크로 걸려 있어 항상 따라온다.
+            reservationMsg: r.fields['예약메시지'] || '',
+            changeMessage: r.fields['변경메시지'] || '',
+            customerMemo: r.fields['고객전달메모'] || '',
           };
         });
       }
@@ -238,9 +244,9 @@ export default async function handler(req, res) {
       let dpCount = f['DP_건수'] || f['따중리뷰 건수'];
 
       const teamId = resvLinks.length > 0 ? resvLinks[0] : rec.id;
+      const resvData = resvLinks.length > 0 ? resvMap[resvLinks[0]] : null;
 
-      if (resvLinks.length > 0 && resvMap[resvLinks[0]]) {
-        const resvData = resvMap[resvLinks[0]];
+      if (resvData) {
         if (resvData.pax) totalPax = resvData.pax;
         if (resvData.specialNote) memo = resvData.specialNote;
         if (resvData.xhsCount !== undefined) xhsCount = resvData.xhsCount;
@@ -300,7 +306,24 @@ export default async function handler(req, res) {
       // 변경메시지는 '▼ 기존 예약 … ▼ 변경 요청 내용' 을 담은 완성형 Formula.
       // 예약봇이 식당에 실제로 보낸 문구라, 고객사가 받은 카톡과 같은 내용이다.
       const changeMessage = changedFrom ? String(chSrc['변경메시지'] || '') : '';
-      
+
+      // ── 취소·노쇼: 고객사가 마지막으로 받은 카톡을 복원한다 ──────
+      // 달력의 취소 블록은 '예약이 잡혔습니다' 원본 안내문만 보여 줬다. 정작 고객사
+      // 톡방에 마지막으로 간 건 그 뒤에 취소 안내가 붙은 메시지다. 화면과 카톡이
+      // 어긋나면 "취소한다더니 예약 화면엔 그대로냐"는 문의가 그대로 생긴다.
+      // 봇은 발송문을 저장하지 않으므로(_resv-message.js 주석) 같은 규칙으로 조립한다.
+      // 본문 우선순위도 봇과 같다: 예약입력_DB(봇이 읽는 원본) → 예약테이블 → 진행_DB_OLD 사본.
+      const { sentMessage, noticeTail } = composeSentMessage({
+        status,
+        reservationMsg: (inTeam && inTeam['예약메시지'])
+          || (resvData && resvData.reservationMsg) || '',
+        changeMessage: (inTeam && inTeam['변경메시지'])
+          || (resvData && resvData.changeMessage) || f['변경메시지'] || '',
+        customerMemo: (inTeam && inTeam['고객전달메모'])
+          || f['고객전달메모'] || (resvData && resvData.customerMemo) || '',
+      });
+
+
       // 캠페인 레벨(Campaign_DB) 폴백
       if (xhsCount === undefined) xhsCount = cf['XHS_건수'] || cf['샤오홍슈 건수'];
       if (dpCount === undefined) dpCount = cf['DP_건수'] || cf['따중리뷰 건수'];
@@ -327,7 +350,9 @@ export default async function handler(req, res) {
         cancelNote,
         changedFrom,
         changedPaxFrom,
-        changeMessage
+        changeMessage,
+        sentMessage,   // 취소·노쇼일 때만 채워진다(본문 확보 실패 시 '')
+        noticeTail,    // 본문을 못 찾은 경우 화면이 자체 본문 뒤에 붙일 안내문
       };
 
       // 달력용 통합 리스트 (그룹핑)

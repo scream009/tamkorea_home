@@ -20,6 +20,7 @@ import {
   Lightbulb,
   Clock
 } from 'lucide-react';
+import { resolveEventMessage, eventMessageLabel } from '../lib/eventMessage';
 import './ClientSchedulePage.css';
 import './ClientReportPage.css';
 
@@ -1040,13 +1041,17 @@ export default function ClientSchedulePage() {
               </div>
               
               <div className="detail-row">
-                <span className="detail-label"><Info className="w-4 h-4" /> 예약 메시지 / 메모</span>
+                <span className="detail-label">
+                  <Info className="w-4 h-4" /> {eventMessageLabel(selectedEvent.status)}
+                </span>
                 <span className="detail-value memo-box" style={{ whiteSpace: 'pre-wrap' }}>
-                  {/* 변경된 예약은 예약봇이 식당에 보낸 변경 안내문을 그대로 보여 준다.
-                      기존 예약 + 변경 내용이 한 덩어리로 들어 있어, 고객사가 받은
-                      카톡과 같은 내용이 화면에서도 확인된다. */}
-                  {selectedEvent.changeMessage
-                    || generateDynamicMemo(selectedEvent, campaignName, brandName, branchName)}
+                  {/* 예약봇이 식당에 실제로 보낸 문구를 그대로 보여 준다.
+                      취소·노쇼는 취소 안내까지, 변경 건은 기존 예약 + 변경 내용까지
+                      한 덩어리로 들어 있어 고객사가 받은 카톡과 화면이 일치한다. */}
+                  {resolveEventMessage(
+                    selectedEvent,
+                    generateDynamicMemo(selectedEvent, campaignName, brandName, branchName)
+                  )}
                 </span>
               </div>
 
