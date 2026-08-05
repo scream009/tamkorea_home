@@ -98,8 +98,8 @@ const BUDDIES = [
     line: '오늘 운세 대박이래! 好运 타임 발동 ✨', buff: '好运 타임 · 희귀템 UP', color: '#34D399' },
   { key: 'QN', name: '金姐(사장님)', tag: '🕶️ 오늘도 대기중', avatar: '🕶️',
     line: '이번엔 대형 인플 좀 잡아와~ 💕 (보너스 걸었다)', buff: '사장님 보너스 · 점수 UP', color: '#FDE68A' },
-  { key: 'GG', name: 'Andy 대표', tag: '😎 직접 출동', avatar: '😎',
-    line: '다들 오늘도 고생 많다! 내가 지원 간다 🕶️', buff: '대표 서포트 · 캐치 보너스', color: '#93C5FD' },
+  { key: 'GG', name: 'Andy 이사', tag: '😎 직접 출동', avatar: '😎',
+    line: '다들 오늘도 고생 많다! 내가 지원 간다 🕶️', buff: '이사님 서포트 · 캐치 보너스', color: '#93C5FD' },
 ];
 
 /* ── 미니 신디사이저 — 에셋 없이 효과음. 기본은 무음 ── */
