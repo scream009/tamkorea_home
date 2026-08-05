@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { staffHeaders, clearStaffKey } from '../lib/staffKey';
 import './StaffBoardPage.css';
 
@@ -342,6 +343,7 @@ export default function StaffBoardPage() {
               <button className={sort === 'pace' ? 'on' : ''} onClick={() => setSort('pace')}>진도순</button>
               <button className={sort === 'name' ? 'on' : ''} onClick={() => setSort('name')}>이름순</button>
             </div>
+            <Link className="stb-newbtn" to="/staff/new">＋ 신규예약</Link>
             <button className="stb-ghost" onClick={() => load(month)} title="새로고침">⟳</button>
             <button className="stb-ghost" onClick={logout} title="키 지우고 나가기">나가기</button>
           </div>
@@ -409,6 +411,14 @@ export default function StaffBoardPage() {
                         title="제공내역·영업시간·주의사항 등 업체 정보"
                         onClick={(e) => { e.stopPropagation(); setInfoFor(infoFor === r.n ? null : r.n); }}
                       >ⓘ</button>
+                      {r.info?.sid && (
+                        <Link
+                          className="stb-addlink"
+                          to={`/staff/new?store=${r.info.sid}`}
+                          title="이 매장 예약입력"
+                          onClick={(e) => e.stopPropagation()}
+                        >＋</Link>
+                      )}
                       {cell.add === 1 && <span className="stb-chip stb-chip-add" title="목표량 넘어도 추가 섭외 가능">추가OK</span>}
                       {r.p && <span className="stb-chip stb-chip-p">{r.p}</span>}
                     </div>

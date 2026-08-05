@@ -28,6 +28,7 @@ import AdminGate from './components/AdminGate';
 import AdminShell from './components/AdminShell';
 import StaffGate from './components/StaffGate';
 import StaffBoardPage from './pages/StaffBoardPage';
+import StaffResvPage from './pages/StaffResvPage';
 import AdminDianpingPage from './pages/AdminDianpingPage';
 import './components/AdminShell.css';
 import './App.css';
@@ -47,6 +48,7 @@ function App() {
           <Route path="/manager" element={<RecruiterSchedulePage />} />
           <Route path="/partner" element={<ClientPartnerPage />} />
           <Route path="/staff" element={<StaffGate><StaffBoardPage /></StaffGate>} />
+          <Route path="/staff/new" element={<StaffGate><StaffResvPage /></StaffGate>} />
           {/* 정산·계약 데이터 화면은 게이트 뒤에 둔다. 서버(_admin-auth.js)가 실제로 막고,
               이 래퍼는 키 입력 UI 를 준다. /admin/clients-link 는 자체 키 폼이 이미 있다. */}
           {/* 관리자 화면은 AdminShell(왼쪽 메뉴) 안에 둔다 — 화면이 늘어도 네비는 한 곳에서만 정의된다 */}

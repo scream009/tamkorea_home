@@ -1,0 +1,330 @@
+/* eslint-env node */
+/**
+ * 담당자 예약입력 — Phase 2.
+ *
+ * ⚠️ 쓰기는 **예약입력_DB 한 곳뿐이다.** 진행_DB_OLD 에 직접 만들지 않는다.
+ *    예약입력_DB 에 팀 단위 1건을 만들면 Airtable 자동화가 팀명생성기 키를 만들고
+ *    Repeating Group 으로 참여 인플 수만큼 진행_DB_OLD 에 쪼개 넣는다.
+ *    예약봇 V7(카톡 발송·상태 캐스케이드)도 그 키로 돈다 — 이 경로를 벗어나면 전부 깨진다.
+ *
+ * GET  ?mode=meta          → 매장 목록(CS_DB) + 인플 목록(INFL_DB) + 선택지
+ * GET  ?store=rec…&month=  → 매장 정보(운영·제공내역·촬영대본) + 3개월 체험 목표·실적 가드
+ * POST {action:'create'}   → 검증 후 예약입력_DB 생성
+ *
+ * 정산월 가드(서버 몫): 그 매장×정산월 Campaign 이 없으면 거부한다.
+ * 없이 만들면 자동화의 Find records 가 빈손이 되어 귀속 정산월이 비는 유령이 생긴다.
+ * (앞 달 미달·목표 초과 경고는 클라이언트가 confirm 으로 처리한다.)
+ */
+
+import { staffIdentity } from './_staff-auth.js';
+
+const KEY = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
+const BASE = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
+const API = `https://api.airtable.com/v0/${BASE}`;
+
+const T_STORE = 'CS_DB';
+const T_INFL = 'INFL_DB';
+const T_ENTRY = '예약입력_DB';
+const T_CAMPAIGN = 'Campaign_DB';
+
+const MGRS = ['HH', 'LH', 'AN', 'FB'];
+const TYPES_NEW = ['체험', '인플', '기자'];
+const STATUS_NEW = ['예약요청', '예약확정', '긴급예약'];
+
+/* ── 월 헬퍼 ── */
+const MONTH_RE = /^(\d{4})\.\s*(\d{1,2})월$/;
+function parseMonth(v) {
+  const m = MONTH_RE.exec(String(v || '').trim());
+  return m ? { y: Number(m[1]), n: Number(m[2]) } : null;
+}
+function fmtMonth(y, n) {
+  let yy = y; let nn = n;
+  while (nn < 1) { nn += 12; yy -= 1; }
+  while (nn > 12) { nn -= 12; yy += 1; }
+  return `${yy}. ${nn}월`;
+}
+function shiftMonth(v, d) {
+  const p = parseMonth(v);
+  return p ? fmtMonth(p.y, p.n + d) : '';
+}
+function currentMonth() {
+  const k = new Date(Date.now() + 9 * 3600 * 1000);
+  return fmtMonth(k.getUTCFullYear(), k.getUTCMonth() + 1);
+}
+
+/* ── Airtable ── */
+async function at(path, init) {
+  const r = await fetch(`${API}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${KEY}`,
+      'Content-Type': 'application/json',
+      ...(init?.headers || {}),
+    },
+  });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const msg = body?.error?.message || body?.error?.type || `Airtable ${r.status}`;
+    const err = new Error(msg);
+    err.status = r.status;
+    throw err;
+  }
+  return body;
+}
+
+async function fetchAll(table, { formula, fields } = {}) {
+  const out = [];
+  let offset = '';
+  do {
+    const p = new URLSearchParams();
+    p.set('pageSize', '100');
+    if (formula) p.set('filterByFormula', formula);
+    (fields || []).forEach((f) => p.append('fields[]', f));
+    if (offset) p.set('offset', offset);
+
+    const d = await at(`/${encodeURIComponent(table)}?${p.toString()}`);
+    out.push(...(d.records || []));
+    offset = d.offset || '';
+  } while (offset);
+  return out;
+}
+
+function one(v) {
+  if (Array.isArray(v)) {
+    for (const x of v) { const s = String(x ?? '').trim(); if (s) return s; }
+    return '';
+  }
+  return String(v ?? '').trim();
+}
+function all(v) {
+  if (Array.isArray(v)) return v.map((x) => String(x ?? '').trim()).filter(Boolean).join(', ');
+  return String(v ?? '').trim();
+}
+const num = (v) => (typeof v === 'number' ? v : Number(v) || 0);
+const isRec = (v) => /^rec[A-Za-z0-9]{14}$/.test(String(v || ''));
+
+/* ── meta: 매장·인플 목록 ─────────────────────────────────── */
+async function buildMeta() {
+  const [storeRecs, inflRecs] = await Promise.all([
+    fetchAll(T_STORE, {
+      fields: ['고객사명(필수)', '지점명(필수)', '중문명', '사용여부'],
+    }),
+    fetchAll(T_INFL, {
+      fields: ['XHS_ID(필수)', 'WC_ID', 'PAL(필수)'],
+    }),
+  ]);
+
+  const stores = storeRecs
+    .map((r) => ({
+      id: r.id,
+      name: `${one(r.fields['고객사명(필수)'])} ${one(r.fields['지점명(필수)'])}`.trim(),
+      cn: one(r.fields['중문명']),
+      use: r.fields['사용여부'] ? 1 : 0,
+    }))
+    .filter((s) => s.name)
+    // 사용 매장 먼저, 그 안에서 이름순 — 미사용도 내려보낸다 (숨기면 또 "안 나온다"가 된다)
+    .sort((a, b) => (b.use - a.use) || a.name.localeCompare(b.name, 'ko'));
+
+  const infls = inflRecs
+    .map((r) => ({
+      id: r.id,
+      xid: one(r.fields['XHS_ID(필수)']),
+      wc: one(r.fields['WC_ID']),
+      pal: num(r.fields['PAL(필수)']),
+    }))
+    .filter((i) => i.xid)
+    .sort((a, b) => a.xid.localeCompare(b.xid, 'zh'));
+
+  return {
+    stores,
+    infls,
+    options: { mgrs: MGRS, types: TYPES_NEW, statuses: STATUS_NEW },
+  };
+}
+
+/* ── store: 매장 정보 + 3개월 체험 가드 ───────────────────── */
+async function buildStoreGuard(storeId, baseMonth) {
+  const store = await at(`/${encodeURIComponent(T_STORE)}/${storeId}`);
+  const g = store.fields || {};
+
+  const months = [shiftMonth(baseMonth, -1), baseMonth, shiftMonth(baseMonth, 1)];
+  const monthSet = new Set(months);
+
+  // 이 매장의 Campaign 은 CS_DB 링크 필드가 이미 물고 있다 — 이름 매칭보다 확실하다.
+  // (링크 필드가 둘이다: 'Campaign_DB' 와 오타 쌍둥이 'Campain_DB'. 둘 다 본다.)
+  const campIds = [...new Set([
+    ...(g['Campaign_DB'] || []),
+    ...(g['Campain_DB'] || []),
+  ])];
+
+  const byMonth = {};
+  if (campIds.length) {
+    for (let k = 0; k < campIds.length; k += 80) {
+      const chunk = campIds.slice(k, k + 80);
+
+      const recs = await fetchAll(T_CAMPAIGN, {
+        formula: `OR(${chunk.map((id) => `RECORD_ID()='${id}'`).join(',')})`,
+        fields: ['계약월', '체험_목표', '체험_방문', '체험_업완', '체험_취소', '추가체험단'],
+      });
+      recs.forEach((r) => {
+        const f = r.fields;
+        const mon = one(f['계약월']);
+        if (!monthSet.has(mon)) return;
+        byMonth[mon] = {
+          exists: 1,
+          tg: num(f['체험_목표']),
+          vis: num(f['체험_방문']),
+          up: num(f['체험_업완']),
+          cx: num(f['체험_취소']),
+          add: f['추가체험단'] ? 1 : 0,
+        };
+      });
+    }
+  }
+
+  // 정산월 기본값: 계약이 있는 달 중 목표 미달인 가장 이른 달, 없으면 기준달
+  let suggest = baseMonth;
+  for (const m of months.slice(0, 2)) {           // 전월·기준달까지만 거슬러 본다
+    const c = byMonth[m];
+    if (c && c.tg > 0 && c.vis < c.tg) { suggest = m; break; }
+  }
+  if (!byMonth[suggest]?.exists && byMonth[baseMonth]?.exists) suggest = baseMonth;
+
+  return {
+    info: {
+      name: `${one(g['고객사명(필수)'])} ${one(g['지점명(필수)'])}`.trim(),
+      cn: one(g['중문명']),
+      open: one(g['영업시간(필수)']),
+      brk: one(g['브레이크타임(필수)']),
+      peak: one(g['피크타임']),
+      rest: all(g['정기휴무']),
+      visitOk: one(g['방문가능시간']),
+      give: one(g['제공내역']),
+      script: one(g['拍摄剧本']),
+      warn: one(g['섭외주의사항']),
+      note: one(g['비고']),
+    },
+    months,
+    byMonth,
+    suggest,
+  };
+}
+
+/* ── create: 예약입력_DB 생성 ─────────────────────────────── */
+async function createEntry(body) {
+  const store = String(body.store || '');
+  if (!isRec(store)) throw Object.assign(new Error('매장을 선택하세요.'), { status: 400 });
+
+  const mgr = String(body.mgr || '');
+  if (!MGRS.includes(mgr)) throw Object.assign(new Error('담당자(예약_ID)를 선택하세요.'), { status: 400 });
+
+  const type = String(body.type || '');
+  if (!TYPES_NEW.includes(type)) throw Object.assign(new Error('유형을 선택하세요.'), { status: 400 });
+
+  const status = String(body.status || '');
+  if (!STATUS_NEW.includes(status)) throw Object.assign(new Error('진행상태가 올바르지 않습니다.'), { status: 400 });
+
+  const month = String(body.month || '');
+  if (!parseMonth(month)) throw Object.assign(new Error('정산월 형식이 올바르지 않습니다.'), { status: 400 });
+
+  // 예약일시 — 클라이언트는 KST 로컬("2026-08-07T15:00")로 보낸다
+  const when = String(body.when || '');
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(when)) {
+    throw Object.assign(new Error('예약일시를 입력하세요.'), { status: 400 });
+  }
+  const whenIso = new Date(`${when}:00+09:00`).toISOString();
+
+  const pax = Math.round(Number(body.pax) || 0);
+  if (pax < 1 || pax > 99) throw Object.assign(new Error('총인원은 1 이상이어야 합니다.'), { status: 400 });
+
+  const infls = (Array.isArray(body.infls) ? body.infls : []).filter(isRec);
+  if (!infls.length) {
+    // Repeating Group 자동화가 이 배열을 돌며 진행_DB_OLD 를 만든다 — 비면 쪼개기가 안 된다
+    throw Object.assign(new Error('참여 인플루언서를 1명 이상 선택하세요.'), { status: 400 });
+  }
+  const lead = isRec(body.lead) ? String(body.lead) : infls[0];
+
+  const nx = Math.max(0, Math.round(Number(body.nx) || 0));
+  const nd = Math.max(0, Math.round(Number(body.nd) || 0));
+
+  // ── 정산월 가드: 그 매장×정산월 계약이 있어야 한다 ──
+  const guard = await buildStoreGuard(store, month);
+  if (!guard.byMonth[month]?.exists) {
+    throw Object.assign(
+      new Error(`'${guard.info.name}' 의 ${month} 계약이 없습니다. 관리자 화면(/admin)에서 계약을 먼저 만들어 주세요.`),
+      { status: 409 },
+    );
+  }
+
+  const fields = {
+    매장코드: [store],
+    예약_ID: mgr,
+    유형: type,
+    진행상태: status,
+    정산월: month,
+    예약일시: whenIso,
+    총인원: pax,
+    'XHS_건수': nx,
+    'DP_건수': nd,
+    대표인플: [lead],
+    'XHS_ID_': infls,
+  };
+  const paxMemo = String(body.paxMemo || '').trim().slice(0, 200);
+  if (paxMemo) fields['인원메모'] = paxMemo;
+  const clientMemo = String(body.clientMemo || '').trim().slice(0, 1000);
+  if (clientMemo) fields['고객전달메모'] = clientMemo;
+
+  const created = await at(`/${encodeURIComponent(T_ENTRY)}`, {
+    method: 'POST',
+    body: JSON.stringify({ records: [{ fields }], typecast: false }),
+  });
+
+  return { ok: true, id: created.records[0].id, month, store: guard.info.name };
+}
+
+/* ── 핸들러 ── */
+export default async function handler(req, res) {
+  const who = staffIdentity(req, res);
+  if (!who) return;
+
+  if (!KEY) {
+    res.status(503).json({ error: 'Airtable 토큰이 설정되지 않았습니다.' });
+    return;
+  }
+
+  try {
+    if (req.method === 'GET') {
+      if (req.query.mode === 'meta') {
+        res.status(200).json(await buildMeta());
+        return;
+      }
+      const storeId = String(req.query.store || '');
+      if (isRec(storeId)) {
+        const base = parseMonth(req.query.month) ? String(req.query.month) : currentMonth();
+        res.status(200).json(await buildStoreGuard(storeId, base));
+        return;
+      }
+      res.status(400).json({ error: 'mode=meta 또는 store=rec… 가 필요합니다.' });
+      return;
+    }
+
+    if (req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+      if (body.action === 'create') {
+        res.status(200).json(await createEntry(body));
+        return;
+      }
+      res.status(400).json({ error: '알 수 없는 요청입니다.' });
+      return;
+    }
+
+    res.setHeader('Allow', 'GET, POST');
+    res.status(405).json({ error: 'Method Not Allowed' });
+  } catch (e) {
+    // 정산월·유형 등 단일선택에 없는 값이면 Airtable 이 choice 오류를 낸다 — 사람 말로 번역
+    const msg = /choice|option/i.test(e.message || '')
+      ? `${e.message} — Airtable '예약입력_DB' 의 단일선택(정산월 등)에 해당 항목이 없습니다. Airtable 에서 옵션을 먼저 추가해 주세요.`
+      : (e.message || '처리 중 오류가 발생했습니다.');
+    res.status(e.status || 500).json({ error: msg });
+  }
+}

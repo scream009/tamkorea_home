@@ -41,6 +41,13 @@
 .stb-ghost{background:transparent;border:1px solid var(--line2);border-radius:8px;color:var(--muted);
   padding:.3rem .55rem;font-size:.75rem;cursor:pointer;font-family:inherit;transition:.15s}
 .stb-ghost:hover{color:var(--ink);border-color:var(--accent)}
+.stb-newbtn{display:inline-block;background:linear-gradient(135deg,#8B5CF6,#A855F7);border-radius:8px;
+  color:#fff;font-weight:700;font-size:.76rem;padding:.32rem .7rem;text-decoration:none;transition:.15s}
+.stb-newbtn:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(139,92,246,.35)}
+.stb-addlink{display:inline-flex;align-items:center;justify-content:center;width:1.15rem;height:1.15rem;
+  border-radius:6px;border:1px solid var(--line2);color:var(--muted);font-size:.8rem;font-weight:700;
+  text-decoration:none;transition:.13s;line-height:1}
+.stb-addlink:hover{border-color:var(--accent);color:#DDD6FE;background:rgba(139,92,246,.15)}
 
 /* ── KPI ── */
 .stb-kpis{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.8rem}

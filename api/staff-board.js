@@ -215,6 +215,7 @@ async function buildBoard(month) {
       recs.forEach((r) => {
         const g = r.fields;
         storeInfo.set(r.id, {
+          sid: r.id,   // CS_DB 레코드 ID — 예약입력(/staff/new?store=…) 진입에 쓴다
           cn: one(g['중문명']),
           open: one(g['영업시간(필수)']),
           brk: one(g['브레이크타임(필수)']),
