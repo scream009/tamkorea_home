@@ -147,10 +147,10 @@ function InflPicker({ infls, sel, onChange }) {
   );
 }
 
-/* ── 월 카드 라벨 ── */
+/* ── 월 카드 라벨 — 섭(체험_방문 rollup)은 취소·노쇼 제외 실적, 취소는 별도 표기 ── */
 function monthState(c) {
   if (!c?.exists) return { cls: 'none', txt: '계약 없음' };
-  if (c.tg > 0 && c.vis >= c.tg) return { cls: 'done', txt: `완료 ${c.vis}/${c.tg}` };
+  if (c.tg > 0 && c.vis >= c.tg) return { cls: 'done', txt: `✅ 섭외완료 ${c.vis}/${c.tg}` };
   if (c.tg > 0) return { cls: 'todo', txt: `${c.tg - c.vis}건 남음` };
   return { cls: 'zero', txt: '목표 미설정' };
 }
