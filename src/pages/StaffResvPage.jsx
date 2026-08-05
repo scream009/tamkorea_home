@@ -185,6 +185,9 @@ export default function StaffResvPage() {
   const [engNames, setEngNames] = useState('');
   const [note, setNote] = useState('');
   const [inflModal, setInflModal] = useState(false);
+  // 접수와 발송을 한 번에 — "발송 후 같은팀 다른매장" 같은 조합 버튼 폭발 방지 (Owner 2026-08-05).
+  // 체크 상태는 연속 입력 동안 유지된다.
+  const [autoSend, setAutoSend] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [done, setDone] = useState(null);
@@ -319,7 +322,23 @@ export default function StaffResvPage() {
         body = await res.json().catch(() => ({}));
       }
       if (!res.ok) throw new Error(body.error || `저장 실패 (${res.status})`);
-      setDone({ ...body, when, pax, infls: inflSel.length, status, sent: false });
+      const created = { ...body, when, pax, infls: inflSel.length, status, sent: false };
+      setDone(created);
+      // 자동 발송 체크 시 — 접수 직후 발송 대기열까지 한 번에
+      if (autoSend && ['예약요청', '긴급예약'].includes(status)) {
+        try {
+          const r2 = await fetch('/api/staff-queue', {
+            method: 'POST',
+            headers: staffHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ action: 'send', id: body.id }),
+          });
+          const b2 = await r2.json().catch(() => ({}));
+          if (!r2.ok) throw new Error(b2.error || `발송 요청 실패 (${r2.status})`);
+          setDone({ ...created, sent: true });
+        } catch (e2) {
+          setErr(`접수는 완료됐지만 자동 발송에 실패했습니다: ${e2.message} — 아래 [바로 발송]으로 재시도하세요.`);
+        }
+      }
     } catch (e) {
       setErr(e.message || '저장에 실패했습니다.');
     } finally {
@@ -556,8 +575,19 @@ export default function StaffResvPage() {
 
               {err && <div className="srv-error">{err}</div>}
 
+              {['예약요청', '긴급예약'].includes(status) && (
+                <label className="srv-autosend">
+                  <input
+                    type="checkbox"
+                    checked={autoSend}
+                    onChange={(e) => setAutoSend(e.target.checked)}
+                  />
+                  📤 접수 후 바로 발송 대기열에 올리기 <span className="srv-hint">(예약봇이 카톡 발송 — 연속 입력 동안 유지)</span>
+                </label>
+              )}
+
               <button type="button" className="srv-primary srv-submit" disabled={!canSubmit} onClick={submit}>
-                {busy ? '저장 중…' : '예약 접수'}
+                {busy ? '저장 중…' : (autoSend && ['예약요청', '긴급예약'].includes(status) ? '예약 접수 + 발송' : '예약 접수')}
               </button>
               {!canSubmit && !busy && (
                 <div className="srv-hint srv-why">

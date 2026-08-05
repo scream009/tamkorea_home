@@ -61,7 +61,12 @@ textarea.srv-input{resize:vertical}
 .srv-seg button:hover{color:var(--ink);border-color:var(--accent)}
 .srv-seg button.on{background:#2A2340;border-color:var(--accent);color:#DDD6FE}
 .srv-seg button.dis{opacity:.4;border-style:dashed}
-.srv-submit{width:100%;margin-top:1rem;padding:.7rem}
+.srv-submit{width:100%;margin-top:.5rem;padding:.7rem}
+.srv-autosend{display:flex;align-items:center;gap:.45rem;margin-top:.9rem;
+  font-size:.78rem;font-weight:600;color:var(--ink2);cursor:pointer;
+  background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.35);
+  border-radius:9px;padding:.5rem .7rem}
+.srv-autosend input{width:1rem;height:1rem;accent-color:var(--accent);cursor:pointer}
 
 /* ── 검색 드롭다운 ── */
 .srv-picker{position:relative}
