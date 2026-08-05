@@ -281,12 +281,47 @@ export default function StaffResvPage() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `저장 실패 (${res.status})`);
-      setDone({ ...body, when, pax, infls: inflSel.length });
+      setDone({ ...body, when, pax, infls: inflSel.length, status, sent: false });
     } catch (e) {
       setErr(e.message || '저장에 실패했습니다.');
     } finally {
       setBusy(false);
     }
+  }
+
+  /* 접수 직후 바로 발송 — 방금 만든 레코드에 자동발송체크를 켠다 (발송 큐의 전송과 동일) */
+  async function sendNow() {
+    if (!done?.id) return;
+    if (!window.confirm(`[${done.store}] 예약 메시지를 바로 발송할까요?\n예약봇이 다음 폴링(약 1분)에서 카톡을 보냅니다.`)) return;
+    setBusy(true);
+    setErr('');
+    try {
+      const res = await fetch('/api/staff-queue', {
+        method: 'POST',
+        headers: staffHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ action: 'send', id: done.id }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `발송 요청 실패 (${res.status})`);
+      setDone((d) => ({ ...d, sent: true }));
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /* 같은 팀 · 다른 매장 — 같은 인플팀이 하루에 여러 매장을 도는 흐름 (Owner 2026-08-05).
+     팀 구성(참여인플·대표·담당·유형·인원·건수·인원메모)과 일시는 유지, 매장만 새로 고른다. */
+  function resetSameTeamNewStore() {
+    setDone(null);
+    setStore('');
+    setGuard(null);
+    setMonth('');
+    setClientMemo('');
+    setEngNames('');
+    setNote('');
+    setErr('');
   }
 
   function resetForNext() {
@@ -339,10 +374,24 @@ export default function StaffResvPage() {
               인원 {done.pax}명 · 인플 {done.infls}명
             </p>
             <p className="srv-done-sub">
-              Airtable 자동화가 인플 수만큼 진행 건을 만들고, 카톡 발송은 기존 예약봇 흐름 그대로 진행됩니다.
+              Airtable 자동화가 인플 수만큼 진행 건을 만듭니다. 발송은 아래 버튼 또는 예약발송 화면에서.
             </p>
+            {err && <div className="srv-error">{err}</div>}
             <div className="srv-done-btns">
-              <button type="button" className="srv-primary" onClick={resetForNext}>같은 매장 하나 더</button>
+              {['예약요청', '긴급예약'].includes(done.status) && (
+                done.sent
+                  ? <span className="srv-sent-ok">✅ 발송 대기열에 올렸습니다 — 예약봇이 카톡을 보냅니다</span>
+                  : (
+                    <button type="button" className="srv-primary" disabled={busy} onClick={sendNow}>
+                      {busy ? '처리 중…' : '📤 바로 발송'}
+                    </button>
+                  )
+              )}
+              <Link className="srv-ghost" to="/staff/queue">예약발송으로</Link>
+              <button type="button" className="srv-ghost srv-team" onClick={resetSameTeamNewStore} title="인플·담당·인원은 그대로, 매장만 새로 선택">
+                👥 같은 팀 · 다른 매장
+              </button>
+              <button type="button" className="srv-ghost" onClick={resetForNext}>같은 매장 하나 더</button>
               <button type="button" className="srv-ghost" onClick={() => { setDone(null); setStore(''); setGuard(null); resetForNext(); }}>다른 매장 입력</button>
               <Link className="srv-ghost" to="/staff">진도 보드로</Link>
             </div>

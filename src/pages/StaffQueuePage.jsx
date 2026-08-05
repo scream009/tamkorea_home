@@ -165,7 +165,7 @@ export default function StaffQueuePage() {
         <header className="stq-head">
           <div className="stq-title">
             <span className="stq-dot" />
-            <h1>업무·발송 큐</h1>
+            <h1>예약발송</h1>
             <span className="stq-scope">예약입력_DB → 예약봇</span>
             {data?.who && <span className="stq-who">{data.who}</span>}
           </div>

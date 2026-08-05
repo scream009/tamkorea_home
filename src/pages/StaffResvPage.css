@@ -171,7 +171,10 @@ textarea.srv-input{resize:vertical}
 .srv-done h2{margin:0 0 .5rem;font-size:1.05rem;color:#6EE7B7}
 .srv-done p{margin:.25rem 0;font-size:.85rem}
 .srv-done-sub{color:var(--muted);font-size:.74rem}
-.srv-done-btns{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem}
+.srv-done-btns{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem;align-items:center}
+.srv-sent-ok{font-size:.78rem;font-weight:700;color:#6EE7B7}
+.srv-team{border-color:rgba(139,92,246,.5);color:#C4B5FD}
+.srv-team:hover{background:rgba(139,92,246,.15)}
 
 /* ── 모바일 ── */
 @media (max-width:820px){
