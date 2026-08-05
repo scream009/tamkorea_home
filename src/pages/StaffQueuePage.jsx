@@ -133,8 +133,13 @@ export default function StaffQueuePage() {
       modify: () => setModal({ kind: 'modify', item: it }),
       cancel: () => setModal({ kind: 'cancel', item: it }),
       confirmChange: () => {
-        if (window.confirm(`[${it.store}] 변경을 확정할까요?\n예약일시가 변경일시로 이관되고 카톡 발송은 없습니다.`)) {
-          act({ action: 'confirmChange', id: it.id }, '변경확정 처리했습니다');
+        // 참고: 봇은 변경 안내를 발송하면 자동으로 변경확정까지 처리한다(V6.3).
+        // 이 버튼은 "안내 발송 없이" 확정만 할 때 쓴다.
+        if (window.confirm(
+          `[${it.store}] 변경 안내 발송 없이 확정 처리할까요?\n`
+          + `예약일시는 원본 유지, 변경일시가 변경 후 시각으로 보관됩니다.`
+        )) {
+          act({ action: 'confirmChange', id: it.id }, '변경확정 처리했습니다 (발송 없음)');
         }
       },
       remove: () => {
@@ -339,7 +344,9 @@ function ActionButtons({ t, it, busy, h }) {
   if (t === 'chgReq' && it.sent === 1) {
     return (
       <>
-        <span className="stq-stuck-hint">변경 안내 발송 대기 — 봇 처리 후 변경확정 하세요</span>
+        <span className="stq-stuck-hint">
+          변경 안내 발송 대기 — 봇이 발송하면 <b>자동으로 변경확정</b>까지 처리합니다
+        </span>
         <button className="stq-b" disabled={busy} onClick={h.unsend}>↩ 발송취소</button>
       </>
     );
