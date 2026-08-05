@@ -186,8 +186,12 @@ export default function StaffQueuePage() {
                   }
                 }}
                 onUnsend={() => {
-                  if (window.confirm(`[${it.store}] 발송 대기를 취소하고 되돌릴까요?\n봇이 아직 처리하지 않은 건만 되돌릴 수 있습니다.`)) {
-                    act({ action: 'unsend', id: it.id }, '발송 대기에서 내렸습니다');
+                  if (window.confirm(
+                    `[${it.store}] 발송 대기를 취소하고 되돌릴까요?\n\n`
+                    + `⚠️ 봇이 방금 집어간 직후라면 취소가 무시되고 발송될 수 있습니다.\n`
+                    + `취소 후 이 건이 '확정·진행'으로 넘어가는지 잠시 확인하세요.`
+                  )) {
+                    act({ action: 'unsend', id: it.id }, '발송 대기에서 내렸습니다 — 확정·진행 탭으로 넘어가지 않는지 확인하세요');
                   }
                 }}
               />

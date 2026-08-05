@@ -122,23 +122,33 @@ function kstDT(iso) {
 }
 
 /* ── Airtable ────────────────────────────────────────────── */
+const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+
 async function at(path, init) {
-  const r = await fetch(`${API}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${KEY}`,
-      'Content-Type': 'application/json',
-      ...(init?.headers || {}),
-    },
-  });
-  const body = await r.json().catch(() => ({}));
-  if (!r.ok) {
+  // 429(rate limit) 방어 — 429는 요청이 실행되지 않은 응답이므로 쓰기여도 재시도가 안전하다.
+  // 5xx는 실행 여부가 불명이라 GET 에만 재시도한다 (create/patch 중복 방지).
+  const method = String(init?.method || 'GET').toUpperCase();
+  for (let attempt = 0; ; attempt += 1) {
+    const r = await fetch(`${API}${path}`, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${KEY}`,
+        'Content-Type': 'application/json',
+        ...(init?.headers || {}),
+      },
+    });
+    if (r.ok) return r.json().catch(() => ({}));
+    const retriable = r.status === 429 || (method === 'GET' && r.status >= 500);
+    if (retriable && attempt < 3) {
+      await sleep(400 * 2 ** attempt + Math.random() * 200);   // 0.4s→0.8s→1.6s + 지터
+      continue;
+    }
+    const body = await r.json().catch(() => ({}));
     const msg = body?.error?.message || body?.error?.type || `Airtable ${r.status}`;
     const err = new Error(msg);
     err.status = r.status;
     throw err;
   }
-  return body;
 }
 
 async function fetchAll(table, { formula, fields } = {}) {

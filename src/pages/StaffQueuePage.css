@@ -98,8 +98,13 @@
 .stq-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);
   -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
   display:flex;align-items:center;justify-content:center;z-index:50;padding:1rem}
-.stq-modal{width:100%;max-width:26rem;background:#161927;border:1px solid rgba(139,92,246,.5);
+.stq-modal{width:100%;max-width:26rem;max-height:88vh;overflow-y:auto;background:#161927;
+  border:1px solid rgba(139,92,246,.5);
   border-radius:14px;padding:1.1rem 1.2rem;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+/* 모바일 키보드가 올라올 때 모달이 가려지지 않게 위쪽 정렬 */
+@media (max-width:700px){
+  .stq-overlay{align-items:flex-start;padding-top:2rem}
+}
 .stq-modal h3{margin:0 0 .3rem;font-size:.95rem}
 .stq-modal-sub{margin:0 0 .8rem;font-size:.72rem;color:var(--muted)}
 .stq-modal label{display:block;font-size:.7rem;font-weight:700;color:var(--ink2);margin:.6rem 0 .25rem}

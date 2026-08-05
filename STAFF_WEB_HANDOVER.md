@@ -203,6 +203,10 @@ Softr 블록 설정 원본은 Softr 안에만 있음 — 위 캡처 8장이 사�
 
 - 게이트: `x-staff-key` 헤더 또는 `?k=` URL(Softr iframe 임베드용 — **검증 전 sessionStorage 저장**, StrictMode 이중 실행 버그 수정됨). 서버는 timingSafeEqual + 실패 404 은폐 + 키 미설정 시 503 fail-closed (_admin-auth 패턴)
 - 키 위계: `STAFF_KEYS`(개인 `HH:키,…`) > `STAFF_KEY`(공용) > `ADMIN_KEY`/`CLIENTS_ADMIN_KEY`(관리자 상위호환). **현재 Vercel 미설정 → 관리자 키로 입장 가능**
+- **키 롤오버 (퇴사·교체) 절차** — 소요 1~2분:
+  1. Vercel → 프로젝트 → Settings → Environment Variables → `STAFF_KEYS`에서 해당 `ID:키` 항목 삭제(또는 값 교체) → Save
+  2. Deployments → 최신 배포 ⋯ 메뉴 → **Redeploy** (환경변수는 재배포해야 반영된다)
+  3. 주의: 이미 열려 있는 탭의 sessionStorage 키는 재배포 순간부터 404로 거부되므로 별도 조치 불요. 다만 재배포 **전**까지는 구 키가 유효하다 — 즉시 차단이 필요하면 재배포를 먼저
 - 파일: `api/_staff-auth.js` `staff-check.js` `staff-board.js` `staff-resv.js` `staff-queue.js` / `src/components/StaffGate.jsx` / `src/pages/StaffBoardPage·StaffResvPage·StaffQueuePage.jsx(+css)` / 라우트 `/staff` `/staff/new` `/staff/queue` (App.jsx)
 
 ---
@@ -273,6 +277,8 @@ Campaign_DB ±1개월 + 계약이 문 진행 건 + CS_DB 정보 조인.
 | 대표인플 채널링크 없음 | 진행_DB_OLD에 대표인플의 XHS 홈 룩업 부재 → 텍스트 표시만. 원하면 Airtable에 룩업 1개 추가 후 연결 |
 | eslint flat config | `/* eslint-env node */` 주석 무효 — eslint.config.js files 목록에 넣어야 함 (dev-api.js 누락 사고) |
 | 스키마 덤프는 낡는다 | `_raw_schema.json`(8/3)에 8/4 신설 필드(`대표인플_ID`) 없음 — 실측 우선 |
+| 발송취소(unsend)의 잔여 레이스 창 | 서버는 상태 기반으로 방어(봇 처리 완료 후엔 409)하지만, **봇이 집어간 순간~상태 PATCH 사이 수 초**는 취소가 무시되고 발송될 수 있다. 봇 측 "처리중 claim" 필드 없이는 원천 차단 불가 — UI가 경고 문구 + 취소 후 확정·진행 탭 이동 여부 확인을 안내 (AG 리뷰 지적) |
+| Airtable 429 | staff API 3종의 `at()`에 지수 백오프 재시도 내장 (0.4→0.8→1.6s+지터, 최대 3회). 429는 미실행 응답이라 쓰기도 재시도 안전, 5xx는 GET만 재시도(중복 생성 방지) (AG 리뷰 반영) |
 
 ---
 
@@ -285,6 +291,7 @@ Campaign_DB ±1개월 + 계약이 문 진행 건 + CS_DB 정보 조인.
 - [ ] Vercel `STAFF_KEY` 설정 → 담당자 배포 (개인키 `STAFF_KEYS`는 인원 확정 후)
 - [ ] 큐에 정산월 이동 버튼 (D10 로직)
 - [ ] 인플 조회 전용 페이지 필요 여부 (현재 폼 검색 966명으로 대체 중)
+- [ ] **모바일 실기기 테스트** (AG 권고): 폰에서 큐 변경 모달의 datetime 입력·취소 모달 키보드 팝업 시 UI 가림, 보드 세부리스트 메모 편집, 예약폼 인플 검색 드롭다운. CSS는 모바일에서 모달 상단 정렬로 보강했으나 실기기 확인 필요
 - [ ] 고객등록 화면 (/admin 영역)
 - [ ] Softr 병행 1~2주 → 전환 → Softr·레거시 /manager 정리 (무인증+CORS `*` 청산 겸)
 

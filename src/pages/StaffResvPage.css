@@ -41,7 +41,8 @@
 .srv-lb{display:block;font-size:.72rem;font-weight:700;color:var(--ink2);margin:.85rem 0 .3rem}
 .srv-root .rq{color:#F87171;font-weight:800}
 .srv-extra{margin-top:1rem;border:1px dashed var(--line2);border-radius:9px;padding:.4rem .6rem}
-.srv-extra summary{font-size:.7rem;color:var(--muted);cursor:pointer;user-select:none}
+.srv-extra summary{font-size:.7rem;color:var(--muted);cursor:pointer;
+  -webkit-user-select:none;user-select:none}
 .srv-extra summary:hover{color:var(--ink2)}
 .srv-extra[open]{border-color:var(--line2);background:#12151D}
 .srv-dup-btns{display:flex;flex-direction:column;gap:.3rem;margin-top:.45rem}
@@ -143,6 +144,10 @@ textarea.srv-input{resize:vertical}
 .srv-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);
   -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
   display:flex;align-items:center;justify-content:center;z-index:50;padding:1rem}
+/* 모바일 키보드가 올라올 때 모달이 가려지지 않게 위쪽 정렬 */
+@media (max-width:700px){
+  .srv-overlay{align-items:flex-start;padding-top:2rem}
+}
 .srv-modal{width:100%;max-width:26rem;max-height:90vh;overflow-y:auto;background:#161927;
   border:1px solid rgba(139,92,246,.5);border-radius:14px;padding:1.1rem 1.2rem;
   box-shadow:0 24px 60px rgba(0,0,0,.6)}

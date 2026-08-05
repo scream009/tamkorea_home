@@ -53,23 +53,32 @@ function currentMonth() {
 }
 
 /* ── Airtable ── */
+const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+
 async function at(path, init) {
-  const r = await fetch(`${API}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${KEY}`,
-      'Content-Type': 'application/json',
-      ...(init?.headers || {}),
-    },
-  });
-  const body = await r.json().catch(() => ({}));
-  if (!r.ok) {
+  // 429 는 미실행 응답 → 쓰기여도 재시도 안전. 5xx 는 GET 만 재시도 (create 중복 방지).
+  const method = String(init?.method || 'GET').toUpperCase();
+  for (let attempt = 0; ; attempt += 1) {
+    const r = await fetch(`${API}${path}`, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${KEY}`,
+        'Content-Type': 'application/json',
+        ...(init?.headers || {}),
+      },
+    });
+    if (r.ok) return r.json().catch(() => ({}));
+    const retriable = r.status === 429 || (method === 'GET' && r.status >= 500);
+    if (retriable && attempt < 3) {
+      await sleep(400 * 2 ** attempt + Math.random() * 200);
+      continue;
+    }
+    const body = await r.json().catch(() => ({}));
     const msg = body?.error?.message || body?.error?.type || `Airtable ${r.status}`;
     const err = new Error(msg);
     err.status = r.status;
     throw err;
   }
-  return body;
 }
 
 async function fetchAll(table, { formula, fields } = {}) {
