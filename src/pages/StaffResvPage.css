@@ -39,6 +39,12 @@
 /* ── 폼 ── */
 .srv-form{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:1rem 1.1rem 1.2rem}
 .srv-lb{display:block;font-size:.72rem;font-weight:700;color:var(--ink2);margin:.85rem 0 .3rem}
+.srv-root .rq{color:#F87171;font-weight:800}
+.srv-extra{margin-top:1rem;border:1px dashed var(--line2);border-radius:9px;padding:.4rem .6rem}
+.srv-extra summary{font-size:.7rem;color:var(--muted);cursor:pointer;user-select:none}
+.srv-extra summary:hover{color:var(--ink2)}
+.srv-extra[open]{border-color:var(--line2);background:#12151D}
+.srv-dup-btns{display:flex;flex-direction:column;gap:.3rem;margin-top:.45rem}
 .srv-lb:first-child{margin-top:0}
 .srv-hint{font-weight:400;color:var(--muted);font-size:.68rem}
 .srv-why{margin-top:.4rem;text-align:center}
@@ -134,7 +140,8 @@ textarea.srv-input{resize:vertical}
   border-radius:7px;color:#DDD6FE;font-size:.66rem;font-weight:700;padding:.12rem .5rem;
   cursor:pointer;font-family:inherit;transition:.13s}
 .srv-newinfl:hover{background:rgba(139,92,246,.3)}
-.srv-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);
+.srv-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);
+  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
   display:flex;align-items:center;justify-content:center;z-index:50;padding:1rem}
 .srv-modal{width:100%;max-width:26rem;max-height:90vh;overflow-y:auto;background:#161927;
   border:1px solid rgba(139,92,246,.5);border-radius:14px;padding:1.1rem 1.2rem;

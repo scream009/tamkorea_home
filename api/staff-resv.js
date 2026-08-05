@@ -338,6 +338,52 @@ async function createInfl(body) {
   return { ok: true, infl: { id: rec.id, xid, wc, pal } };
 }
 
+/* ── 기존 인플 정보 갱신 — 중복 등록 시 "수정하시겠습니까" 흐름 ──
+   입력한 값으로 기존 레코드를 덮어쓴다 (빈 값은 건드리지 않는다). */
+async function updateInfl(body) {
+  const id = String(body.id || '');
+  if (!isRec(id)) throw Object.assign(new Error('레코드가 올바르지 않습니다.'), { status: 400 });
+
+  const fields = {};
+  const link = String(body.link || '').trim().slice(0, 500);
+  if (link) {
+    if (!/^https?:\/\//.test(link)) {
+      throw Object.assign(new Error('小红书链接은 http(s):// 로 시작해야 합니다.'), { status: 400 });
+    }
+    fields['XHS_link1(필수)'] = link;
+  }
+  const pal = Math.round(Number(body.pal) || 0);
+  if (pal > 0) fields['PAL(필수)'] = pal;
+  const mgr = String(body.mgr || '');
+  if (MGRS.includes(mgr)) fields['섭외_ID(필수)'] = mgr;
+  const type = String(body.type || '').trim();
+  if (type) fields['유형(필수)'] = type;
+  const wc = String(body.wc || '').trim().slice(0, 100);
+  if (wc) fields['WC_ID'] = wc;
+  const phone = String(body.phone || '').trim().slice(0, 50);
+  if (phone) fields['연락처'] = phone;
+  const nick = String(body.nick || '').trim().slice(0, 100);
+  if (nick) fields['닉네임'] = nick;
+
+  if (!Object.keys(fields).length) return { ok: true, changed: 0 };
+
+  await at(`/${encodeURIComponent(T_INFL)}/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ fields, typecast: false }),
+  });
+  const rec = await at(`/${encodeURIComponent(T_INFL)}/${id}`);
+  return {
+    ok: true,
+    changed: Object.keys(fields).length,
+    infl: {
+      id,
+      xid: one(rec.fields['XHS_ID(필수)']),
+      wc: one(rec.fields['WC_ID']),
+      pal: Number(rec.fields['PAL(필수)']) || 0,
+    },
+  };
+}
+
 /* ── 핸들러 ── */
 export default async function handler(req, res) {
   const who = staffIdentity(req, res);
@@ -372,6 +418,10 @@ export default async function handler(req, res) {
       }
       if (body.action === 'createInfl') {
         res.status(200).json(await createInfl(body));
+        return;
+      }
+      if (body.action === 'updateInfl') {
+        res.status(200).json(await updateInfl(body));
         return;
       }
       res.status(400).json({ error: '알 수 없는 요청입니다.' });

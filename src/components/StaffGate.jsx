@@ -35,22 +35,19 @@ export default function StaffGate({ children }) {
   useEffect(() => {
     let alive = true;
     (async () => {
-      // 1) URL ?k= (Softr 임베드 경로) — 검증되면 저장하고 주소창에서 지운다
+      // 1) URL ?k= (Softr 임베드 경로) — **검증 전에 먼저 저장**하고 주소창에서 지운다.
+      //    검증 후 저장하면 StrictMode 이중 실행(1회차가 URL을 지운 뒤 2회차가 빈손) 때 잠긴다.
       const params = new URLSearchParams(window.location.search);
       const urlKey = (params.get('k') || '').trim();
       if (urlKey) {
+        setStaffKey(urlKey);
         params.delete('k');
         const qs = params.toString();
         window.history.replaceState(null, '',
           window.location.pathname + (qs ? `?${qs}` : ''));
-        try {
-          const ok = await verify(urlKey);
-          if (!alive) return;
-          if (ok) { setStaffKey(urlKey); setStatus('open'); return; }
-        } catch { /* 아래 저장 키 경로로 넘어간다 */ }
       }
 
-      // 2) 저장된 키가 있으면 조용히 통과
+      // 2) 저장된 키가 있으면 조용히 통과 (틀린 키면 아래에서 지워진다)
       const saved = getStaffKey();
       if (!saved) { if (alive) setStatus('locked'); return; }
       try {

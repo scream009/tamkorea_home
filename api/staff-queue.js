@@ -180,6 +180,21 @@ async function actSend(body) {
   return { ok: true };
 }
 
+/* 발송 취소 — 봇이 안 돌고 있을 때(처리중에 계속 머묾) 대기로 되돌린다.
+   봇이 이미 발송했다면 상태가 예약확정으로 바뀌었을 것이므로 여기 올 수 없다. */
+async function actUnsend(body) {
+  const id = String(body.id || '');
+  if (!isRec(id)) throw Object.assign(new Error('레코드가 올바르지 않습니다.'), { status: 400 });
+  const f = await getEntry(id);
+  const st = one(f['진행상태']);
+  if (!SENDABLE.includes(st) && st !== '변경요청') {
+    throw Object.assign(new Error(`'${st}' 상태는 발송 대기로 되돌릴 수 없습니다.`), { status: 409 });
+  }
+  if (!f['자동발송체크']) return { ok: true, already: 1 };
+  await patchEntry(id, { 자동발송체크: false });
+  return { ok: true };
+}
+
 /* 변경 — 변경일시·변경인원 + 상태 변경요청 + 발송 트리거 */
 async function actModify(body) {
   const id = String(body.id || '');
@@ -292,6 +307,7 @@ export default async function handler(req, res) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
       const map = {
         send: actSend,
+        unsend: actUnsend,
         modify: actModify,
         confirmChange: actConfirmChange,
         cancel: actCancel,

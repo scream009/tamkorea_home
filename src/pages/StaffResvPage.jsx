@@ -352,10 +352,10 @@ export default function StaffResvPage() {
           <div className="srv-grid">
             {/* ── 좌: 입력 폼 ── */}
             <div className="srv-form">
-              <label className="srv-lb">매장 *</label>
+              <label className="srv-lb">매장 <b className="rq">*</b></label>
               <StorePicker stores={meta.stores} value={store} onPick={selectStore} />
 
-              <label className="srv-lb">담당자 (예약_ID) *</label>
+              <label className="srv-lb">담당자 (예약_ID) <b className="rq">*</b></label>
               <div className="srv-seg">
                 {meta.options.mgrs.map((m) => (
                   <button key={m} type="button" className={mgr === m ? 'on' : ''} onClick={() => setMgr(m)}>{m}</button>
@@ -364,7 +364,7 @@ export default function StaffResvPage() {
 
               <div className="srv-row2">
                 <div>
-                  <label className="srv-lb">유형 *</label>
+                  <label className="srv-lb">유형 <b className="rq">*</b></label>
                   <div className="srv-seg">
                     {meta.options.types.map((t) => (
                       <button key={t} type="button" className={type === t ? 'on' : ''} onClick={() => setType(t)}>{t}</button>
@@ -372,7 +372,7 @@ export default function StaffResvPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="srv-lb">진행상태 *</label>
+                  <label className="srv-lb">진행상태 <b className="rq">*</b></label>
                   <div className="srv-seg">
                     {meta.options.statuses.map((s) => (
                       <button key={s} type="button" className={status === s ? 'on' : ''} onClick={() => setStatus(s)}>{s}</button>
@@ -381,7 +381,7 @@ export default function StaffResvPage() {
                 </div>
               </div>
 
-              <label className="srv-lb">정산월 * <span className="srv-hint">오른쪽 월 카드를 눌러도 바뀝니다</span></label>
+              <label className="srv-lb">정산월 <b className="rq">*</b> <span className="srv-hint">오른쪽 월 카드를 눌러도 바뀝니다</span></label>
               <div className="srv-seg">
                 {(guard?.months || []).map((m) => {
                   const st = monthState(guard.byMonth[m]);
@@ -400,7 +400,7 @@ export default function StaffResvPage() {
                 <div className="srv-warn">⚠️ {month} 계약이 없습니다 — 관리자 화면에서 계약을 먼저 만들어야 합니다.</div>
               )}
 
-              <label className="srv-lb">예약일시 (한국시각) *</label>
+              <label className="srv-lb">예약일시 (한국시각) <b className="rq">*</b></label>
               <input
                 type="datetime-local"
                 className="srv-input"
@@ -410,7 +410,7 @@ export default function StaffResvPage() {
 
               <div className="srv-row3">
                 <div>
-                  <label className="srv-lb">총인원 *</label>
+                  <label className="srv-lb">총인원 <b className="rq">*</b></label>
                   <input type="number" min="1" className="srv-input" value={pax}
                     onChange={(e) => changePax(e.target.value)} />
                 </div>
@@ -427,7 +427,7 @@ export default function StaffResvPage() {
               </div>
 
               <label className="srv-lb">
-                참여 인플루언서 * <span className="srv-hint">선택한 수만큼 진행 건이 만들어집니다</span>
+                참여 인플루언서 <b className="rq">*</b> <span className="srv-hint">선택한 수만큼 진행 건이 만들어집니다</span>
                 <button type="button" className="srv-newinfl" onClick={() => setInflModal(true)}>＋ 신규 인플 등록</button>
               </label>
               <InflPicker infls={meta.infls} sel={inflSel} onChange={changeInfls} />
@@ -441,22 +441,26 @@ export default function StaffResvPage() {
                 </>
               )}
 
-              <label className="srv-lb">인원 메모</label>
+              <label className="srv-lb">인원 메모 <span className="srv-hint">(선택)</span></label>
               <input className="srv-input" value={paxMemo} placeholder="예) 성인 3 + 아동 1"
                 onChange={(e) => setPaxMemo(e.target.value)} />
 
-              <label className="srv-lb">고객 전달 메모</label>
+              <label className="srv-lb">고객 전달 메모 <span className="srv-hint">(선택 — 예약 메시지에 함께 전달)</span></label>
               <textarea className="srv-input" rows={2} value={clientMemo}
                 placeholder="예약 메시지에 함께 전달할 내용"
                 onChange={(e) => setClientMemo(e.target.value)} />
 
-              <label className="srv-lb">영문이름 <span className="srv-hint">서귀포잠수함 등 동행 필수 매장 — 양식: Abc + Def + Ghi</span></label>
-              <input className="srv-input" value={engNames} placeholder="Abc + Def + Ghi"
-                onChange={(e) => setEngNames(e.target.value)} />
-
-              <label className="srv-lb">예약 메모</label>
+              <label className="srv-lb">예약 메모 <span className="srv-hint">(선택 — 내부 비고)</span></label>
               <input className="srv-input" value={note} placeholder="내부 메모 (비고)"
                 onChange={(e) => setNote(e.target.value)} />
+
+              {/* 지금은 안 쓰는 특수 요청 — 비슷한 비정형 요청 대비로 구석에 남겨둔다 */}
+              <details className="srv-extra">
+                <summary>특수 요청 항목 (영문이름 등)</summary>
+                <label className="srv-lb">영문이름 <span className="srv-hint">과거 잠수함 여권 요건 — 양식: Abc + Def + Ghi</span></label>
+                <input className="srv-input" value={engNames} placeholder="Abc + Def + Ghi"
+                  onChange={(e) => setEngNames(e.target.value)} />
+              </details>
 
               {err && <div className="srv-error">{err}</div>}
 
@@ -599,25 +603,45 @@ function InflRegModal({ mgrs, defaultMgr, onClose, onCreated, onPickExisting }) 
     }
   }
 
+  /* 중복 인플 — 입력한 값으로 기존 레코드를 수정하고 선택 */
+  async function updateExisting() {
+    setBusy(true);
+    setErr('');
+    try {
+      const res = await fetch('/api/staff-resv', {
+        method: 'POST',
+        headers: staffHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ action: 'updateInfl', id: dupId, link, pal, mgr, type, wc, phone, nick }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `수정 실패 (${res.status})`);
+      onCreated(body.infl);
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="srv-overlay" onClick={onClose}>
       <div className="srv-modal" onClick={(e) => e.stopPropagation()}>
         <h3>＋ 신규 인플 등록</h3>
         <p className="srv-modal-sub">INFL_DB 에 바로 등록되고, 이 예약의 참여자로 선택됩니다.</p>
 
-        <label>小红书账号 (XHS_ID) *</label>
+        <label>小红书账号 (XHS_ID) <b className="rq">*</b></label>
         <input value={xid} onChange={(e) => setXid(e.target.value)} autoFocus />
 
-        <label>小红书链接 *</label>
+        <label>小红书链接 <b className="rq">*</b></label>
         <input value={link} placeholder="https://…" onChange={(e) => setLink(e.target.value)} />
 
         <div className="srv-modal-row">
           <div>
-            <label>小红书粉丝 (팔로워) *</label>
+            <label>小红书粉丝 (팔로워) <b className="rq">*</b></label>
             <input type="number" min="1" value={pal} onChange={(e) => setPal(e.target.value)} />
           </div>
           <div>
-            <label>섭외_ID *</label>
+            <label>섭외_ID <b className="rq">*</b></label>
             <div className="srv-seg srv-seg-sm">
               {mgrs.map((m) => (
                 <button key={m} type="button" className={mgr === m ? 'on' : ''} onClick={() => setMgr(m)}>{m}</button>
@@ -636,18 +660,18 @@ function InflRegModal({ mgrs, defaultMgr, onClose, onCreated, onPickExisting }) 
             </div>
           </div>
           <div>
-            <label>预约微信 (WC_ID)</label>
+            <label>预约微信 (WC_ID) <span className="srv-hint">(선택)</span></label>
             <input value={wc} onChange={(e) => setWc(e.target.value)} />
           </div>
         </div>
 
         <div className="srv-modal-row">
           <div>
-            <label>연락처</label>
+            <label>연락처 <span className="srv-hint">(선택)</span></label>
             <input value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
           <div>
-            <label>닉네임</label>
+            <label>닉네임 <span className="srv-hint">(선택)</span></label>
             <input value={nick} onChange={(e) => setNick(e.target.value)} />
           </div>
         </div>
@@ -656,9 +680,14 @@ function InflRegModal({ mgrs, defaultMgr, onClose, onCreated, onPickExisting }) 
           <div className="srv-error">
             {err}
             {dupId && (
-              <button type="button" className="srv-ghost srv-dup" onClick={() => onPickExisting(dupId)}>
-                기존 인플 선택하기
-              </button>
+              <div className="srv-dup-btns">
+                <button type="button" className="srv-ghost srv-dup" disabled={busy} onClick={updateExisting}>
+                  ✏️ 입력한 값으로 기존 정보 수정 + 선택
+                </button>
+                <button type="button" className="srv-ghost srv-dup" disabled={busy} onClick={() => onPickExisting(dupId)}>
+                  그대로 선택만
+                </button>
+              </div>
             )}
           </div>
         )}

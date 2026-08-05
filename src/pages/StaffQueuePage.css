@@ -52,6 +52,9 @@
   border:1px solid var(--line);border-radius:12px;padding:.75rem .85rem;transition:.15s}
 .stq-card:hover{border-color:var(--line2)}
 .stq-card.busy{opacity:.55;pointer-events:none}
+.stq-card.stuck{border-color:rgba(234,179,8,.45);background:linear-gradient(180deg,rgba(234,179,8,.05),transparent 40%),var(--panel)}
+.stq-stuck-hint{font-size:.68rem;color:#FDE68A;line-height:1.5;flex-basis:100%}
+.stq-stuck-hint b{color:#6EE7B7}
 .stq-card-h{display:flex;align-items:center;gap:.5rem;justify-content:space-between}
 .stq-card-h b{font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .stq-st{flex-shrink:0;font-size:.64rem;font-weight:700;border-radius:999px;padding:.1rem .5rem;border:1px solid}
@@ -92,13 +95,16 @@
 .stq-foot{margin-top:1rem;font-size:.68rem;color:var(--muted);line-height:1.7}
 
 /* ── 모달 ── */
-.stq-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);
+.stq-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);
+  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
   display:flex;align-items:center;justify-content:center;z-index:50;padding:1rem}
 .stq-modal{width:100%;max-width:26rem;background:#161927;border:1px solid rgba(139,92,246,.5);
   border-radius:14px;padding:1.1rem 1.2rem;box-shadow:0 24px 60px rgba(0,0,0,.6)}
 .stq-modal h3{margin:0 0 .3rem;font-size:.95rem}
 .stq-modal-sub{margin:0 0 .8rem;font-size:.72rem;color:var(--muted)}
 .stq-modal label{display:block;font-size:.7rem;font-weight:700;color:var(--ink2);margin:.6rem 0 .25rem}
+.stq-root .rq{color:#F87171;font-weight:800}
+.stq-opt{font-weight:400;color:var(--muted);font-size:.64rem}
 .stq-modal input,.stq-modal textarea{width:100%;box-sizing:border-box;background:#0E1119;
   border:1px solid var(--line2);border-radius:8px;color:var(--ink);padding:.42rem .55rem;
   font-size:.8rem;font-family:inherit;outline:none}
