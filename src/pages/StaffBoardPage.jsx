@@ -747,7 +747,7 @@ function DetailList({ cell, sel, initMgr, memoEdits, onSaveMemo, onClose }) {
           <table>
             <thead>
               <tr>
-                <th>#</th><th>담당</th><th>유형</th><th>상태</th>
+                <th>담당</th><th>유형</th><th>상태</th>
                 <th>방문일시</th><th>대표인플</th><th>인플</th>
                 <th>인원·건수</th><th>제출링크</th><th className="stb-th-memo">메모</th>
                 <th>전달</th><th className="stb-th-dl">기한</th>
@@ -860,7 +860,6 @@ function DetailRow({ d, memoVal, onSaveMemo }) {
   const hasResult = d.rx || d.rd || d.ry;
   return (
     <tr className={d.dl !== null && d.dl < 0 && !submitted ? 'stb-tr-late' : ''}>
-      <td className="stb-td-id">{d.sid || '—'}</td>
       <td>{d.mgr || '—'}</td>
       <td>{d.ty || '—'}</td>
       <td>{d.st || '—'}</td>
