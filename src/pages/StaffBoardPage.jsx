@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { staffHeaders, clearStaffKey } from '../lib/staffKey';
+import { staffHeaders } from '../lib/staffKey';
 import StaffNav from '../components/StaffNav';
 import './StaffBoardPage.css';
 
@@ -279,11 +279,6 @@ export default function StaffBoardPage() {
     if (expanded === rowName) { setExpanded(null); setSel(null); }
     else { setExpanded(rowName); setSel(null); }
   }
-  function logout() {
-    clearStaffKey();
-    window.location.reload();
-  }
-
   return (
     <div className="stb-root">
       <div className="stb-wrap">
@@ -346,7 +341,6 @@ export default function StaffBoardPage() {
             </div>
             <StaffNav current="board" />
             <button className="stb-ghost" onClick={() => load(month)} title="새로고침">⟳</button>
-            <button className="stb-ghost" onClick={logout} title="키 지우고 나가기">나가기</button>
           </div>
         </header>
 

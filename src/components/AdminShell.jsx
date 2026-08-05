@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { clearAdminKey } from '../lib/adminKey';
 
 /**
  * 관리자 화면 공통 껍데기 — 왼쪽 메뉴 + 본문.
@@ -48,6 +49,12 @@ export default function AdminShell({ children }) {
           ))}
         </nav>
         <div className="ash-foot">
+          <button
+            type="button"
+            className="ash-logout"
+            title="키를 지우고 인증 화면으로 — 다른 키로 다시 입장"
+            onClick={() => { clearAdminKey(); window.location.reload(); }}
+          >로그아웃</button>
           정산·계약 데이터입니다.<br />공유 전에 한 번 더 확인해 주세요.
         </div>
       </aside>

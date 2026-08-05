@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { clearStaffKey } from '../lib/staffKey';
 import './StaffNav.css';
 
 /**
@@ -42,6 +43,12 @@ export default function StaffNav({ current }) {
           >{it.label}</Link>
         ))}
       </div>
+      <button
+        type="button"
+        className="snav-logout"
+        title="키를 지우고 인증 화면으로 — 다른 키로 다시 입장할 수 있습니다"
+        onClick={() => { clearStaffKey(); window.location.reload(); }}
+      >로그아웃</button>
     </nav>
   );
 }

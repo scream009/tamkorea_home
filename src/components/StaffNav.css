@@ -13,6 +13,10 @@
 .snav-input .snav-it:hover{background:rgba(139,92,246,.2);color:#EDE9FE}
 .snav-input .snav-it.on{background:rgba(139,92,246,.35);color:#fff}
 
+.snav-logout{background:transparent;border:1px solid #2F3646;border-radius:9px;color:#7F8598;
+  padding:.38rem .7rem;font-size:.74rem;font-weight:600;cursor:pointer;font-family:inherit;transition:.13s}
+.snav-logout:hover{color:#FCA5A5;border-color:rgba(239,68,68,.5)}
+
 @media (max-width:760px){
   .snav-wrap{width:100%;flex-direction:column;gap:.35rem}
   .snav{width:100%;justify-content:stretch}

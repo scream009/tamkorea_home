@@ -64,6 +64,10 @@ body:has(.ash), body:has(.admin-gate) { padding-top: 0 !important; background: #
 
 /* ── 본문 ─────────────────────────────────────────── */
 .ash-main { min-width: 0; }
+.ash-logout{display:block;width:100%;margin-bottom:.6rem;background:transparent;
+  border:1px solid #2F3646;border-radius:8px;color:#7F8598;padding:.4rem .6rem;
+  font-size:.74rem;font-weight:600;cursor:pointer;font-family:inherit;transition:.13s}
+.ash-logout:hover{color:#FCA5A5;border-color:rgba(239,68,68,.5)}
 .ash-crumb {
   display: flex; align-items: baseline; gap: 9px;
   padding: 16px 26px; border-bottom: 1px solid rgba(255, 255, 255, .07);
