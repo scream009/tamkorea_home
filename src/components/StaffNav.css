@@ -1,12 +1,20 @@
-/* 담당자 공통 메뉴 — staff 팔레트와 동일 토큰 */
-.snav{display:inline-flex;background:#12151D;border:1px solid #2F3646;border-radius:9px;
-  overflow:hidden;flex-shrink:0}
+/* 담당자 공통 메뉴 — 조회 그룹(중성) + 입력 그룹(보라 강조) */
+.snav-wrap{display:inline-flex;gap:.45rem;flex-shrink:0;flex-wrap:wrap}
+.snav{display:inline-flex;background:#12151D;border:1px solid #2F3646;border-radius:9px;overflow:hidden}
 .snav-it{display:inline-block;padding:.38rem .8rem;font-size:.78rem;font-weight:600;
-  color:#B7BCCB;text-decoration:none;transition:.13s;border-right:1px solid #1C202B}
+  color:#B7BCCB;text-decoration:none;transition:.13s;border-right:1px solid #1C202B;white-space:nowrap}
 .snav-it:last-child{border-right:0}
 .snav-it:hover{color:#E9EBF2;background:#191D28}
 .snav-it.on{background:#2A2340;color:#DDD6FE;font-weight:800;box-shadow:inset 0 -2px 0 #8B5CF6}
-@media (max-width:700px){
+
+/* 입력 그룹 — 조회와 구분되는 보라 계열 */
+.snav-input{border-color:rgba(139,92,246,.5);background:rgba(139,92,246,.08)}
+.snav-input .snav-it{color:#C4B5FD;border-right-color:rgba(139,92,246,.25)}
+.snav-input .snav-it:hover{background:rgba(139,92,246,.2);color:#EDE9FE}
+.snav-input .snav-it.on{background:rgba(139,92,246,.35);color:#fff}
+
+@media (max-width:760px){
+  .snav-wrap{width:100%;flex-direction:column;gap:.35rem}
   .snav{width:100%;justify-content:stretch}
   .snav-it{flex:1;text-align:center;padding:.38rem .3rem}
 }
