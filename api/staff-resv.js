@@ -157,39 +157,30 @@ async function buildStoreGuard(storeId, baseMonth) {
   const g = store.fields || {};
 
   const months = [shiftMonth(baseMonth, -1), baseMonth, shiftMonth(baseMonth, 1)];
-  const monthSet = new Set(months);
 
-  // 이 매장의 Campaign 은 CS_DB 링크 필드가 이미 물고 있다 — 이름 매칭보다 확실하다.
-  // (링크 필드가 둘이다: 'Campaign_DB' 와 오타 쌍둥이 'Campain_DB'. 둘 다 본다.)
-  const campIds = [...new Set([
-    ...(g['Campaign_DB'] || []),
-    ...(g['Campain_DB'] || []),
-  ])];
+  // 조인은 **Campaign_DB 의 정방향 업체명 링크**로 한다.
+  // 처음엔 CS_DB 역링크(Campaign_DB·Campain_DB)를 썼는데, 실측 결과 역링크가 빈 매장이
+  // 있었다(우도 잠수함 성산·서귀포유람선 등 5곳) — 그 매장은 계약이 있어도 전부
+  // "계약 없음"으로 보였다. 정방향 업체명은 8월 98건 전부 채워져 있다 (2026-08-05 실측).
+  const campaigns = await fetchAll(T_CAMPAIGN, {
+    formula: `OR(${months.map((m) => `{계약월}='${m}'`).join(',')})`,
+    fields: ['계약월', '업체명', '체험_목표', '체험_방문', '체험_업완', '체험_취소', '추가체험단'],
+  });
 
   const byMonth = {};
-  if (campIds.length) {
-    for (let k = 0; k < campIds.length; k += 80) {
-      const chunk = campIds.slice(k, k + 80);
-
-      const recs = await fetchAll(T_CAMPAIGN, {
-        formula: `OR(${chunk.map((id) => `RECORD_ID()='${id}'`).join(',')})`,
-        fields: ['계약월', '체험_목표', '체험_방문', '체험_업완', '체험_취소', '추가체험단'],
-      });
-      recs.forEach((r) => {
-        const f = r.fields;
-        const mon = one(f['계약월']);
-        if (!monthSet.has(mon)) return;
-        byMonth[mon] = {
-          exists: 1,
-          tg: num(f['체험_목표']),
-          vis: num(f['체험_방문']),
-          up: num(f['체험_업완']),
-          cx: num(f['체험_취소']),
-          add: f['추가체험단'] ? 1 : 0,
-        };
-      });
-    }
-  }
+  campaigns.forEach((r) => {
+    const f = r.fields;
+    if (!(f['업체명'] || []).includes(storeId)) return;
+    const mon = one(f['계약월']);
+    byMonth[mon] = {
+      exists: 1,
+      tg: num(f['체험_목표']),
+      vis: num(f['체험_방문']),
+      up: num(f['체험_업완']),
+      cx: num(f['체험_취소']),
+      add: f['추가체험단'] ? 1 : 0,
+    };
+  });
 
   // 정산월 기본값: 계약이 있는 달 중 목표 미달인 가장 이른 달, 없으면 기준달
   let suggest = baseMonth;

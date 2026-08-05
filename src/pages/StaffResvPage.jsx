@@ -496,12 +496,16 @@ export default function StaffResvPage() {
                       <div><i>⚡ 피크</i><span>{guard.info.peak || '—'}</span></div>
                       {guard.info.visitOk && <div><i>✅ 방문가능</i><span>{guard.info.visitOk}</span></div>}
                     </div>
-                    {guard.info.give && (
-                      <div className="srv-sinfo-blk"><i>🎁 제공내역</i><span>{guard.info.give}</span></div>
-                    )}
-                    {guard.info.warn && (
-                      <div className="srv-sinfo-blk warn"><i>⚠️ 섭외주의</i><span>{guard.info.warn}</span></div>
-                    )}
+                    {/* 항상 표시 — 값이 비어도 행이 보여야 "정보가 안 나온다"는 오해가 없다.
+                        빈 값 = CS_DB 에 미입력 (제공내역은 119곳 중 51곳만 입력돼 있음) */}
+                    <div className="srv-sinfo-blk">
+                      <i>🎁 제공내역</i>
+                      <span>{guard.info.give || <em className="srv-miss">— CS_DB 미입력</em>}</span>
+                    </div>
+                    <div className={`srv-sinfo-blk ${guard.info.warn ? 'warn' : ''}`}>
+                      <i>⚠️ 섭외주의</i>
+                      <span>{guard.info.warn || <em className="srv-miss">—</em>}</span>
+                    </div>
                     {guard.info.note && (
                       <div className="srv-sinfo-blk"><i>비고</i><span>{guard.info.note}</span></div>
                     )}
