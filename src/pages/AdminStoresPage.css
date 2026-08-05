@@ -48,6 +48,13 @@
 /* 우: 폼 */
 .ads-form{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:1rem 1.1rem 1.3rem}
 .ads-form h2{margin:0 0 .6rem;font-size:.9rem;font-weight:700;color:var(--ink2)}
+.ads-tabs{display:flex;gap:.35rem;margin-bottom:.8rem;border-bottom:1px solid var(--line);padding-bottom:.6rem}
+.ads-tabs button{background:#12151D;border:1px solid var(--line2);border-radius:9px;color:var(--ink2);
+  padding:.45rem .9rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;transition:.13s}
+.ads-tabs button:hover:not(:disabled){border-color:var(--accent);color:#DDD6FE}
+.ads-tabs button.on{background:#2A2340;border-color:var(--accent);color:#DDD6FE;
+  box-shadow:inset 0 -2px 0 var(--accent)}
+.ads-tabs button:disabled{opacity:.4;cursor:not-allowed}
 .ads-sec{margin:1.1rem 0 .5rem;padding-bottom:.3rem;border-bottom:1px solid var(--line);
   font-size:.76rem;font-weight:800;color:var(--accent2)}
 .ads-sec:first-of-type{margin-top:.2rem}

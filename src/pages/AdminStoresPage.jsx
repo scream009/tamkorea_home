@@ -16,6 +16,12 @@ const EMPTY = {
   rest: [], cls: '', region: '', area: '', use: 1,
 };
 
+/* 코드 → 사람 말 (Airtable 옵션은 코드만 있음 — 라벨이 틀리면 알려주세요, 여기만 고치면 됨) */
+const CLS_LABELS = { FB: '요식 (F&B)', AT: '관광·액티비티', RT: '리테일·매장', HT: '숙박·호텔', ET: '엔터·체험' };
+const REGION_LABELS = { J: '제주', S: '서울', B: '부산', E: '기타' };
+const clsLabel = (c) => (c ? `${c} — ${CLS_LABELS[c] || ''}` : '');
+const regionLabel = (r) => (r ? `${r} — ${REGION_LABELS[r] || ''}` : '');
+
 function monthChoices() {
   const k = new Date(Date.now() + 9 * 3600 * 1000);
   const out = [];
@@ -32,6 +38,7 @@ export default function AdminStoresPage() {
   const [q, setQ] = useState('');
   const [useFilter, setUseFilter] = useState('use');   // use | off | all
   const [sel, setSel] = useState(null);                // 선택된 store id ('' = 신규)
+  const [tab, setTab] = useState('info');              // info | contract
   const [form, setForm] = useState(EMPTY);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState('');
@@ -60,8 +67,12 @@ export default function AdminStoresPage() {
     try {
       const res = await fetch(`/api/admin-stores?store=${storeId}`, { headers: adminHeaders() });
       const body = await res.json().catch(() => ({}));
-      if (res.ok) setContracts(body.contracts || []);
-    } catch { /* 목록 없이도 폼은 동작 */ }
+      if (!res.ok) throw new Error(body.error || `계약 조회 실패 (${res.status})`);
+      setContracts(body.contracts || []);
+    } catch (e) {
+      setContracts([]);
+      setError(`계약 목록: ${e.message}`);   // 조용히 삼키면 "계약등록이 없다"로 보인다
+    }
   }, []);
 
   function flash(m) { setToast(m); setTimeout(() => setToast(''), 2500); }
@@ -69,12 +80,14 @@ export default function AdminStoresPage() {
   function pick(s) {
     setSel(s.id);
     setForm({ ...EMPTY, ...s });
+    setTab('contract');   // 월초 목표 등록이 주 업무 — 계약 탭을 먼저 보여준다
     loadContracts(s.id);
   }
   function pickNew() {
     setSel('');
     setForm(EMPTY);
     setContracts(null);
+    setTab('info');
   }
 
   const list = useMemo(() => {
@@ -103,9 +116,10 @@ export default function AdminStoresPage() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `저장 실패 (${res.status})`);
-      flash(sel ? '고객사 정보를 저장했습니다' : '고객사를 등록했습니다 — 아래에서 첫 계약을 등록하세요');
+      flash(sel ? '고객사 정보를 저장했습니다' : '고객사를 등록했습니다 — 계약·목표 탭에서 첫 계약을 등록하세요');
       if (!sel && body.id) {
         setSel(body.id);
+        setTab('contract');
         loadContracts(body.id);
       }
       await load();
@@ -171,7 +185,11 @@ export default function AdminStoresPage() {
                 onClick={() => pick(s)}
               >
                 <b>{s.client} {s.branch}</b>
-                <span>{s.cn || '—'}</span>
+                <span>
+                  {s.cn || '—'}
+                  {s.region && ` · ${REGION_LABELS[s.region] || s.region}`}
+                  {s.cls && ` · ${CLS_LABELS[s.cls] || s.cls}`}
+                </span>
                 {!s.use && <em>미사용</em>}
               </button>
             ))}
@@ -180,9 +198,29 @@ export default function AdminStoresPage() {
 
         {/* ── 우: 폼 ── */}
         <section className="ads-form">
-          <h2>{sel === null ? '왼쪽에서 고객사를 선택하거나 신규 등록' : sel === '' ? '신규 고객사 등록' : '고객사 수정'}</h2>
+          <h2>
+            {sel === null ? '왼쪽에서 고객사를 선택하거나 신규 등록'
+              : sel === '' ? '신규 고객사 등록'
+                : `${form.client} ${form.branch}`}
+          </h2>
 
           {sel !== null && (
+            <div className="ads-tabs">
+              <button className={tab === 'info' ? 'on' : ''} onClick={() => setTab('info')}>
+                🏪 고객사 정보
+              </button>
+              <button
+                className={tab === 'contract' ? 'on' : ''}
+                disabled={!sel}
+                title={sel ? '' : '고객사를 먼저 저장하세요'}
+                onClick={() => setTab('contract')}
+              >
+                🎯 계약·목표 등록
+              </button>
+            </div>
+          )}
+
+          {sel !== null && tab === 'info' && (
             <>
               <div className="ads-sec">기본 정보</div>
               <div className="ads-r2">
@@ -201,13 +239,13 @@ export default function AdminStoresPage() {
                 <label>분류
                   <select value={form.cls} onChange={set('cls')}>
                     <option value="">—</option>
-                    {opts?.cls.map((c) => <option key={c} value={c}>{c}</option>)}
+                    {opts?.cls.map((c) => <option key={c} value={c}>{clsLabel(c)}</option>)}
                   </select>
                 </label>
                 <label>지역
                   <select value={form.region} onChange={set('region')}>
                     <option value="">—</option>
-                    {opts?.regions.map((c) => <option key={c} value={c}>{c}</option>)}
+                    {opts?.regions.map((c) => <option key={c} value={c}>{regionLabel(c)}</option>)}
                   </select>
                 </label>
                 <label>권역
@@ -256,8 +294,12 @@ export default function AdminStoresPage() {
               <button className="ads-primary ads-save" disabled={busy} onClick={saveStore}>
                 {busy ? '저장 중…' : sel ? '고객사 정보 저장' : '고객사 등록'}
               </button>
+            </>
+          )}
 
-              {/* ── 계약·목표 ── */}
+          {/* ── 계약·목표 탭 ── */}
+          {sel !== null && tab === 'contract' && (
+            <>
               {sel && (
                 <>
                   <div className="ads-sec">계약·목표 <span className="ads-hint">— Campaign_DB. 있으면 수정(원본·이력 보존), 없으면 생성</span></div>
