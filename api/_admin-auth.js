@@ -17,11 +17,35 @@ import crypto from 'crypto';
 
 const ADMIN_KEY = process.env.ADMIN_KEY || process.env.CLIENTS_ADMIN_KEY || '';
 
+/** ADMIN_KEYS="GG:키1,QN:키2" → [['GG','키1'],…] — 개인별 관리자 키 (2026-08-06 도입).
+    키가 곧 신원이라 나중에 수정이력에 누가 했는지 남길 수 있다. */
+export function parseAdminKeys() {
+  const out = [];
+  String(process.env.ADMIN_KEYS || '').split(',').forEach((pair) => {
+    const i = pair.indexOf(':');
+    if (i <= 0) return;
+    const id = pair.slice(0, i).trim();
+    const key = pair.slice(i + 1).trim();
+    if (id && key) out.push([id, key]);
+  });
+  return out;
+}
+
 function safeEqual(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string') return false;
   if (a.length !== b.length) return false;
   try { return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)); }
   catch { return false; }
+}
+export { safeEqual };
+
+/** 제시된 키의 관리자 신원 — 개인ID | 'admin'(공용키) | null(불일치) */
+export function adminWho(provided) {
+  for (const [id, key] of parseAdminKeys()) {
+    if (safeEqual(provided, key)) return id;
+  }
+  if (ADMIN_KEY && safeEqual(provided, ADMIN_KEY)) return 'admin';
+  return null;
 }
 
 /**
@@ -33,13 +57,13 @@ export function blockedByAdminGate(req, res) {
 
   // 키가 설정 안 된 배포에서 통과시키면 게이트가 없는 것과 같다.
   // 열어두느니 닫는다 — 정산·계약 데이터라 오작동보다 노출이 비싸다.
-  if (!ADMIN_KEY) {
-    res.status(503).json({ error: 'ADMIN_KEY (또는 CLIENTS_ADMIN_KEY) 가 설정되지 않았습니다.' });
+  if (!ADMIN_KEY && !parseAdminKeys().length) {
+    res.status(503).json({ error: 'ADMIN_KEYS (또는 CLIENTS_ADMIN_KEY) 가 설정되지 않았습니다.' });
     return true;
   }
 
   const provided = String(req.headers['x-admin-key'] || req.query?.k || '');
-  if (!safeEqual(provided, ADMIN_KEY)) {
+  if (!adminWho(provided)) {
     // 존재 자체를 숨긴다. 401 을 주면 "여기 관리자 API 가 있다"는 신호가 된다.
     res.status(404).json({ error: 'Not found' });
     return true;

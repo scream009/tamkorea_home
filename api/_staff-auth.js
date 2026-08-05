@@ -18,6 +18,7 @@
  */
 
 import crypto from 'crypto';
+import { adminWho, parseAdminKeys } from './_admin-auth.js';
 
 const ADMIN_KEY = process.env.ADMIN_KEY || process.env.CLIENTS_ADMIN_KEY || '';
 const STAFF_KEY = process.env.STAFF_KEY || '';
@@ -50,8 +51,8 @@ export function staffIdentity(req, res) {
   res.setHeader('Cache-Control', 'no-store');
 
   const personal = parsePersonal();
-  if (!ADMIN_KEY && !STAFF_KEY && !personal.length) {
-    res.status(503).json({ error: 'STAFF_KEY (또는 ADMIN_KEY) 가 설정되지 않았습니다.' });
+  if (!ADMIN_KEY && !STAFF_KEY && !personal.length && !parseAdminKeys().length) {
+    res.status(503).json({ error: 'STAFF_KEY (또는 ADMIN_KEYS) 가 설정되지 않았습니다.' });
     return null;
   }
 
@@ -63,7 +64,10 @@ export function staffIdentity(req, res) {
     if (safeEqual(provided, key)) return id;
   }
   if (STAFF_KEY && safeEqual(provided, STAFF_KEY)) return 'staff';
-  if (ADMIN_KEY && safeEqual(provided, ADMIN_KEY)) return 'admin';
+  // 관리자는 상위 호환 통과 — 개인 관리자 키(ADMIN_KEYS)면 신원도 그 사람으로.
+  // 겸직자(AN·LH)가 담당자 화면에서 자기 ID 로 잡히는 근거.
+  const aw = adminWho(provided);
+  if (aw) return aw;
 
   // 존재 자체를 숨긴다 — _admin-auth.js 와 같은 이유.
   res.status(404).json({ error: 'Not found' });
