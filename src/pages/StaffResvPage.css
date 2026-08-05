@@ -175,6 +175,8 @@ textarea.srv-input{resize:vertical}
 .srv-sent-ok{font-size:.78rem;font-weight:700;color:#6EE7B7}
 .srv-team{border-color:rgba(139,92,246,.5);color:#C4B5FD}
 .srv-team:hover{background:rgba(139,92,246,.15)}
+.srv-copybanner{margin-bottom:.8rem;padding:.55rem .9rem;border:1px solid rgba(139,92,246,.5);
+  background:rgba(139,92,246,.1);border-radius:10px;color:#DDD6FE;font-size:.8rem;line-height:1.6}
 
 /* ── 모바일 ── */
 @media (max-width:820px){

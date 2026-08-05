@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { staffHeaders } from '../lib/staffKey';
 import StaffNav from '../components/StaffNav';
 import InflRegModal from '../components/InflRegModal';
+import DateTime30 from '../components/DateTime30';
 import './StaffResvPage.css';
 
 /**
@@ -171,10 +172,12 @@ export default function StaffResvPage() {
   const [status, setStatus] = useState('예약요청');
   const [month, setMonth] = useState('');
   const [when, setWhen] = useState('');
+  const [wKey, setWKey] = useState(0);   // DateTime30 리셋용 (리마운트 키)
   const [pax, setPax] = useState(1);
   const [nx, setNx] = useState(1);
   const [nxTouched, setNxTouched] = useState(false);
-  const [nd, setNd] = useState(0);
+  const [nd, setNd] = useState(1);       // 초기값 1,1,1 통일 (Owner 2026-08-05)
+  const [ndTouched, setNdTouched] = useState(false);
   const [inflSel, setInflSel] = useState([]);
   const [lead, setLead] = useState('');
   const [paxMemo, setPaxMemo] = useState('');
@@ -225,11 +228,37 @@ export default function StaffResvPage() {
     if (meta && preStore && !store) selectStore(preStore);
   }, [meta, preStore, store, selectStore]);
 
-  /* 총인원 바꾸면 小红 건수가 따라간다 (직접 만지기 전까지) */
+  /* ?copy=1 — 예약발송에서 복사해 온 팀 구성 프리필. 일시는 비워서 새로 찍게 한다 */
+  const copyMode = params.get('copy') === '1';
+  const [copyFrom, setCopyFrom] = useState('');
+  useEffect(() => {
+    if (!meta || !copyMode || store) return;
+    let c = null;
+    try { c = JSON.parse(sessionStorage.getItem('tk_resv_copy') || 'null'); } catch { /* noop */ }
+    if (!c) return;
+    try { sessionStorage.removeItem('tk_resv_copy'); } catch { /* noop */ }
+    if (c.storeId) selectStore(c.storeId);
+    if (['HH', 'LH', 'AN', 'FB'].includes(c.mgr)) setMgr(c.mgr);
+    if (['체험', '인플', '기자'].includes(c.ty)) setType(c.ty);
+    if (c.pax) setPax(Math.max(1, Number(c.pax) || 1));
+    if (c.nx !== undefined && c.nx !== '') { setNx(Math.max(0, Number(c.nx) || 0)); setNxTouched(true); }
+    if (c.nd !== undefined && c.nd !== '') { setNd(Math.max(0, Number(c.nd) || 0)); setNdTouched(true); }
+    const valid = new Set((meta.infls || []).map((i) => i.id));
+    const ids = (c.inflIds || []).filter((id) => valid.has(id));
+    if (ids.length) {
+      setInflSel(ids);
+      setLead(valid.has(c.leadId) ? c.leadId : ids[0]);
+    }
+    if (c.paxMemo) setPaxMemo(c.paxMemo);
+    setCopyFrom(c.from || '이전 예약');
+  }, [meta, copyMode, store, selectStore]);
+
+  /* 총인원 바꾸면 小红·大众 건수가 따라간다 (직접 만지기 전까지) */
   function changePax(v) {
     const p = Math.max(1, Math.round(Number(v) || 1));
     setPax(p);
     if (!nxTouched) setNx(p);
+    if (!ndTouched) setNd(p);
   }
 
   /* 참여 인플이 바뀌면 대표인플 정합 유지 */
@@ -270,16 +299,25 @@ export default function StaffResvPage() {
 
     setBusy(true);
     try {
-      const res = await fetch('/api/staff-resv', {
+      const payload = {
+        action: 'create',
+        store, mgr, type, status, month, when, pax, nx, nd,
+        lead, infls: inflSel, paxMemo, clientMemo, engNames, note,
+      };
+      const post = (p) => fetch('/api/staff-resv', {
         method: 'POST',
         headers: staffHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({
-          action: 'create',
-          store, mgr, type, status, month, when, pax, nx, nd,
-          lead, infls: inflSel, paxMemo, clientMemo, engNames, note,
-        }),
+        body: JSON.stringify(p),
       });
-      const body = await res.json().catch(() => ({}));
+      let res = await post(payload);
+      let body = await res.json().catch(() => ({}));
+      // 중복 예약 가드 — 같은 매장·날짜·인플 조합. 확인하면 force 로 통과
+      if (!res.ok && body.dupResv) {
+        const go = window.confirm(`⚠️ ${body.error}\n\n중복 발송 위험이 있습니다. 그래도 접수할까요?`);
+        if (!go) return;
+        res = await post({ ...payload, force: true });
+        body = await res.json().catch(() => ({}));
+      }
       if (!res.ok) throw new Error(body.error || `저장 실패 (${res.status})`);
       setDone({ ...body, when, pax, infls: inflSel.length, status, sent: false });
     } catch (e) {
@@ -327,10 +365,12 @@ export default function StaffResvPage() {
   function resetForNext() {
     setDone(null);
     setWhen('');
+    setWKey((k) => k + 1);
     setPax(1);
     setNx(1);
     setNxTouched(false);
-    setNd(0);
+    setNd(1);
+    setNdTouched(false);
     setInflSel([]);
     setLead('');
     setPaxMemo('');
@@ -398,6 +438,13 @@ export default function StaffResvPage() {
           </div>
         )}
 
+        {meta && !done && copyFrom && (
+          <div className="srv-copybanner">
+            📋 <b>{copyFrom}</b> 예약을 복사했습니다 — 매장·일시를 확인하고 새로 선택하세요.
+            같은 매장·같은 날짜·같은 인플로 다시 접수하면 중복 경고가 뜹니다.
+          </div>
+        )}
+
         {meta && !done && (
           <div className="srv-grid">
             {/* ── 좌: 입력 폼 ── */}
@@ -450,13 +497,8 @@ export default function StaffResvPage() {
                 <div className="srv-warn">⚠️ {month} 계약이 없습니다 — 관리자 화면에서 계약을 먼저 만들어야 합니다.</div>
               )}
 
-              <label className="srv-lb">예약일시 (한국시각) <b className="rq">*</b></label>
-              <input
-                type="datetime-local"
-                className="srv-input"
-                value={when}
-                onChange={(e) => setWhen(e.target.value)}
-              />
+              <label className="srv-lb">예약일시 (한국시각) <b className="rq">*</b> <span className="srv-hint">시간은 30분 단위</span></label>
+              <DateTime30 key={wKey} value={when} onChange={setWhen} inputClass="srv-input" />
 
               <div className="srv-row3">
                 <div>
@@ -472,7 +514,7 @@ export default function StaffResvPage() {
                 <div>
                   <label className="srv-lb">大众 건수</label>
                   <input type="number" min="0" className="srv-input" value={nd}
-                    onChange={(e) => setNd(Math.max(0, Math.round(Number(e.target.value) || 0)))} />
+                    onChange={(e) => { setNdTouched(true); setNd(Math.max(0, Math.round(Number(e.target.value) || 0))); }} />
                 </div>
               </div>
 

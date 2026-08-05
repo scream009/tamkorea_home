@@ -247,6 +247,34 @@ async function createEntry(body) {
   const nx = Math.max(0, Math.round(Number(body.nx) || 0));
   const nd = Math.max(0, Math.round(Number(body.nd) || 0));
 
+  // ── 중복 가드: 같은 매장 · 같은 날(KST) · 같은 인플이 겹치는 예약이 이미 있으면 거부 ──
+  // 복사 기능으로 같은 내용을 그대로 재접수 → 고객사에 중복 발송되는 사고 방지 (Owner 2026-08-05).
+  // force=true(클라이언트 확인창 통과)면 건너뛴다. 취소·노쇼 건은 중복으로 안 본다.
+  if (!body.force) {
+    const day = when.slice(0, 10);
+    const startIso = new Date(new Date(`${day}T00:00:00+09:00`).getTime() - 1000).toISOString();
+    const endIso = new Date(`${day}T23:59:59+09:00`).toISOString();
+    const sameDay = await fetchAll(T_ENTRY, {
+      formula: `AND(IS_AFTER({예약일시},DATETIME_PARSE('${startIso}')),IS_BEFORE({예약일시},DATETIME_PARSE('${endIso}')))`,
+      fields: ['매장코드', 'XHS_ID_', 'Shoot_ID', '진행상태'],
+    });
+    const inflSet = new Set(infls);
+    const hit = sameDay.find((r) => {
+      const g2 = r.fields;
+      if (!(g2['매장코드'] || []).includes(store)) return false;
+      const st2 = one(g2['진행상태']);
+      if (st2.includes('취소') || st2.includes('노쇼')) return false;
+      return (g2['XHS_ID_'] || []).some((iid) => inflSet.has(iid));
+    });
+    if (hit) {
+      throw Object.assign(
+        new Error(`같은 매장·같은 날짜(${day})에 같은 인플이 포함된 예약이 이미 있습니다 `
+          + `(${one(hit.fields['Shoot_ID']) || hit.id} · ${one(hit.fields['진행상태'])}). 중복 발송 위험!`),
+        { status: 409, dupResv: 1 },
+      );
+    }
+  }
+
   // ── 정산월 가드: 그 매장×정산월 계약이 있어야 한다 ──
   const guard = await buildStoreGuard(store, month);
   if (!guard.byMonth[month]?.exists) {
@@ -459,7 +487,11 @@ export default async function handler(req, res) {
     const msg = /choice|option/i.test(e.message || '')
       ? `${e.message} — Airtable 단일선택(정산월·유형 등)에 해당 항목이 없습니다. Airtable 에서 옵션을 먼저 추가해 주세요.`
       : (e.message || '처리 중 오류가 발생했습니다.');
-    // 중복 인플이면 기존 레코드 ID 를 같이 준다 — 클라이언트가 바로 선택할 수 있게
-    res.status(e.status || 500).json({ error: msg, ...(e.dupId ? { dupId: e.dupId } : {}) });
+    // 중복 인플이면 기존 레코드 ID, 중복 예약이면 dupResv 플래그를 같이 준다
+    res.status(e.status || 500).json({
+      error: msg,
+      ...(e.dupId ? { dupId: e.dupId } : {}),
+      ...(e.dupResv ? { dupResv: 1 } : {}),
+    });
   }
 }

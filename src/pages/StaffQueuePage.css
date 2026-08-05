@@ -99,7 +99,7 @@
 .stq-row-wrap{border-bottom:1px solid #1C202B}
 .stq-row-wrap:last-child{border-bottom:0}
 .stq-row-wrap.busy{opacity:.55;pointer-events:none}
-.stq-row{display:grid;grid-template-columns:5.4rem minmax(8rem,1.2fr) 6.2rem minmax(7rem,1fr) minmax(9rem,1fr) minmax(7rem,.9fr) auto;
+.stq-row{display:grid;grid-template-columns:5.4rem minmax(8rem,1.2fr) minmax(7rem,1fr) minmax(9rem,1fr) minmax(7rem,.9fr) auto;
   gap:.6rem;align-items:center;padding:.45rem .8rem;cursor:pointer;transition:.12s}
 .stq-row:hover{background:#191D28}
 .stq-row-store{font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -145,10 +145,10 @@
 .stq-modal label{display:block;font-size:.7rem;font-weight:700;color:var(--ink2);margin:.6rem 0 .25rem}
 .stq-root .rq{color:#F87171;font-weight:800}
 .stq-opt{font-weight:400;color:var(--muted);font-size:.64rem}
-.stq-modal input,.stq-modal textarea{width:100%;box-sizing:border-box;background:#0E1119;
+.stq-modal input,.stq-modal textarea,.stq-modal select{width:100%;box-sizing:border-box;background:#0E1119;
   border:1px solid var(--line2);border-radius:8px;color:var(--ink);padding:.42rem .55rem;
   font-size:.8rem;font-family:inherit;outline:none}
-.stq-modal input:focus,.stq-modal textarea:focus{border-color:var(--accent)}
+.stq-modal input:focus,.stq-modal textarea:focus,.stq-modal select:focus{border-color:var(--accent)}
 .stq-cancel-opts{display:flex;flex-direction:column;gap:.3rem}
 .stq-cancel-opts button{text-align:left;background:#12151D;border:1px solid var(--line2);border-radius:8px;
   color:var(--ink2);padding:.4rem .6rem;font-size:.76rem;cursor:pointer;font-family:inherit;transition:.13s}

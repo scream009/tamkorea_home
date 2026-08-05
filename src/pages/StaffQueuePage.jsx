@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { staffHeaders } from '../lib/staffKey';
 import StaffNav from '../components/StaffNav';
+import DateTime30 from '../components/DateTime30';
 import './StaffQueuePage.css';
 
 /**
@@ -48,6 +50,7 @@ function isoToLocal(iso) {
 }
 
 export default function StaffQueuePage() {
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -124,6 +127,19 @@ export default function StaffQueuePage() {
   /* 카드·행이 같은 액션을 쓴다 */
   function handlersFor(it) {
     return {
+      // 예약 복사 — 팀 구성(매장·인플·담당·유형·인원·건수)을 신규입력 폼으로 가져간다.
+      // 일시는 비워서 새로 찍게 한다. 같은 매장·날짜·인플 재접수는 서버 중복 가드가 잡는다.
+      copy: () => {
+        try {
+          sessionStorage.setItem('tk_resv_copy', JSON.stringify({
+            storeId: it.storeId, mgr: it.mgr, ty: it.ty,
+            pax: it.pax, nx: it.nx, nd: it.nd,
+            inflIds: it.inflIds, leadId: it.leadId,
+            paxMemo: it.paxMemo, from: it.sid || it.store,
+          }));
+        } catch { /* 저장 실패 시 빈 폼으로 열린다 */ }
+        navigate('/staff/new?copy=1');
+      },
       send: () => {
         if (window.confirm(`[${it.store}] 예약 메시지를 발송할까요?\n예약봇이 다음 폴링에서 카톡을 보냅니다.`)) {
           act({ action: 'send', id: it.id }, '발송 대기열에 올렸습니다');
@@ -273,7 +289,6 @@ function QueueCard({ it, busy, h }) {
         <span className={`stq-st ${stClass(it.st)}`}>{it.st}</span>
       </div>
       <div className="stq-meta">
-        <span className="stq-id">{it.sid || '—'}</span>
         <span>{it.mgr}</span>
         <span>{it.ty}</span>
         <span>{it.mon}</span>
@@ -310,6 +325,7 @@ function ActionButtons({ t, it, busy, h }) {
       <>
         <button className="stq-primary" disabled={busy} onClick={h.send}>📤 전송</button>
         <button className="stq-b" disabled={busy} onClick={h.edit}>✏️ 수정</button>
+        <button className="stq-b" disabled={busy} onClick={h.copy} title="이 팀 구성으로 새 예약 입력">📋 복사</button>
         <button className="stq-b bad" disabled={busy} onClick={h.remove}>🗑 삭제</button>
       </>
     );
@@ -330,6 +346,7 @@ function ActionButtons({ t, it, busy, h }) {
       <>
         <button className="stq-b" disabled={busy} onClick={h.modify}>✏️ 변경</button>
         <button className="stq-b warn" disabled={busy} onClick={h.cancel}>🚫 취소·노쇼</button>
+        <button className="stq-b" disabled={busy} onClick={h.copy} title="이 팀 구성으로 새 예약 입력 (다른 매장·다른 날짜)">📋 복사</button>
       </>
     );
   }
@@ -365,7 +382,6 @@ function ListRow({ it, busy, h }) {
       <div className="stq-row" onClick={() => setOpen((v) => !v)}>
         <span className={`stq-st ${stClass(it.st)}`}>{it.st}</span>
         <b className="stq-row-store">{it.store || '—'}</b>
-        <span className="stq-row-id">{it.sid}</span>
         <span className="stq-row-meta">{it.mgr} · {it.ty} · {it.mon}</span>
         <span className="stq-row-when">
           🗓 {it.when || '—'}
@@ -407,8 +423,8 @@ function EditModal({ item, busy, onClose, onSubmit }) {
           발송 전이라 모든 항목을 자유롭게 고칠 수 있습니다. 예약일시·담당·유형은
           분할된 진행 건에도 함께 반영됩니다.
         </p>
-        <label>예약일시 (한국시각)</label>
-        <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
+        <label>예약일시 (한국시각) <span className="stq-opt">30분 단위</span></label>
+        <DateTime30 value={when} onChange={setWhen} />
         <div className="stq-modal-row3">
           <div>
             <label>총인원</label>
@@ -466,8 +482,8 @@ function ModifyModal({ item, busy, onClose, onSubmit }) {
       <div className="stq-modal" onClick={(e) => e.stopPropagation()}>
         <h3>✏️ 예약 변경 — {item.store}</h3>
         <p className="stq-modal-sub">변경요청 상태로 바뀌고 변경 안내가 발송 대기열에 오릅니다.</p>
-        <label>변경일시 (한국시각) <b className="rq">*</b></label>
-        <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
+        <label>변경일시 (한국시각) <b className="rq">*</b> <span className="stq-opt">30분 단위</span></label>
+        <DateTime30 value={when} onChange={setWhen} />
         <label>변경인원 <span className="stq-opt">(선택 — 그대로면 비워두기)</span></label>
         <input type="number" min="1" value={pax} onChange={(e) => setPax(e.target.value)} />
         <label>고객 전달 메모 <span className="stq-opt">(선택)</span></label>

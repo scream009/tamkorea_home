@@ -36,6 +36,7 @@ const ENTRY_FIELDS = [
   '예약일시', '변경일시', '총인원', '변경인원', 'XHS_건수', 'DP_건수',
   'XHS_ID', 'WC_ID (from 대표인플)', '인원메모', '고객전달메모', '비고',
   '예약메시지', '변경메시지', '자동발송체크', '팀명생성기', 'Created time',
+  '매장코드', 'XHS_ID_', '대표인플',   // 링크 레코드 ID — 예약 복사(프리필)용
 ];
 
 /* ── 월 헬퍼 ── */
@@ -127,10 +128,12 @@ function kstDT(iso) {
 /* ── 목록 ─────────────────────────────────────────────────── */
 async function buildQueue() {
   const months = currentMonths3();
-  // 창 = 정산월 ±1개월 + **처리 대기 상태는 월 무관 전부** —
-  // 과거 월에 남은 예약요청·변경요청이 월 창에 잘려 안 보이던 문제 (Owner 지적 2026-08-05)
+  // 창 = 정산월 ±1개월 + **처리 대기 상태는 월 무관 전부** + **방문일이 미래인 건 전부** —
+  // 과거 월 예약요청이 잘려 안 보이던 문제(Owner 지적)에 이어, 월 창 밖이어도
+  // 방문 전이면 변경·취소 대상이므로 놓치면 안 된다.
   const formula = `OR(${months.map((m) => `{정산월}='${escFormula(m)}'`).join(',')},`
-    + `{진행상태}='예약요청',{진행상태}='긴급예약',{진행상태}='변경요청')`;
+    + `{진행상태}='예약요청',{진행상태}='긴급예약',{진행상태}='변경요청',`
+    + `IS_AFTER({예약일시},NOW()))`;
   const recs = await fetchAll(T_ENTRY, { formula, fields: ENTRY_FIELDS });
 
   const items = recs.map((r) => {
@@ -159,6 +162,10 @@ async function buildQueue() {
       chgMsg: String(f['변경메시지'] || ''),
       sent: f['자동발송체크'] ? 1 : 0,
       created: f['Created time'] || '',
+      // 복사(프리필)용 링크 ID
+      storeId: (f['매장코드'] || [])[0] || '',
+      inflIds: f['XHS_ID_'] || [],
+      leadId: (f['대표인플'] || [])[0] || '',
     };
   });
 
