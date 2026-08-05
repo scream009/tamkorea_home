@@ -17,7 +17,10 @@ import crypto from 'crypto';
 
 const ADMIN_KEY = process.env.ADMIN_KEY || process.env.CLIENTS_ADMIN_KEY || '';
 
-/** ADMIN_KEYS="GG:키1,QN:키2" → [['GG','키1'],…] — 개인별 관리자 키 (2026-08-06 도입).
+/** 개인별 관리자 키 (2026-08-06 도입) — 두 형식을 다 받는다:
+    ① ADMIN_KEYS="GG:키1,QN:키2" (한 줄 목록)
+    ② ADMIN_KEY_GG="키1", ADMIN_KEY_QN="키2" (개별 변수 — Vercel UI 에서 긴 값
+       저장이 실패하는 경우의 우회로, 2026-08-06 실전에서 필요해짐)
     키가 곧 신원이라 나중에 수정이력에 누가 했는지 남길 수 있다. */
 export function parseAdminKeys() {
   const out = [];
@@ -27,6 +30,12 @@ export function parseAdminKeys() {
     const id = pair.slice(0, i).trim();
     const key = pair.slice(i + 1).trim();
     if (id && key) out.push([id, key]);
+  });
+  Object.keys(process.env).forEach((name) => {
+    const m = /^ADMIN_KEY_([A-Za-z0-9]+)$/.exec(name);
+    if (!m) return;
+    const key = String(process.env[name] || '').trim();
+    if (key) out.push([m[1], key]);
   });
   return out;
 }

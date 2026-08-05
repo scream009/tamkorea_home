@@ -23,7 +23,7 @@ import { adminWho, parseAdminKeys } from './_admin-auth.js';
 const ADMIN_KEY = process.env.ADMIN_KEY || process.env.CLIENTS_ADMIN_KEY || '';
 const STAFF_KEY = process.env.STAFF_KEY || '';
 
-/** STAFF_KEYS="HH:abc,LH:def" → [['HH','abc'],['LH','def']] */
+/** STAFF_KEYS="HH:abc,LH:def" 한 줄 목록 + STAFF_KEY_HH="abc" 개별 변수 둘 다 지원 */
 function parsePersonal() {
   const out = [];
   String(process.env.STAFF_KEYS || '').split(',').forEach((pair) => {
@@ -32,6 +32,12 @@ function parsePersonal() {
     const id = pair.slice(0, i).trim();
     const key = pair.slice(i + 1).trim();
     if (id && key) out.push([id, key]);
+  });
+  Object.keys(process.env).forEach((name) => {
+    const m = /^STAFF_KEY_([A-Za-z0-9]+)$/.exec(name);
+    if (!m) return;
+    const key = String(process.env[name] || '').trim();
+    if (key) out.push([m[1], key]);
   });
   return out;
 }
