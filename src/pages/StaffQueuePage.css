@@ -99,7 +99,8 @@
 .stq-row-wrap{border-bottom:1px solid #1C202B}
 .stq-row-wrap:last-child{border-bottom:0}
 .stq-row-wrap.busy{opacity:.55;pointer-events:none}
-.stq-row{display:grid;grid-template-columns:5.4rem minmax(8rem,1.2fr) minmax(7rem,1fr) minmax(9rem,1fr) minmax(7rem,.9fr) auto;
+/* 버튼 열은 고정 폭 — auto 로 두면 버튼 없는 행(취소·노쇼)에서 열이 접혀 행마다 정렬이 깨진다 */
+.stq-row{display:grid;grid-template-columns:5.4rem minmax(8rem,1.2fr) minmax(7rem,1fr) minmax(9rem,1fr) minmax(7rem,.9fr) 17rem;
   gap:.6rem;align-items:center;padding:.45rem .8rem;cursor:pointer;transition:.12s}
 .stq-row:hover{background:#191D28}
 .stq-row-store{font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -108,7 +109,7 @@
 .stq-row-when{font-size:.72rem;color:var(--ink2);white-space:nowrap}
 .stq-row-when i{font-style:normal}
 .stq-row-cnt{font-family:var(--mono);font-size:.7rem;color:var(--ink2);white-space:nowrap}
-.stq-row-btns{display:flex;gap:.3rem;justify-content:flex-end}
+.stq-row-btns{display:flex;gap:.3rem;justify-content:flex-end;flex-wrap:wrap}
 .stq-row-btns .stq-b,.stq-row-btns .stq-primary{padding:.22rem .5rem;font-size:.68rem}
 .stq-row-detail{padding:.4rem .9rem .6rem;background:#10131C;display:flex;flex-direction:column;gap:.35rem}
 .stq-row-msg{margin:0;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:8px;
