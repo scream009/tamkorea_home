@@ -60,7 +60,7 @@ const PROGRESS_FIELDS = [
   'XHS_Result', 'DP_Result', 'DY_Result',
   '총인원', '변경인원', 'XHS_건수', 'DP_건수',
   '비고', '인플전달링크', '인플전용링크', '拍摄剧本',
-  '체크인일시', '체크인내용', '체크인알림대기',
+  '체크인일시',
 ];
 
 /** 담당자가 화면에서 고칠 수 있는 유일한 필드 — 메모(비고). 그 외 쓰기는 Phase 3. */
@@ -322,8 +322,6 @@ async function buildBoard(month) {
           guide: one(g['拍摄剧本']),                               // 촬영 가이드 (CS_DB 룩업)
           dl: pi ? pi.dl : null,   // 기한까지 남은 날 (음수=지연, null=대기 아님)
           checkinTime: kstDT(g['체크인일시']),
-          checkinNote: one(g['체크인내용']),
-          checkinWait: !!g['체크인알림대기'],
         };
       });
 
