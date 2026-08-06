@@ -212,11 +212,12 @@ export default function InfluencerSubmitPage() {
       
       const imageData = ctx.getImageData(0, 0, width, height);
       const code = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: "dontInvert",
+        inversionAttempts: "attemptBoth",
       });
       
       if (!code) {
-        showToast('QR이 인식되지 않았습니다 — 화면을 채워 다시 찍어주세요 / 二维码未识别，请靠近屏幕重试。', 'error');
+        alert('❌ QR 코드가 인식되지 않았습니다.\n(모니터 빛반사나 초점 흐림 주의)\n\n화면에 꽉 차고 선명하게 다시 찍어주세요.');
+        showToast('二维码未识别，请靠近屏幕重试。', 'error');
         return;
       }
       
