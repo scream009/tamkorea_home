@@ -1002,8 +1002,12 @@ export default function ClientSchedulePage() {
 
             {data?.checkinCode && (
               <p style={{ marginTop: '1rem', fontSize: '0.95rem', color: 'var(--text-color)' }}>
-                QR 인식이 안 될 때 입력 코드 / 扫码失败时输入:{' '}
+                오늘의 체크인 코드 / 今日签到码:{' '}
                 <b style={{ fontSize: '1.3rem', letterSpacing: '0.15em' }}>{data.checkinCode}</b>
+                <br />
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  QR 인식이 안 되는 방문자에게 알려주세요 · 매일 자동 변경됩니다
+                </span>
               </p>
             )}
 

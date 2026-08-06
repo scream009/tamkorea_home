@@ -1,7 +1,7 @@
 /* eslint-env node */
 import crypto from 'crypto';
 import { escFormula } from './_admin-auth.js';
-import { storeSig, storeCode6 } from './_qr-sign.js';
+import { storeSig, storeCodeDaily } from './_qr-sign.js';
 
 const KEY = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const BASE = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
@@ -85,40 +85,44 @@ export default async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     const { inflToken, sig } = body;
     let storeId = body.storeId || '';
-    const code = String(body.code || '').replace(/\D/g, ''); // 숫자 백업 코드 (QR 대체)
-    const wantList = body.list ? 1 : 0; // 오늘 예약 목록 조회 (자가 체크인 1단계)
-    const self = body.self ? 1 : 0;     // 자가 체크인 — 목록에서 고른 매장, 서명 불요
+    const code = String(body.code || '').replace(/\D/g, ''); // 일별 회전 코드 (QR 백업)
+    const wantList = body.list ? 1 : 0; // 오늘 예약 목록 조회 (모달 표시용 — 체크인 권한 아님)
 
-    // 자가 체크인의 신뢰 모델: Submit_Token 만으로 허용한다. 같은 토큰이 이미 결과물
-    // 제출·수정 권한을 갖고, "오늘 그 매장에 예약이 있는 인플"만 체크인이 성립하며,
-    // 거짓 체크인은 고객사 톡방 알림으로 즉시 드러난다 (부정 감수는 Owner 승인 사항).
-    if (!inflToken || (!wantList && !storeId && !code) || (!wantList && !self && storeId && !sig)) {
+    // 도착 증명은 필수다 (v1.4 — Owner 판정: 탭만으로 체크인되면 확인 수단이 없다).
+    // 체크인 성립 = QR 서명(sig) 또는 매장 게시 일별 코드(code). 자가 탭 경로는 없다.
+    if (!inflToken || (!wantList && !sig && !code)) {
       return res.status(400).json({ error: '누락된 파라미터가 있습니다.' });
     }
 
-    if (!wantList && !self) {
-      // QR·코드 경로만 시크릿이 필요하다
+    if (!wantList) {
       if (!process.env.QR_CHECKIN_SECRET) {
         return res.status(500).json({ error: '서버 설정 오류 (Secret 누락)' });
       }
+      const codeOk = (id) => code.length === 6
+        && (code === storeCodeDaily(id, 0) || code === storeCodeDaily(id, -1)); // 오늘 + 어제 유예
       if (storeId && sig) {
         // 경로 1: QR 스캔 — /checkin?s=&t= 에서 넘어온 서명 검증
         if (!timingSafeEqual(storeSig(storeId), sig)) {
           return res.status(404).json({ error: 'Not found' });
         }
+      } else if (storeId && code) {
+        // 경로 2: 예약 탭 + 매장 게시 코드 입력 — 그 매장의 오늘/어제 코드만 인정
+        if (!codeOk(storeId)) {
+          return res.status(404).json({ error: '签到码不正确。请确认店内今日码 / 코드가 맞지 않습니다. 매장의 오늘 코드를 확인하세요.' });
+        }
       } else {
-        // 경로 2: 숫자 코드 — 매장별 파생 코드(storeCode6)를 역조회
+        // 경로 3: 코드만 — 전 매장 역조회 (예약 목록이 안 뜨는 예외 상황용)
         if (code.length !== 6) {
           return res.status(400).json({ error: '签到码为6位数字 / 체크인 코드는 6자리 숫자입니다.' });
         }
         const stores = await fetchAll(T_STORE, { fields: ['고객사명(필수)'] });
-        const hits = stores.filter((r) => storeCode6(r.id) === code);
+        const hits = stores.filter((r) => codeOk(r.id));
         if (hits.length === 0) {
-          return res.status(404).json({ error: '无效的签到码。请与负责人确认 / 유효하지 않은 체크인 코드입니다.' });
+          return res.status(404).json({ error: '签到码不正确。请确认店内今日码 / 코드가 맞지 않습니다. 매장의 오늘 코드를 확인하세요.' });
         }
         if (hits.length > 1) {
-          // 6자리 파생 코드 충돌(희귀) — 이 매장 조합에선 코드 대신 예약 버튼을 쓰게 한다
-          return res.status(409).json({ error: '此签到码无法使用，请使用预约按钮签到 / 이 코드는 사용할 수 없습니다. 예약 버튼으로 체크인해 주세요.' });
+          // 일별 파생 코드 충돌(희귀) — 이 날은 QR 스캔만 쓰게 한다
+          return res.status(409).json({ error: '此签到码今日无法使用，请扫描店内二维码 / 오늘은 이 코드를 쓸 수 없습니다. QR을 스캔해 주세요.' });
         }
         storeId = hits[0].id;
       }

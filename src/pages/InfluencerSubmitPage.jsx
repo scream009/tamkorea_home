@@ -54,8 +54,9 @@ export default function InfluencerSubmitPage() {
   const [inflName, setInflName] = useState('');     // 인플루언서 닉네임
   const [resolvedInflId, setResolvedInflId] = useState(''); // 서버에서 해석한 실제 INFL_ID
   const [guideModal, setGuideModal] = useState({ isOpen: false, text: '', client: '' }); // 롱텍스트 가이드 모달
-  const [checkinModal, setCheckinModal] = useState(false); // 입장 체크인 모달 (오늘 예약 탭 한 번)
+  const [checkinModal, setCheckinModal] = useState(false); // 입장 체크인 모달
   const [ckList, setCkList] = useState(null);       // null=로딩, 배열=오늘 예약, 'error'=조회 실패
+  const [ckStore, setCkStore] = useState(null);     // 선택한 예약 {storeId, store} — 코드 입력 대상
   const [checkinCode, setCheckinCode] = useState('');
   const [checkinBusy, setCheckinBusy] = useState(false);
 
@@ -184,12 +185,15 @@ export default function InfluencerSubmitPage() {
 
 
   // ─── 입장 체크인 ──────────────────────────────────────────────
-  // v1.3: 정공법 = 자가 체크인. 서버가 이 인플의 오늘 예약을 알고 있으므로
-  // 모달에서 도착한 매장을 탭 한 번으로 끝낸다 (위챗 스캔·앱 이탈 불필요).
-  // QR·6자리 코드는 백업 경로로 유지. 사진 디코드는 모아레로 폐기(v1.2).
+  // v1.4: 도착 증명 필수 (Owner 판정 — 탭만으로 체크인되면 확인 수단이 없다).
+  // 정공법 = 위챗 扫一扫로 매장 QR 스캔 (/checkin 자동 체크인).
+  // 백업 = 오늘 예약을 탭하고 **매장에 게시된 일별 6자리 코드**를 입력.
+  // 사진 디코드는 모아레로 폐기(v1.2), 자가 탭은 증명 부재로 폐기(v1.4).
   const openCheckin = useCallback(async () => {
     setCheckinModal(true);
     setCkList(null);
+    setCkStore(null);
+    setCheckinCode('');
     try {
       const r = await fetch('/api/checkin', {
         method: 'POST',
@@ -204,31 +208,6 @@ export default function InfluencerSubmitPage() {
     }
   }, [token]);
 
-  const selfCheckin = useCallback(async (storeId) => {
-    setCheckinBusy(true);
-    try {
-      const r = await fetch('/api/checkin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inflToken: token, storeId, self: 1 }),
-      });
-      const data = await r.json().catch(() => ({}));
-      if (r.ok && data.already) {
-        showToast(`✅ 已签到 / 이미 체크인됨 (${data.when})`, 'success');
-        setCheckinModal(false);
-      } else if (r.ok && data.ok) {
-        showToast(`✅ [${data.store}] 入场确认 / 입장 확인 ${data.when}`, 'success');
-        setCheckinModal(false);
-      } else {
-        showToast(data.error || '签到失败，请重试 / 체크인 실패', 'error');
-      }
-    } catch {
-      showToast('网络错误，请重试', 'error');
-    } finally {
-      setCheckinBusy(false);
-    }
-  }, [token, showToast]);
-
   const handleCodeCheckin = useCallback(async () => {
     const code = checkinCode.replace(/\D/g, '');
     if (code.length !== 6) {
@@ -240,7 +219,10 @@ export default function InfluencerSubmitPage() {
       const r = await fetch('/api/checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inflToken: token, code }),
+        // 예약을 골랐으면 그 매장의 코드로만 검증(명확한 에러), 아니면 전 매장 역조회
+        body: JSON.stringify(ckStore
+          ? { inflToken: token, storeId: ckStore.storeId, code }
+          : { inflToken: token, code }),
       });
       const data = await r.json().catch(() => ({}));
       if (r.ok && data.already) {
@@ -258,7 +240,7 @@ export default function InfluencerSubmitPage() {
     } finally {
       setCheckinBusy(false);
     }
-  }, [checkinCode, token, showToast]);
+  }, [checkinCode, ckStore, token, showToast]);
 
   // ─── 진행률 계산 ─────────────────────────────────────────────
   const doneCount = records.filter(r => r.status === '제출완료').length;
@@ -499,82 +481,99 @@ export default function InfluencerSubmitPage() {
               <button onClick={() => setCheckinModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
             </div>
             <div style={{ fontSize: '0.95rem', lineHeight: 1.7, color: '#111' }}>
-              <p style={{ margin: '0 0 10px', color: '#333' }}>
-                到店后请点击下方预约即可签到。<br />
-                <span style={{ color: '#666', fontSize: '0.85rem' }}>매장에 도착했으면 아래 예약을 눌러 체크인하세요.</span>
-              </p>
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '12px 14px', marginBottom: '10px' }}>
+                <b>方法① 微信扫一扫</b>
+                <p style={{ margin: '4px 0 0', color: '#333', fontSize: '0.9rem' }}>
+                  用微信 <b>➕ → 扫一扫</b> 扫描店内二维码，自动完成签到。
+                  <br /><span style={{ color: '#666', fontSize: '0.83rem' }}>위챗 스캔으로 매장 QR을 찍으면 자동 체크인됩니다.</span>
+                </p>
+              </div>
 
-              {ckList === null && (
-                <div style={{ textAlign: 'center', padding: '20px 0', color: '#888' }}>⏳ 正在加载预约...</div>
-              )}
+              <div style={{ background: '#f8f9fa', border: '1px solid #e9ecef', borderRadius: '10px', padding: '12px 14px' }}>
+                <b>方法② 选预约 + 输入店内今日码</b>
+                <p style={{ margin: '4px 0 8px', color: '#666', fontSize: '0.83rem' }}>
+                  점击下方预约，输入店内公示的<b>今日6位码</b>（每天更换）。
+                  <br />예약을 누르고 매장에 게시된 <b>오늘의 6자리 코드</b>를 입력하세요.
+                </p>
 
-              {ckList === 'error' && (
-                <div style={{ textAlign: 'center', padding: '16px 0', color: '#dc2626', fontSize: '0.9rem' }}>
-                  加载失败，请重试 / 불러오지 못했습니다
-                  <div><button onClick={openCheckin} style={{ marginTop: '8px', background: 'none', border: '1px solid #d1d5db', borderRadius: '8px', padding: '6px 14px', cursor: 'pointer' }}>重试</button></div>
-                </div>
-              )}
+                {ckList === null && (
+                  <div style={{ textAlign: 'center', padding: '14px 0', color: '#888' }}>⏳ 正在加载预约...</div>
+                )}
 
-              {Array.isArray(ckList) && ckList.length === 0 && (
-                <div style={{ background: '#f8f9fa', border: '1px solid #e9ecef', borderRadius: '10px', padding: '14px', textAlign: 'center', color: '#666', fontSize: '0.9rem' }}>
-                  今天没有预约。如已到店请联系负责人。<br />오늘 예약이 없습니다. 도착하셨다면 담당자에게 문의하세요.
-                </div>
-              )}
+                {ckList === 'error' && (
+                  <div style={{ textAlign: 'center', padding: '10px 0', color: '#dc2626', fontSize: '0.9rem' }}>
+                    加载失败 / 불러오지 못했습니다
+                    <div><button onClick={openCheckin} style={{ marginTop: '8px', background: 'none', border: '1px solid #d1d5db', borderRadius: '8px', padding: '6px 14px', cursor: 'pointer' }}>重试</button></div>
+                  </div>
+                )}
 
-              {Array.isArray(ckList) && ckList.map((it, i) => (
-                <button
-                  key={`${it.storeId}_${i}`}
-                  onClick={() => !it.checked && selfCheckin(it.storeId)}
-                  disabled={checkinBusy || !!it.checked}
-                  style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    width: '100%', marginBottom: '8px', padding: '14px', borderRadius: '10px',
-                    border: it.checked ? '1px solid #bbf7d0' : '1px solid #c7d2fe',
-                    background: it.checked ? '#f0fdf4' : '#eef2ff',
-                    cursor: it.checked ? 'default' : 'pointer', fontSize: '1rem', textAlign: 'left'
-                  }}
-                >
-                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    🏪 <b>{it.store}</b> <span style={{ color: '#666', fontSize: '0.85rem' }}>{it.when}</span>
-                  </span>
-                  <span style={{ flexShrink: 0, marginLeft: '10px', fontWeight: 'bold', color: it.checked ? '#16a34a' : '#4f46e5' }}>
-                    {it.checked ? '✅ 已签到' : (checkinBusy ? '⏳' : '到店签到 →')}
-                  </span>
-                </button>
-              ))}
+                {Array.isArray(ckList) && ckList.length === 0 && (
+                  <div style={{ textAlign: 'center', color: '#666', fontSize: '0.88rem', padding: '6px 0' }}>
+                    今天没有预约。如已到店请联系负责人。<br />오늘 예약이 없습니다. 도착하셨다면 담당자에게 문의하세요.
+                  </div>
+                )}
 
-              {/* 백업 경로 — 예약이 안 보이는 예외 상황용 6자리 코드 (접힘) */}
-              <details style={{ marginTop: '10px' }}>
-                <summary style={{ color: '#888', fontSize: '0.85rem', cursor: 'pointer' }}>
-                  看不到预约？输入店内6位数字码 / 예약이 안 보이면 매장 코드 입력
-                </summary>
-                <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={checkinCode}
-                    onChange={e => setCheckinCode(e.target.value.replace(/\D/g, ''))}
-                    onKeyDown={e => { if (e.key === 'Enter') handleCodeCheckin(); }}
-                    placeholder="000000"
-                    style={{
-                      flex: 1, padding: '10px', fontSize: '1.2rem', letterSpacing: '0.3em',
-                      textAlign: 'center', border: '1px solid #d1d5db', borderRadius: '8px', minWidth: 0
-                    }}
-                  />
-                  <button
-                    onClick={handleCodeCheckin}
-                    disabled={checkinBusy || checkinCode.length !== 6}
-                    style={{
-                      background: checkinCode.length === 6 ? 'linear-gradient(135deg, #7c3aed, #4f46e5)' : '#d1d5db',
-                      color: 'white', border: 'none', padding: '0 18px', borderRadius: '8px',
-                      fontWeight: 'bold', cursor: checkinCode.length === 6 ? 'pointer' : 'default', flexShrink: 0
-                    }}
-                  >
-                    {checkinBusy ? '⏳' : '签到'}
-                  </button>
-                </div>
-              </details>
+                {Array.isArray(ckList) && ckList.map((it, i) => {
+                  const selOn = ckStore && ckStore.storeId === it.storeId;
+                  return (
+                    <button
+                      key={`${it.storeId}_${i}`}
+                      onClick={() => !it.checked && setCkStore(selOn ? null : { storeId: it.storeId, store: it.store })}
+                      disabled={!!it.checked}
+                      style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        width: '100%', marginBottom: '6px', padding: '12px 14px', borderRadius: '10px',
+                        border: it.checked ? '1px solid #bbf7d0' : selOn ? '2px solid #4f46e5' : '1px solid #c7d2fe',
+                        background: it.checked ? '#f0fdf4' : selOn ? '#e0e7ff' : '#eef2ff',
+                        cursor: it.checked ? 'default' : 'pointer', fontSize: '1rem', textAlign: 'left'
+                      }}
+                    >
+                      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        🏪 <b>{it.store}</b> <span style={{ color: '#666', fontSize: '0.85rem' }}>{it.when}</span>
+                      </span>
+                      <span style={{ flexShrink: 0, marginLeft: '10px', fontWeight: 'bold', color: it.checked ? '#16a34a' : '#4f46e5' }}>
+                        {it.checked ? '✅ 已签到' : selOn ? '✓' : '选择'}
+                      </span>
+                    </button>
+                  );
+                })}
+
+                {(ckStore || (Array.isArray(ckList) && ckList.length === 0)) && (
+                  <div style={{ marginTop: '8px' }}>
+                    {ckStore && (
+                      <p style={{ margin: '0 0 6px', fontSize: '0.85rem', color: '#4f46e5' }}>
+                        [{ckStore.store}] 今日签到码 / 오늘 코드:
+                      </p>
+                    )}
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={checkinCode}
+                        onChange={e => setCheckinCode(e.target.value.replace(/\D/g, ''))}
+                        onKeyDown={e => { if (e.key === 'Enter') handleCodeCheckin(); }}
+                        placeholder="000000"
+                        style={{
+                          flex: 1, padding: '10px', fontSize: '1.2rem', letterSpacing: '0.3em',
+                          textAlign: 'center', border: '1px solid #d1d5db', borderRadius: '8px', minWidth: 0
+                        }}
+                      />
+                      <button
+                        onClick={handleCodeCheckin}
+                        disabled={checkinBusy || checkinCode.length !== 6}
+                        style={{
+                          background: checkinCode.length === 6 ? 'linear-gradient(135deg, #7c3aed, #4f46e5)' : '#d1d5db',
+                          color: 'white', border: 'none', padding: '0 18px', borderRadius: '8px',
+                          fontWeight: 'bold', cursor: checkinCode.length === 6 ? 'pointer' : 'default', flexShrink: 0
+                        }}
+                      >
+                        {checkinBusy ? '⏳' : '签到'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

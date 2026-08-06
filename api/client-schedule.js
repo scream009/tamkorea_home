@@ -5,7 +5,7 @@
 
 import { monthKey, inMonthWindow } from './_month-window.js';
 import { composeSentMessage } from './_resv-message.js';
-import { storeSig, storeCode6 } from './_qr-sign.js';
+import { storeSig, storeCodeDaily } from './_qr-sign.js';
 
 const TOKEN = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
@@ -792,7 +792,7 @@ export default async function handler(req, res) {
       // QR 체크인 — 시크릿 미설정이면 빈 값 → 프론트가 QR 버튼을 숨긴다 (fail-closed)
       storeCode: cf['업체명'] ? cf['업체명'][0] : '',
       storeSignature: storeSig(cf['업체명'] && cf['업체명'][0]),
-      checkinCode: storeCode6(cf['업체명'] && cf['업체명'][0]),
+      checkinCode: storeCodeDaily(cf['업체명'] && cf['업체명'][0]), // 오늘 코드 — 매일 자동 변경
     });
 
   } catch (err) {

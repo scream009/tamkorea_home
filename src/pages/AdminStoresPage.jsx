@@ -77,8 +77,8 @@ export default function AdminStoresPage() {
       const safeName = (store.client + '_' + store.branch).replace(/\s+/g, '_');
       a.download = `QR_${safeName}.png`;
       a.click();
-      // 숫자 백업 코드 — QR 인쇄물에 함께 표기해야 스캔 실패 시 입력으로 우회할 수 있다
-      if (store.checkinCode) flash(`QR 저장됨 · 입력 코드 ${store.checkinCode} (QR 옆에 함께 표기)`);
+      // 코드는 매일 바뀌므로 인쇄물에 넣지 않는다 — 매장 달력 화면이 오늘 코드를 보여준다
+      flash('QR 저장됨 (인쇄물에는 QR만 — 오늘 코드는 매일 변경)');
     } catch (err) {
       console.error(err);
       flash('QR 다운로드에 실패했습니다.');
@@ -250,9 +250,10 @@ export default function AdminStoresPage() {
               margin: '0 0 12px', padding: '8px 12px', borderRadius: '8px',
               background: '#f5f3ff', border: '1px solid #ddd6fe', fontSize: '0.9rem',
             }}>
-              📍 입장 체크인 코드: <b style={{ fontSize: '1.15rem', letterSpacing: '0.15em' }}>{form.checkinCode}</b>
+              📍 오늘의 체크인 코드: <b style={{ fontSize: '1.15rem', letterSpacing: '0.15em' }}>{form.checkinCode}</b>
               <span style={{ color: '#6b7280', marginLeft: '8px' }}>
-                — QR 인식 실패 시 인플이 제출 페이지에 입력. QR 인쇄물에 함께 표기 권장
+                — <b>매일 자동 변경</b> (도착 증명용 — QR 인식 실패 시 인플이 입력).
+                인쇄물에는 QR만 넣고, 코드는 매장 달력 화면에서 확인하게 하세요
               </span>
             </p>
           )}
