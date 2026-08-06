@@ -189,8 +189,54 @@ export default function InfluencerSubmitPage() {
     const url = URL.createObjectURL(file);
     img.src = url;
     
-    img.onload = () => {
+    img.onload = async () => {
       URL.revokeObjectURL(url);
+      
+      const processQRData = (codeData) => {
+        try {
+          const qrUrl = new URL(codeData);
+          const s = qrUrl.searchParams.get('s');
+          const t = qrUrl.searchParams.get('t');
+          if (!s || !t) {
+            throw new Error('Invalid QR');
+          }
+          
+          fetch('/api/checkin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ inflToken: token, storeId: s, sig: t })
+          }).then(r => r.json()).then(data => {
+            if (data.error) {
+              showToast(data.error, 'error');
+            } else if (data.already) {
+              showToast(`✅ 已签到 / 이미 체크인됨 (${data.when})`, 'success');
+            } else {
+              showToast(`✅ [${data.store}] 入场确认 / 입장 확인 ${data.when}`, 'success');
+            }
+          }).catch(err => {
+             showToast('网络错误，请重试', 'error');
+          });
+          
+        } catch (e) {
+          showToast('不是有效的签到二维码。', 'error');
+        }
+      };
+
+      // 1. Try Native BarcodeDetector First (Fast, Machine Learning based)
+      if ('BarcodeDetector' in window) {
+        try {
+          const barcodeDetector = new window.BarcodeDetector({ formats: ['qr_code'] });
+          const barcodes = await barcodeDetector.detect(img);
+          if (barcodes && barcodes.length > 0) {
+            processQRData(barcodes[0].rawValue);
+            return; // Success, skip fallback
+          }
+        } catch (err) {
+          console.warn('BarcodeDetector failed or not supported for this image', err);
+        }
+      }
+
+      // 2. Fallback to jsQR (Canvas based)
       const canvas = document.createElement('canvas');
       let width = img.width;
       let height = img.height;
@@ -207,47 +253,36 @@ export default function InfluencerSubmitPage() {
       }
       canvas.width = width;
       canvas.height = height;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
       ctx.drawImage(img, 0, 0, width, height);
       
       const imageData = ctx.getImageData(0, 0, width, height);
-      const code = jsQR(imageData.data, imageData.width, imageData.height, {
+      let code = jsQR(imageData.data, imageData.width, imageData.height, {
         inversionAttempts: "attemptBoth",
       });
       
+      // 3. Last resort: jsQR with full resolution (resizing can destroy QR data due to aliasing)
+      if (!code && (img.width > MAX || img.height > MAX)) {
+        try {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0, img.width, img.height);
+          const fullImageData = ctx.getImageData(0, 0, img.width, img.height);
+          code = jsQR(fullImageData.data, fullImageData.width, fullImageData.height, {
+            inversionAttempts: "attemptBoth",
+          });
+        } catch(e) {
+          console.warn("Full res jsQR failed (memory limit?)", e);
+        }
+      }
+      
       if (!code) {
-        alert('❌ QR 코드가 인식되지 않았습니다.\n(모니터 빛반사나 초점 흐림 주의)\n\n화면에 꽉 차고 선명하게 다시 찍어주세요.');
+        alert('❌ QR 코드가 인식되지 않았습니다.\n(모니터 빛반사나 초점 흐림 주의)\n\n모니터 화면을 꽉 차고 선명하게 다시 찍어주세요.');
         showToast('二维码未识别，请靠近屏幕重试。', 'error');
         return;
       }
       
-      try {
-        const qrUrl = new URL(code.data);
-        const s = qrUrl.searchParams.get('s');
-        const t = qrUrl.searchParams.get('t');
-        if (!s || !t) {
-          throw new Error('Invalid QR');
-        }
-        
-        fetch('/api/checkin', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ inflToken: token, storeId: s, sig: t })
-        }).then(r => r.json()).then(data => {
-          if (data.error) {
-            showToast(data.error, 'error');
-          } else if (data.already) {
-            showToast(`✅ 已签到 / 이미 체크인됨 (${data.when})`, 'success');
-          } else {
-            showToast(`✅ [${data.store}] 入场确认 / 입장 확인 ${data.when}`, 'success');
-          }
-        }).catch(err => {
-           showToast('网络错误，请重试', 'error');
-        });
-        
-      } catch (e) {
-        showToast('不是有效的签到二维码。', 'error');
-      }
+      processQRData(code.data);
     };
     img.onerror = () => {
       showToast('图片加载失败 / 이미지 로드 실패', 'error');
