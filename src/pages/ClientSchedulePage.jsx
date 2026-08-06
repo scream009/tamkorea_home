@@ -20,6 +20,7 @@ import {
   Lightbulb,
   Clock
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { resolveEventMessage, eventMessageLabel } from '../lib/eventMessage';
 import './ClientSchedulePage.css';
 import './ClientReportPage.css';
@@ -231,6 +232,27 @@ export default function ClientSchedulePage() {
 
   // 팝업(모달) 상태
   const [selectedEvent, setSelectedEvent] = useState(null);
+  
+  // 신규: QR 체크인 모달 상태
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const qrCanvasRef = useRef(null);
+
+  useEffect(() => {
+    if (qrModalOpen && qrCanvasRef.current && data?.storeCode && data?.storeSignature) {
+      const url = `https://tamkorea.com/checkin?s=${data.storeCode}&t=${data.storeSignature}`;
+      QRCode.toCanvas(qrCanvasRef.current, url, {
+        width: 300,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#ffffff'
+        }
+      }, function (error) {
+        if (error) console.error(error);
+      });
+    }
+  }, [qrModalOpen, data]);
+
   const modalCloseBtnRef = useRef(null);
 
   // 모달 접근성: ESC 키 닫기 + body scroll lock + 자동 포커스
@@ -624,6 +646,16 @@ export default function ClientSchedulePage() {
           >
             <List className="w-4 h-4" /> 리스트 뷰
           </button>
+          
+          {data?.storeCode && data?.storeSignature && (
+            <button 
+              className="view-tab" 
+              style={{ marginLeft: 'auto', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', color: 'white', border: 'none' }}
+              onClick={() => setQrModalOpen(true)}
+            >
+              📷 체크인 QR
+            </button>
+          )}
         </div>
 
         {/* ★ 신규: 주간 CPC 배너 + 따종디엔핑 월간 리포트 진입 (달력 위) */}
@@ -958,6 +990,36 @@ export default function ClientSchedulePage() {
         )}
 
       </main>
+
+      
+      {/* QR Check-in Modal */}
+      {qrModalOpen && (
+        <div className="event-modal-overlay" onClick={() => setQrModalOpen(false)}>
+          <div className="event-modal-content" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center', padding: '2rem' }}>
+            <button
+              type="button"
+              className="event-modal-close"
+              onClick={() => setQrModalOpen(false)}
+              aria-label="닫기"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '1rem', color: 'var(--text-color)' }}>
+              입장 체크인 QR
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+              방문자가 입장 시 <b>제출 링크</b>의 카메라로 이 QR 코드를 스캔하도록 해주세요.
+            </p>
+            <div style={{ background: 'white', padding: '10px', display: 'inline-block', borderRadius: '12px' }}>
+              <canvas ref={qrCanvasRef}></canvas>
+            </div>
+            
+            <p style={{ marginTop: '1.5rem', color: '#ff4d4f', fontSize: '0.85rem' }}>
+              ※ 이 화면은 고객사 전용 화면입니다. 외부 유출에 주의하세요.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Event Details Modal */}
       {selectedEvent && (

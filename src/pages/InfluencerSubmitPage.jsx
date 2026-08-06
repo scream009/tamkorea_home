@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import jsQR from 'jsqr';
 import './InfluencerSubmitPage.css';
 
 // ─── 날짜 포맷 헬퍼 ──────────────────────────────────────────
@@ -41,6 +42,7 @@ function Toast({ message, type, show }) {
 
 // ─── Main Page ────────────────────────────────────────────────
 export default function InfluencerSubmitPage() {
+  const fileInputRef = useRef(null);
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || searchParams.get('id'); // token 우선, id는 하위호환
 
@@ -169,6 +171,88 @@ export default function InfluencerSubmitPage() {
   }, [handleSaveOne]);
 
 
+
+  // ─── QR 체크인 로직 ──────────────────────────────────────────
+  const handleCheckinClick = () => {
+    if (fileInputRef.current) fileInputRef.current.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = ''; // Reset for next scan
+    
+    // Only show loading if we want, but since it's fast, maybe just a toast
+    showToast('正在处理... / 처리중...', 'info');
+    
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.src = url;
+    
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+      
+      const MAX = 1280;
+      if (width > MAX || height > MAX) {
+        if (width > height) {
+          height = Math.floor(height * (MAX / width));
+          width = MAX;
+        } else {
+          width = Math.floor(width * (MAX / height));
+          height = MAX;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      const imageData = ctx.getImageData(0, 0, width, height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: "dontInvert",
+      });
+      
+      if (!code) {
+        showToast('QR이 인식되지 않았습니다 — 화면을 채워 다시 찍어주세요 / 二维码未识别，请靠近屏幕重试。', 'error');
+        return;
+      }
+      
+      try {
+        const qrUrl = new URL(code.data);
+        const s = qrUrl.searchParams.get('s');
+        const t = qrUrl.searchParams.get('t');
+        if (!s || !t) {
+          throw new Error('Invalid QR');
+        }
+        
+        fetch('/api/checkin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ inflToken: token, storeId: s, sig: t })
+        }).then(r => r.json()).then(data => {
+          if (data.error) {
+            showToast(data.error, 'error');
+          } else if (data.already) {
+            showToast(`✅ 已签到 / 이미 체크인됨 (${data.when})`, 'success');
+          } else {
+            showToast(`✅ [${data.store}] 入场确认 / 입장 확인 ${data.when}`, 'success');
+          }
+        }).catch(err => {
+           showToast('网络错误，请重试', 'error');
+        });
+        
+      } catch (e) {
+        showToast('不是有效的签到二维码。', 'error');
+      }
+    };
+    img.onerror = () => {
+      showToast('图片加载失败 / 이미지 로드 실패', 'error');
+    };
+  };
+
   // ─── 진행률 계산 ─────────────────────────────────────────────
   const doneCount = records.filter(r => r.status === '제출완료').length;
   const totalCount = records.length;
@@ -245,6 +329,25 @@ export default function InfluencerSubmitPage() {
           <div className="inf-header-sub">
             <span className="inf-badge">📸 {inflName || resolvedInflId || token}</span>
             <span>共 {totalCount} 个客户 · 已提交 {doneCount} 个</span>
+          </div>
+          <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
+            <button onClick={handleCheckinClick} style={{
+              background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+              color: 'white', border: 'none', padding: '0.6rem 1.2rem',
+              borderRadius: '20px', fontSize: '1rem', fontWeight: 'bold',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
+              boxShadow: '0 4px 10px rgba(79, 70, 229, 0.3)'
+            }}>
+              📷 入场签到 (입장 체크인)
+            </button>
+            <input 
+              type="file" 
+              accept="image/*" 
+              capture="environment" 
+              ref={fileInputRef} 
+              style={{ display: 'none' }} 
+              onChange={handleFileChange} 
+            />
           </div>
         </div>
       </div>

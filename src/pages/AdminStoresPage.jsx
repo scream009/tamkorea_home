@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import QRCode from 'qrcode';
 import { adminHeaders } from '../lib/adminKey';
 import './AdminStoresPage.css';
 
@@ -60,6 +61,27 @@ export default function AdminStoresPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const handleDownloadQr = async (e, store) => {
+    e.stopPropagation();
+    if (!store.storeSignature) return;
+    const url = `https://tamkorea.com/checkin?s=${store.id}&t=${store.storeSignature}`;
+    try {
+      const dataUrl = await QRCode.toDataURL(url, {
+        width: 800,
+        margin: 2,
+        color: { dark: '#000000', light: '#ffffff' }
+      });
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      const safeName = (store.client + '_' + store.branch).replace(/\s+/g, '_');
+      a.download = `QR_${safeName}.png`;
+      a.click();
+    } catch (err) {
+      console.error(err);
+      flash('QR 다운로드에 실패했습니다.');
+    }
+  };
 
   const loadContracts = useCallback(async (storeId) => {
     setContracts(null);
@@ -179,19 +201,35 @@ export default function AdminStoresPage() {
           <div className="cst-rows">
             {!data && !error && <div className="cst-empty">불러오는 중…</div>}
             {list.map((s) => (
-              <button
+              <div
                 key={s.id}
                 className={`cst-row ${sel === s.id ? 'on' : ''} ${s.use ? '' : 'off'}`}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
                 onClick={() => pick(s)}
               >
-                <b>{s.client} {s.branch}</b>
-                <span>
-                  {s.cn || '—'}
-                  {s.region && ` · ${REGION_LABELS[s.region] || s.region}`}
-                  {s.cls && ` · ${CLS_LABELS[s.cls] || s.cls}`}
-                </span>
-                {!s.use && <em>미사용</em>}
-              </button>
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <b>{s.client} {s.branch}</b>
+                  <span>
+                    {s.cn || '—'}
+                    {s.region && ` · ${REGION_LABELS[s.region] || s.region}`}
+                    {s.cls && ` · ${CLS_LABELS[s.cls] || s.cls}`}
+                  </span>
+                  {!s.use && <em>미사용</em>}
+                </div>
+                {s.use ? (
+                  <button 
+                    onClick={(e) => handleDownloadQr(e, s)}
+                    style={{
+                      background: 'none', border: '1px solid #d1d5db', borderRadius: '4px',
+                      padding: '4px 8px', fontSize: '0.8rem', cursor: 'pointer',
+                      flexShrink: 0, marginLeft: '8px'
+                    }}
+                    title="입장 체크인 QR 다운로드"
+                  >
+                    📷 QR 다운
+                  </button>
+                ) : null}
+              </div>
             ))}
           </div>
         </aside>

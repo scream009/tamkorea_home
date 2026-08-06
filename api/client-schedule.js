@@ -5,6 +5,7 @@
 
 import { monthKey, inMonthWindow } from './_month-window.js';
 import { composeSentMessage } from './_resv-message.js';
+import crypto from 'crypto';
 
 const TOKEN = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
@@ -789,6 +790,8 @@ export default async function handler(req, res) {
       cpt,        // 달력 화면도 쓸 수 있게 최상위에도 둔다(리포트를 한 번도 안 돌린 매장 포함)
       dpReport,
       dpClient,   // boolean 만 — 자격증명 값은 절대 내보내지 않는다
+      storeCode: cf['업체명'] ? cf['업체명'][0] : '',
+      storeSignature: (cf['업체명'] && cf['업체명'][0]) ? crypto.createHmac('sha256', process.env.QR_CHECKIN_SECRET || 'fallback').update(cf['업체명'][0]).digest('hex').slice(0, 24) : '',
     });
 
   } catch (err) {

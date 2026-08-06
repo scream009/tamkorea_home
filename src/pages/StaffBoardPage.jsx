@@ -864,6 +864,16 @@ function DetailRow({ d, memoVal, onSaveMemo }) {
       <td className="stb-td-when">
         {d.visit || '—'}
         {d.chg && <div className="stb-chg" title="변경일시">변경 {d.chg}</div>}
+        {d.checkinNote && (
+          <div style={{ color: '#16a34a', fontSize: '0.8rem', marginTop: '4px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '2px' }} title={d.checkinNote}>
+            ✅ 체크인 {d.checkinTime ? d.checkinTime.split(' ')[1] : ''}
+          </div>
+        )}
+        {!d.checkinNote && d.checkinWait && (
+          <div style={{ color: '#eab308', fontSize: '0.8rem', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '2px' }} title="알림 전송 대기 중">
+            🔔 확인대기
+          </div>
+        )}
       </td>
       <td className="stb-td-infl">{d.lead || '—'}</td>
       <td className="stb-td-infl">

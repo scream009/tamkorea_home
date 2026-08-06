@@ -15,6 +15,7 @@
  */
 
 import { blockedByAdminGate, escFormula } from './_admin-auth.js';
+import crypto from 'crypto';
 
 const KEY = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const BASE = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
@@ -141,6 +142,7 @@ async function listStores() {
       region: one(g[F.region]),
       area: one(g[F.area]),
       use: g[F.use] ? 1 : 0,
+      storeSignature: crypto.createHmac('sha256', process.env.QR_CHECKIN_SECRET || 'fallback').update(r.id).digest('hex').slice(0, 24)
     };
   })
     .filter((s) => s.client || s.branch)
