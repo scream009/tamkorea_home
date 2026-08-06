@@ -993,12 +993,35 @@ export default function ClientSchedulePage() {
             <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '1rem', color: 'var(--text-color)' }}>
               입장 체크인 QR
             </h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-              방문자가 입장 시 <b>위챗 스캔(扫一扫)</b>으로 이 QR을 찍도록 해주세요.
-              <br />请访客用微信"扫一扫"扫描此二维码签到。
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+              방문자(체험단)가 입장하면 이 QR을 스캔하게 해주세요.
             </p>
             <div style={{ background: 'white', padding: '10px', display: 'inline-block', borderRadius: '12px' }}>
               <canvas ref={qrCanvasRef}></canvas>
+            </div>
+
+            {/* 매장용 안내 카드 — 중국어를 몰라도 이 화면을 그대로 보여주며 안내할 수 있다 */}
+            <div style={{
+              textAlign: 'left', margin: '1.2rem auto 0', maxWidth: '420px',
+              background: 'var(--bg-secondary, #f8f9fa)', border: '1px solid var(--border-color, #e9ecef)',
+              borderRadius: '10px', padding: '12px 16px', fontSize: '0.88rem', lineHeight: 1.7,
+            }}>
+              <b>방문자 안내 방법</b> — 중국어를 몰라도 아래 중문을 그대로 보여주시면 됩니다.
+              <div style={{ marginTop: '6px' }}>
+                ① 위챗 <b>➕ → 스캔(扫一扫)</b>으로 이 QR 찍기
+                <br />② 초록색 <b>"예약된 체험단입니다"</b> 화면 확인
+                <br />③ 화면의 계정명·인원이 예약과 맞는지 확인
+              </div>
+              <div style={{
+                marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed var(--border-color, #d1d5db)',
+                fontSize: '0.92rem',
+              }}>
+                🇨🇳 请用微信右上角 <b>➕ → 扫一扫</b> 扫描此二维码，
+                出现绿色确认页面后请出示给店员。
+              </div>
+              <div style={{ marginTop: '8px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                체크인이 되면 카카오톡 알림이 최대 1분 내에 자동 발송됩니다.
+              </div>
             </div>
 
             <p style={{ marginTop: '1.5rem', color: '#ff4d4f', fontSize: '0.85rem' }}>
