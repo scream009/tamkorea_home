@@ -5,7 +5,7 @@
 
 import { monthKey, inMonthWindow } from './_month-window.js';
 import { composeSentMessage } from './_resv-message.js';
-import crypto from 'crypto';
+import { storeSig, storeCode6 } from './_qr-sign.js';
 
 const TOKEN = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const BASE_ID = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
@@ -212,7 +212,6 @@ export default async function handler(req, res) {
     const isVideoIssue = (status) => (status || '').replace(/\s/g, '').includes('영상이상');
 
     // 3. 데이터 가공 및 분류
-    const scheduleItems = [];
     const teamGroups = {};
     const influencer = [];
     const experience = [];
@@ -687,7 +686,7 @@ export default async function handler(req, res) {
     let dpReport = null;
     if (cf['DP_기간']) {
       let detail = null;
-      try { detail = cf['DP_리포트JSON'] ? JSON.parse(cf['DP_리포트JSON']) : null; } catch (e) { detail = null; }
+      try { detail = cf['DP_리포트JSON'] ? JSON.parse(cf['DP_리포트JSON']) : null; } catch { detail = null; }
       const storeCode = cf['DP_매장코드'] || '';
       dpReport = {
         cpt,
@@ -790,8 +789,10 @@ export default async function handler(req, res) {
       cpt,        // 달력 화면도 쓸 수 있게 최상위에도 둔다(리포트를 한 번도 안 돌린 매장 포함)
       dpReport,
       dpClient,   // boolean 만 — 자격증명 값은 절대 내보내지 않는다
+      // QR 체크인 — 시크릿 미설정이면 빈 값 → 프론트가 QR 버튼을 숨긴다 (fail-closed)
       storeCode: cf['업체명'] ? cf['업체명'][0] : '',
-      storeSignature: (cf['업체명'] && cf['업체명'][0]) ? crypto.createHmac('sha256', process.env.QR_CHECKIN_SECRET || 'fallback').update(cf['업체명'][0]).digest('hex').slice(0, 24) : '',
+      storeSignature: storeSig(cf['업체명'] && cf['업체명'][0]),
+      checkinCode: storeCode6(cf['업체명'] && cf['업체명'][0]),
     });
 
   } catch (err) {

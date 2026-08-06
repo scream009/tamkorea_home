@@ -1,7 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import jsQR from 'jsqr';
-import { Html5Qrcode } from 'html5-qrcode';
 import './InfluencerSubmitPage.css';
 
 // ─── 날짜 포맷 헬퍼 ──────────────────────────────────────────
@@ -43,7 +41,6 @@ function Toast({ message, type, show }) {
 
 // ─── Main Page ────────────────────────────────────────────────
 export default function InfluencerSubmitPage() {
-  const fileInputRef = useRef(null);
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || searchParams.get('id'); // token 우선, id는 하위호환
 
@@ -57,6 +54,18 @@ export default function InfluencerSubmitPage() {
   const [inflName, setInflName] = useState('');     // 인플루언서 닉네임
   const [resolvedInflId, setResolvedInflId] = useState(''); // 서버에서 해석한 실제 INFL_ID
   const [guideModal, setGuideModal] = useState({ isOpen: false, text: '', client: '' }); // 롱텍스트 가이드 모달
+  const [checkinModal, setCheckinModal] = useState(false); // 입장 체크인 모달 (위챗 스캔 안내 + 숫자 코드)
+  const [checkinCode, setCheckinCode] = useState('');
+  const [checkinBusy, setCheckinBusy] = useState(false);
+
+  // ─── 체크인 신원 심기 ─────────────────────────────────────────
+  // 매장 QR(위챗 扫一扫)이 /checkin 을 열 때 이 토큰으로 본인 확인을 한다.
+  // 제출 링크를 한 번이라도 연 폰이면 QR 스캔만으로 체크인이 끝난다.
+  useEffect(() => {
+    if (token && token.startsWith('submit_')) {
+      try { localStorage.setItem('tk_submit_token', token); } catch { /* 프라이빗 모드 등 */ }
+    }
+  }, [token]);
 
   // ─── 데이터 로드 ────────────────────────────────────────────
   useEffect(() => {
@@ -173,106 +182,40 @@ export default function InfluencerSubmitPage() {
 
 
 
-  // ─── QR 체크인 로직 (파일 업로드 + zxing 디코딩) ────────────────
-  const handleCheckinClick = () => {
-    if (fileInputRef.current) fileInputRef.current.click();
-  };
-
-  const handleFileChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    e.target.value = ''; // Reset
-    
-    showToast('正在分析二维码... / QR 분석중...', 'info');
-    
-    const processQRData = (codeData) => {
-      try {
-        const qrUrl = new URL(codeData);
-        const s = qrUrl.searchParams.get('s');
-        const t = qrUrl.searchParams.get('t');
-        if (!s || !t) throw new Error('Invalid QR');
-        
-        fetch('/api/checkin', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ inflToken: token, storeId: s, sig: t })
-        }).then(r => r.json()).then(data => {
-          if (data.error) showToast(data.error, 'error');
-          else if (data.already) showToast(`✅ 已签到 / 이미 체크인됨 (${data.when})`, 'success');
-          else showToast(`✅ [${data.store}] 入场确认 / 입장 확인 ${data.when}`, 'success');
-        }).catch(() => showToast('网络错误，请重试', 'error'));
-      } catch (e) {
-        showToast('不是有效的签到二维码。', 'error');
-      }
-    };
-
-    // 1. 최우선 시도: Native BarcodeDetector
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.src = url;
-    
-    await new Promise(res => {
-      img.onload = res;
-      img.onerror = res;
-    });
-    URL.revokeObjectURL(url);
-    
-    if ('BarcodeDetector' in window) {
-      try {
-        const barcodeDetector = new window.BarcodeDetector({ formats: ['qr_code'] });
-        const barcodes = await barcodeDetector.detect(img);
-        if (barcodes && barcodes.length > 0) {
-          processQRData(barcodes[0].rawValue);
-          return;
-        }
-      } catch (err) {
-        console.warn("BarcodeDetector failed:", err);
-      }
+  // ─── 입장 체크인 ──────────────────────────────────────────────
+  // 정공법 = 위챗 扫一扫로 매장 QR 스캔 (QR이 URL이라 /checkin 이 열리며 자동 체크인).
+  // 사진을 찍어 웹에서 디코드하던 방식은 모니터 모아레를 못 이겨 폐기했다.
+  // 백업 = 매장 QR 옆에 표기된 6자리 숫자 코드를 여기서 직접 입력.
+  const handleCodeCheckin = useCallback(async () => {
+    const code = checkinCode.replace(/\D/g, '');
+    if (code.length !== 6) {
+      showToast('请输入6位数字 / 6자리 숫자를 입력해 주세요.', 'error');
+      return;
     }
-
-    // 2. 차선책: jsQR (모아레 제거를 위한 공격적 축소 500px)
+    setCheckinBusy(true);
     try {
-      const canvas = document.createElement('canvas');
-      let width = img.width;
-      let height = img.height;
-      const MAX = 500; // 공격적 축소 (모아레 필터링 효과)
-      if (width > MAX || height > MAX) {
-        if (width > height) { height = Math.floor(height * (MAX / width)); width = MAX; } 
-        else { width = Math.floor(width * (MAX / height)); height = MAX; }
+      const r = await fetch('/api/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inflToken: token, code }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (r.ok && data.already) {
+        showToast(`✅ 已签到 / 이미 체크인됨 (${data.when})`, 'success');
+        setCheckinModal(false);
+      } else if (r.ok && data.ok) {
+        showToast(`✅ [${data.store}] 入场确认 / 입장 확인 ${data.when}`, 'success');
+        setCheckinModal(false);
+        setCheckinCode('');
+      } else {
+        showToast(data.error || '签到失败，请重试 / 체크인 실패', 'error');
       }
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      ctx.drawImage(img, 0, 0, width, height);
-      
-      const imageData = ctx.getImageData(0, 0, width, height);
-      let code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "attemptBoth" });
-      
-      if (!code) {
-        // 3. 진짜 마지막: 중간 사이즈 (800px)
-        const MAX2 = 800;
-        let w2 = img.width; let h2 = img.height;
-        if (w2 > MAX2 || h2 > MAX2) {
-          if (w2 > h2) { h2 = Math.floor(h2 * (MAX2 / w2)); w2 = MAX2; }
-          else { w2 = Math.floor(w2 * (MAX2 / h2)); h2 = MAX2; }
-        }
-        canvas.width = w2; canvas.height = h2;
-        ctx.drawImage(img, 0, 0, w2, h2);
-        const idata2 = ctx.getImageData(0, 0, w2, h2);
-        code = jsQR(idata2.data, idata2.width, idata2.height, { inversionAttempts: "attemptBoth" });
-      }
-      
-      if (code) {
-        processQRData(code.data);
-        return;
-      }
-    } catch (err) {
-      console.warn("jsQR fallback failed:", err);
+    } catch {
+      showToast('网络错误，请重试', 'error');
+    } finally {
+      setCheckinBusy(false);
     }
-
-    alert('❌ QR 코드가 인식되지 않았습니다.\n모니터 격자(모아레)나 빛 반사 때문일 수 있습니다.\n화면에 꽉 차게, 흔들리지 않게 다시 찍어주세요.');
-    showToast('二维码未识别，请重试。', 'error');
-  };
+  }, [checkinCode, token, showToast]);
 
   // ─── 진행률 계산 ─────────────────────────────────────────────
   const doneCount = records.filter(r => r.status === '제출완료').length;
@@ -352,23 +295,15 @@ export default function InfluencerSubmitPage() {
             <span>共 {totalCount} 个客户 · 已提交 {doneCount} 个</span>
           </div>
           <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
-            <button onClick={handleCheckinClick} style={{
+            <button onClick={() => setCheckinModal(true)} style={{
               background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
               color: 'white', border: 'none', padding: '0.6rem 1.2rem',
               borderRadius: '20px', fontSize: '1rem', fontWeight: 'bold',
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
               boxShadow: '0 4px 10px rgba(79, 70, 229, 0.3)'
             }}>
-              📷 入场签到 (입장 체크인)
+              📍 入场签到 (입장 체크인)
             </button>
-            <input 
-              type="file" 
-              accept="image/*" 
-              capture="environment" 
-              ref={fileInputRef} 
-              style={{ display: 'none' }} 
-              onChange={handleFileChange} 
-            />
           </div>
         </div>
       </div>
@@ -511,6 +446,61 @@ export default function InfluencerSubmitPage() {
 
       {/* Toast */}
       <Toast message={toast.message} type={toast.type} show={toast.show} />
+
+      {/* 입장 체크인 모달 — 위챗 스캔 안내 + 숫자 코드 백업 */}
+      {checkinModal && (
+        <div className="inf-modal-backdrop" onClick={() => setCheckinModal(false)}>
+          <div className="inf-modal-content" onClick={e => e.stopPropagation()}>
+            <div className="inf-modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)' }}>📍 入场签到 / 입장 체크인</h3>
+              <button onClick={() => setCheckinModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
+            </div>
+            <div style={{ fontSize: '0.95rem', lineHeight: 1.7, color: '#111' }}>
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '14px' }}>
+                <b>方法① 微信扫一扫（推荐）</b>
+                <p style={{ margin: '6px 0 0', color: '#333' }}>
+                  用微信右上角 <b>➕ → 扫一扫</b> 扫描店内二维码，即可自动签到。
+                </p>
+                <p style={{ margin: '4px 0 0', color: '#666', fontSize: '0.85rem' }}>
+                  위챗 스캔으로 매장 QR을 찍으면 자동으로 체크인됩니다.
+                </p>
+              </div>
+              <div style={{ background: '#f8f9fa', border: '1px solid #e9ecef', borderRadius: '10px', padding: '14px', marginTop: '10px' }}>
+                <b>方法② 输入6位数字码</b>
+                <p style={{ margin: '6px 0 8px', color: '#666', fontSize: '0.85rem' }}>
+                  扫码失败时，输入二维码旁边的6位数字。/ QR 인식이 안 되면 QR 옆 6자리 숫자를 입력하세요.
+                </p>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={checkinCode}
+                    onChange={e => setCheckinCode(e.target.value.replace(/\D/g, ''))}
+                    onKeyDown={e => { if (e.key === 'Enter') handleCodeCheckin(); }}
+                    placeholder="000000"
+                    style={{
+                      flex: 1, padding: '10px', fontSize: '1.2rem', letterSpacing: '0.3em',
+                      textAlign: 'center', border: '1px solid #d1d5db', borderRadius: '8px', minWidth: 0
+                    }}
+                  />
+                  <button
+                    onClick={handleCodeCheckin}
+                    disabled={checkinBusy || checkinCode.length !== 6}
+                    style={{
+                      background: checkinCode.length === 6 ? 'linear-gradient(135deg, #7c3aed, #4f46e5)' : '#d1d5db',
+                      color: 'white', border: 'none', padding: '0 18px', borderRadius: '8px',
+                      fontWeight: 'bold', cursor: checkinCode.length === 6 ? 'pointer' : 'default', flexShrink: 0
+                    }}
+                  >
+                    {checkinBusy ? '⏳' : '签到'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 가이드 내용 모달 (Popup) */}
       {guideModal.isOpen && (

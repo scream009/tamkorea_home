@@ -77,6 +77,8 @@ export default function AdminStoresPage() {
       const safeName = (store.client + '_' + store.branch).replace(/\s+/g, '_');
       a.download = `QR_${safeName}.png`;
       a.click();
+      // 숫자 백업 코드 — QR 인쇄물에 함께 표기해야 스캔 실패 시 입력으로 우회할 수 있다
+      if (store.checkinCode) flash(`QR 저장됨 · 입력 코드 ${store.checkinCode} (QR 옆에 함께 표기)`);
     } catch (err) {
       console.error(err);
       flash('QR 다운로드에 실패했습니다.');

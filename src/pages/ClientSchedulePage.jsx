@@ -126,19 +126,19 @@ export const CpcBanner = ({ cpc, isPartner }) => {
 //  · 원칙: 달력·실적 아래 배치 · 1줄 카드 · 닫으면 14일 숨김 · 실측 수치만 사용
 const DpNudge = ({ campaignId, isPartner }) => {
   const KEY = `dp_nudge_hide_${campaignId || 'x'}`;
-  const [hidden, setHidden] = useState(true);
-
-  useEffect(() => {
-    try {
-      const until = Number(localStorage.getItem(KEY) || 0);
-      setHidden(Date.now() < until);
-    } catch (e) {
-      setHidden(false);
-    }
-  }, [KEY]);
+  const readHidden = (k) => {
+    try { return Date.now() < Number(localStorage.getItem(k) || 0); } catch { return false; }
+  };
+  const [hidden, setHidden] = useState(() => readHidden(KEY));
+  // KEY(캠페인) 변경 시 렌더 중 동기화 — 이펙트 setState 금지 규칙 준수
+  const [prevKey, setPrevKey] = useState(KEY);
+  if (prevKey !== KEY) {
+    setPrevKey(KEY);
+    setHidden(readHidden(KEY));
+  }
 
   const close = () => {
-    try { localStorage.setItem(KEY, String(Date.now() + 14 * 864e5)); } catch (e) {}
+    try { localStorage.setItem(KEY, String(Date.now() + 14 * 864e5)); } catch { /* 저장 실패 무시 */ }
     setHidden(true);
   };
 
@@ -226,10 +226,6 @@ export default function ClientSchedulePage() {
     if (x) setCurrentDate(new Date(Number(x[1]), Number(x[2]) - 1, 1));
   }, [data]);
 
-  // 피드백 상태
-  const [feedback, setFeedback] = useState('');
-  const [feedbackSent, setFeedbackSent] = useState(false);
-
   // 팝업(모달) 상태
   const [selectedEvent, setSelectedEvent] = useState(null);
   
@@ -287,7 +283,7 @@ export default function ClientSchedulePage() {
           try {
             const errData = await res.json();
             if (errData.error) errorMsg = `API 오류: ${errData.error}`;
-          } catch (e) {
+          } catch {
             errorMsg = `네트워크/서버 오류 (${res.status})`;
           }
           throw new Error(errorMsg);
@@ -409,17 +405,6 @@ export default function ClientSchedulePage() {
     const key = `${dateObj.getFullYear()}-${dateObj.getMonth()}-${dateObj.getDate()}`;
     return eventsByDate.get(key) || [];
   }, [eventsByDate]);
-
-  const handleFeedbackSubmit = async () => {
-    if (!feedback.trim()) return;
-    // 임시: 서버 연동 전 더미 처리
-    // 실제 운영 시 api/submit-contact 등으로 POST 요청
-    setFeedbackSent(true);
-    setTimeout(() => {
-      setFeedback('');
-      setFeedbackSent(false);
-    }, 3000);
-  };
 
   // 진행 상태 렌더러
   const getStatusDot = (status) => {
@@ -1008,12 +993,20 @@ export default function ClientSchedulePage() {
               입장 체크인 QR
             </h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-              방문자가 입장 시 <b>제출 링크</b>의 카메라로 이 QR 코드를 스캔하도록 해주세요.
+              방문자가 입장 시 <b>위챗 스캔(扫一扫)</b>으로 이 QR을 찍도록 해주세요.
+              <br />请访客用微信"扫一扫"扫描此二维码签到。
             </p>
             <div style={{ background: 'white', padding: '10px', display: 'inline-block', borderRadius: '12px' }}>
               <canvas ref={qrCanvasRef}></canvas>
             </div>
-            
+
+            {data?.checkinCode && (
+              <p style={{ marginTop: '1rem', fontSize: '0.95rem', color: 'var(--text-color)' }}>
+                QR 인식이 안 될 때 입력 코드 / 扫码失败时输入:{' '}
+                <b style={{ fontSize: '1.3rem', letterSpacing: '0.15em' }}>{data.checkinCode}</b>
+              </p>
+            )}
+
             <p style={{ marginTop: '1.5rem', color: '#ff4d4f', fontSize: '0.85rem' }}>
               ※ 이 화면은 고객사 전용 화면입니다. 외부 유출에 주의하세요.
             </p>

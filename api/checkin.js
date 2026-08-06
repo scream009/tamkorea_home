@@ -1,6 +1,7 @@
 /* eslint-env node */
 import crypto from 'crypto';
 import { escFormula } from './_admin-auth.js';
+import { storeSig, storeCode6 } from './_qr-sign.js';
 
 const KEY = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const BASE = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
@@ -9,6 +10,7 @@ const API = `https://api.airtable.com/v0/${BASE}`;
 const T_PROGRESS = '진행_DB_OLD';
 const T_ENTRY = '예약입력_DB';
 const T_INFL = 'INFL_DB';
+const T_STORE = 'CS_DB';
 
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 async function at(path, init) {
@@ -68,7 +70,7 @@ function timingSafeEqual(a, b) {
     const bufB = Buffer.from(b);
     if (bufA.length !== bufB.length) return false;
     return crypto.timingSafeEqual(bufA, bufB);
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -80,19 +82,39 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { inflToken, storeId, sig } = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    
-    if (!inflToken || !storeId || !sig) {
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+    const { inflToken, sig } = body;
+    let storeId = body.storeId || '';
+    const code = String(body.code || '').replace(/\D/g, ''); // 숫자 백업 코드 (QR 대체)
+
+    if (!inflToken || (!code && (!storeId || !sig))) {
       return res.status(400).json({ error: '누락된 파라미터가 있습니다.' });
     }
 
-    const secret = process.env.QR_CHECKIN_SECRET;
-    if (!secret) {
+    if (!process.env.QR_CHECKIN_SECRET) {
       return res.status(500).json({ error: '서버 설정 오류 (Secret 누락)' });
     }
-    const expectedSig = crypto.createHmac('sha256', secret).update(storeId).digest('hex').slice(0, 24);
-    if (!timingSafeEqual(expectedSig, sig)) {
-      return res.status(404).json({ error: 'Not found' });
+
+    if (storeId && sig) {
+      // 경로 1: QR 스캔 — /checkin?s=&t= 에서 넘어온 서명 검증
+      if (!timingSafeEqual(storeSig(storeId), sig)) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+    } else {
+      // 경로 2: 숫자 코드 — 매장별 파생 코드(storeCode6)를 역조회
+      if (code.length !== 6) {
+        return res.status(400).json({ error: '签到码为6位数字 / 체크인 코드는 6자리 숫자입니다.' });
+      }
+      const stores = await fetchAll(T_STORE, { fields: ['고객사명(필수)'] });
+      const hits = stores.filter((r) => storeCode6(r.id) === code);
+      if (hits.length === 0) {
+        return res.status(404).json({ error: '无效的签到码。请与负责人确认 / 유효하지 않은 체크인 코드입니다.' });
+      }
+      if (hits.length > 1) {
+        // 6자리 파생 코드 충돌(희귀) — 이 매장 조합에선 코드 대신 QR만 쓰게 한다
+        return res.status(409).json({ error: '此签到码无法使用，请扫描店内二维码 / 이 코드는 사용할 수 없습니다. QR을 스캔해 주세요.' });
+      }
+      storeId = hits[0].id;
     }
 
     const inflRecs = await fetchAll(T_INFL, {

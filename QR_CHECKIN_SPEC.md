@@ -1,7 +1,30 @@
-# QR 체크인 시스템 — 구현 스펙 v1
+# QR 체크인 시스템 — 구현 스펙 v1.2
 
-*설계: Claude Fable 5 (2026-08-06) · 구현: Opus 5 · 교차검토: AG(Antigravity)*
+*설계: Claude Fable 5 (2026-08-06) · 구현: Opus 5/AG · 교차검토: AG(Antigravity)↔Fable*
 *전제 지식: `STAFF_WEB_HANDOVER.md` (특히 §4 예약봇 계약·§8 TRAPS) 필독*
+
+## ⚡ v1.2 개정 (2026-08-06, Fable) — 스캔 방식 전면 교체
+
+**D3(사진 촬영 + 웹 디코드)는 폐기한다.** AG의 실기기 검증에서 모니터에 띄운 QR을
+위챗으로 촬영→웹 디코드하는 경로가 반복 실패했다(모아레·반사). BarcodeDetector→jsQR
+→ZXing→라이브 스캐너까지 엔진을 갈아끼워도 실패한 것으로 "디코드 엔진 문제가 아니라
+접근 자체가 막다른 길"로 판정. **위챗이 이미 세계 최고 수준의 QR 스캐너(扫一扫)를
+내장하고 있으므로 그걸 쓴다.**
+
+새 경로 (구현 완료):
+1. **정공법 — 위챗 네이티브 스캔**: QR 내용물이 URL이므로(D2) 扫一扫가 그대로
+   `/checkin?s=&t=` 페이지를 연다. `/submit`을 한 번이라도 연 폰은 localStorage에
+   `tk_submit_token`(제출 토큰)이 심어져 있어 **페이지가 열리는 즉시 자동 체크인**.
+   토큰이 없으면 "제출 링크를 먼저 열어달라" 안내 + 제출 링크 붙여넣기 복구 입력.
+2. **백업 — 6자리 숫자 코드**: `storeCode6 = HMAC(secret, "code:"+storeId) → 6자리`.
+   QR 카드·확대 모달에 병기, 제출 페이지 체크인 모달에서 직접 입력.
+   서버가 CS_DB 전체 코드를 역조회해 매장 특정 (충돌 감지 시 409 — QR 사용 유도).
+3. **서명 유틸 일원화**: `api/_qr-sign.js` — `storeSig`·`storeCode6`. 시크릿 미설정 시
+   빈 값 반환(fail-closed) → 프론트가 QR UI 자체를 숨긴다. AG 구현의 `|| 'fallback'`
+   기본 시크릿(env 등록 시 기존 QR 전량 무효화 + 위조 가능 구멍)은 제거됨.
+4. 사진 디코드 관련 의존성(`html5-qrcode`, `jsqr`) 제거. `qrcode`(생성)만 유지.
+
+⚠️ **QR_CHECKIN_SECRET 이 Vercel 에 등록될 때까지 QR·코드 UI는 어디에도 안 뜬다** (의도).
 
 ## 0. 목적·핵심 결정
 
@@ -12,7 +35,7 @@
 |---|---|---|
 | D1 | **QR 이미지는 DB에 저장하지 않는다** | QR = `storeId + HMAC 서명`에서 결정적 생성. 화면에서 그때그때 렌더. 저장하면 관리·유출면만 늘어남 |
 | D2 | QR 내용물은 **URL** (`https://tamkorea.com/checkin?s=<storeId>&t=<sig>`) | 제출 페이지 스캐너는 URL에서 s·t만 파싱. 인플이 실수로 기본 카메라로 찍어도 안내 페이지가 떠서 유도 가능 (이중 안전망) |
-| D3 | 스캔은 **사진 촬영(input capture) + jsQR 디코드**가 기본 | 위챗 내장 브라우저에서 getUserMedia(실시간 스트림)가 불안정 — 중국 인플의 주 환경. BarcodeDetector 지원 시 우선 사용, 폴백 jsQR |
+| ~~D3~~ | ~~사진 촬영 + jsQR 디코드~~ → **v1.2에서 폐기.** 위챗 扫一扫 네이티브 스캔 + 숫자 코드 백업 | 모니터 QR 모아레를 웹 디코드로 못 이김 (AG 실기기 검증). 상단 v1.2 개정 참조 |
 | D4 | 체크인은 **개별 인플 단위** (팀 캐스케이드 아님) | 팀 3명 중 1명만 도착할 수 있다. 진행_DB_OLD 그 사람 건만 PATCH |
 | D5 | 체크인 시 진행상태 → `촬영완료` (이미 상위 상태면 상태는 유지, 체크인일시만 기록) | 옵션 기존 존재. 예약확정→촬영완료 수동 전환이 자동화됨. 부산물: 체크인 없는 건 = 노쇼 후보 |
 | D6 | 봇 알림은 **2단계 분리** | 1단계는 봇 무수정 (알림대기만 쌓임) — 카톡 발송 리스크 0으로 먼저 가동 |
@@ -85,21 +108,19 @@ qrUrl = `https://tamkorea.com/checkin?s=${storeId}&t=${sig}`
 
 ---
 
-## 4. 인플 제출 페이지 (`/submit`, InfluencerSubmitPage) 확장
+## 4. 인플 제출 페이지 (`/submit`, InfluencerSubmitPage) — v1.2 확정 구현
 
-- 스케줄 카드마다(또는 페이지 상단에) **「📷 입장 체크인」** 버튼
-- 클릭 → `<input type="file" accept="image/*" capture="environment">` 트리거 → 사진 선택/촬영
-- 디코드: `BarcodeDetector`('qr_code') 지원 시 우선, 폴백 **jsQR** (`npm i jsqr`, 번들 포함 — CSP 무관)
-  이미지를 canvas에 리사이즈(최대 1280px)해서 디코드 — 원본 대형 사진은 느림
-- 디코드 결과 URL에서 `s`·`t` 파싱 → `POST /api/checkin {inflToken(현재 페이지 토큰), storeId:s, sig:t}`
-- UI 상태: 성공 `✅ [매장명] 입장 확인 14:32` / already `이미 체크인됨 (14:10)` / noMatch 안내 / 디코드 실패 `QR이 인식되지 않았습니다 — 화면을 채워 다시 찍어주세요`
-- 문구는 **중국어 병기** (제출 페이지 기존 톤 확인 후 맞출 것 — 인플은 중국어 사용자)
+- 로드 시 `submit_` 토큰이면 `localStorage['tk_submit_token']`에 심는다 (체크인 신원)
+- 상단 **「📍 入场签到」** 버튼 → 모달:
+  - 방법① 위챗 扫一扫 안내 (매장 QR 스캔 → /checkin 자동 체크인)
+  - 방법② 6자리 숫자 코드 입력 → `POST /api/checkin {inflToken, code}`
+- UI 상태: 성공 `✅ [매장명] 入场确认 14:32` / already / 코드 오류 — 전부 중문 우선 병기
 
-## 5. `/checkin` 안내 라우트 (기본 카메라로 찍은 경우의 안전망)
+## 5. `/checkin` 라우트 — v1.2에서 자동 체크인 페이지로 승격 (CheckinPage.jsx)
 
-- 신규 얇은 페이지: "체크인은 전달받은 제출 링크에서 해주세요 / 请通过收到的提交链接签到"
-- 링크 소지자만 체크인 가능하므로 여기서 직접 체크인은 제공하지 않음 (신원 없음)
-- App.jsx 라우트 + client.html 경로군에 추가 여부는 불필요 (브랜드 노출 무해)
+- `?s=&t=` + localStorage 토큰 있으면 즉시 `POST /api/checkin` → 성공/already/noMatch/오류 카드
+- 토큰 없으면: "제출 링크를 먼저 열어주세요" + **제출 링크 붙여넣기 복구** (URL에서 `submit_` 토큰 추출·저장 후 즉시 체크인)
+- StrictMode 이중 POST 가드: 발사는 setTimeout 안에서 ref 세워 정확히 1회
 
 ## 6. QR 표시 2곳
 

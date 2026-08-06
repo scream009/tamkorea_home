@@ -15,7 +15,7 @@
  */
 
 import { blockedByAdminGate, escFormula } from './_admin-auth.js';
-import crypto from 'crypto';
+import { storeSig, storeCode6 } from './_qr-sign.js';
 
 const KEY = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const BASE = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
@@ -142,7 +142,9 @@ async function listStores() {
       region: one(g[F.region]),
       area: one(g[F.area]),
       use: g[F.use] ? 1 : 0,
-      storeSignature: crypto.createHmac('sha256', process.env.QR_CHECKIN_SECRET || 'fallback').update(r.id).digest('hex').slice(0, 24)
+      // 시크릿 미설정이면 빈 값 → 프론트가 QR 버튼을 숨긴다 (fail-closed)
+      storeSignature: storeSig(r.id),
+      checkinCode: storeCode6(r.id),
     };
   })
     .filter((s) => s.client || s.branch)
