@@ -847,8 +847,22 @@ function MemoCell({ value, onSave }) {
   );
 }
 
+// 방문시간 +30분 경과 & 미체크인 & 아직 방문 전 상태 → "안 왔나?" 후보.
+// 실무자가 매일 확인 전화를 돌리던 일을 보드가 대신 표시한다.
+const AWAITING_VISIT = ['예약요청', '예약확정', '긴급예약', '변경확정'];
+function overdueHours(d) {
+  if (d.checkinTime || !d.visit) return 0;
+  if (!AWAITING_VISIT.includes(d.st)) return 0;
+  const t = new Date(`${(d.chg || d.visit).replace(' ', 'T')}:00+09:00`).getTime();
+  if (Number.isNaN(t)) return 0;
+  const h = (Date.now() - t) / 3600000;
+  // 72시간 넘은 건 체크인 도입 전 미정리 레코드일 확률이 높다 — 최근 건만 경보
+  return (h > 0.5 && h < 72) ? h : 0;
+}
+
 function DetailRow({ d, memoVal, onSaveMemo }) {
   const submitted = d.sub.includes('제출완료') || d.sub.includes('✅');
+  const odue = overdueHours(d);
   let dlNode = <span className="stb-mut">—</span>;
   if (d.dl !== null && !submitted) {
     if (d.dl < 0) dlNode = <span className="bad">D+{-d.dl}</span>;
@@ -867,6 +881,14 @@ function DetailRow({ d, memoVal, onSaveMemo }) {
         {d.checkinTime && (
           <div style={{ color: '#16a34a', fontSize: '0.8rem', marginTop: '4px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '2px' }}>
             ✅ 체크인 {d.checkinTime.split(' ')[1] || ''}
+          </div>
+        )}
+        {odue > 0 && (
+          <div
+            style={{ color: '#dc2626', fontSize: '0.8rem', marginTop: '4px', fontWeight: 'bold' }}
+            title="방문시간이 지났는데 체크인이 없습니다 — 노쇼·지각 확인 필요"
+          >
+            ⚠ 미체크인 {odue >= 1 ? `${Math.floor(odue)}시간` : `${Math.round(odue * 60)}분`} 경과
           </div>
         )}
       </td>

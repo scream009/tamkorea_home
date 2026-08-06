@@ -63,6 +63,13 @@ function one(v) {
   return String(v ?? '').trim();
 }
 
+/** ISO → KST 'M/D HH:mm' */
+function fmtKst(dt) {
+  if (!dt) return '';
+  const d = new Date(new Date(dt).getTime() + 9 * 3600 * 1000);
+  return `${d.getUTCMonth() + 1}/${d.getUTCDate()} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+}
+
 function timingSafeEqual(a, b) {
   try {
     if (!a || !b) return false;
@@ -155,48 +162,54 @@ export default async function handler(req, res) {
     let resvs = await fetchAll(T_PROGRESS, {
       formula,
       // '고객사+지점명' 필드는 진행_DB_OLD 에 없다 — 매장 표기는 `매장명_검색용` (제출 페이지와 동일)
-      fields: ['예약일시', '진행상태', 'XHS_ID_', '매장코드', '팀명생성기', '체크인일시', '매장명_검색용']
+      fields: ['예약일시', '진행상태', 'XHS_ID_', '매장코드', '팀명생성기', '체크인일시', '매장명_검색용', '총인원']
     });
 
-    resvs = resvs.filter(r => (r.fields['XHS_ID_'] || []).includes(inflRecId));
+    const mine = resvs
+      .filter(r => (r.fields['XHS_ID_'] || []).includes(inflRecId))
+      .sort((a, b) => new Date(a.fields['예약일시'] || 0) - new Date(b.fields['예약일시'] || 0));
 
     if (wantList) {
-      // 자가 체크인 1단계 — 오늘(±1일) 이 인플의 예약 목록. 인플은 여기서 도착한 매장을 탭한다.
-      const items = resvs
+      // 오늘(±1일) 이 인플의 예약 목록 — 모달 표시용
+      const items = mine
         .filter(r => (r.fields['매장코드'] || []).length) // 매장 링크 없는 건은 특정 불가
-        .sort((a, b) => new Date(a.fields['예약일시'] || 0) - new Date(b.fields['예약일시'] || 0))
-        .map(r => {
-          const d = new Date(new Date(r.fields['예약일시']).getTime() + 9 * 3600 * 1000);
-          const when = `${d.getUTCMonth() + 1}/${d.getUTCDate()} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
-          return {
-            storeId: (r.fields['매장코드'] || [])[0],
-            store: one(r.fields['매장명_검색용']),
-            when,
-            checked: r.fields['체크인일시'] ? 1 : 0,
-          };
-        });
+        .map(r => ({
+          storeId: (r.fields['매장코드'] || [])[0],
+          store: one(r.fields['매장명_검색용']),
+          when: fmtKst(r.fields['예약일시']),
+          checked: r.fields['체크인일시'] ? 1 : 0,
+        }));
       return res.status(200).json({ ok: 1, items });
     }
 
-    resvs = resvs.filter(r => (r.fields['매장코드'] || []).includes(storeId));
+    resvs = mine.filter(r => (r.fields['매장코드'] || []).includes(storeId));
 
     if (resvs.length === 0) {
-      return res.status(409).json({ error: '오늘 이 매장의 예약을 찾을 수 없습니다. 담당자에게 문의하세요.', noMatch: 1 });
+      // 다른 지점을 스캔한 경우 — 오늘의 실제 예약 지점을 알려줘 현장에서 바로 교정한다
+      const otherToday = mine.slice(0, 3).map(r => ({
+        store: one(r.fields['매장명_검색용']),
+        when: fmtKst(r.fields['예약일시']),
+      }));
+      return res.status(409).json({
+        error: '오늘 이 매장의 예약을 찾을 수 없습니다. 담당자에게 문의하세요.',
+        noMatch: 1,
+        otherToday,
+      });
     }
 
-    resvs.sort((a, b) => {
-      const timeA = new Date(a.fields['예약일시'] || 0).getTime();
-      const timeB = new Date(b.fields['예약일시'] || 0).getTime();
-      return timeA - timeB;
-    });
-    
-    let targetResv = resvs.find(r => !r.fields['체크인일시']);
+    let targetResv = resvs.find(r => !r.fields['체크인일시']); // mine 이 이미 예약일시 오름차순
 
     if (!targetResv) {
-      const lastCheckedIn = resvs[resvs.length - 1];
-      const kstTime = new Date(new Date(lastCheckedIn.fields['체크인일시']).getTime() + 9 * 3600 * 1000);
+      // 재스캔 — 확인증 화면을 다시 보여줄 수 있게 성공과 같은 정보를 담는다 (멱등)
+      const last = resvs[resvs.length - 1];
+      const kstTime = new Date(new Date(last.fields['체크인일시']).getTime() + 9 * 3600 * 1000);
       const hhmm = `${String(kstTime.getUTCHours()).padStart(2, '0')}:${String(kstTime.getUTCMinutes()).padStart(2, '0')}`;
-      return res.status(200).json({ ok: 1, already: 1, when: hhmm, store: one(lastCheckedIn.fields['매장명_검색용']) });
+      return res.status(200).json({
+        ok: 1, already: 1, when: hhmm, xid: xhsId,
+        store: one(last.fields['매장명_검색용']),
+        resvWhen: fmtKst(last.fields['예약일시']),
+        pax: last.fields['총인원'] ?? '',
+      });
     }
 
     const nowIso = new Date().toISOString();
@@ -242,7 +255,11 @@ export default async function handler(req, res) {
       }
     }
 
-    return res.status(200).json({ ok: 1, store: storeName, xid: xhsId, when: nowHhmm });
+    return res.status(200).json({
+      ok: 1, store: storeName, xid: xhsId, when: nowHhmm,
+      resvWhen: fmtKst(targetResv.fields['예약일시']),
+      pax: targetResv.fields['총인원'] ?? '',
+    });
   } catch (e) {
     console.error(e);
     return res.status(e.status || 500).json({ error: e.message || '체크인 처리 중 오류가 발생했습니다.' });

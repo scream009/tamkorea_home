@@ -235,7 +235,8 @@ export default function ClientSchedulePage() {
 
   useEffect(() => {
     if (qrModalOpen && qrCanvasRef.current && data?.storeCode && data?.storeSignature) {
-      const url = `https://tamkorea.com/checkin?s=${data.storeCode}&t=${data.storeSignature}`;
+      // www 직결 — apex 는 307 리다이렉트를 타서 위챗 웹뷰에서 한 홉 더 느리다
+      const url = `https://www.tamkorea.com/checkin?s=${data.storeCode}&t=${data.storeSignature}`;
       QRCode.toCanvas(qrCanvasRef.current, url, {
         width: 400,
         margin: 4,

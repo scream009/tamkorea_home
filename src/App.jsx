@@ -12,7 +12,6 @@ import CampaignDetailPage from './pages/CampaignDetailPage';
 import LoginPage from './pages/auth/LoginPage';
 import SignupSelectionPage from './pages/auth/SignupSelectionPage';
 import InfluencerSubmitPage from './pages/InfluencerSubmitPage';
-import CheckinPage from './pages/CheckinPage';
 import ClientListPage from './pages/ClientListPage';
 import AdminClientLinkPage from './pages/AdminClientLinkPage';
 import ClientReportPage from './pages/ClientReportPage';
@@ -44,7 +43,8 @@ function App() {
         <Routes>
           {/* 독립 페이지: 헤더/푸터 없음 */}
           <Route path="/submit" element={<InfluencerSubmitPage />} />
-          <Route path="/checkin" element={<CheckinPage />} />
+          {/* /checkin 은 초경량 정적 public/checkin.html 이 담당 (vercel.json 리라이트) —
+              위챗 스캔 직후 첫 로딩이라 React 번들을 태우지 않는다 */}
           <Route path="/clients" element={<ClientListPage />} />
           <Route path="/admin/clients-link" element={<AdminClientLinkPage />} />
           <Route path="/report" element={<ClientReportPage />} />

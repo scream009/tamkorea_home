@@ -65,7 +65,8 @@ export default function AdminStoresPage() {
   const handleDownloadQr = async (e, store) => {
     e.stopPropagation();
     if (!store.storeSignature) return;
-    const url = `https://tamkorea.com/checkin?s=${store.id}&t=${store.storeSignature}`;
+    // www 직결 — apex 는 307 리다이렉트를 타서 위챗 웹뷰에서 한 홉 더 느리다
+    const url = `https://www.tamkorea.com/checkin?s=${store.id}&t=${store.storeSignature}`;
     try {
       const dataUrl = await QRCode.toDataURL(url, {
         width: 800,
