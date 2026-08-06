@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import jsQR from 'jsqr';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import './InfluencerSubmitPage.css';
 
 // ─── 날짜 포맷 헬퍼 ──────────────────────────────────────────
@@ -173,53 +173,70 @@ export default function InfluencerSubmitPage() {
 
 
 
-  // ─── QR 체크인 로직 (실시간 스캐너) ─────────────────────────
-  const [showScanner, setShowScanner] = useState(false);
-
-  useEffect(() => {
-    if (!showScanner) return;
-    
-    const scanner = new Html5QrcodeScanner("reader", { 
-      fps: 10, 
-      qrbox: {width: 250, height: 250},
-      supportedScanTypes: [0, 1] // Camera & File fallback
-    }, false);
-    
-    scanner.render((decodedText) => {
-       scanner.clear();
-       setShowScanner(false);
-       
-       try {
-          const qrUrl = new URL(decodedText);
-          const s = qrUrl.searchParams.get('s');
-          const t = qrUrl.searchParams.get('t');
-          if (!s || !t) throw new Error('Invalid QR');
-          
-          fetch('/api/checkin', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ inflToken: token, storeId: s, sig: t })
-          }).then(r => r.json()).then(data => {
-            if (data.error) showToast(data.error, 'error');
-            else if (data.already) showToast(`✅ 已签到 / 이미 체크인됨 (${data.when})`, 'success');
-            else showToast(`✅ [${data.store}] 入场确认 / 입장 확인 ${data.when}`, 'success');
-          }).catch(() => showToast('网络错误，请重试', 'error'));
-       } catch (e) {
-          showToast('不是有效的签到二维码。', 'error');
-       }
-    }, (err) => {
-       // Ignore frame errors
-    });
-    
-    return () => {
-      try {
-        scanner.clear();
-      } catch (e) { console.error(e); }
-    };
-  }, [showScanner, token, showToast]);
-
+  // ─── QR 체크인 로직 (파일 업로드 + zxing 디코딩) ────────────────
   const handleCheckinClick = () => {
-    setShowScanner(true);
+    if (fileInputRef.current) fileInputRef.current.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = ''; // Reset
+    
+    showToast('正在分析二维码... / QR 분석중...', 'info');
+    
+    const processQRData = (codeData) => {
+      try {
+        const qrUrl = new URL(codeData);
+        const s = qrUrl.searchParams.get('s');
+        const t = qrUrl.searchParams.get('t');
+        if (!s || !t) throw new Error('Invalid QR');
+        
+        fetch('/api/checkin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ inflToken: token, storeId: s, sig: t })
+        }).then(r => r.json()).then(data => {
+          if (data.error) showToast(data.error, 'error');
+          else if (data.already) showToast(`✅ 已签到 / 이미 체크인됨 (${data.when})`, 'success');
+          else showToast(`✅ [${data.store}] 入场确认 / 입장 확인 ${data.when}`, 'success');
+        }).catch(() => showToast('网络错误，请重试', 'error'));
+      } catch (e) {
+        showToast('不是有效的签到二维码。', 'error');
+      }
+    };
+
+    // 1. 최우선 시도: Html5Qrcode (ZXing 기반, 인식률 매우 높음)
+    try {
+      const html5QrCode = new Html5Qrcode("qr-reader-hidden");
+      const decodedText = await html5QrCode.scanFile(file, true);
+      processQRData(decodedText);
+      return;
+    } catch (err) {
+      console.warn("Html5Qrcode scanFile failed:", err);
+    }
+    
+    // 2. 차선책: Native BarcodeDetector
+    if ('BarcodeDetector' in window) {
+      try {
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        await new Promise(res => img.onload = res);
+        URL.revokeObjectURL(img.src);
+        
+        const barcodeDetector = new window.BarcodeDetector({ formats: ['qr_code'] });
+        const barcodes = await barcodeDetector.detect(img);
+        if (barcodes && barcodes.length > 0) {
+          processQRData(barcodes[0].rawValue);
+          return;
+        }
+      } catch (err) {
+        console.warn("BarcodeDetector failed:", err);
+      }
+    }
+
+    alert('❌ QR 코드가 인식되지 않았습니다.\n모니터 격자(모아레)나 빛 반사 때문일 수 있습니다.\n화면에 꽉 차게, 흔들리지 않게 다시 찍어주세요.');
+    showToast('二维码未识别，请重试。', 'error');
   };
 
   // ─── 진행률 계산 ─────────────────────────────────────────────
@@ -300,26 +317,26 @@ export default function InfluencerSubmitPage() {
             <span>共 {totalCount} 个客户 · 已提交 {doneCount} 个</span>
           </div>
           <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
-            {!showScanner && (
-              <button onClick={handleCheckinClick} style={{
-                background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-                color: 'white', border: 'none', padding: '0.6rem 1.2rem',
-                borderRadius: '20px', fontSize: '1rem', fontWeight: 'bold',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
-                boxShadow: '0 4px 10px rgba(79, 70, 229, 0.3)'
-              }}>
-                📷 入场签到 (실시간 카메라 스캔)
-              </button>
-            )}
+            <button onClick={handleCheckinClick} style={{
+              background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+              color: 'white', border: 'none', padding: '0.6rem 1.2rem',
+              borderRadius: '20px', fontSize: '1rem', fontWeight: 'bold',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
+              boxShadow: '0 4px 10px rgba(79, 70, 229, 0.3)'
+            }}>
+              📷 入场签到 (입장 체크인)
+            </button>
+            <input 
+              type="file" 
+              accept="image/*" 
+              capture="environment" 
+              ref={fileInputRef} 
+              style={{ display: 'none' }} 
+              onChange={handleFileChange} 
+            />
           </div>
-          {showScanner && (
-            <div style={{ marginTop: '1rem', width: '100%', maxWidth: '400px', margin: '1rem auto' }}>
-              <div id="reader"></div>
-              <button onClick={() => setShowScanner(false)} style={{
-                marginTop: '10px', background: '#e5e7eb', color: '#374151', border: 'none', padding: '0.5rem 1rem', borderRadius: '15px', cursor: 'pointer'
-              }}>취소 (Cancel)</button>
-            </div>
-          )}
+          {/* Html5Qrcode requires an element in the DOM to mount its hidden canvas */}
+          <div id="qr-reader-hidden" style={{ display: 'none' }}></div>
         </div>
       </div>
 
