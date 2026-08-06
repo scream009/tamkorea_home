@@ -86,46 +86,55 @@ export default async function handler(req, res) {
     const { inflToken, sig } = body;
     let storeId = body.storeId || '';
     const code = String(body.code || '').replace(/\D/g, ''); // 숫자 백업 코드 (QR 대체)
+    const wantList = body.list ? 1 : 0; // 오늘 예약 목록 조회 (자가 체크인 1단계)
+    const self = body.self ? 1 : 0;     // 자가 체크인 — 목록에서 고른 매장, 서명 불요
 
-    if (!inflToken || (!code && (!storeId || !sig))) {
+    // 자가 체크인의 신뢰 모델: Submit_Token 만으로 허용한다. 같은 토큰이 이미 결과물
+    // 제출·수정 권한을 갖고, "오늘 그 매장에 예약이 있는 인플"만 체크인이 성립하며,
+    // 거짓 체크인은 고객사 톡방 알림으로 즉시 드러난다 (부정 감수는 Owner 승인 사항).
+    if (!inflToken || (!wantList && !storeId && !code) || (!wantList && !self && storeId && !sig)) {
       return res.status(400).json({ error: '누락된 파라미터가 있습니다.' });
     }
 
-    if (!process.env.QR_CHECKIN_SECRET) {
-      return res.status(500).json({ error: '서버 설정 오류 (Secret 누락)' });
+    if (!wantList && !self) {
+      // QR·코드 경로만 시크릿이 필요하다
+      if (!process.env.QR_CHECKIN_SECRET) {
+        return res.status(500).json({ error: '서버 설정 오류 (Secret 누락)' });
+      }
+      if (storeId && sig) {
+        // 경로 1: QR 스캔 — /checkin?s=&t= 에서 넘어온 서명 검증
+        if (!timingSafeEqual(storeSig(storeId), sig)) {
+          return res.status(404).json({ error: 'Not found' });
+        }
+      } else {
+        // 경로 2: 숫자 코드 — 매장별 파생 코드(storeCode6)를 역조회
+        if (code.length !== 6) {
+          return res.status(400).json({ error: '签到码为6位数字 / 체크인 코드는 6자리 숫자입니다.' });
+        }
+        const stores = await fetchAll(T_STORE, { fields: ['고객사명(필수)'] });
+        const hits = stores.filter((r) => storeCode6(r.id) === code);
+        if (hits.length === 0) {
+          return res.status(404).json({ error: '无效的签到码。请与负责人确认 / 유효하지 않은 체크인 코드입니다.' });
+        }
+        if (hits.length > 1) {
+          // 6자리 파생 코드 충돌(희귀) — 이 매장 조합에선 코드 대신 예약 버튼을 쓰게 한다
+          return res.status(409).json({ error: '此签到码无法使用，请使用预约按钮签到 / 이 코드는 사용할 수 없습니다. 예약 버튼으로 체크인해 주세요.' });
+        }
+        storeId = hits[0].id;
+      }
     }
 
-    if (storeId && sig) {
-      // 경로 1: QR 스캔 — /checkin?s=&t= 에서 넘어온 서명 검증
-      if (!timingSafeEqual(storeSig(storeId), sig)) {
-        return res.status(404).json({ error: 'Not found' });
-      }
-    } else {
-      // 경로 2: 숫자 코드 — 매장별 파생 코드(storeCode6)를 역조회
-      if (code.length !== 6) {
-        return res.status(400).json({ error: '签到码为6位数字 / 체크인 코드는 6자리 숫자입니다.' });
-      }
-      const stores = await fetchAll(T_STORE, { fields: ['고객사명(필수)'] });
-      const hits = stores.filter((r) => storeCode6(r.id) === code);
-      if (hits.length === 0) {
-        return res.status(404).json({ error: '无效的签到码。请与负责人确认 / 유효하지 않은 체크인 코드입니다.' });
-      }
-      if (hits.length > 1) {
-        // 6자리 파생 코드 충돌(희귀) — 이 매장 조합에선 코드 대신 QR만 쓰게 한다
-        return res.status(409).json({ error: '此签到码无法使用，请扫描店内二维码 / 이 코드는 사용할 수 없습니다. QR을 스캔해 주세요.' });
-      }
-      storeId = hits[0].id;
-    }
-
+    // ⚠️ 필드명 함정: INFL_DB 는 `XHS_ID(필수)` — 접미까지가 실명 (2026-08-06 메타 실측.
+    // 'XHS_ID' 로 요청하면 Airtable 422 로 모든 체크인이 죽는다)
     const inflRecs = await fetchAll(T_INFL, {
       formula: `{Submit_Token}='${escFormula(inflToken)}'`,
-      fields: ['XHS_ID']
+      fields: ['XHS_ID(필수)']
     });
     if (!inflRecs.length) {
       return res.status(404).json({ error: '인플루언서 토큰을 찾을 수 없습니다.' });
     }
     const inflRecId = inflRecs[0].id;
-    const xhsId = one(inflRecs[0].fields['XHS_ID']) || '인플루언서';
+    const xhsId = one(inflRecs[0].fields['XHS_ID(필수)']) || '인플루언서';
 
     const nowKst = new Date(Date.now() + 9 * 3600 * 1000);
     const yest = new Date(nowKst.getTime() - 24 * 3600 * 1000);
@@ -141,14 +150,31 @@ export default async function handler(req, res) {
 
     let resvs = await fetchAll(T_PROGRESS, {
       formula,
-      fields: ['예약일시', '진행상태', 'XHS_ID_', '매장코드', '팀명생성기', '체크인일시', '고객사+지점명']
+      // '고객사+지점명' 필드는 진행_DB_OLD 에 없다 — 매장 표기는 `매장명_검색용` (제출 페이지와 동일)
+      fields: ['예약일시', '진행상태', 'XHS_ID_', '매장코드', '팀명생성기', '체크인일시', '매장명_검색용']
     });
 
-    resvs = resvs.filter(r => {
-      const inflIds = r.fields['XHS_ID_'] || [];
-      const storeIds = r.fields['매장코드'] || [];
-      return inflIds.includes(inflRecId) && storeIds.includes(storeId);
-    });
+    resvs = resvs.filter(r => (r.fields['XHS_ID_'] || []).includes(inflRecId));
+
+    if (wantList) {
+      // 자가 체크인 1단계 — 오늘(±1일) 이 인플의 예약 목록. 인플은 여기서 도착한 매장을 탭한다.
+      const items = resvs
+        .filter(r => (r.fields['매장코드'] || []).length) // 매장 링크 없는 건은 특정 불가
+        .sort((a, b) => new Date(a.fields['예약일시'] || 0) - new Date(b.fields['예약일시'] || 0))
+        .map(r => {
+          const d = new Date(new Date(r.fields['예약일시']).getTime() + 9 * 3600 * 1000);
+          const when = `${d.getUTCMonth() + 1}/${d.getUTCDate()} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+          return {
+            storeId: (r.fields['매장코드'] || [])[0],
+            store: one(r.fields['매장명_검색용']),
+            when,
+            checked: r.fields['체크인일시'] ? 1 : 0,
+          };
+        });
+      return res.status(200).json({ ok: 1, items });
+    }
+
+    resvs = resvs.filter(r => (r.fields['매장코드'] || []).includes(storeId));
 
     if (resvs.length === 0) {
       return res.status(409).json({ error: '오늘 이 매장의 예약을 찾을 수 없습니다. 담당자에게 문의하세요.', noMatch: 1 });
@@ -166,7 +192,7 @@ export default async function handler(req, res) {
       const lastCheckedIn = resvs[resvs.length - 1];
       const kstTime = new Date(new Date(lastCheckedIn.fields['체크인일시']).getTime() + 9 * 3600 * 1000);
       const hhmm = `${String(kstTime.getUTCHours()).padStart(2, '0')}:${String(kstTime.getUTCMinutes()).padStart(2, '0')}`;
-      return res.status(200).json({ ok: 1, already: 1, when: hhmm, store: one(lastCheckedIn.fields['고객사+지점명']) });
+      return res.status(200).json({ ok: 1, already: 1, when: hhmm, store: one(lastCheckedIn.fields['매장명_검색용']) });
     }
 
     const nowIso = new Date().toISOString();
@@ -185,7 +211,7 @@ export default async function handler(req, res) {
     const teamKey = one(targetResv.fields['팀명생성기']);
     const kstNow = new Date(Date.now() + 9 * 3600 * 1000);
     const nowHhmm = `${String(kstNow.getUTCHours()).padStart(2, '0')}:${String(kstNow.getUTCMinutes()).padStart(2, '0')}`;
-    const storeName = one(targetResv.fields['고객사+지점명']);
+    const storeName = one(targetResv.fields['매장명_검색용']);
 
     if (teamKey) {
       const parents = await fetchAll(T_ENTRY, {

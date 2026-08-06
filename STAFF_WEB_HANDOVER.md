@@ -340,13 +340,18 @@ Campaign_DB ±1개월 + 계약이 문 진행 건 + CS_DB 정보 조인.
 
 ---
 
-## 11. QR 입장 체크인 (2026-08-06, v1.2 배포됨)
+## 11. QR 입장 체크인 (2026-08-06, v1.3 배포됨)
 
-상세 스펙·경위는 `QR_CHECKIN_SPEC.md` (v1.2). 요점만:
+상세 스펙·경위는 `QR_CHECKIN_SPEC.md` (v1.3). 요점만:
 
-- **경로**: 매장 QR(URL) → 인플이 **위챗 扫一扫**로 스캔 → `/checkin?s=&t=` 자동 체크인
-  (신원 = /submit 방문 시 localStorage에 심는 `tk_submit_token`). 백업 = 매장별 **6자리
-  숫자 코드**(/submit 체크인 모달에서 입력, /schedule QR 모달·admin QR 다운로드 시 표기).
+- **정공법 (v1.3)**: /submit 「入场签到」 → 오늘 예약 목록(`list:1`) → 도착 매장 **탭 한 번**
+  (`self:1`, 서명 불요 — Submit_Token 신뢰 + 오늘 예약 존재 + 톡방 알림이 자연 검증).
+  위챗 스캔 왕복이 "말 안 듣는 체험단"에게 과했다는 Owner 판정으로 전환.
+- **백업 경로**: 매장 QR(위챗 扫一扫 → /checkin 자동 체크인, localStorage 토큰) + 매장별
+  **6자리 숫자 코드**(/submit 모달 접힘 입력, /schedule QR 모달·admin 매장 선택 시 표기).
+- **🔴 v1.2까지 전 경로 사망 버그 (실측으로 발견·수정)**: INFL_DB `XHS_ID` → 실명은
+  `XHS_ID(필수)`, 진행_DB_OLD `고객사+지점명` → 실존 안 함(`매장명_검색용` 사용).
+  둘 다 Airtable 422 — 필드명은 메타 API 실측 없이 쓰지 말 것.
 - **사진 촬영→웹 디코드는 폐기** — 모니터 모아레를 엔진 교체(jsQR·ZXing·BarcodeDetector)로
   못 이긴다는 AG 실기기 검증 결과. `html5-qrcode`·`jsqr` 의존성도 제거됨.
 - **서명 일원화**: `api/_qr-sign.js` (`storeSig`·`storeCode6`). 시크릿 없으면 빈 값
