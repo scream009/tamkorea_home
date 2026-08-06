@@ -206,17 +206,7 @@ export default function InfluencerSubmitPage() {
       }
     };
 
-    // 1. 최우선 시도: Html5Qrcode (ZXing 기반, 인식률 매우 높음)
-    try {
-      const html5QrCode = new Html5Qrcode("qr-reader-hidden");
-      const decodedText = await html5QrCode.scanFile(file, true);
-      processQRData(decodedText);
-      return;
-    } catch (err) {
-      console.warn("Html5Qrcode scanFile failed:", err);
-    }
-    
-    // 2. 차선책: Native BarcodeDetector
+    // 1. 최우선 시도: Native BarcodeDetector
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.src = url;
@@ -240,7 +230,7 @@ export default function InfluencerSubmitPage() {
       }
     }
 
-    // 3. 최후의 보루: jsQR (모아레 제거를 위한 공격적 축소 500px)
+    // 2. 차선책: jsQR (모아레 제거를 위한 공격적 축소 500px)
     try {
       const canvas = document.createElement('canvas');
       let width = img.width;
@@ -259,7 +249,7 @@ export default function InfluencerSubmitPage() {
       let code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "attemptBoth" });
       
       if (!code) {
-        // 4. 진짜 마지막: 중간 사이즈 (800px)
+        // 3. 진짜 마지막: 중간 사이즈 (800px)
         const MAX2 = 800;
         let w2 = img.width; let h2 = img.height;
         if (w2 > MAX2 || h2 > MAX2) {
@@ -380,8 +370,6 @@ export default function InfluencerSubmitPage() {
               onChange={handleFileChange} 
             />
           </div>
-          {/* Html5Qrcode requires an element in the DOM to mount its hidden canvas. display:none breaks it on iOS WebKit. */}
-          <div id="qr-reader-hidden" style={{ position: 'absolute', top: '-9999px', width: '300px', height: '300px' }}></div>
         </div>
       </div>
 
