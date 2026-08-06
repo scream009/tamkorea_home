@@ -217,13 +217,18 @@ export default function InfluencerSubmitPage() {
     }
     
     // 2. 차선책: Native BarcodeDetector
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.src = url;
+    
+    await new Promise(res => {
+      img.onload = res;
+      img.onerror = res;
+    });
+    URL.revokeObjectURL(url);
+    
     if ('BarcodeDetector' in window) {
       try {
-        const img = new Image();
-        img.src = URL.createObjectURL(file);
-        await new Promise(res => img.onload = res);
-        URL.revokeObjectURL(img.src);
-        
         const barcodeDetector = new window.BarcodeDetector({ formats: ['qr_code'] });
         const barcodes = await barcodeDetector.detect(img);
         if (barcodes && barcodes.length > 0) {
@@ -233,6 +238,39 @@ export default function InfluencerSubmitPage() {
       } catch (err) {
         console.warn("BarcodeDetector failed:", err);
       }
+    }
+
+    // 3. 최후의 보루: jsQR (캔버스 축소/확대 2번 시도)
+    try {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+      const MAX = 1280;
+      if (width > MAX || height > MAX) {
+        if (width > height) { height = Math.floor(height * (MAX / width)); width = MAX; } 
+        else { width = Math.floor(width * (MAX / height)); height = MAX; }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      const imageData = ctx.getImageData(0, 0, width, height);
+      let code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "attemptBoth" });
+      
+      if (!code && (img.width > MAX || img.height > MAX)) {
+        canvas.width = img.width; canvas.height = img.height;
+        ctx.drawImage(img, 0, 0, img.width, img.height);
+        const fullImageData = ctx.getImageData(0, 0, img.width, img.height);
+        code = jsQR(fullImageData.data, fullImageData.width, fullImageData.height, { inversionAttempts: "attemptBoth" });
+      }
+      
+      if (code) {
+        processQRData(code.data);
+        return;
+      }
+    } catch (err) {
+      console.warn("jsQR fallback failed:", err);
     }
 
     alert('❌ QR 코드가 인식되지 않았습니다.\n모니터 격자(모아레)나 빛 반사 때문일 수 있습니다.\n화면에 꽉 차게, 흔들리지 않게 다시 찍어주세요.');
@@ -335,8 +373,8 @@ export default function InfluencerSubmitPage() {
               onChange={handleFileChange} 
             />
           </div>
-          {/* Html5Qrcode requires an element in the DOM to mount its hidden canvas */}
-          <div id="qr-reader-hidden" style={{ display: 'none' }}></div>
+          {/* Html5Qrcode requires an element in the DOM to mount its hidden canvas. display:none breaks it on iOS WebKit. */}
+          <div id="qr-reader-hidden" style={{ position: 'absolute', top: '-9999px', width: '300px', height: '300px' }}></div>
         </div>
       </div>
 
