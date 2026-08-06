@@ -241,8 +241,8 @@ export default function ClientSchedulePage() {
     if (qrModalOpen && qrCanvasRef.current && data?.storeCode && data?.storeSignature) {
       const url = `https://tamkorea.com/checkin?s=${data.storeCode}&t=${data.storeSignature}`;
       QRCode.toCanvas(qrCanvasRef.current, url, {
-        width: 300,
-        margin: 2,
+        width: 400,
+        margin: 4,
         color: {
           dark: '#000000',
           light: '#ffffff'

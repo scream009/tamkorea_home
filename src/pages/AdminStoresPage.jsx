@@ -69,7 +69,7 @@ export default function AdminStoresPage() {
     try {
       const dataUrl = await QRCode.toDataURL(url, {
         width: 800,
-        margin: 2,
+        margin: 4,
         color: { dark: '#000000', light: '#ffffff' }
       });
       const a = document.createElement('a');
