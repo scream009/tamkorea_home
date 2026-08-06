@@ -29,7 +29,7 @@ app.use(express.json());
 const ROUTES = ['client-schedule', 'client-report', 'client-list', 'client-partner',
                 'admin-dianping', 'admin-check', 'admin-dashboard', 'admin-board-api',
                 'staff-check', 'staff-board', 'staff-resv', 'staff-queue', 'admin-stores',
-                'staff-game'];
+                'staff-game', 'staff-infl'];
 for (const name of ROUTES) {
   app.all(`/api/${name}`, async (req, res) => {
     try {
