@@ -240,12 +240,12 @@ export default function InfluencerSubmitPage() {
       }
     }
 
-    // 3. 최후의 보루: jsQR (캔버스 축소/확대 2번 시도)
+    // 3. 최후의 보루: jsQR (모아레 제거를 위한 공격적 축소 500px)
     try {
       const canvas = document.createElement('canvas');
       let width = img.width;
       let height = img.height;
-      const MAX = 1280;
+      const MAX = 500; // 공격적 축소 (모아레 필터링 효과)
       if (width > MAX || height > MAX) {
         if (width > height) { height = Math.floor(height * (MAX / width)); width = MAX; } 
         else { width = Math.floor(width * (MAX / height)); height = MAX; }
@@ -258,11 +258,18 @@ export default function InfluencerSubmitPage() {
       const imageData = ctx.getImageData(0, 0, width, height);
       let code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "attemptBoth" });
       
-      if (!code && (img.width > MAX || img.height > MAX)) {
-        canvas.width = img.width; canvas.height = img.height;
-        ctx.drawImage(img, 0, 0, img.width, img.height);
-        const fullImageData = ctx.getImageData(0, 0, img.width, img.height);
-        code = jsQR(fullImageData.data, fullImageData.width, fullImageData.height, { inversionAttempts: "attemptBoth" });
+      if (!code) {
+        // 4. 진짜 마지막: 중간 사이즈 (800px)
+        const MAX2 = 800;
+        let w2 = img.width; let h2 = img.height;
+        if (w2 > MAX2 || h2 > MAX2) {
+          if (w2 > h2) { h2 = Math.floor(h2 * (MAX2 / w2)); w2 = MAX2; }
+          else { w2 = Math.floor(w2 * (MAX2 / h2)); h2 = MAX2; }
+        }
+        canvas.width = w2; canvas.height = h2;
+        ctx.drawImage(img, 0, 0, w2, h2);
+        const idata2 = ctx.getImageData(0, 0, w2, h2);
+        code = jsQR(idata2.data, idata2.width, idata2.height, { inversionAttempts: "attemptBoth" });
       }
       
       if (code) {
