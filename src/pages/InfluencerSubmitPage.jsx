@@ -211,11 +211,15 @@ export default function InfluencerSubmitPage() {
   const submitCheckin = useCallback(async (payload) => {
     setCheckinBusy(true);
     setCkErr('');
+    // 위챗 웹뷰에서 요청이 무한 대기하면 "아무 반응 없음"이 된다 — 15초 컷
+    const ctrl = ('AbortController' in window) ? new AbortController() : null;
+    const timeo = ctrl ? setTimeout(() => ctrl.abort(), 15000) : null;
     try {
       const r = await fetch('/api/checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        signal: ctrl ? ctrl.signal : undefined,
       });
       const data = await r.json().catch(() => ({}));
       if (r.ok && data.ok) {
@@ -226,16 +230,17 @@ export default function InfluencerSubmitPage() {
       }
       if (data.noMatch) {
         stopCamera();
-        setCkOther(data.otherToday || []);
+        setCkOther({ list: data.otherToday || [], scanStore: data.scanStore || '' });
         setCamState('nomatch');
         return false;
       }
       setCkErr(data.error || `오류 ${r.status}`);
       return false;
     } catch {
-      setCkErr('网络错误，请重试 / 네트워크 오류');
+      setCkErr('网络错误，请重试 / 네트워크 오류 — 다시 시도해 주세요');
       return false;
     } finally {
+      if (timeo) clearTimeout(timeo);
       setCheckinBusy(false);
     }
   }, [stopCamera]);
@@ -600,6 +605,13 @@ export default function InfluencerSubmitPage() {
                   이 화면을 매장 직원에게 보여주세요. / 请向店员出示此页面。
                   <br />카톡 알림은 최대 1분 내 자동 발송됩니다. / 系统通知将在1分钟内自动发送。
                 </div>
+                <button onClick={closeCheckin} style={{
+                  marginTop: '14px', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                  color: 'white', border: 'none', padding: '10px 32px', borderRadius: '20px',
+                  fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer',
+                }}>
+                  확인 / 确认
+                </button>
               </div>
             )}
 
@@ -610,20 +622,30 @@ export default function InfluencerSubmitPage() {
                 <div style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: '6px' }}>
                   이 매장의 오늘 예약이 없습니다 / 未找到今天在此店的预约
                 </div>
-                {ckOther && ckOther.length > 0 && (
+                {ckOther && ckOther.scanStore && (
+                  <div style={{ marginTop: '6px', color: '#666', fontSize: '0.88rem' }}>
+                    스캔한 매장 / 扫描的门店: <b>{ckOther.scanStore}</b>
+                  </div>
+                )}
+                {ckOther && ckOther.list && ckOther.list.length > 0 && (
                   <div style={{
                     marginTop: '10px', background: '#fffbeb', border: '1px solid #fde68a',
                     borderRadius: '10px', padding: '10px 14px', textAlign: 'left', fontSize: '0.92rem', lineHeight: 1.7,
                   }}>
                     <b>오늘 예약 / 您今天的预约:</b>
-                    {ckOther.map((o, i) => (
+                    {ckOther.list.map((o, i) => (
                       <div key={i}>📍 {o.store} <span style={{ color: '#92400e' }}>{o.when}</span></div>
                     ))}
                   </div>
                 )}
-                <button onClick={openCheckin} style={{ marginTop: '12px', background: 'none', border: '1px solid #d1d5db', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer' }}>
-                  다시 스캔 / 重新扫描
-                </button>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '12px' }}>
+                  <button onClick={openCheckin} style={{ background: 'none', border: '1px solid #d1d5db', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer' }}>
+                    다시 스캔 / 重新扫描
+                  </button>
+                  <button onClick={closeCheckin} style={{ background: '#e5e7eb', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer' }}>
+                    닫기 / 关闭
+                  </button>
+                </div>
               </div>
             )}
 
@@ -687,8 +709,12 @@ export default function InfluencerSubmitPage() {
                       {checkinBusy ? '⏳' : '签到'}
                     </button>
                   </div>
-                  {camState === 'denied' && ckErr && (
-                    <p style={{ margin: '8px 0 0', color: '#dc2626', fontSize: '0.85rem' }}>{ckErr}</p>
+                  {/* 코드 전송 결과는 여기 항상 표시 — "아무 반응 없음"으로 보이지 않게 */}
+                  {ckErr && (
+                    <p style={{ margin: '8px 0 0', color: '#dc2626', fontSize: '0.85rem', fontWeight: 700 }}>{ckErr}</p>
+                  )}
+                  {checkinBusy && (
+                    <p style={{ margin: '8px 0 0', color: '#666', fontSize: '0.85rem' }}>⏳ 확인 중… / 正在确认…</p>
                   )}
                 </details>
 

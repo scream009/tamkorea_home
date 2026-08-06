@@ -990,45 +990,46 @@ export default function ClientSchedulePage() {
             >
               <X className="w-5 h-5" />
             </button>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '1rem', color: 'var(--text-color)' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '1rem', color: '#111827' }}>
               입장 체크인 QR
             </h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+            <p style={{ color: '#4b5563', fontSize: '0.9rem', marginBottom: '1rem' }}>
               방문자(체험단)가 입장하면 이 QR을 스캔하게 해주세요.
             </p>
             <div style={{ background: 'white', padding: '10px', display: 'inline-block', borderRadius: '12px' }}>
               <canvas ref={qrCanvasRef}></canvas>
             </div>
 
-            {/* 매장용 안내 카드 — 중국어를 몰라도 이 화면을 그대로 보여주며 안내할 수 있다 */}
+            {/* 매장용 안내 카드 — 중국어를 몰라도 이 화면을 그대로 보여주며 안내할 수 있다.
+                ⚠ 색상은 고정값 — 테마 변수(--text-color 등)는 다크 페이지 기준이라
+                흰 모달 위에서 글자가 안 보이는 사고가 있었다 (2026-08-06 실측) */}
             <div style={{
               textAlign: 'left', margin: '1.2rem auto 0', maxWidth: '420px',
-              background: 'var(--bg-secondary, #f8f9fa)', border: '1px solid var(--border-color, #e9ecef)',
+              background: '#f8f9fa', border: '1px solid #e5e7eb',
               borderRadius: '10px', padding: '12px 16px', fontSize: '0.88rem', lineHeight: 1.7,
+              color: '#1f2937',
             }}>
-              <b>방문자 안내 방법</b> — 중국어를 몰라도 아래 중문을 그대로 보여주시면 됩니다.
+              <b style={{ color: '#111827' }}>방문자 안내 방법</b> — 중국어를 몰라도 아래 중문을 그대로 보여주시면 됩니다.
               <div style={{ marginTop: '6px' }}>
                 ① 위챗 <b>➕ → 스캔(扫一扫)</b>으로 이 QR 찍기
-                <br />② 초록색 <b>"예약된 체험단입니다"</b> 화면 확인
+                <br />② 초록색 <b>&quot;예약된 체험단입니다&quot;</b> 화면 확인
                 <br />③ 화면의 계정명·인원이 예약과 맞는지 확인
               </div>
               <div style={{
-                marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed var(--border-color, #d1d5db)',
+                marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed #d1d5db',
                 fontSize: '0.92rem',
               }}>
                 🇨🇳 请用微信右上角 <b>➕ → 扫一扫</b> 扫描此二维码，
                 出现绿色确认页面后请出示给店员。
               </div>
               {data?.checkinCode && (
-                <div style={{
-                  marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed var(--border-color, #d1d5db)',
-                }}>
+                <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed #d1d5db' }}>
                   카메라·스캔이 안 되는 방문자에게는 이 코드를 입력하게 하세요:{' '}
-                  <b style={{ fontSize: '1.15rem', letterSpacing: '0.15em' }}>{data.checkinCode}</b>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}> (매일 자동 변경)</span>
+                  <b style={{ fontSize: '1.15rem', letterSpacing: '0.15em', color: '#4f46e5' }}>{data.checkinCode}</b>
+                  <span style={{ color: '#6b7280', fontSize: '0.8rem' }}> (매일 자동 변경)</span>
                 </div>
               )}
-              <div style={{ marginTop: '8px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+              <div style={{ marginTop: '8px', color: '#6b7280', fontSize: '0.8rem' }}>
                 체크인이 되면 카카오톡 알림이 최대 1분 내에 자동 발송됩니다.
               </div>
             </div>

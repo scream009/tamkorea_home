@@ -150,16 +150,14 @@ export default async function handler(req, res) {
     const bySort = (a, b) => new Date(a.fields['예약일시'] || 0) - new Date(b.fields['예약일시'] || 0);
     const atStore = all.filter(r => (r.fields['매장코드'] || []).includes(storeId)).sort(bySort);
 
-    const alreadyPayload = (rec, name) => {
-      const kstTime = new Date(new Date(rec.fields['체크인일시']).getTime() + 9 * 3600 * 1000);
-      const hhmm = `${String(kstTime.getUTCHours()).padStart(2, '0')}:${String(kstTime.getUTCMinutes()).padStart(2, '0')}`;
-      return {
-        ok: 1, already: 1, when: hhmm, xid: name,
-        store: one(rec.fields['매장명_검색용']),
-        resvWhen: fmtKst(rec.fields['예약일시']),
-        pax: rec.fields['총인원'] ?? '',
-      };
-    };
+    const alreadyPayload = (rec, name) => ({
+      ok: 1, already: 1,
+      when: fmtKst(rec.fields['체크인일시']), // 날짜 포함 (Owner 요청)
+      xid: name,
+      store: one(rec.fields['매장명_검색용']),
+      resvWhen: fmtKst(rec.fields['예약일시']),
+      pax: rec.fields['총인원'] ?? '',
+    });
 
     if (who) {
       // 스캔만으로 신원까지 해결 — 오늘 이 매장 예약 명단을 주고 본인 계정을 고르게 한다.
@@ -216,6 +214,8 @@ export default async function handler(req, res) {
           error: '오늘 이 매장의 예약을 찾을 수 없습니다. 담당자에게 문의하세요.',
           noMatch: 1,
           otherToday,
+          // 어느 매장 QR을 찍었는지 화면에 보여줘 현장 판별을 돕는다
+          scanStore: atStore.length ? one(atStore[0].fields['매장명_검색용']) : '',
         });
       }
 
@@ -239,8 +239,6 @@ export default async function handler(req, res) {
     });
 
     const teamKey = one(targetResv.fields['팀명생성기']);
-    const kstNow = new Date(Date.now() + 9 * 3600 * 1000);
-    const nowHhmm = `${String(kstNow.getUTCHours()).padStart(2, '0')}:${String(kstNow.getUTCMinutes()).padStart(2, '0')}`;
     const storeName = one(targetResv.fields['매장명_검색용']);
 
     if (teamKey) {
@@ -271,7 +269,7 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({
-      ok: 1, store: storeName, xid: xhsId, when: nowHhmm,
+      ok: 1, store: storeName, xid: xhsId, when: fmtKst(nowIso), // 날짜 포함
       resvWhen: fmtKst(targetResv.fields['예약일시']),
       pax: targetResv.fields['총인원'] ?? '',
     });
