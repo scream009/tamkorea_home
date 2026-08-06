@@ -43,6 +43,12 @@
   background:rgba(139,92,246,.14);border:1px solid rgba(139,92,246,.45);border-radius:999px;
   padding:.06rem .4rem;text-decoration:none}
 .sif-lnk:hover{background:rgba(139,92,246,.3)}
+.sif-mut{color:var(--muted)}
+.sif-copywrap{display:inline-flex;align-items:center;gap:.25rem;white-space:nowrap}
+.sif-copy{background:#1A1E2A;border:1px solid var(--line2);border-radius:7px;color:var(--ink2);
+  font-size:.66rem;font-weight:600;padding:.14rem .45rem;cursor:pointer;font-family:inherit;transition:.13s}
+.sif-copy:hover{border-color:var(--accent);color:#DDD6FE}
+.sif-copy.ok{border-color:rgba(16,185,129,.55);color:#6EE7B7}
 .sif-newbtn{margin-left:.4rem;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.45);
   border-radius:7px;color:#DDD6FE;font-size:.7rem;font-weight:700;padding:.2rem .6rem;
   cursor:pointer;font-family:inherit;transition:.13s}

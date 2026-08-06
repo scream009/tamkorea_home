@@ -5,6 +5,32 @@ import StaffNav from '../components/StaffNav';
 import InflRegModal from '../components/InflRegModal';
 import './StaffInflPage.css';
 
+/* 전달링크 복사 — 위챗에 붙여넣는 용도 */
+function CopyLink({ url }) {
+  const [ok, setOk] = useState(false);
+  if (!url) return <span className="sif-mut">—</span>;
+  return (
+    <span className="sif-copywrap" onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        className={`sif-copy ${ok ? 'ok' : ''}`}
+        title={`인플 전달용 제출 링크 복사\n${url}`}
+        onClick={async () => {
+          try { await navigator.clipboard.writeText(url); }
+          catch {
+            const ta = document.createElement('textarea');
+            ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+          }
+          setOk(true);
+          setTimeout(() => setOk(false), 1500);
+        }}
+      >{ok ? '✓ 복사됨' : '✂ 링크복사'}</button>
+      <a className="sif-lnk" href={url} target="_blank" rel="noreferrer" title="열어보기">↗</a>
+    </span>
+  );
+}
+
 /**
  * 인플루언서 보드 (/staff/infl) — 조회 + 신규 등록 + **인플별 업로드 지연 추적**.
  *
@@ -154,7 +180,7 @@ export default function StaffInflPage() {
                 <tr>
                   <th>XHS_ID</th><th>섭외</th><th className="num">팔로워</th>
                   <th className="num">방문</th><th className="num">업로드</th><th>지연</th>
-                  <th>위챗</th><th>지역</th>
+                  <th>전달링크</th><th>위챗</th><th>지역</th>
                 </tr>
               </thead>
               <tbody>
@@ -187,12 +213,13 @@ export default function StaffInflPage() {
                             ? <span className="sif-pend-badge">대기 {i.pend}</span>
                             : i.visits ? <span className="ok2">✓</span> : '—'}
                       </td>
+                      <td><CopyLink url={i.give} /></td>
                       <td>{i.wc || '—'}</td>
                       <td>{i.region || '—'}</td>
                     </tr>
                     {open === i.id && (
                       <tr className="sif-detail-tr">
-                        <td colSpan={8}>
+                        <td colSpan={9}>
                           {i.d.length === 0
                             ? <div className="sif-det-empty">최근 3개월 내 방문 기록이 없습니다.</div>
                             : (

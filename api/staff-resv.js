@@ -432,7 +432,7 @@ export default async function handler(req, res) {
         // 인플 조회 화면용 확장 목록 (읽기 전용)
         const recs = await fetchAll(T_INFL, {
           fields: ['XHS_ID(필수)', '유형(필수)', '섭외_ID(필수)', 'XHS_link1(필수)',
-            'PAL(필수)', 'WC_ID', '연락처', '지역', '닉네임'],
+            'PAL(필수)', 'WC_ID', '연락처', '지역', '닉네임', '인플전용링크'],
         });
         const infls = recs
           .map((r) => ({
@@ -446,6 +446,7 @@ export default async function handler(req, res) {
             phone: one(r.fields['연락처']),
             region: one(r.fields['지역']),
             nick: one(r.fields['닉네임']),
+            give: one(r.fields['인플전용링크']),   // 개인 제출 링크 — 위챗 전달용
           }))
           .filter((i) => i.xid)
           .sort((a, b) => b.pal - a.pal);
