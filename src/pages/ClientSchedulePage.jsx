@@ -1001,17 +1001,6 @@ export default function ClientSchedulePage() {
               <canvas ref={qrCanvasRef}></canvas>
             </div>
 
-            {data?.checkinCode && (
-              <p style={{ marginTop: '1rem', fontSize: '0.95rem', color: 'var(--text-color)' }}>
-                오늘의 체크인 코드 / 今日签到码:{' '}
-                <b style={{ fontSize: '1.3rem', letterSpacing: '0.15em' }}>{data.checkinCode}</b>
-                <br />
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  QR 인식이 안 되는 방문자에게 알려주세요 · 매일 자동 변경됩니다
-                </span>
-              </p>
-            )}
-
             <p style={{ marginTop: '1.5rem', color: '#ff4d4f', fontSize: '0.85rem' }}>
               ※ 이 화면은 고객사 전용 화면입니다. 외부 유출에 주의하세요.
             </p>

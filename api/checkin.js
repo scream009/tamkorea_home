@@ -1,7 +1,7 @@
 /* eslint-env node */
 import crypto from 'crypto';
 import { escFormula } from './_admin-auth.js';
-import { storeSig, storeCodeDaily } from './_qr-sign.js';
+import { storeSig } from './_qr-sign.js';
 
 const KEY = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const BASE = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
@@ -10,7 +10,6 @@ const API = `https://api.airtable.com/v0/${BASE}`;
 const T_PROGRESS = '진행_DB_OLD';
 const T_ENTRY = '예약입력_DB';
 const T_INFL = 'INFL_DB';
-const T_STORE = 'CS_DB';
 
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 async function at(path, init) {
@@ -91,61 +90,22 @@ export default async function handler(req, res) {
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     const { inflToken, sig } = body;
-    let storeId = body.storeId || '';
-    const code = String(body.code || '').replace(/\D/g, ''); // 일별 회전 코드 (QR 백업)
-    const wantList = body.list ? 1 : 0; // 오늘 예약 목록 조회 (모달 표시용 — 체크인 권한 아님)
+    const storeId = body.storeId || '';
+    const who = body.who ? 1 : 0;         // 스캔 후 오늘 이 매장 예약 명단 (토큰 없는 폰)
+    const pick = String(body.pick || ''); // 명단에서 고른 진행 레코드 ID
 
-    // 도착 증명은 필수다 (v1.4 — Owner 판정: 탭만으로 체크인되면 확인 수단이 없다).
-    // 체크인 성립 = QR 서명(sig) 또는 매장 게시 일별 코드(code). 자가 탭 경로는 없다.
-    if (!inflToken || (!wantList && !sig && !code)) {
+    // v1.6 — QR 로 모든 것이 끝난다 (Owner 지시). 모든 경로가 매장 QR 서명(sig)을
+    // 요구한다: 명단 조회·선택 체크인도 그 매장 QR 을 물리적으로 찍어야만 가능하다.
+    // 신원 = 제출 토큰(있으면 자동) 또는 명단에서 본인 계정 선택.
+    if (!storeId || !sig || (!who && !pick && !inflToken)) {
       return res.status(400).json({ error: '누락된 파라미터가 있습니다.' });
     }
-
-    if (!wantList) {
-      if (!process.env.QR_CHECKIN_SECRET) {
-        return res.status(500).json({ error: '서버 설정 오류 (Secret 누락)' });
-      }
-      const codeOk = (id) => code.length === 6
-        && (code === storeCodeDaily(id, 0) || code === storeCodeDaily(id, -1)); // 오늘 + 어제 유예
-      if (storeId && sig) {
-        // 경로 1: QR 스캔 — /checkin?s=&t= 에서 넘어온 서명 검증
-        if (!timingSafeEqual(storeSig(storeId), sig)) {
-          return res.status(404).json({ error: 'Not found' });
-        }
-      } else if (storeId && code) {
-        // 경로 2: 예약 탭 + 매장 게시 코드 입력 — 그 매장의 오늘/어제 코드만 인정
-        if (!codeOk(storeId)) {
-          return res.status(404).json({ error: '签到码不正确。请确认店内今日码 / 코드가 맞지 않습니다. 매장의 오늘 코드를 확인하세요.' });
-        }
-      } else {
-        // 경로 3: 코드만 — 전 매장 역조회 (예약 목록이 안 뜨는 예외 상황용)
-        if (code.length !== 6) {
-          return res.status(400).json({ error: '签到码为6位数字 / 체크인 코드는 6자리 숫자입니다.' });
-        }
-        const stores = await fetchAll(T_STORE, { fields: ['고객사명(필수)'] });
-        const hits = stores.filter((r) => codeOk(r.id));
-        if (hits.length === 0) {
-          return res.status(404).json({ error: '签到码不正确。请确认店内今日码 / 코드가 맞지 않습니다. 매장의 오늘 코드를 확인하세요.' });
-        }
-        if (hits.length > 1) {
-          // 일별 파생 코드 충돌(희귀) — 이 날은 QR 스캔만 쓰게 한다
-          return res.status(409).json({ error: '此签到码今日无法使用，请扫描店内二维码 / 오늘은 이 코드를 쓸 수 없습니다. QR을 스캔해 주세요.' });
-        }
-        storeId = hits[0].id;
-      }
+    if (!process.env.QR_CHECKIN_SECRET) {
+      return res.status(500).json({ error: '서버 설정 오류 (Secret 누락)' });
     }
-
-    // ⚠️ 필드명 함정: INFL_DB 는 `XHS_ID(필수)` — 접미까지가 실명 (2026-08-06 메타 실측.
-    // 'XHS_ID' 로 요청하면 Airtable 422 로 모든 체크인이 죽는다)
-    const inflRecs = await fetchAll(T_INFL, {
-      formula: `{Submit_Token}='${escFormula(inflToken)}'`,
-      fields: ['XHS_ID(필수)']
-    });
-    if (!inflRecs.length) {
-      return res.status(404).json({ error: '인플루언서 토큰을 찾을 수 없습니다.' });
+    if (!timingSafeEqual(storeSig(storeId), sig)) {
+      return res.status(404).json({ error: 'Not found' });
     }
-    const inflRecId = inflRecs[0].id;
-    const xhsId = one(inflRecs[0].fields['XHS_ID(필수)']) || '인플루언서';
 
     const nowKst = new Date(Date.now() + 9 * 3600 * 1000);
     const yest = new Date(nowKst.getTime() - 24 * 3600 * 1000);
@@ -159,57 +119,88 @@ export default async function handler(req, res) {
       `NOT({진행상태} = '취소_방문자'), NOT({진행상태} = '취소_고객사'), NOT({진행상태} = '노쇼')` +
     `)`;
 
-    let resvs = await fetchAll(T_PROGRESS, {
+    const all = await fetchAll(T_PROGRESS, {
       formula,
       // '고객사+지점명' 필드는 진행_DB_OLD 에 없다 — 매장 표기는 `매장명_검색용` (제출 페이지와 동일)
-      fields: ['예약일시', '진행상태', 'XHS_ID_', '매장코드', '팀명생성기', '체크인일시', '매장명_검색용', '총인원']
+      // XHS_ID(닉네임 룩업)는 명단 표시·선택 체크인의 신원 표기에 쓴다
+      fields: ['예약일시', '진행상태', 'XHS_ID_', 'XHS_ID', '매장코드', '팀명생성기', '체크인일시', '매장명_검색용', '총인원']
     });
+    const bySort = (a, b) => new Date(a.fields['예약일시'] || 0) - new Date(b.fields['예약일시'] || 0);
+    const atStore = all.filter(r => (r.fields['매장코드'] || []).includes(storeId)).sort(bySort);
 
-    const mine = resvs
-      .filter(r => (r.fields['XHS_ID_'] || []).includes(inflRecId))
-      .sort((a, b) => new Date(a.fields['예약일시'] || 0) - new Date(b.fields['예약일시'] || 0));
+    const alreadyPayload = (rec, name) => {
+      const kstTime = new Date(new Date(rec.fields['체크인일시']).getTime() + 9 * 3600 * 1000);
+      const hhmm = `${String(kstTime.getUTCHours()).padStart(2, '0')}:${String(kstTime.getUTCMinutes()).padStart(2, '0')}`;
+      return {
+        ok: 1, already: 1, when: hhmm, xid: name,
+        store: one(rec.fields['매장명_검색용']),
+        resvWhen: fmtKst(rec.fields['예약일시']),
+        pax: rec.fields['총인원'] ?? '',
+      };
+    };
 
-    if (wantList) {
-      // 오늘(±1일) 이 인플의 예약 목록 — 모달 표시용
-      const items = mine
-        .filter(r => (r.fields['매장코드'] || []).length) // 매장 링크 없는 건은 특정 불가
-        .map(r => ({
-          storeId: (r.fields['매장코드'] || [])[0],
-          store: one(r.fields['매장명_검색용']),
+    if (who) {
+      // 스캔만으로 신원까지 해결 — 오늘 이 매장 예약 명단을 주고 본인 계정을 고르게 한다.
+      // 매장 QR 서명을 통과해야만 볼 수 있으므로 명단 노출 범위 = 그 매장 현장.
+      return res.status(200).json({
+        ok: 1,
+        store: atStore.length ? one(atStore[0].fields['매장명_검색용']) : '',
+        cands: atStore.map(r => ({
+          pid: r.id,
+          xid: one(r.fields['XHS_ID']) || '(계정 미표기)',
           when: fmtKst(r.fields['예약일시']),
           checked: r.fields['체크인일시'] ? 1 : 0,
+        })),
+      });
+    }
+
+    let targetResv = null;
+    let xhsId = '';
+
+    if (pick) {
+      // 명단 선택 체크인 — 창·상태·매장 조건을 통과한 atStore 안에서만 고를 수 있다
+      const rec = atStore.find(r => r.id === pick);
+      if (!rec) {
+        return res.status(404).json({ error: '선택한 예약을 찾을 수 없습니다. 다시 스캔해 주세요.' });
+      }
+      xhsId = one(rec.fields['XHS_ID']) || '인플루언서';
+      if (rec.fields['체크인일시']) {
+        return res.status(200).json(alreadyPayload(rec, xhsId));
+      }
+      targetResv = rec;
+    } else {
+      // 제출 토큰 자동 경로 (제출 링크를 연 적 있는 폰은 명단 선택 없이 즉시)
+      // ⚠️ 필드명 함정: INFL_DB 는 `XHS_ID(필수)` — 접미까지가 실명 (2026-08-06 메타 실측)
+      const inflRecs = await fetchAll(T_INFL, {
+        formula: `{Submit_Token}='${escFormula(inflToken)}'`,
+        fields: ['XHS_ID(필수)']
+      });
+      if (!inflRecs.length) {
+        return res.status(404).json({ error: '인플루언서 토큰을 찾을 수 없습니다.', badToken: 1 });
+      }
+      const inflRecId = inflRecs[0].id;
+      xhsId = one(inflRecs[0].fields['XHS_ID(필수)']) || '인플루언서';
+
+      const mine = all.filter(r => (r.fields['XHS_ID_'] || []).includes(inflRecId)).sort(bySort);
+      const myStore = mine.filter(r => (r.fields['매장코드'] || []).includes(storeId));
+
+      if (myStore.length === 0) {
+        // 다른 지점을 스캔한 경우 — 오늘의 실제 예약 지점을 알려줘 현장에서 바로 교정한다
+        const otherToday = mine.slice(0, 3).map(r => ({
+          store: one(r.fields['매장명_검색용']),
+          when: fmtKst(r.fields['예약일시']),
         }));
-      return res.status(200).json({ ok: 1, items });
-    }
+        return res.status(409).json({
+          error: '오늘 이 매장의 예약을 찾을 수 없습니다. 담당자에게 문의하세요.',
+          noMatch: 1,
+          otherToday,
+        });
+      }
 
-    resvs = mine.filter(r => (r.fields['매장코드'] || []).includes(storeId));
-
-    if (resvs.length === 0) {
-      // 다른 지점을 스캔한 경우 — 오늘의 실제 예약 지점을 알려줘 현장에서 바로 교정한다
-      const otherToday = mine.slice(0, 3).map(r => ({
-        store: one(r.fields['매장명_검색용']),
-        when: fmtKst(r.fields['예약일시']),
-      }));
-      return res.status(409).json({
-        error: '오늘 이 매장의 예약을 찾을 수 없습니다. 담당자에게 문의하세요.',
-        noMatch: 1,
-        otherToday,
-      });
-    }
-
-    let targetResv = resvs.find(r => !r.fields['체크인일시']); // mine 이 이미 예약일시 오름차순
-
-    if (!targetResv) {
-      // 재스캔 — 확인증 화면을 다시 보여줄 수 있게 성공과 같은 정보를 담는다 (멱등)
-      const last = resvs[resvs.length - 1];
-      const kstTime = new Date(new Date(last.fields['체크인일시']).getTime() + 9 * 3600 * 1000);
-      const hhmm = `${String(kstTime.getUTCHours()).padStart(2, '0')}:${String(kstTime.getUTCMinutes()).padStart(2, '0')}`;
-      return res.status(200).json({
-        ok: 1, already: 1, when: hhmm, xid: xhsId,
-        store: one(last.fields['매장명_검색용']),
-        resvWhen: fmtKst(last.fields['예약일시']),
-        pax: last.fields['총인원'] ?? '',
-      });
+      targetResv = myStore.find(r => !r.fields['체크인일시']);
+      if (!targetResv) {
+        return res.status(200).json(alreadyPayload(myStore[myStore.length - 1], xhsId));
+      }
     }
 
     const nowIso = new Date().toISOString();

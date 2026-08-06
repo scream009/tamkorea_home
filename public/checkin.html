@@ -2,13 +2,16 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex" />
 <title>입장 체크인 · TAMKOREA</title>
 <!--
   초경량 독립 체크인 페이지 — React 번들(1.1MB)을 쓰지 않는다.
-  위챗 扫一扫가 여는 첫 화면이라 모바일 회선에서 즉시 떠야 하고("지연되다 연결 안 됨" 대책),
-  성공 화면은 매장 직원에게 보여주는 "예약 확인증"으로 설계됐다 (한국어 크게).
+  위챗 扫一扫가 여는 첫 화면이라 모바일 회선에서 즉시 떠야 한다.
+  v1.6 "무조건 QR": 스캔만으로 전부 끝난다 —
+    · 제출 토큰이 폰에 있으면 즉시 자동 체크인
+    · 없으면 오늘 이 매장 예약 명단에서 본인 계정을 탭 (제출 링크·코드 불필요)
+  성공 화면은 매장 직원에게 보여주는 "예약 확인증"이다 (한국어 크게).
   라우팅: vercel.json 이 /checkin → /checkin.html 로 리라이트한다.
 -->
 <style>
@@ -44,16 +47,20 @@
     margin-top: 14px; background: #fffbeb; border: 1px solid #fde68a;
     border-radius: 10px; padding: 12px; font-size: .95rem; line-height: 1.6; text-align: left;
   }
-  input {
-    width: 100%; padding: 11px; border: 1px solid #d1d5db; border-radius: 9px;
-    font-size: .95rem; margin-top: 10px;
+  .cand {
+    display: flex; justify-content: space-between; align-items: center; width: 100%;
+    margin-top: 8px; padding: 14px; border-radius: 12px; font-size: 1.05rem;
+    border: 1px solid #c7d2fe; background: #eef2ff; cursor: pointer; text-align: left;
   }
-  button {
+  .cand:disabled { border-color: #bbf7d0; background: #f0fdf4; cursor: default; }
+  .cand .nm { font-weight: 800; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .cand .tm { flex-shrink: 0; margin-left: 10px; color: #4f46e5; font-weight: 700; font-size: .9rem; }
+  .cand:disabled .tm { color: #16a34a; }
+  button.act {
     margin-top: 14px; border: none; border-radius: 22px; padding: 12px 26px;
     background: linear-gradient(135deg, #7c3aed, #4f46e5); color: #fff;
     font-size: 1rem; font-weight: 700; cursor: pointer;
   }
-  .errmsg { color: #dc2626; font-size: .86rem; margin-top: 10px; }
   .brand { margin-top: 26px; letter-spacing: .35em; color: #b9b9c9; font-size: .78rem; }
   .spin {
     width: 34px; height: 34px; margin: 0 auto 14px; border-radius: 50%;
@@ -82,7 +89,6 @@
     });
   }
   function readTok() { try { return localStorage.getItem('tk_submit_token') || ''; } catch (e) { return ''; } }
-  function saveTok(v) { try { localStorage.setItem('tk_submit_token', v); } catch (e) {} }
   function brand() { return '<div class="brand">T A M K O R E A</div>'; }
   function stopClock() { if (clockTimer) { clearInterval(clockTimer); clockTimer = null; } }
   function startClock() {
@@ -95,6 +101,24 @@
     }
     tick();
     clockTimer = setInterval(tick, 1000);
+  }
+  function loadingView(msg) {
+    stopClock();
+    app.className = 'card';
+    app.innerHTML = '<div class="spin"></div><div class="title-ko">' + esc(msg || '체크인 처리 중…') + '</div><div class="meta">正在签到…</div>';
+  }
+  function post(body) {
+    var ctrl = ('AbortController' in window) ? new AbortController() : null;
+    var timeo = ctrl ? setTimeout(function () { ctrl.abort(); }, 15000) : null;
+    return fetch('/api/checkin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: ctrl ? ctrl.signal : undefined
+    }).then(function (r) {
+      if (timeo) clearTimeout(timeo);
+      return r.json().catch(function () { return {}; }).then(function (d) { return { st: r.status, d: d }; });
+    });
   }
 
   // 성공/재확인 화면 = 매장 직원에게 보여주는 예약 확인증. 라이브 시계로 캡처 재사용을 구분.
@@ -143,34 +167,8 @@
       '<div class="title-ko">체크인 실패</div>' +
       '<div class="meta">签到失败</div>' +
       '<div class="sub">' + esc(msg || '') + '</div>' +
-      '<button onclick="location.reload()">다시 시도 / 重试</button>' +
+      '<button class="act" onclick="location.reload()">다시 시도 / 重试</button>' +
       brand();
-  }
-
-  function showNoToken() {
-    stopClock();
-    app.className = 'card warn-card';
-    app.innerHTML =
-      '<div class="icon">🔗</div>' +
-      '<div class="title-ko" style="font-size:1.15rem">제출 링크를 먼저 열어주세요</div>' +
-      '<div class="meta" style="font-size:.95rem">请先打开您的"提交链接"</div>' +
-      '<div class="sub">담당자가 보낸 제출 링크를 위챗에서 한 번 연 뒤, 이 QR을 다시 스캔해 주세요.<br />' +
-      '在微信中打开负责人发的提交链接（打开一次即可），然后重新扫码。</div>' +
-      '<div class="sub" style="margin-top:16px;border-top:1px solid #eee;padding-top:12px">또는 제출 링크를 붙여넣기 / 或粘贴提交链接</div>' +
-      '<input id="paste" placeholder="https://www.tamkorea.com/submit?token=..." />' +
-      '<button id="go">체크인 / 签到</button>' +
-      '<div class="errmsg" id="perr"></div>' +
-      brand();
-    document.getElementById('go').onclick = function () {
-      var v = (document.getElementById('paste').value || '').trim();
-      var m = v.match(/submit_[A-Za-z0-9]+/);
-      if (!m) {
-        document.getElementById('perr').textContent = '링크를 인식하지 못했습니다 / 无法识别链接';
-        return;
-      }
-      saveTok(m[0]);
-      run(m[0]);
-    };
   }
 
   function showBadQr() {
@@ -183,33 +181,58 @@
       brand();
   }
 
+  // 토큰 없는 폰: 오늘 이 매장 예약 명단에서 본인 계정을 고른다 (QR 스캔만으로 완결)
+  function showPicker() {
+    loadingView('예약 확인 중…');
+    post({ storeId: s, sig: t, who: 1 }).then(function (x) {
+      if (x.st !== 200 || !x.d.ok) { showErr(x.d.error || ('오류 ' + x.st)); return; }
+      var cands = x.d.cands || [];
+      if (!cands.length) { showNoMatch({}); return; }
+      stopClock();
+      app.className = 'card';
+      app.innerHTML =
+        '<div class="icon">🙋</div>' +
+        '<div class="title-ko" style="font-size:1.2rem">본인 계정을 선택해 주세요</div>' +
+        '<div class="meta" style="font-size:.95rem">请选择您的账号 · <b>' + esc(x.d.store || '') + '</b></div>' +
+        '<div id="cands"></div>' +
+        '<div class="sub">오늘 이 매장에 예약된 체험단 명단입니다.<br />以下是今天在本店的预约名单。</div>' +
+        brand();
+      var wrap = document.getElementById('cands');
+      cands.forEach(function (c) {
+        var b = document.createElement('button');
+        b.className = 'cand';
+        b.disabled = !!c.checked;
+        b.innerHTML = '<span class="nm">' + esc(c.xid) + '</span>' +
+          '<span class="tm">' + (c.checked ? '✅ 已签到' : esc(c.when) + ' →') + '</span>';
+        if (!c.checked) {
+          b.onclick = function () {
+            loadingView();
+            post({ storeId: s, sig: t, pick: c.pid }).then(function (y) {
+              if (y.st === 200 && y.d.ok) return showOk(y.d, !!y.d.already);
+              showErr(y.d.error || ('오류 ' + y.st));
+            }).catch(function () { showErr('네트워크 연결이 불안정합니다 / 网络不稳定，请重试'); });
+          };
+        }
+        wrap.appendChild(b);
+      });
+    }).catch(function () { showErr('네트워크 연결이 불안정합니다 / 网络不稳定，请重试'); });
+  }
+
   function run(tok) {
-    app.className = 'card';
-    app.innerHTML = '<div class="spin"></div><div class="title-ko">체크인 처리 중…</div><div class="meta">正在签到…</div>';
-    var ctrl = ('AbortController' in window) ? new AbortController() : null;
-    var timeo = ctrl ? setTimeout(function () { ctrl.abort(); }, 15000) : null;
-    fetch('/api/checkin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ inflToken: tok, storeId: s, sig: t }),
-      signal: ctrl ? ctrl.signal : undefined
-    }).then(function (r) {
-      return r.json().catch(function () { return {}; }).then(function (d) { return { st: r.status, d: d }; });
-    }).then(function (x) {
-      if (timeo) clearTimeout(timeo);
+    loadingView();
+    post({ inflToken: tok, storeId: s, sig: t }).then(function (x) {
       if (x.st === 200 && x.d.ok) return showOk(x.d, !!x.d.already);
       if (x.d.noMatch) return showNoMatch(x.d);
+      if (x.d.badToken) return showPicker(); // 낡은 토큰 — 명단 선택으로 폴백
       showErr(x.d.error || ('오류 ' + x.st));
     }).catch(function () {
-      if (timeo) clearTimeout(timeo);
       showErr('네트워크 연결이 불안정합니다 / 网络不稳定，请重试');
     });
   }
 
   if (!s || !t) { showBadQr(); return; }
   var tok = readTok();
-  if (!tok) { showNoToken(); return; }
-  run(tok);
+  if (tok) { run(tok); } else { showPicker(); }
 })();
 </script>
 </body>

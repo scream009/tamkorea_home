@@ -78,8 +78,7 @@ export default function AdminStoresPage() {
       const safeName = (store.client + '_' + store.branch).replace(/\s+/g, '_');
       a.download = `QR_${safeName}.png`;
       a.click();
-      // 코드는 매일 바뀌므로 인쇄물에 넣지 않는다 — 매장 달력 화면이 오늘 코드를 보여준다
-      flash('QR 저장됨 (인쇄물에는 QR만 — 오늘 코드는 매일 변경)');
+      flash('QR 저장됨');
     } catch (err) {
       console.error(err);
       flash('QR 다운로드에 실패했습니다.');
@@ -227,7 +226,7 @@ export default function AdminStoresPage() {
                       padding: '4px 8px', fontSize: '0.8rem', cursor: 'pointer',
                       flexShrink: 0, marginLeft: '8px'
                     }}
-                    title={`입장 체크인 QR 다운로드${s.checkinCode ? ` · 코드 ${s.checkinCode}` : ''}`}
+                    title="입장 체크인 QR 다운로드"
                   >
                     📷 QR 다운
                   </button>
@@ -245,19 +244,6 @@ export default function AdminStoresPage() {
                 : `${form.client} ${form.branch}`}
           </h2>
 
-          {/* 체크인 코드 상시 표시 — 토스트만으로는 매장에 전달할 코드를 확인할 수 없었다 */}
-          {sel && form.checkinCode && (
-            <p style={{
-              margin: '0 0 12px', padding: '8px 12px', borderRadius: '8px',
-              background: '#f5f3ff', border: '1px solid #ddd6fe', fontSize: '0.9rem',
-            }}>
-              📍 오늘의 체크인 코드: <b style={{ fontSize: '1.15rem', letterSpacing: '0.15em' }}>{form.checkinCode}</b>
-              <span style={{ color: '#6b7280', marginLeft: '8px' }}>
-                — <b>매일 자동 변경</b> (도착 증명용 — QR 인식 실패 시 인플이 입력).
-                인쇄물에는 QR만 넣고, 코드는 매장 달력 화면에서 확인하게 하세요
-              </span>
-            </p>
-          )}
 
           {sel !== null && (
             <div className="cst-tabs">

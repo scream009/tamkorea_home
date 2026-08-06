@@ -54,11 +54,7 @@ export default function InfluencerSubmitPage() {
   const [inflName, setInflName] = useState('');     // 인플루언서 닉네임
   const [resolvedInflId, setResolvedInflId] = useState(''); // 서버에서 해석한 실제 INFL_ID
   const [guideModal, setGuideModal] = useState({ isOpen: false, text: '', client: '' }); // 롱텍스트 가이드 모달
-  const [checkinModal, setCheckinModal] = useState(false); // 입장 체크인 모달
-  const [ckList, setCkList] = useState(null);       // null=로딩, 배열=오늘 예약, 'error'=조회 실패
-  const [ckStore, setCkStore] = useState(null);     // 선택한 예약 {storeId, store} — 코드 입력 대상
-  const [checkinCode, setCheckinCode] = useState('');
-  const [checkinBusy, setCheckinBusy] = useState(false);
+  const [checkinModal, setCheckinModal] = useState(false); // 입장 체크인 안내 모달 (위챗 스캔)
 
   // ─── 체크인 신원 심기 ─────────────────────────────────────────
   // 매장 QR(위챗 扫一扫)이 /checkin 을 열 때 이 토큰으로 본인 확인을 한다.
@@ -185,62 +181,10 @@ export default function InfluencerSubmitPage() {
 
 
   // ─── 입장 체크인 ──────────────────────────────────────────────
-  // v1.4: 도착 증명 필수 (Owner 판정 — 탭만으로 체크인되면 확인 수단이 없다).
-  // 정공법 = 위챗 扫一扫로 매장 QR 스캔 (/checkin 자동 체크인).
-  // 백업 = 오늘 예약을 탭하고 **매장에 게시된 일별 6자리 코드**를 입력.
-  // 사진 디코드는 모아레로 폐기(v1.2), 자가 탭은 증명 부재로 폐기(v1.4).
-  const openCheckin = useCallback(async () => {
-    setCheckinModal(true);
-    setCkList(null);
-    setCkStore(null);
-    setCheckinCode('');
-    try {
-      const r = await fetch('/api/checkin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inflToken: token, list: 1 }),
-      });
-      const data = await r.json().catch(() => ({}));
-      if (r.ok && data.ok) setCkList(data.items || []);
-      else setCkList('error');
-    } catch {
-      setCkList('error');
-    }
-  }, [token]);
-
-  const handleCodeCheckin = useCallback(async () => {
-    const code = checkinCode.replace(/\D/g, '');
-    if (code.length !== 6) {
-      showToast('请输入6位数字 / 6자리 숫자를 입력해 주세요.', 'error');
-      return;
-    }
-    setCheckinBusy(true);
-    try {
-      const r = await fetch('/api/checkin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        // 예약을 골랐으면 그 매장의 코드로만 검증(명확한 에러), 아니면 전 매장 역조회
-        body: JSON.stringify(ckStore
-          ? { inflToken: token, storeId: ckStore.storeId, code }
-          : { inflToken: token, code }),
-      });
-      const data = await r.json().catch(() => ({}));
-      if (r.ok && data.already) {
-        showToast(`✅ 已签到 / 이미 체크인됨 (${data.when})`, 'success');
-        setCheckinModal(false);
-      } else if (r.ok && data.ok) {
-        showToast(`✅ [${data.store}] 入场确认 / 입장 확인 ${data.when}`, 'success');
-        setCheckinModal(false);
-        setCheckinCode('');
-      } else {
-        showToast(data.error || '签到失败，请重试 / 체크인 실패', 'error');
-      }
-    } catch {
-      showToast('网络错误，请重试', 'error');
-    } finally {
-      setCheckinBusy(false);
-    }
-  }, [checkinCode, ckStore, token, showToast]);
+  // v1.6: 무조건 QR (Owner 지시). 체크인은 매장 QR을 위챗 扫一扫로 찍는 것으로 완결된다 —
+  // 이 페이지를 연 폰은 토큰이 심어져 즉시 자동, 아니어도 스캔 후 명단에서 본인 선택.
+  // 여기는 스캔 방법 안내만 남긴다. (사진 디코드=모아레 폐기 v1.2, 자가 탭=증명 부재 폐기 v1.4,
+  // 숫자 코드=곁가지 정리 폐기 v1.6)
 
   // ─── 진행률 계산 ─────────────────────────────────────────────
   const doneCount = records.filter(r => r.status === '제출완료').length;
@@ -320,7 +264,7 @@ export default function InfluencerSubmitPage() {
             <span>共 {totalCount} 个客户 · 已提交 {doneCount} 个</span>
           </div>
           <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
-            <button onClick={openCheckin} style={{
+            <button onClick={() => setCheckinModal(true)} style={{
               background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
               color: 'white', border: 'none', padding: '0.6rem 1.2rem',
               borderRadius: '20px', fontSize: '1rem', fontWeight: 'bold',
@@ -480,100 +424,20 @@ export default function InfluencerSubmitPage() {
               <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)' }}>📍 入场签到 / 입장 체크인</h3>
               <button onClick={() => setCheckinModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
             </div>
-            <div style={{ fontSize: '0.95rem', lineHeight: 1.7, color: '#111' }}>
-              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '12px 14px', marginBottom: '10px' }}>
-                <b>方法① 微信扫一扫</b>
-                <p style={{ margin: '4px 0 0', color: '#333', fontSize: '0.9rem' }}>
-                  用微信 <b>➕ → 扫一扫</b> 扫描店内二维码，自动完成签到。
-                  <br /><span style={{ color: '#666', fontSize: '0.83rem' }}>위챗 스캔으로 매장 QR을 찍으면 자동 체크인됩니다.</span>
+            <div style={{ fontSize: '0.95rem', lineHeight: 1.8, color: '#111' }}>
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '14px 16px' }}>
+                <p style={{ margin: 0, fontSize: '1.02rem' }}>
+                  ① 打开微信 <b>➕ → 扫一扫</b>
+                  <br />② 扫描<b>店内的二维码</b>
+                  <br />③ 自动完成签到，把手机画面给店员看 ✅
+                </p>
+                <p style={{ margin: '10px 0 0', color: '#666', fontSize: '0.85rem', borderTop: '1px dashed #bbf7d0', paddingTop: '8px' }}>
+                  위챗 스캔으로 매장 QR을 찍으면 자동 체크인되고,<br />확인 화면을 매장 직원에게 보여주면 끝입니다.
                 </p>
               </div>
-
-              <div style={{ background: '#f8f9fa', border: '1px solid #e9ecef', borderRadius: '10px', padding: '12px 14px' }}>
-                <b>方法② 选预约 + 输入店内今日码</b>
-                <p style={{ margin: '4px 0 8px', color: '#666', fontSize: '0.83rem' }}>
-                  점击下方预约，输入店内公示的<b>今日6位码</b>（每天更换）。
-                  <br />예약을 누르고 매장에 게시된 <b>오늘의 6자리 코드</b>를 입력하세요.
-                </p>
-
-                {ckList === null && (
-                  <div style={{ textAlign: 'center', padding: '14px 0', color: '#888' }}>⏳ 正在加载预约...</div>
-                )}
-
-                {ckList === 'error' && (
-                  <div style={{ textAlign: 'center', padding: '10px 0', color: '#dc2626', fontSize: '0.9rem' }}>
-                    加载失败 / 불러오지 못했습니다
-                    <div><button onClick={openCheckin} style={{ marginTop: '8px', background: 'none', border: '1px solid #d1d5db', borderRadius: '8px', padding: '6px 14px', cursor: 'pointer' }}>重试</button></div>
-                  </div>
-                )}
-
-                {Array.isArray(ckList) && ckList.length === 0 && (
-                  <div style={{ textAlign: 'center', color: '#666', fontSize: '0.88rem', padding: '6px 0' }}>
-                    今天没有预约。如已到店请联系负责人。<br />오늘 예약이 없습니다. 도착하셨다면 담당자에게 문의하세요.
-                  </div>
-                )}
-
-                {Array.isArray(ckList) && ckList.map((it, i) => {
-                  const selOn = ckStore && ckStore.storeId === it.storeId;
-                  return (
-                    <button
-                      key={`${it.storeId}_${i}`}
-                      onClick={() => !it.checked && setCkStore(selOn ? null : { storeId: it.storeId, store: it.store })}
-                      disabled={!!it.checked}
-                      style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        width: '100%', marginBottom: '6px', padding: '12px 14px', borderRadius: '10px',
-                        border: it.checked ? '1px solid #bbf7d0' : selOn ? '2px solid #4f46e5' : '1px solid #c7d2fe',
-                        background: it.checked ? '#f0fdf4' : selOn ? '#e0e7ff' : '#eef2ff',
-                        cursor: it.checked ? 'default' : 'pointer', fontSize: '1rem', textAlign: 'left'
-                      }}
-                    >
-                      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        🏪 <b>{it.store}</b> <span style={{ color: '#666', fontSize: '0.85rem' }}>{it.when}</span>
-                      </span>
-                      <span style={{ flexShrink: 0, marginLeft: '10px', fontWeight: 'bold', color: it.checked ? '#16a34a' : '#4f46e5' }}>
-                        {it.checked ? '✅ 已签到' : selOn ? '✓' : '选择'}
-                      </span>
-                    </button>
-                  );
-                })}
-
-                {(ckStore || (Array.isArray(ckList) && ckList.length === 0)) && (
-                  <div style={{ marginTop: '8px' }}>
-                    {ckStore && (
-                      <p style={{ margin: '0 0 6px', fontSize: '0.85rem', color: '#4f46e5' }}>
-                        [{ckStore.store}] 今日签到码 / 오늘 코드:
-                      </p>
-                    )}
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={6}
-                        value={checkinCode}
-                        onChange={e => setCheckinCode(e.target.value.replace(/\D/g, ''))}
-                        onKeyDown={e => { if (e.key === 'Enter') handleCodeCheckin(); }}
-                        placeholder="000000"
-                        style={{
-                          flex: 1, padding: '10px', fontSize: '1.2rem', letterSpacing: '0.3em',
-                          textAlign: 'center', border: '1px solid #d1d5db', borderRadius: '8px', minWidth: 0
-                        }}
-                      />
-                      <button
-                        onClick={handleCodeCheckin}
-                        disabled={checkinBusy || checkinCode.length !== 6}
-                        style={{
-                          background: checkinCode.length === 6 ? 'linear-gradient(135deg, #7c3aed, #4f46e5)' : '#d1d5db',
-                          color: 'white', border: 'none', padding: '0 18px', borderRadius: '8px',
-                          fontWeight: 'bold', cursor: checkinCode.length === 6 ? 'pointer' : 'default', flexShrink: 0
-                        }}
-                      >
-                        {checkinBusy ? '⏳' : '签到'}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <p style={{ margin: '10px 0 0', color: '#888', fontSize: '0.83rem' }}>
+                💡 长按微信图标也可以直接打开"扫一扫" / 위챗 아이콘을 길게 누르면 스캔이 바로 열립니다.
+              </p>
             </div>
           </div>
         </div>

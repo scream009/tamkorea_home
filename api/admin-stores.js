@@ -15,7 +15,7 @@
  */
 
 import { blockedByAdminGate, escFormula } from './_admin-auth.js';
-import { storeSig, storeCodeDaily } from './_qr-sign.js';
+import { storeSig } from './_qr-sign.js';
 
 const KEY = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const BASE = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
@@ -144,7 +144,6 @@ async function listStores() {
       use: g[F.use] ? 1 : 0,
       // 시크릿 미설정이면 빈 값 → 프론트가 QR 버튼을 숨긴다 (fail-closed)
       storeSignature: storeSig(r.id),
-      checkinCode: storeCodeDaily(r.id), // 오늘 코드 — 매일 자동 변경
 
     };
   })
