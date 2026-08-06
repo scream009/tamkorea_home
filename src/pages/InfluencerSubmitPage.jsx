@@ -320,7 +320,6 @@ export default function InfluencerSubmitPage() {
               }}>취소 (Cancel)</button>
             </div>
           )}
-          </div>
         </div>
       </div>
 
