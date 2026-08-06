@@ -252,7 +252,9 @@ export default async function handler(req, res) {
       if (parents.length > 0) {
         const parent = parents[0];
         const oldContent = one(parent.fields['체크인내용']);
-        const newContent = oldContent ? `${oldContent}\n${xhsId} ${nowHhmm}` : `${xhsId} ${nowHhmm}`;
+        // 날짜 포함 표기 (Owner 요청) — 카톡 알림·기록에서 언제 건인지 바로 보이게
+        const stamp = `${xhsId} ${fmtKst(nowIso)}`;
+        const newContent = oldContent ? `${oldContent}\n${stamp}` : stamp;
         const parentPatch = {
           '체크인내용': newContent,
           '체크인알림대기': true
