@@ -226,7 +226,7 @@ export default function AdminStoresPage() {
                       padding: '4px 8px', fontSize: '0.8rem', cursor: 'pointer',
                       flexShrink: 0, marginLeft: '8px'
                     }}
-                    title="입장 체크인 QR 다운로드"
+                    title={`입장 체크인 QR 다운로드${s.checkinCode ? ` · 코드 ${s.checkinCode}` : ''}`}
                   >
                     📷 QR 다운
                   </button>
@@ -243,6 +243,19 @@ export default function AdminStoresPage() {
               : sel === '' ? '신규 고객사 등록'
                 : `${form.client} ${form.branch}`}
           </h2>
+
+          {/* 체크인 코드 상시 표시 — 토스트만으로는 매장에 전달할 코드를 확인할 수 없었다 */}
+          {sel && form.checkinCode && (
+            <p style={{
+              margin: '0 0 12px', padding: '8px 12px', borderRadius: '8px',
+              background: '#f5f3ff', border: '1px solid #ddd6fe', fontSize: '0.9rem',
+            }}>
+              📍 입장 체크인 코드: <b style={{ fontSize: '1.15rem', letterSpacing: '0.15em' }}>{form.checkinCode}</b>
+              <span style={{ color: '#6b7280', marginLeft: '8px' }}>
+                — QR 인식 실패 시 인플이 제출 페이지에 입력. QR 인쇄물에 함께 표기 권장
+              </span>
+            </p>
+          )}
 
           {sel !== null && (
             <div className="cst-tabs">
