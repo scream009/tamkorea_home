@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import jsQR from 'jsqr';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 import './InfluencerSubmitPage.css';
 
 // ─── 날짜 포맷 헬퍼 ──────────────────────────────────────────
@@ -172,121 +173,53 @@ export default function InfluencerSubmitPage() {
 
 
 
-  // ─── QR 체크인 로직 ──────────────────────────────────────────
-  const handleCheckinClick = () => {
-    if (fileInputRef.current) fileInputRef.current.click();
-  };
+  // ─── QR 체크인 로직 (실시간 스캐너) ─────────────────────────
+  const [showScanner, setShowScanner] = useState(false);
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    e.target.value = ''; // Reset for next scan
+  useEffect(() => {
+    if (!showScanner) return;
     
-    // Only show loading if we want, but since it's fast, maybe just a toast
-    showToast('正在处理... / 처리중...', 'info');
+    const scanner = new Html5QrcodeScanner("reader", { 
+      fps: 10, 
+      qrbox: {width: 250, height: 250},
+      supportedScanTypes: [0, 1] // Camera & File fallback
+    }, false);
     
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.src = url;
-    
-    img.onload = async () => {
-      URL.revokeObjectURL(url);
-      
-      const processQRData = (codeData) => {
-        try {
-          const qrUrl = new URL(codeData);
+    scanner.render((decodedText) => {
+       scanner.clear();
+       setShowScanner(false);
+       
+       try {
+          const qrUrl = new URL(decodedText);
           const s = qrUrl.searchParams.get('s');
           const t = qrUrl.searchParams.get('t');
-          if (!s || !t) {
-            throw new Error('Invalid QR');
-          }
+          if (!s || !t) throw new Error('Invalid QR');
           
           fetch('/api/checkin', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ inflToken: token, storeId: s, sig: t })
           }).then(r => r.json()).then(data => {
-            if (data.error) {
-              showToast(data.error, 'error');
-            } else if (data.already) {
-              showToast(`✅ 已签到 / 이미 체크인됨 (${data.when})`, 'success');
-            } else {
-              showToast(`✅ [${data.store}] 入场确认 / 입장 확인 ${data.when}`, 'success');
-            }
-          }).catch(err => {
-             showToast('网络错误，请重试', 'error');
-          });
-          
-        } catch (e) {
+            if (data.error) showToast(data.error, 'error');
+            else if (data.already) showToast(`✅ 已签到 / 이미 체크인됨 (${data.when})`, 'success');
+            else showToast(`✅ [${data.store}] 入场确认 / 입장 확인 ${data.when}`, 'success');
+          }).catch(() => showToast('网络错误，请重试', 'error'));
+       } catch (e) {
           showToast('不是有效的签到二维码。', 'error');
-        }
-      };
-
-      // 1. Try Native BarcodeDetector First (Fast, Machine Learning based)
-      if ('BarcodeDetector' in window) {
-        try {
-          const barcodeDetector = new window.BarcodeDetector({ formats: ['qr_code'] });
-          const barcodes = await barcodeDetector.detect(img);
-          if (barcodes && barcodes.length > 0) {
-            processQRData(barcodes[0].rawValue);
-            return; // Success, skip fallback
-          }
-        } catch (err) {
-          console.warn('BarcodeDetector failed or not supported for this image', err);
-        }
-      }
-
-      // 2. Fallback to jsQR (Canvas based)
-      const canvas = document.createElement('canvas');
-      let width = img.width;
-      let height = img.height;
-      
-      const MAX = 1280;
-      if (width > MAX || height > MAX) {
-        if (width > height) {
-          height = Math.floor(height * (MAX / width));
-          width = MAX;
-        } else {
-          width = Math.floor(width * (MAX / height));
-          height = MAX;
-        }
-      }
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      ctx.drawImage(img, 0, 0, width, height);
-      
-      const imageData = ctx.getImageData(0, 0, width, height);
-      let code = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: "attemptBoth",
-      });
-      
-      // 3. Last resort: jsQR with full resolution (resizing can destroy QR data due to aliasing)
-      if (!code && (img.width > MAX || img.height > MAX)) {
-        try {
-          canvas.width = img.width;
-          canvas.height = img.height;
-          ctx.drawImage(img, 0, 0, img.width, img.height);
-          const fullImageData = ctx.getImageData(0, 0, img.width, img.height);
-          code = jsQR(fullImageData.data, fullImageData.width, fullImageData.height, {
-            inversionAttempts: "attemptBoth",
-          });
-        } catch(e) {
-          console.warn("Full res jsQR failed (memory limit?)", e);
-        }
-      }
-      
-      if (!code) {
-        alert('❌ QR 코드가 인식되지 않았습니다.\n(모니터 빛반사나 초점 흐림 주의)\n\n모니터 화면을 꽉 차고 선명하게 다시 찍어주세요.');
-        showToast('二维码未识别，请靠近屏幕重试。', 'error');
-        return;
-      }
-      
-      processQRData(code.data);
+       }
+    }, (err) => {
+       // Ignore frame errors
+    });
+    
+    return () => {
+      try {
+        scanner.clear();
+      } catch (e) { console.error(e); }
     };
-    img.onerror = () => {
-      showToast('图片加载失败 / 이미지 로드 실패', 'error');
-    };
+  }, [showScanner, token, showToast]);
+
+  const handleCheckinClick = () => {
+    setShowScanner(true);
   };
 
   // ─── 진행률 계산 ─────────────────────────────────────────────
@@ -367,23 +300,26 @@ export default function InfluencerSubmitPage() {
             <span>共 {totalCount} 个客户 · 已提交 {doneCount} 个</span>
           </div>
           <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
-            <button onClick={handleCheckinClick} style={{
-              background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-              color: 'white', border: 'none', padding: '0.6rem 1.2rem',
-              borderRadius: '20px', fontSize: '1rem', fontWeight: 'bold',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
-              boxShadow: '0 4px 10px rgba(79, 70, 229, 0.3)'
-            }}>
-              📷 入场签到 (입장 체크인)
-            </button>
-            <input 
-              type="file" 
-              accept="image/*" 
-              capture="environment" 
-              ref={fileInputRef} 
-              style={{ display: 'none' }} 
-              onChange={handleFileChange} 
-            />
+            {!showScanner && (
+              <button onClick={handleCheckinClick} style={{
+                background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                color: 'white', border: 'none', padding: '0.6rem 1.2rem',
+                borderRadius: '20px', fontSize: '1rem', fontWeight: 'bold',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
+                boxShadow: '0 4px 10px rgba(79, 70, 229, 0.3)'
+              }}>
+                📷 入场签到 (실시간 카메라 스캔)
+              </button>
+            )}
+          </div>
+          {showScanner && (
+            <div style={{ marginTop: '1rem', width: '100%', maxWidth: '400px', margin: '1rem auto' }}>
+              <div id="reader"></div>
+              <button onClick={() => setShowScanner(false)} style={{
+                marginTop: '10px', background: '#e5e7eb', color: '#374151', border: 'none', padding: '0.5rem 1rem', borderRadius: '15px', cursor: 'pointer'
+              }}>취소 (Cancel)</button>
+            </div>
+          )}
           </div>
         </div>
       </div>
