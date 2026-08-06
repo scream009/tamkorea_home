@@ -1,7 +1,7 @@
 /* eslint-env node */
 import crypto from 'crypto';
 import { escFormula } from './_admin-auth.js';
-import { storeSig } from './_qr-sign.js';
+import { storeSig, storeCodeDaily } from './_qr-sign.js';
 
 const KEY = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const BASE = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
@@ -10,6 +10,7 @@ const API = `https://api.airtable.com/v0/${BASE}`;
 const T_PROGRESS = '진행_DB_OLD';
 const T_ENTRY = '예약입력_DB';
 const T_INFL = 'INFL_DB';
+const T_STORE = 'CS_DB';
 
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 async function at(path, init) {
@@ -90,21 +91,42 @@ export default async function handler(req, res) {
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     const { inflToken, sig } = body;
-    const storeId = body.storeId || '';
+    let storeId = body.storeId || '';
     const who = body.who ? 1 : 0;         // 스캔 후 오늘 이 매장 예약 명단 (토큰 없는 폰)
     const pick = String(body.pick || ''); // 명단에서 고른 진행 레코드 ID
+    const code = String(body.code || '').replace(/\D/g, ''); // v1.7: 일별 회전 코드 (2차 수단)
 
-    // v1.6 — QR 로 모든 것이 끝난다 (Owner 지시). 모든 경로가 매장 QR 서명(sig)을
-    // 요구한다: 명단 조회·선택 체크인도 그 매장 QR 을 물리적으로 찍어야만 가능하다.
-    // 신원 = 제출 토큰(있으면 자동) 또는 명단에서 본인 계정 선택.
-    if (!storeId || !sig || (!who && !pick && !inflToken)) {
+    // 도착 증명 = 매장 QR 서명(sig) 또는 매장 게시 일별 코드(code) — 자가 탭 경로는 없다.
+    // 명단 조회(who)·선택 체크인(pick)은 QR 스캔 전용(sig 필수).
+    // 코드 경로는 제출 토큰 신원이 전제(제출 페이지 안에서만 쓰는 폴백).
+    const sigPath = !!(storeId && sig);
+    const codePath = !sigPath && !!(inflToken && code);
+    if ((!sigPath && !codePath) || ((who || pick) && !sigPath) || (!who && !pick && !inflToken)) {
       return res.status(400).json({ error: '누락된 파라미터가 있습니다.' });
     }
     if (!process.env.QR_CHECKIN_SECRET) {
       return res.status(500).json({ error: '서버 설정 오류 (Secret 누락)' });
     }
-    if (!timingSafeEqual(storeSig(storeId), sig)) {
-      return res.status(404).json({ error: 'Not found' });
+    if (sigPath) {
+      if (!timingSafeEqual(storeSig(storeId), sig)) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+    } else {
+      // 코드 경로 — 오늘/어제 코드만 인정 (매장 화면 자정 미갱신 유예)
+      if (code.length !== 6) {
+        return res.status(400).json({ error: '签到码为6位数字 / 체크인 코드는 6자리 숫자입니다.' });
+      }
+      const codeOk = (id) => code === storeCodeDaily(id, 0) || code === storeCodeDaily(id, -1);
+      const stores = await fetchAll(T_STORE, { fields: ['고객사명(필수)'] });
+      const hits = stores.filter((r) => codeOk(r.id));
+      if (hits.length === 0) {
+        return res.status(404).json({ error: '签到码不正确。请确认店内今日码 / 코드가 맞지 않습니다. 매장의 오늘 코드를 확인하세요.' });
+      }
+      if (hits.length > 1) {
+        // 일별 파생 코드 충돌(희귀) — 이 날은 QR 스캔만 쓰게 한다
+        return res.status(409).json({ error: '此签到码今日无法使用，请扫描店内二维码 / 오늘은 이 코드를 쓸 수 없습니다. QR을 스캔해 주세요.' });
+      }
+      storeId = hits[0].id;
     }
 
     const nowKst = new Date(Date.now() + 9 * 3600 * 1000);

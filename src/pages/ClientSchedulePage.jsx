@@ -1019,6 +1019,15 @@ export default function ClientSchedulePage() {
                 🇨🇳 请用微信右上角 <b>➕ → 扫一扫</b> 扫描此二维码，
                 出现绿色确认页面后请出示给店员。
               </div>
+              {data?.checkinCode && (
+                <div style={{
+                  marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed var(--border-color, #d1d5db)',
+                }}>
+                  카메라·스캔이 안 되는 방문자에게는 이 코드를 입력하게 하세요:{' '}
+                  <b style={{ fontSize: '1.15rem', letterSpacing: '0.15em' }}>{data.checkinCode}</b>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}> (매일 자동 변경)</span>
+                </div>
+              )}
               <div style={{ marginTop: '8px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                 체크인이 되면 카카오톡 알림이 최대 1분 내에 자동 발송됩니다.
               </div>

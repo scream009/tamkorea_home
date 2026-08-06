@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import jsQR from 'jsqr';
 import './InfluencerSubmitPage.css';
 
 // ─── 날짜 포맷 헬퍼 ──────────────────────────────────────────
@@ -54,7 +55,22 @@ export default function InfluencerSubmitPage() {
   const [inflName, setInflName] = useState('');     // 인플루언서 닉네임
   const [resolvedInflId, setResolvedInflId] = useState(''); // 서버에서 해석한 실제 INFL_ID
   const [guideModal, setGuideModal] = useState({ isOpen: false, text: '', client: '' }); // 롱텍스트 가이드 모달
-  const [checkinModal, setCheckinModal] = useState(false); // 입장 체크인 안내 모달 (위챗 스캔)
+  // ─── 입장 체크인 (v1.7 — 3단계) ─────────────────────────────
+  // 1차: 페이지 안 라이브 카메라 스캔 (실시간 프레임 — 사진 한 장 디코드와 달리 모아레에 강함)
+  // 2차: 매장 게시 일별 6자리 코드 입력 (카메라 권한이 안 열리는 폰)
+  // 3차: 위챗 扫一扫 안내 (마지막 수단)
+  const [checkinModal, setCheckinModal] = useState(false);
+  const [camState, setCamState] = useState('idle'); // idle|starting|scanning|denied|done|nomatch
+  const [ckResult, setCkResult] = useState(null);   // 성공/already 응답 (확인증 데이터)
+  const [ckOther, setCkOther] = useState(null);     // noMatch 시 오늘 실제 예약 지점
+  const [ckErr, setCkErr] = useState('');
+  const [checkinCode, setCheckinCode] = useState('');
+  const [checkinBusy, setCheckinBusy] = useState(false);
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const scanTimerRef = useRef(null);
+  const scanBusyRef = useRef(false);
+  const scanHitRef = useRef(false);
 
   // ─── 체크인 신원 심기 ─────────────────────────────────────────
   // 매장 QR(위챗 扫一扫)이 /checkin 을 열 때 이 토큰으로 본인 확인을 한다.
@@ -180,11 +196,146 @@ export default function InfluencerSubmitPage() {
 
 
 
-  // ─── 입장 체크인 ──────────────────────────────────────────────
-  // v1.6: 무조건 QR (Owner 지시). 체크인은 매장 QR을 위챗 扫一扫로 찍는 것으로 완결된다 —
-  // 이 페이지를 연 폰은 토큰이 심어져 즉시 자동, 아니어도 스캔 후 명단에서 본인 선택.
-  // 여기는 스캔 방법 안내만 남긴다. (사진 디코드=모아레 폐기 v1.2, 자가 탭=증명 부재 폐기 v1.4,
-  // 숫자 코드=곁가지 정리 폐기 v1.6)
+  const stopCamera = useCallback(() => {
+    if (scanTimerRef.current) { clearInterval(scanTimerRef.current); scanTimerRef.current = null; }
+    if (streamRef.current) {
+      try { streamRef.current.getTracks().forEach(t => t.stop()); } catch { /* 이미 종료 */ }
+      streamRef.current = null;
+    }
+    if (videoRef.current) videoRef.current.srcObject = null;
+  }, []);
+
+  // 언마운트 시 카메라 정리 (setState 없음 — 이펙트 규칙 안전)
+  useEffect(() => () => stopCamera(), [stopCamera]);
+
+  const submitCheckin = useCallback(async (payload) => {
+    setCheckinBusy(true);
+    setCkErr('');
+    try {
+      const r = await fetch('/api/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (r.ok && data.ok) {
+        stopCamera();
+        setCkResult(data);
+        setCamState('done');
+        return true;
+      }
+      if (data.noMatch) {
+        stopCamera();
+        setCkOther(data.otherToday || []);
+        setCamState('nomatch');
+        return false;
+      }
+      setCkErr(data.error || `오류 ${r.status}`);
+      return false;
+    } catch {
+      setCkErr('网络错误，请重试 / 네트워크 오류');
+      return false;
+    } finally {
+      setCheckinBusy(false);
+    }
+  }, [stopCamera]);
+
+  // 라이브 프레임 스캔 루프 — BarcodeDetector(안드로이드 위챗) 우선, jsQR(iOS) 폴백
+  const startScanLoop = useCallback(() => {
+    let detector = null;
+    if ('BarcodeDetector' in window) {
+      try { detector = new window.BarcodeDetector({ formats: ['qr_code'] }); } catch { detector = null; }
+    }
+    const canvas = document.createElement('canvas');
+
+    const handleHit = (raw) => {
+      if (scanHitRef.current) return;
+      let s = ''; let t = '';
+      try {
+        const u = new URL(String(raw));
+        s = u.searchParams.get('s') || '';
+        t = u.searchParams.get('t') || '';
+      } catch { /* URL 아님 */ }
+      if (!s || !t) {
+        setCkErr('不是有效的签到二维码 / 체크인 QR이 아닙니다');
+        return; // 계속 스캔
+      }
+      scanHitRef.current = true;
+      if (scanTimerRef.current) { clearInterval(scanTimerRef.current); scanTimerRef.current = null; }
+      submitCheckin({ inflToken: token, storeId: s, sig: t }).then((ok) => {
+        if (!ok) { scanHitRef.current = false; startScanLoop(); } // 실패 시 재개 (nomatch/done 은 카메라 이미 정지)
+      });
+    };
+
+    scanTimerRef.current = setInterval(async () => {
+      const video = videoRef.current;
+      if (scanBusyRef.current || scanHitRef.current || !video || video.readyState < 2) return;
+      scanBusyRef.current = true;
+      try {
+        if (detector) {
+          const codes = await detector.detect(video);
+          if (codes && codes.length) handleHit(codes[0].rawValue);
+        } else {
+          const w = video.videoWidth; const h = video.videoHeight;
+          if (w && h) {
+            const scale = Math.min(1, 640 / Math.max(w, h));
+            canvas.width = Math.floor(w * scale);
+            canvas.height = Math.floor(h * scale);
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const hit = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+            if (hit && hit.data) handleHit(hit.data);
+          }
+        }
+      } catch { /* 프레임 스킵 */ } finally { scanBusyRef.current = false; }
+    }, 350);
+  }, [submitCheckin, token]);
+
+  const openCheckin = useCallback(async () => {
+    setCheckinModal(true);
+    setCamState('starting');
+    setCkResult(null);
+    setCkOther(null);
+    setCkErr('');
+    setCheckinCode('');
+    scanHitRef.current = false;
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('nocam');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }, audio: false,
+      });
+      streamRef.current = stream;
+      // 모달 렌더 완료 대기 (getUserMedia 승인 사이에 보통 렌더되지만 안전망)
+      for (let i = 0; i < 10 && !videoRef.current; i += 1) {
+        await new Promise(r => setTimeout(r, 50));
+      }
+      if (!videoRef.current) throw new Error('novideo');
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play();
+      setCamState('scanning');
+      startScanLoop();
+    } catch {
+      stopCamera();
+      setCamState('denied'); // → 2차(코드 입력)가 자동으로 펼쳐진다
+    }
+  }, [startScanLoop, stopCamera]);
+
+  const closeCheckin = useCallback(() => {
+    stopCamera();
+    setCheckinModal(false);
+    setCamState('idle');
+  }, [stopCamera]);
+
+  const handleCodeCheckin = useCallback(async () => {
+    const codeVal = checkinCode.replace(/\D/g, '');
+    if (codeVal.length !== 6) {
+      showToast('请输入6位数字 / 6자리 숫자를 입력해 주세요.', 'error');
+      return;
+    }
+    const ok = await submitCheckin({ inflToken: token, code: codeVal });
+    if (ok) setCheckinCode('');
+  }, [checkinCode, submitCheckin, token, showToast]);
 
   // ─── 진행률 계산 ─────────────────────────────────────────────
   const doneCount = records.filter(r => r.status === '제출완료').length;
@@ -264,7 +415,7 @@ export default function InfluencerSubmitPage() {
             <span>共 {totalCount} 个客户 · 已提交 {doneCount} 个</span>
           </div>
           <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
-            <button onClick={() => setCheckinModal(true)} style={{
+            <button onClick={openCheckin} style={{
               background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
               color: 'white', border: 'none', padding: '0.6rem 1.2rem',
               borderRadius: '20px', fontSize: '1rem', fontWeight: 'bold',
@@ -416,29 +567,144 @@ export default function InfluencerSubmitPage() {
       {/* Toast */}
       <Toast message={toast.message} type={toast.type} show={toast.show} />
 
-      {/* 입장 체크인 모달 — 위챗 스캔 안내 + 숫자 코드 백업 */}
+      {/* 입장 체크인 모달 — 1차 라이브 스캔 → 2차 코드 입력 → 3차 위챗 스캔 안내 */}
       {checkinModal && (
-        <div className="inf-modal-backdrop" onClick={() => setCheckinModal(false)}>
+        <div className="inf-modal-backdrop" onClick={closeCheckin}>
           <div className="inf-modal-content" onClick={e => e.stopPropagation()}>
             <div className="inf-modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)' }}>📍 入场签到 / 입장 체크인</h3>
-              <button onClick={() => setCheckinModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
+              <button onClick={closeCheckin} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
             </div>
-            <div style={{ fontSize: '0.95rem', lineHeight: 1.8, color: '#111' }}>
-              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '14px 16px' }}>
-                <p style={{ margin: 0, fontSize: '1.02rem' }}>
-                  ① 打开微信 <b>➕ → 扫一扫</b>
-                  <br />② 扫描<b>店内的二维码</b>
-                  <br />③ 自动完成签到，把手机画面给店员看 ✅
-                </p>
-                <p style={{ margin: '10px 0 0', color: '#666', fontSize: '0.85rem', borderTop: '1px dashed #bbf7d0', paddingTop: '8px' }}>
-                  위챗 스캔으로 매장 QR을 찍으면 자동 체크인되고,<br />확인 화면을 매장 직원에게 보여주면 끝입니다.
-                </p>
+
+            {/* 성공 = 이 모달이 곧 매장 제시용 확인증 */}
+            {camState === 'done' && ckResult && (
+              <div style={{ textAlign: 'center', padding: '10px 0' }}>
+                <div style={{ fontSize: '46px' }}>✅</div>
+                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#16a34a', marginTop: '6px' }}>
+                  예약된 체험단입니다
+                </div>
+                <div style={{
+                  fontSize: '1.3rem', fontWeight: 800, marginTop: '10px', wordBreak: 'break-all',
+                  background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                  WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent',
+                }}>
+                  {ckResult.xid || ''}
+                </div>
+                <div style={{ color: '#333', marginTop: '8px', fontSize: '1rem', lineHeight: 1.6 }}>
+                  <b>{ckResult.store || ''}</b>
+                  <br />{ckResult.resvWhen ? `예약 ${ckResult.resvWhen}` : ''}
+                  {ckResult.pax !== '' && ckResult.pax != null ? ` · ${ckResult.pax}인` : ''}
+                  <br />{ckResult.already ? '체크인 완료 ' : '입장 확인 '}{ckResult.when || ''}
+                </div>
+                <div style={{ color: '#888', marginTop: '12px', fontSize: '0.85rem', lineHeight: 1.6 }}>
+                  이 화면을 매장 직원에게 보여주세요. / 请向店员出示此页面。
+                  <br />카톡 알림은 최대 1분 내 자동 발송됩니다. / 系统通知将在1分钟内自动发送。
+                </div>
               </div>
-              <p style={{ margin: '10px 0 0', color: '#888', fontSize: '0.83rem' }}>
-                💡 长按微信图标也可以直接打开"扫一扫" / 위챗 아이콘을 길게 누르면 스캔이 바로 열립니다.
-              </p>
-            </div>
+            )}
+
+            {/* 타지점 스캔 — 오늘 실제 예약 지점 안내 */}
+            {camState === 'nomatch' && (
+              <div style={{ textAlign: 'center', padding: '10px 0' }}>
+                <div style={{ fontSize: '40px' }}>🔍</div>
+                <div style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: '6px' }}>
+                  이 매장의 오늘 예약이 없습니다 / 未找到今天在此店的预约
+                </div>
+                {ckOther && ckOther.length > 0 && (
+                  <div style={{
+                    marginTop: '10px', background: '#fffbeb', border: '1px solid #fde68a',
+                    borderRadius: '10px', padding: '10px 14px', textAlign: 'left', fontSize: '0.92rem', lineHeight: 1.7,
+                  }}>
+                    <b>오늘 예약 / 您今天的预约:</b>
+                    {ckOther.map((o, i) => (
+                      <div key={i}>📍 {o.store} <span style={{ color: '#92400e' }}>{o.when}</span></div>
+                    ))}
+                  </div>
+                )}
+                <button onClick={openCheckin} style={{ marginTop: '12px', background: 'none', border: '1px solid #d1d5db', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer' }}>
+                  다시 스캔 / 重新扫描
+                </button>
+              </div>
+            )}
+
+            {camState !== 'done' && camState !== 'nomatch' && (
+              <div style={{ fontSize: '0.95rem', lineHeight: 1.7, color: '#111' }}>
+                {/* 1차: 라이브 카메라 스캔 */}
+                {(camState === 'starting' || camState === 'scanning') && (
+                  <div style={{ textAlign: 'center' }}>
+                    <video
+                      ref={videoRef}
+                      playsInline
+                      muted
+                      autoPlay
+                      style={{ width: '100%', maxHeight: '46vh', borderRadius: '12px', background: '#000', objectFit: 'cover' }}
+                    />
+                    <p style={{ margin: '8px 0 0', color: '#333', fontSize: '0.95rem' }}>
+                      {camState === 'starting' ? '正在打开相机… / 카메라 여는 중…' : '请对准店内二维码 / 매장 QR을 화면에 맞춰주세요'}
+                    </p>
+                    {ckErr && <p style={{ margin: '6px 0 0', color: '#dc2626', fontSize: '0.85rem' }}>{ckErr}</p>}
+                  </div>
+                )}
+
+                {camState === 'denied' && (
+                  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '12px 14px', fontSize: '0.9rem' }}>
+                    无法打开相机，请使用下方数字码。
+                    <br />카메라를 열 수 없습니다 — 아래 매장 코드를 입력해 주세요.
+                  </div>
+                )}
+
+                {/* 2차: 매장 게시 일별 코드 (카메라 실패 시 자동 펼침) */}
+                <details open={camState === 'denied'} style={{ marginTop: '12px' }}>
+                  <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem' }}>
+                    方法② 输入店内数字码 / 매장 코드 입력
+                  </summary>
+                  <p style={{ margin: '8px 0', color: '#666', fontSize: '0.83rem' }}>
+                    输入店内公示的<b>今日6位码</b>（每天更换）/ 매장에 게시된 오늘의 6자리 코드
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={checkinCode}
+                      onChange={e => setCheckinCode(e.target.value.replace(/\D/g, ''))}
+                      onKeyDown={e => { if (e.key === 'Enter') handleCodeCheckin(); }}
+                      placeholder="000000"
+                      style={{
+                        flex: 1, padding: '10px', fontSize: '1.2rem', letterSpacing: '0.3em',
+                        textAlign: 'center', border: '1px solid #d1d5db', borderRadius: '8px', minWidth: 0,
+                      }}
+                    />
+                    <button
+                      onClick={handleCodeCheckin}
+                      disabled={checkinBusy || checkinCode.length !== 6}
+                      style={{
+                        background: checkinCode.length === 6 ? 'linear-gradient(135deg, #7c3aed, #4f46e5)' : '#d1d5db',
+                        color: 'white', border: 'none', padding: '0 18px', borderRadius: '8px',
+                        fontWeight: 'bold', cursor: checkinCode.length === 6 ? 'pointer' : 'default', flexShrink: 0,
+                      }}
+                    >
+                      {checkinBusy ? '⏳' : '签到'}
+                    </button>
+                  </div>
+                  {camState === 'denied' && ckErr && (
+                    <p style={{ margin: '8px 0 0', color: '#dc2626', fontSize: '0.85rem' }}>{ckErr}</p>
+                  )}
+                </details>
+
+                {/* 3차: 위챗 네이티브 스캔 (마지막 수단) */}
+                <details style={{ marginTop: '10px' }}>
+                  <summary style={{ cursor: 'pointer', color: '#888', fontSize: '0.85rem' }}>
+                    方法③ 微信扫一扫 / 위챗 스캔으로 하기
+                  </summary>
+                  <p style={{ margin: '8px 0 0', color: '#666', fontSize: '0.85rem', lineHeight: 1.7 }}>
+                    ① 打开微信 <b>➕ → 扫一扫</b>（长按微信图标也可以）
+                    <br />② 扫描店内二维码 → 自动完成签到
+                    <br />위챗 스캔으로 매장 QR을 찍어도 자동 체크인됩니다.
+                  </p>
+                </details>
+              </div>
+            )}
           </div>
         </div>
       )}

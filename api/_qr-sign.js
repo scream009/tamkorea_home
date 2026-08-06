@@ -17,5 +17,18 @@ export function storeSig(storeId) {
   return crypto.createHmac('sha256', SECRET).update(String(storeId)).digest('hex').slice(0, 24);
 }
 
-// (v1.6) 숫자 코드 경로는 폐기 — Owner 지시 "무조건 QR로 모든 것" (스펙 v1.6 참조).
-// 토큰 없는 폰도 QR 스캔 → 오늘 예약 명단에서 본인 선택으로 해결한다.
+/**
+ * 숫자 백업 코드 6자리 — **매일 자동 변경** (KST 날짜 스코프).
+ *
+ * (v1.7에서 복원 — 3단계 스캔 UX의 2차 수단: 라이브 스캔이 카메라 권한 등으로
+ * 실패한 폰에서 매장 게시 오늘 코드를 입력하는 도착 증명.)
+ * 고정 코드는 한 번 새면 영구 무력화되므로 날짜를 HMAC에 넣어 회전시킨다.
+ * dayOffset -1 = 어제 코드 (자정 넘김·매장 화면 미갱신 대비, 서버는 오늘+어제만 수용).
+ */
+export function storeCodeDaily(storeId, dayOffset = 0) {
+  if (!SECRET || !storeId) return '';
+  const kst = new Date(Date.now() + 9 * 3600 * 1000 + dayOffset * 86400 * 1000);
+  const ymd = kst.toISOString().slice(0, 10).replace(/-/g, '');
+  const hex = crypto.createHmac('sha256', SECRET).update(`code:${storeId}:${ymd}`).digest('hex').slice(0, 12);
+  return String(parseInt(hex, 16) % 1000000).padStart(6, '0');
+}
