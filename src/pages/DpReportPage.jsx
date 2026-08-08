@@ -501,10 +501,16 @@ const CpcSection = ({ cpc, funnel, dominance, store, adSet, projection }) => {
             : budgetLabel,
           style: budget ? {} : { fontSize: '.95rem', lineHeight: 1.35 } },
         // '1개' 를 박아두면 정지된 캠페인도 활성으로 보고된다.
-        // 실측 2026-08-08 고이정: 시스템이 장기 무소비로 정지시켰는데 화면은 '활성 1개'.
-        adSet?.paused
-          ? { value: '정지', label: '캠페인 상태', color: '#fbbf24' }
-          : { value: '1개', label: '활성 캠페인' },
+        // 실측 2026-08-08 고이정: 캠페인 3개 중 1개만 살아 있는데 화면은 '활성 1개'뿐.
+        // 전체 개수를 알면 '3개 중 1개'로 정확히 말할 수 있다.
+        (() => {
+          const on = adSet?.campaignOnline, tot = adSet?.campaignTotal;
+          if (adSet?.paused && !on) return { value: '정지', label: '캠페인 상태', color: '#fbbf24' };
+          if (on != null && tot != null && tot > on)
+            return { value: `${on}/${tot}개`, label: '활성 캠페인', color: '#fbbf24' };
+          if (on != null) return { value: `${on}개`, label: '활성 캠페인' };
+          return { value: '1개', label: '활성 캠페인' };
+        })(),
       ]} />
       {/* 일예산이 방금 위에 나왔으니, 그 바로 밑이 설정 상세의 제자리다 */}
       <AdSettings ad={adSet} upside={projection} />

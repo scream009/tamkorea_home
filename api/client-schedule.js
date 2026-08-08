@@ -541,6 +541,10 @@ export default async function handler(req, res) {
           budget, budgetIsFallback: basic == null && budget != null,
           hasSettings: adFetched,   // false = 설정 미수집 → '미설정'이라 단정하면 안 된다
           floatRatio: ratio, peak: cf['AD_피크예산'] ?? null,
+          // 캠페인이 여러 개인 매장이 있다. '3개 중 1개 활성'을 구분하려면
+          // 전체/활성 개수가 둘 다 필요하다(고이정: 매장 전체가 '정지'로 나갔었다).
+          campaignTotal: cf['AD_캠페인수'] ?? null,
+          campaignOnline: cf['AD_활성캠페인수'] ?? null,
           bid, hours, hoursOn, yesterday: yst, useRate, daysLeft,
           checked: cf['AD_설정확인일'] || null,
           paused,
