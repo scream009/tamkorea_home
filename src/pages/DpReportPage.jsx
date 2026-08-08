@@ -464,7 +464,20 @@ const CpcSection = ({ cpc, funnel, dominance, store, adSet, projection }) => {
     );
   }
 
-  const budget = cpc?.daily_budget ?? store?.budget;   // 수집값 우선
+  // ── 일예산 KPI ────────────────────────────────────────────────
+  // cpc.daily_budget 은 getProductCondition 의 '그날 적용된 예산'이다.
+  // 주말·명절엔 할증분이 반영돼 값이 바뀐다 — 같은 매장인데 토요일에 돌리면 250,
+  // 금요일에 돌리면 200 이 '일예산 책정'으로 찍혀 설정을 바꾼 것처럼 보인다
+  // (실측 2026-08-08 고이정: 기초 200 + 주말 25% → 상단 250 / 하단 200).
+  // 그래서 **기초(평일) 예산**을 기준으로 삼고, 할증이 있으면 라벨에 밝힌다.
+  const basicBudget = adSet?.budget ?? null;
+  const peakBudget = adSet?.peak ?? null;
+  const floatPct = adSet?.floatRatio ?? null;
+  const budget = basicBudget ?? cpc?.daily_budget ?? store?.budget;
+  // 기초예산을 못 구했으면 그날 값이라도 쓰되, 라벨을 바꿔 오해를 막는다.
+  const budgetIsToday = basicBudget == null && budget != null;
+  const budgetLabel = budgetIsToday ? '오늘 적용 예산'
+    : (floatPct ? '일예산 (평일 기준)' : '일예산 책정');
   return (
     <>
       <div className={`dpr-bal ${lvl}`}>
@@ -482,9 +495,16 @@ const CpcSection = ({ cpc, funnel, dominance, store, adSet, projection }) => {
                  : (cpc?.budget_status === 'not_set' ? '미책정'
                     : cpc?.budget_status === 'fetch_failed' ? '수집 실패'
                     : `최적 예산 추천`),
-          label: '일예산 책정',
+          label: budget && floatPct && peakBudget
+            ? <>{budgetLabel}<br /><small style={{ opacity: 0.75, fontWeight: 400 }}>
+                주말·명절 {num(peakBudget)}元 (+{floatPct}%)</small></>
+            : budgetLabel,
           style: budget ? {} : { fontSize: '.95rem', lineHeight: 1.35 } },
-        { value: '1개', label: '활성 캠페인' },
+        // '1개' 를 박아두면 정지된 캠페인도 활성으로 보고된다.
+        // 실측 2026-08-08 고이정: 시스템이 장기 무소비로 정지시켰는데 화면은 '활성 1개'.
+        adSet?.paused
+          ? { value: '정지', label: '캠페인 상태', color: '#fbbf24' }
+          : { value: '1개', label: '활성 캠페인' },
       ]} />
       {/* 일예산이 방금 위에 나왔으니, 그 바로 밑이 설정 상세의 제자리다 */}
       <AdSettings ad={adSet} upside={projection} />
