@@ -22,9 +22,10 @@ export default async function handler(req, res) {
         utm_content
     } = req.body;
 
-    // Hardcoded credentials for immediate deployment via Github
-    const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY || 'pathvziV87Sy3VxVl.0ab80c13e5a3af25f94ba74d3624fd5c29c01a751bbbd1e19a24098dec7424ca';
-    const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID || 'appEzEPLBz4t30wmt';
+    // ⚠️ 키를 코드에 넣지 않는다. 2026-04-06 ~ 08-09 넉 달간 공개 저장소에 노출됐다.
+    //    환경변수가 없으면 조용히 옛 키로 도는 게 아니라, 실패하고 알리는 쪽이 맞다.
+    const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
+    const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
     const AIRTABLE_TABLE_NAME = 'Inbound Leads'; // Fixed table name as per user creation
 
     if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
