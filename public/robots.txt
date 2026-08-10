@@ -11,5 +11,6 @@ Disallow: /manager
 Disallow: /partner
 Disallow: /admin
 Disallow: /api/
+Disallow: /q/
 
 Sitemap: https://www.tamkorea.com/sitemap.xml
