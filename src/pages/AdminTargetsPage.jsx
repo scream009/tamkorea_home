@@ -718,10 +718,13 @@ export default function AdminTargetsPage() {
                 if (!tys.length) return null;
                 return (
                   <span className="atg-msc-tb">
+                    {/* 부족량은 별도 열 — 본 숫자와 한 칸에 섞으면 자릿수에 따라 열이 흔들린다 */}
                     <span className="atg-msc-c atg-msc-h" aria-hidden="true" />
                     <span className="atg-msc-c atg-msc-h">목</span>
                     <span className="atg-msc-c atg-msc-h">섭</span>
+                    <span className="atg-msc-c atg-msc-h atg-msc-d" aria-hidden="true" />
                     <span className="atg-msc-c atg-msc-h">업</span>
+                    <span className="atg-msc-c atg-msc-h atg-msc-d" aria-hidden="true" />
                     <span className="atg-msc-c atg-msc-h">취</span>
                     {tys.map((k) => {
                       const [g, v, u, cx] = x.t[k];
@@ -731,8 +734,10 @@ export default function AdminTargetsPage() {
                         <React.Fragment key={k}>
                           <span className="atg-msc-c atg-msc-k">{k}</span>
                           <span className="atg-msc-c">{g || '—'}</span>
-                          <span className="atg-msc-c"><b>{v}</b>{dv < 0 ? <i className="atg-msc-d">({dv})</i> : null}</span>
-                          <span className="atg-msc-c"><b>{u}</b>{du < 0 ? <i className="atg-msc-d">({du})</i> : null}</span>
+                          <span className="atg-msc-c"><b>{v}</b></span>
+                          <span className="atg-msc-c atg-msc-d">{dv < 0 ? `(${dv})` : ''}</span>
+                          <span className="atg-msc-c"><b>{u}</b></span>
+                          <span className="atg-msc-c atg-msc-d">{du < 0 ? `(${du})` : ''}</span>
                           <span className={`atg-msc-c${cx ? ' atg-c' : ''}`}>{cx || 0}</span>
                         </React.Fragment>
                       );
