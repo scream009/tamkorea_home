@@ -683,9 +683,17 @@ export default function AdminTargetsPage() {
     if (!s) return <div className="atg-mss-empty">월별 이력 불러오는 중…</div>;
     if (s.err) return <div className="atg-mss-empty atg-bad">{s.err}</div>;
     if (!s.length) return <div className="atg-mss-empty">월별 기록이 없습니다</div>;
+    // 아래 실적 리스트와 같은 달을 중심으로 앞뒤 2개월만 (Owner 지정 — 7월이면 5~9월)
+    const sp = parseMonth(month);
+    const selIdx = sp ? sp.y * 12 + sp.n : null;
+    const win = selIdx === null ? s : s.filter((x) => {
+      const p = parseMonth(x.mon);
+      return p && Math.abs((p.y * 12 + p.n) - selIdx) <= 2;
+    });
+    if (!win.length) return <div className="atg-mss-empty">{month} 앞뒤 2개월 기록이 없습니다</div>;
     return (
       <div className="atg-mss">
-        {s.map((x) => {
+        {win.map((x) => {
           const cur = x.mon === month;
           const rate = x.tg ? Math.round((x.ac / x.tg) * 100) : null;
           return (

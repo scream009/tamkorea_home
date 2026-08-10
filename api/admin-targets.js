@@ -309,7 +309,7 @@ async function buildSummary(name) {
       const pa = parseMonth(a.mon); const pb = parseMonth(b.mon);
       return (pa.y * 12 + pa.n) - (pb.y * 12 + pb.n);   // 이른 달이 왼쪽 (Owner 지정)
     })
-    .slice(-12);   // 넘치면 오래된 쪽을 버린다
+    .slice(-36);   // 전체를 준다(화면이 선택월 ±2 창으로 자름) — 폭주만 방지
   return { name, months };
 }
 
