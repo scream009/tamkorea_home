@@ -116,7 +116,13 @@ export const CpcBanner = ({ cpc, isPartner }) => {
           </a>
         )}
       </div>
-      <div className="cpc-upd">갱신: {cpc.updated}</div>
+      {/* CPC 잔액은 '지금 상태'라 계약월과 무관하게 최신 수집분을 보여준다.
+          링크의 달과 다르면 어느 달 회차인지 밝힌다 — 안 밝히면 7월 화면에
+          8월 숫자가 왜 있는지 설명되지 않는다. */}
+      <div className="cpc-upd">
+        갱신: {cpc.updated}
+        {cpc.fromOtherMonth && cpc.month && <> · {cpc.month} 수집분(최신)</>}
+      </div>
     </div>
   );
 };
@@ -186,8 +192,16 @@ export const DpReportEntry = ({ report, campaignId }) => {
     <div className="dprep-l">
       <div className="dprep-ic">📊</div>
       <div>
-        <div className="dprep-tt">따종디엔핑 월간 마케팅 리포트</div>
-        <div className="dprep-ss">{report.period} · 노출·리뷰·광고 종합</div>
+        <div className="dprep-tt">
+          따종디엔핑 월간 마케팅 리포트
+          {report.month && <span className="dprep-mon">{report.month}</span>}
+        </div>
+        <div className="dprep-ss">
+          {report.period} · 노출·리뷰·광고 종합
+          {/* 링크의 달과 다른 회차를 보여줄 때만 밝힌다. 안 밝히면 7월 링크에
+              8월 숫자가 섞인 것처럼 보인다. */}
+          {report.fromOtherMonth && <> · <b>최신 회차 기준</b></>}
+        </div>
         <div className="dprep-chips">
           {chips.map((c, i) => <span key={i} className="dprep-chip">{c}</span>)}
         </div>
@@ -197,8 +211,11 @@ export const DpReportEntry = ({ report, campaignId }) => {
 
   // DB를 읽어 렌더하는 React 리포트로 연결 — 정적 HTML은 협력사 화이트라벨이 불가하고
   // 봇이 Airtable만 갱신하면 옛 데이터로 남는 문제가 있다.
+  // 링크의 계약월이 아니라 **최신 회차**로 연결한다. API 가 골라 준 id 를 쓴다 —
+  // 7월 링크를 받은 고객사도 8월 리포트가 나오면 그걸 보게 된다.
+  const target = report.campaignId || campaignId || '';
   return (
-    <a className="dprep" href={`/dp-report?campaignId=${encodeURIComponent(campaignId || '')}`} target="_blank" rel="noopener noreferrer">
+    <a className="dprep" href={`/dp-report?campaignId=${encodeURIComponent(target)}`} target="_blank" rel="noopener noreferrer">
       {inner}
       <span className="dprep-btn">리포트 열기 →</span>
     </a>

@@ -348,3 +348,17 @@ body:has(.dpr-page){padding-top:0!important;background:#0d0f1a}
 @media (max-width:520px){
   .dpr-adset-paused{display:block;width:fit-content;margin:6px 0 0}
 }
+
+/* 리포트 회차 선택 — 링크는 계약월 하나에 묶여 있지만 리포트는 매달 새로 만들어진다.
+   기본은 최신본이고, 지난 회차도 눌러 볼 수 있게 한다. */
+.dpr-months{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px}
+.dpr-months-l{font-size:.78rem;color:var(--ts,#94a3b8);letter-spacing:.02em}
+.dpr-mchip{display:inline-flex;align-items:center;gap:6px;padding:6px 13px;border-radius:999px;
+  font-size:.82rem;font-weight:600;text-decoration:none;color:#cbd5e1;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  transition:background .2s,border-color .2s,color .2s}
+.dpr-mchip:hover{background:rgba(116,52,255,.18);border-color:rgba(116,52,255,.45);color:#fff}
+.dpr-mchip.on{background:linear-gradient(90deg,#7434FF,#9B70FF);border-color:transparent;color:#fff}
+.dpr-mnew{font-size:.66rem;font-weight:700;padding:1px 6px;border-radius:999px;
+  background:rgba(255,255,255,.22);letter-spacing:.03em}
+@media (max-width:640px){.dpr-months{gap:6px}.dpr-mchip{padding:5px 11px;font-size:.78rem}}

@@ -1045,7 +1045,9 @@ export default function DpReportPage() {
     let alive = true;
     (async () => {
       try {
-        const res = await fetch(`/api/client-schedule?campaignId=${encodeURIComponent(campaignId)}`);
+        // exact=1 — 이 링크가 가리키는 회차를 그대로 본다.
+        // 없으면 API 가 최신본으로 바꿔 주므로 지난 회차를 골라도 최신으로 튕긴다.
+        const res = await fetch(`/api/client-schedule?campaignId=${encodeURIComponent(campaignId)}&exact=1`);
         if (!res.ok) throw new Error(`데이터를 불러오지 못했습니다 (${res.status})`);
         const json = await res.json();
         if (alive) setState({ loading: false, err: null, data: json });
@@ -1113,6 +1115,23 @@ export default function DpReportPage() {
             {store?.cat && <span className="dpr-chip">{store.cat}</span>}
             <span className="dpr-chip">🌏 중화권 관광객 · 인플루언서 바이럴</span>
           </div>
+          {/* 회차 선택 — 기본은 최신본이고, 지난 회차도 볼 수 있다.
+              링크는 계약월 하나에 묶여 있지만 리포트는 매달 새로 만들어지므로
+              옛 링크를 받은 고객사도 최신본에 닿아야 한다. 2건 이상일 때만 보여준다. */}
+          {(data?.dpReport?.months || []).length > 1 && (
+            <div className="dpr-months">
+              <span className="dpr-months-l">리포트 회차</span>
+              {data.dpReport.months.map((m, i) => {
+                const on = m.id === (data.dpReport.campaignId || campaignId);
+                return (
+                  <a key={m.id} className={`dpr-mchip${on ? ' on' : ''}`}
+                     href={`/dp-report?campaignId=${encodeURIComponent(m.id)}`}>
+                    {m.month}{i === 0 && <span className="dpr-mnew">최신</span>}
+                  </a>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <Section icon="📢" title="CPC 광고 · 잔액 & 노출 기여" note="推广通 계정 실측 · 광고비는 元(RMB)">

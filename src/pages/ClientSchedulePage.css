@@ -963,3 +963,9 @@
 .mo-btn:hover{background:rgba(168,85,247,.14);border-color:rgba(168,85,247,.32);color:#e9d5ff}
 .mo-btn.is-off{opacity:.3;pointer-events:none}
 @media(max-width:640px){ .mo-cur{font-size:.9rem;padding:7px 14px} .mo-btn{font-size:.76rem;padding:6px 10px} }
+
+/* 리포트 진입 배지의 회차 표기 — 링크의 계약월과 다른 회차를 보여줄 때
+   어느 달 것인지 밝힌다. 안 밝히면 7월 링크에 8월 숫자가 섞인 것처럼 보인다. */
+.dprep-mon{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;
+  font-size:.7rem;font-weight:700;letter-spacing:.02em;
+  background:rgba(116,52,255,.22);border:1px solid rgba(116,52,255,.4);color:#d8b4fe;vertical-align:middle}

@@ -422,16 +422,58 @@ export default async function handler(req, res) {
       const p = (n) => String(n).padStart(2, '0');
       return `${k.getUTCFullYear()}-${p(k.getUTCMonth() + 1)}-${p(k.getUTCDate())} ${p(k.getUTCHours())}:${p(k.getUTCMinutes())}`;
     };
+    // ── 같은 매장의 모든 계약월 레코드 ────────────────────────────
+    // 공유 링크는 계약월 하나에 묶여 있다. 그런데 CPC 잔액·광고 설정은
+    // '지금 상태'라 7월 링크에서도 **가장 최근에 수집한 값**이 나와야 한다.
+    // (7월로 공유한 고객사와 8월로 공유한 고객사가 섞여 있는데, CPC 현황이
+    //  링크의 달에 갇히면 어떤 고객사는 몇 주 전 잔액을 계속 보게 된다)
+    // 리포트도 마찬가지 — 최신본을 기본으로 보여주고 지난 달도 고를 수 있어야 한다.
+    // 여기서 한 번만 읽어 siblings·CPC·리포트가 같이 쓴다(질의 중복 제거).
+    let storeRecs = [];
+    {
+      const escQ = (s) => String(s).replace(/'/g, "\\'");
+      const escF = (s) => String(s).replace(/"/g, '\\"');
+      const parts = [];
+      const code = cf['DP_매장코드'] || '';
+      if (code) parts.push(`{DP_매장코드}='${escQ(code)}'`);
+      const nameConds = [];
+      if (brandName) nameConds.push(`FIND("${escF(brandName)}", {고객사명} & "") > 0`);
+      if (branchName) nameConds.push(`FIND("${escF(branchName)}", {지점명} & "") > 0`);
+      if (nameConds.length) parts.push(`AND(${nameConds.join(',')})`);
+      if (parts.length) {
+        try {
+          // fields[] 를 지정하지 않는다 — 스키마가 리네임되면 UNKNOWN_FIELD_NAME 으로
+          // 500 이 난다(실측: '인플_실적'). 매장당 레코드는 10건 안쪽이라 전체를 받아도 가볍다.
+          const f = encodeURIComponent(parts.length > 1 ? `OR(${parts.join(',')})` : parts[0]);
+          storeRecs = await fetchAllRecords(
+            `https://api.airtable.com/v0/${BASE_ID}/${CAMPAIGN_TABLE}?filterByFormula=${f}&pageSize=100`);
+        } catch (e) {
+          console.error('[client-schedule] store records lookup failed:', e.message);
+        }
+      }
+      if (!storeRecs.length) storeRecs = [{ id: campaignId, fields: cf }];
+    }
+    // 가장 최근에 CPC 를 수집한 레코드. 갱신일이 없으면 후보가 아니다.
+    const cpcSrc = storeRecs
+      .filter((r) => r.fields['CPC_갱신일'] && r.fields['CPC_현재잔액'] != null)
+      .sort((a, b) => String(b.fields['CPC_갱신일']).localeCompare(String(a.fields['CPC_갱신일'])))[0]
+      || (cf['CPC_현재잔액'] != null ? { id: campaignId, fields: cf } : null);
+
     let cpc = null;
-    if (cf['CPC_현재잔액'] !== undefined && cf['CPC_현재잔액'] !== null) {
+    if (cpcSrc) {
+      const sf = cpcSrc.fields;
       cpc = {
-        balance: cf['CPC_현재잔액'],
-        yesterday: cf['CPC_현재소진'] ?? 0,
-        status: STATUS_MAP[cf['CPC_상태']] || 'red',
-        daysLeft: cf['CPC_소진예상일'] ?? null,
-        updated: fmtKST(cf['CPC_갱신일']),
+        balance: sf['CPC_현재잔액'],
+        yesterday: sf['CPC_현재소진'] ?? 0,
+        status: STATUS_MAP[sf['CPC_상태']] || 'red',
+        daysLeft: sf['CPC_소진예상일'] ?? null,
+        updated: fmtKST(sf['CPC_갱신일']),
+        // 어느 계약월에서 온 값인지 밝힌다. 링크의 달과 다르면 화면이 그렇게 표시한다 —
+        // 안 밝히면 7월 리포트에 8월 잔액이 섞여 나온 것처럼 보인다.
+        month: sf['계약월'] || '',
+        fromOtherMonth: (sf['계약월'] || '') !== month,
         weekly: [1, 2, 3, 4, 5]
-          .map((n) => cf[`CPC_주${n}잔액`])
+          .map((n) => sf[`CPC_주${n}잔액`])
           .filter((v) => v !== undefined && v !== null),
       };
     }
@@ -480,13 +522,16 @@ export default async function handler(req, res) {
     // '꺼져 있는 것'으로 단정하게 된다 — 주말 상향이 대표적이다.
     let adFetched = false;
     {
-      const basic = cf['AD_기초예산'] ?? null;
-      const bid   = cf['AD_단가_따종'] ?? null;
-      const hours = cf['AD_노출시간'] || null;
-      const ratio = cf['AD_주말상향률'] ?? null;
+      // 광고 설정도 '지금 상태'다. CPC 와 같은 회차에 수집되므로 같은 레코드에서 읽는다.
+      // 링크의 달에 갇히면 8월에 바꾼 예산·단가가 7월 링크에 영영 안 나온다.
+      const af = (cpcSrc && cpcSrc.fields) || cf;
+      const basic = af['AD_기초예산'] ?? null;
+      const bid   = af['AD_단가_따종'] ?? null;
+      const hours = af['AD_노출시간'] || null;
+      const ratio = af['AD_주말상향률'] ?? null;
       // 기초예산이 없으면 CPC_일예산으로 대체한다. 단 그 값은 '그날 적용된 예산'이라
       // 주말엔 상향분이 섞여 있다 — 어디서 왔는지 프론트가 알 수 있게 표시해 준다.
-      const budget = basic != null ? basic : (cf['CPC_일예산'] ?? null);
+      const budget = basic != null ? basic : (af['CPC_일예산'] ?? null);
       // ⚠️ 게이트에 **budget 을 반드시 포함**한다. AD_* 세 개만 보면, ad_settings.py 가
       //    아직 안 돈 신규 계약월(추가 당일 등)은 셋 다 비어 adSet 이 통째로 null 이 되고,
       //    그러면 프론트의 AdSettings 가 즉시 return null 하면서 그 안에 들어 있는
@@ -497,16 +542,16 @@ export default async function handler(req, res) {
       //    프론트가 값이 있을 때만 그리므로 비어 있어도 깨지지 않는다.
       adFetched = basic != null || bid != null || hours != null;
       if (adFetched || budget != null) {
-        const yst = cf['CPC_현재소진'] ?? null;
+        const yst = af['CPC_현재소진'] ?? null;
         const useRate = budget ? Math.round((Number(yst) / Number(budget)) * 100) : null;
-        const hoursOn = cf['AD_주간노출시간'] ?? null;
-        const daysLeft = cf['CPC_소진예상일'] ?? null;
+        const hoursOn = af['AD_주간노출시간'] ?? null;
+        const daysLeft = af['CPC_소진예상일'] ?? null;
         // ── 넛지 판정 ──────────────────────────────────────────
         // ⚠️ 소진률 하나로 판단하면 안 된다. 잔액이 0이면 광고가 꺼져 어제 집행도 0 이고,
         //    그게 '예산이 남는다'로 읽혀 충전이 필요한 매장에 "노출을 늘리세요"라는
         //    엉뚱한 제안이 나갔다(실측: 제주육림 — 잔액 0·소진 0 인데 room_to_grow).
         //    그래서 **잔액 → 집행여부 → 소진률** 순으로 걸러 낸다.
-        const bal = cf['CPC_현재잔액'] ?? null;
+        const bal = af['CPC_현재잔액'] ?? null;
         //    캠페인이 **정지**돼 있으면 잔액도 소진률도 의미가 없다. 설정은 멀쩡히
         //    살아 있고 광고만 꺼져 있는 상태다(실측 2026-08-02 함덕찜: 잔액 3,000元·
         //    예산 150元·단가 10.78元인데 "长期无消耗" 로 시스템이 정지시켰다).
@@ -519,7 +564,7 @@ export default async function handler(req, res) {
         //    있으면 정지 주장을 채택하지 않는다 — 안 그러면 같은 리포트 안에서
         //    "노출이 없었습니다" 와 "어제 34元 집행 · 노출의 94.9%가 광고" 가
         //    나란히 서서 서로를 반박한다(실측 2026-08-03 용담밭담).
-        const pausedFlag = String(cf['AD_캠페인상태'] || '') === 'paused';
+        const pausedFlag = String(af['AD_캠페인상태'] || '') === 'paused';
         const paused = pausedFlag && !(yst != null && Number(yst) > 0);
         let nudge = null;
         if (paused) {
@@ -540,13 +585,13 @@ export default async function handler(req, res) {
         adSet = {
           budget, budgetIsFallback: basic == null && budget != null,
           hasSettings: adFetched,   // false = 설정 미수집 → '미설정'이라 단정하면 안 된다
-          floatRatio: ratio, peak: cf['AD_피크예산'] ?? null,
+          floatRatio: ratio, peak: af['AD_피크예산'] ?? null,
           // 캠페인이 여러 개인 매장이 있다. '3개 중 1개 활성'을 구분하려면
           // 전체/활성 개수가 둘 다 필요하다(고이정: 매장 전체가 '정지'로 나갔었다).
-          campaignTotal: cf['AD_캠페인수'] ?? null,
-          campaignOnline: cf['AD_활성캠페인수'] ?? null,
+          campaignTotal: af['AD_캠페인수'] ?? null,
+          campaignOnline: af['AD_활성캠페인수'] ?? null,
           bid, hours, hoursOn, yesterday: yst, useRate, daysLeft,
-          checked: cf['AD_설정확인일'] || null,
+          checked: af['AD_설정확인일'] || null,
           paused,
           nudge,
         };
@@ -687,23 +732,85 @@ export default async function handler(req, res) {
       console.error('[client-schedule] projection 계산 실패:', e.message);
     }
 
+    // ── 월간 리포트 ────────────────────────────────────────────
+    // 링크가 7월이어도 8월 리포트가 나와 있으면 **최신본을 기본으로** 보여준다.
+    // 계약월에 갇히면 새 리포트를 만들어도 옛 링크를 받은 고객사는 영영 못 본다.
+    // 지난 회차도 고를 수 있게 목록을 함께 내려준다.
+    const hasReport = (f) => {
+      const p = String(f['DP_기간'] || '');
+      return !!p && !!f['DP_리포트JSON'];
+    };
+    // 생성 시각 우선(같은 달을 다시 돌린 경우까지 잡힌다), 없으면 계약월로 정렬.
+    const genAt = (f) => {
+      try {
+        const j = JSON.parse(f['DP_리포트JSON'] || '{}');
+        if (j.generated_at) return String(j.generated_at);
+      } catch { /* 파싱 실패는 계약월로 갈음한다 */ }
+      return '';
+    };
+    // 정렬 기준은 **계약월이 아니라 실제 데이터 신선도**다.
+    // 계약월이 늦다고 데이터가 최신인 게 아니다 — 실측 2026-08 우대 노형본점:
+    //   8월 레코드 = 06.28~07.27 (07-28 생성)
+    //   7월 레코드 = 07.03~08.01 (08-02 생성)  ← 이쪽이 최신
+    // 계약월로 정렬하면 더 오래된 8월분을 '최신'이라 내보내게 된다.
+    // 1순위 생성시각 → 2순위 수집기간 끝 → 3순위 계약월.
+    const periodEnd = (f) => String(f['DP_기간'] || '').split('~').pop().trim();
+    const reportRecs = storeRecs
+      .filter((r) => hasReport(r.fields))
+      .sort((a, b) => {
+        const ga = genAt(a.fields), gb = genAt(b.fields);
+        if (ga !== gb) return gb.localeCompare(ga);
+        const pa = periodEnd(a.fields), pb = periodEnd(b.fields);
+        if (pa !== pb) return pb.localeCompare(pa);
+        return monthKey(b.fields['계약월']) - monthKey(a.fields['계약월']);
+      });
+
+    // 화면이 고를 수 있는 회차 목록. 조회 가능 기간 밖은 내보내지 않는다 —
+    // 오래된 리포트는 값이 불완전해 화면이 깨진다(협력사 링크와 같은 규칙).
+    const dpReportMonths = reportRecs
+      .filter((r) => inMonthWindow(r.fields['계약월']))
+      .map((r) => ({
+        id: r.id,
+        month: r.fields['계약월'] || '',
+        period: String(r.fields['DP_기간'] || '').replace(/~/, ' ~ '),
+        generatedAt: fmtKST(genAt(r.fields)) || null,
+        isCurrent: r.id === campaignId,
+      }));
+
+    // 기본은 최신본. 조회 가능 기간 안에 없으면 이 레코드 것으로 물러선다.
+    // ?exact=1 이면 **요청한 레코드 그대로** 준다 — 리포트 화면에서 지난 회차를
+    // 골랐을 때 다시 최신으로 튕기지 않게 하는 스위치다.
+    // (달력 쪽은 exact 없이 불러 최신 요약·최신 링크를 받는다)
+    const wantExact = String(req.query.exact || '') === '1' && hasReport(cf);
+    const rpt = wantExact
+      ? { id: campaignId, fields: cf }
+      : (reportRecs.filter((r) => inMonthWindow(r.fields['계약월']))[0]
+         || (hasReport(cf) ? { id: campaignId, fields: cf } : null));
+
     let dpReport = null;
-    if (cf['DP_기간']) {
+    if (rpt || cf['DP_기간']) {
+      const rf = rpt ? rpt.fields : cf;
+      const rid = rpt ? rpt.id : campaignId;
       let detail = null;
-      try { detail = cf['DP_리포트JSON'] ? JSON.parse(cf['DP_리포트JSON']) : null; } catch { detail = null; }
-      const storeCode = cf['DP_매장코드'] || '';
+      try { detail = rf['DP_리포트JSON'] ? JSON.parse(rf['DP_리포트JSON']) : null; } catch { detail = null; }
+      const storeCode = rf['DP_매장코드'] || cf['DP_매장코드'] || '';
       dpReport = {
         cpt,
         storeCode,
+        // 리포트를 열 때 쓸 레코드. 최신본이 다른 달이면 그쪽을 가리킨다.
+        campaignId: rid,
+        month: rf['계약월'] || '',
+        fromOtherMonth: (rf['계약월'] || '') !== month,
+        months: dpReportMonths,
         url: storeCode ? `/reports/dp_${storeCode}.html` : null,
-        period: String(cf['DP_기간']).replace(/~/, ' ~ '),
-        exposure: cf['DP_노출'] != null ? Number(cf['DP_노출']).toLocaleString() : null,
-        click: cf['DP_클릭'] ?? null,
-        visit: cf['DP_방문'] ?? null,
-        intent: cf['DP_관심'] ?? null,
-        rank: cf['DP_순위'] != null ? `상권 ${cf['DP_순위']}위` : null,
-        mom: cf['DP_전월비'] ? (String(cf['DP_전월비']).startsWith('-') ? cf['DP_전월비'] : `+${cf['DP_전월비']}`) : null,
-        good: cf['DP_호평률'] != null ? `호평률 ${cf['DP_호평률']}%` : null,
+        period: String(rf['DP_기간'] || '').replace(/~/, ' ~ '),
+        exposure: rf['DP_노출'] != null ? Number(rf['DP_노출']).toLocaleString() : null,
+        click: rf['DP_클릭'] ?? null,
+        visit: rf['DP_방문'] ?? null,
+        intent: rf['DP_관심'] ?? null,
+        rank: rf['DP_순위'] != null ? `상권 ${rf['DP_순위']}위` : null,
+        mom: rf['DP_전월비'] ? (String(rf['DP_전월비']).startsWith('-') ? rf['DP_전월비'] : `+${rf['DP_전월비']}`) : null,
+        good: rf['DP_호평률'] != null ? `호평률 ${rf['DP_호평률']}%` : null,
         adShare: detail?.adflow?.running ? detail.adflow.imp_share : null,
         detail,
       };
@@ -749,13 +856,8 @@ export default async function handler(req, res) {
     let siblings = { prev: null, next: null };
     if (brandName) {
       try {
-        const esc = (s) => String(s).replace(/"/g, '\\"');
-        const conds = [`FIND("${esc(brandName)}", {고객사명} & "") > 0`];
-        if (branchName) conds.push(`FIND("${esc(branchName)}", {지점명} & "") > 0`);
-        const f = encodeURIComponent(`AND(${conds.join(',')})`);
-        const u = `https://api.airtable.com/v0/${BASE_ID}/${CAMPAIGN_TABLE}`
-          + `?filterByFormula=${f}&pageSize=100&fields%5B%5D=${encodeURIComponent('계약월')}`;
-        const all = await fetchAllRecords(u);
+        // 위에서 이미 매장 전체를 읽어 뒀다 — 같은 질의를 두 번 하지 않는다.
+        const all = storeRecs;
         const cur = monthKey(month);
         // 조회 가능 기간 — 협력사 화면과 같은 규칙(_month-window.js).
         // 이 제한이 없으면 7월 링크에서 6월 → 5월 → 4월 로 계속 거슬러 올라가
