@@ -255,3 +255,18 @@ table.atg-fix{table-layout:fixed}
 .atg-root select.atg-smx:hover{background:rgba(139,92,246,.22);border-bottom-color:var(--accent)}
 .atg-root select.atg-smx.atg-pend{color:#DDD6FE;background:rgba(139,92,246,.24);border-bottom-color:var(--accent);font-weight:700}
 .atg-root select.atg-smx option{background:#161922;color:var(--ink)}
+
+.atg-root /* 월별 이력 요약 스트립 — 고객사 펼침 상단 */
+.atg-mss{display:flex;gap:.45rem;overflow-x:auto;padding:.6rem 1rem .55rem;border-bottom:1px solid #1A1E2A;background:#10131C}
+.atg-msc{flex:0 0 auto;min-width:9.8rem;text-align:left;background:#161A26;border:1px solid #232838;border-radius:9px;padding:.45rem .62rem;color:var(--ink2);cursor:pointer;font-family:inherit;transition:.15s}
+.atg-msc:hover{border-color:var(--accent);background:rgba(139,92,246,.12);transform:translateY(-1px)}
+.atg-msc.atg-on{border-color:var(--accent);background:#221C38;cursor:default}
+.atg-msc.atg-on:hover{transform:none}
+.atg-msc-m{display:flex;justify-content:space-between;align-items:baseline;gap:.5rem;font-weight:800;font-size:.78rem;color:var(--ink)}
+.atg-msc-p{font-family:var(--mono);font-size:.74rem;color:var(--accent2)}
+.atg-msc-t{display:block;font-size:.72rem;margin-top:.16rem;color:var(--ink2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.atg-msc-t b{color:var(--ink)}
+.atg-msc-t .atg-u{color:var(--ok)}
+.atg-msc-t .atg-c{color:var(--bad)}
+.atg-msc-f{display:block;font-size:.66rem;margin-top:.24rem;color:var(--muted);font-family:var(--mono);white-space:nowrap}
+.atg-mss-empty{font-size:.75rem;color:var(--muted);padding:.55rem 1rem;border-bottom:1px solid #1A1E2A;background:#10131C}

@@ -134,6 +134,9 @@ export default function AdminTargetsPage() {
   });
   const [toast, setToast] = useState('');
   const toastT = useRef(null);
+  // 고객사 펼침 상단의 월별 이력 요약 — 고객사별 1회 로드 후 캐시
+  const [sums, setSums] = useState({});
+  const sumsRef = useRef({});
 
   const say = useCallback((msg) => {
     setToast(msg);
@@ -159,6 +162,20 @@ export default function AdminTargetsPage() {
   }, []);
 
   useEffect(() => { load(''); }, [load]);
+
+  const loadSummary = useCallback(async (name) => {
+    if (sumsRef.current[name]) return;
+    sumsRef.current[name] = 1;
+    try {
+      const r = await fetch(`/api/admin-targets?store=${encodeURIComponent(name)}`, { headers: adminHeaders() });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || `실패 (${r.status})`);
+      setSums((p) => ({ ...p, [name]: j.months || [] }));
+    } catch (e) {
+      sumsRef.current[name] = 0;   // 다음 펼침에서 재시도
+      setSums((p) => ({ ...p, [name]: { err: e.message || '월별 이력을 불러오지 못했습니다' } }));
+    }
+  }, []);
 
   const changeMonth = (m) => {
     setMonth(m);
@@ -601,11 +618,13 @@ export default function AdminTargetsPage() {
             || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT'
             || e.target.tagName === 'BUTTON') return;
           if (sub) return;
+          if (openCust !== r.n) loadSummary(r.n);
           setOpenCust((p) => (p === r.n ? null : r.n));
           setOpenTy(new Set());
         }}
         onKeyDown={(e) => {
           if (e.key !== 'Enter' || sub) return;
+          if (openCust !== r.n) loadSummary(r.n);
           setOpenCust((p) => (p === r.n ? null : r.n));
         }}
       >
@@ -646,6 +665,50 @@ export default function AdminTargetsPage() {
             <button className="atg-act" type="button" disabled={busy} onClick={() => saveTargets(r, m)}>확정 · 저장</button>
           </div>
         )}
+      </div>
+    );
+  };
+
+  /* ── 월별 이력 요약 스트립 (고객사 펼침 상단) ─────────── */
+  const summaryStrip = (r) => {
+    const s = sums[r.n];
+    if (!s) return <div className="atg-mss-empty">월별 이력 불러오는 중…</div>;
+    if (s.err) return <div className="atg-mss-empty atg-bad">{s.err}</div>;
+    if (!s.length) return <div className="atg-mss-empty">월별 기록이 없습니다</div>;
+    return (
+      <div className="atg-mss">
+        {s.map((x) => {
+          const cur = x.mon === month;
+          const rate = x.tg ? Math.round((x.ac / x.tg) * 100) : null;
+          return (
+            <button
+              key={x.mon}
+              type="button"
+              className={`atg-msc${cur ? ' atg-on' : ''}`}
+              title={cur ? '지금 보는 달' : `${x.mon}로 이동`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (cur) return;
+                changeMonth(x.mon);
+                setOpenCust(r.n);   // 달을 옮겨도 이 고객사는 펼친 채 유지
+              }}
+            >
+              <span className="atg-msc-m">{x.mon}<span className="atg-msc-p">{rate !== null ? `${rate}%` : '—'}</span></span>
+              {TYPES.map((k) => {
+                const a = x.t?.[k];
+                if (!a || (!a[0] && !a[1] && !a[2])) return null;
+                return (
+                  <span className="atg-msc-t" key={k}>
+                    {k} <b>{a[1]}</b>/{a[0] || '—'}
+                    {a[2] ? <span className="atg-u"> 업{a[2]}</span> : null}
+                    {a[3] ? <span className="atg-c"> 취{a[3]}</span> : null}
+                  </span>
+                );
+              })}
+              <span className="atg-msc-f">실적 {nf(x.ac)}{x.bud ? ` · 예산 ${nf(x.bud)}` : ''}</span>
+            </button>
+          );
+        })}
       </div>
     );
   };
@@ -713,6 +776,7 @@ export default function AdminTargetsPage() {
           {rows.map((r) => (openCust === r.n
             ? (
               <div className="atg-expand" key={r.n}>
+                {summaryStrip(r)}
                 {rowBox(r, prevM, true)}
                 {rowBox(r, month, false)}
                 {rowBox(r, nextM, true)}
