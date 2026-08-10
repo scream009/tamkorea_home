@@ -130,7 +130,8 @@ export default function AdminTargetsPage() {
   const [smMemo, setSmMemo] = useState('');
   const [bulkTo, setBulkTo] = useState({});   // 일괄 지정 대상 월 — 리스트마다 따로 기억한다
   const [user, setUser] = useState(() => {
-    try { return sessionStorage.getItem('tk_editor') || '대표'; } catch { return '대표'; }
+    // 기본값은 서버가 알려주는 로그인 키 아이디(who)로 잡는다 — load() 에서 채움
+    try { return sessionStorage.getItem('tk_editor') || ''; } catch { return ''; }
   });
   const [toast, setToast] = useState('');
   const toastT = useRef(null);
@@ -154,6 +155,13 @@ export default function AdminTargetsPage() {
       if (!r.ok) throw new Error(j.error || `불러오지 못했습니다 (${r.status})`);
       setData(j);
       if (!m) setMonth(j.months[1] || j.months[0]);
+      // 수정자 기본값 = 로그인한 키의 아이디. 세션에서 고른 값이 지금 선택지에 있으면 존중,
+      // 없으면(옛 직함 저장값 등) who 로 교체한다.
+      const eds = j.editors || [];
+      setUser((cur) => {
+        if (cur && eds.includes(cur)) return cur;
+        return (j.who && eds.includes(j.who) ? j.who : '') || j.who || eds[0] || cur || '';
+      });
     } catch (e) {
       setErr(e.message);
     } finally {

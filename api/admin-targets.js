@@ -17,7 +17,7 @@
  * CORS 헤더는 두지 않는다. 같은 오리진에서만 부른다.
  */
 
-import { blockedByAdminGate, escFormula } from './_admin-auth.js';
+import { blockedByAdminGate, escFormula, adminWho, parseAdminKeys } from './_admin-auth.js';
 
 const KEY = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const BASE = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
@@ -30,7 +30,18 @@ const TYPES = ['인플', '체험', '기자'];
 /** 유형별 단가 — 합산_목표 수식과 같은 값이어야 화면 계산이 어긋나지 않는다. */
 const UNIT = { 인플: 330000, 체험: 50000, 기자: 50000 };
 
+// 구 직함 목록 — 개인 키 도입 전 이력과의 호환용. 화면 드롭다운은 키 아이디를 쓴다.
 const EDITORS = ['대표', '이사', '실장', '관리자'];
+
+/** 키 아이디 목록 (GG·QN·AN·LH…) — 있으면 이게 수정자 선택지가 된다 */
+function editorIds() {
+  return [...new Set(parseAdminKeys().map(([id]) => id))].filter((x) => x && x !== 'admin');
+}
+/** 수정자 검증 — 키 아이디와 구 직함 둘 다 받는다 (옛 세션 저장값 호환) */
+function validEditor(by) {
+  const v = String(by || '').trim();
+  return (EDITORS.includes(v) || editorIds().includes(v)) ? v : '';
+}
 
 const CAMPAIGN_FIELDS = [
   '고객사명', '지점명', '계약월', '계약유형', '비고',
@@ -115,12 +126,14 @@ async function fetchAll(table, { formula, fields } = {}) {
 }
 
 /** 10건씩 끊어 PATCH. Airtable 한도가 10이다. */
-async function patchAll(table, records) {
+async function patchAll(table, records, typecast = false) {
+  // typecast=true 는 목표수정자(singleSelect)에 키 아이디(GG 등) 옵션을 자동 생성하기
+  // 위해서만 쓴다 — 다른 쓰기는 false 유지 (없는 옵션 오타가 조용히 생기는 걸 막는다).
   for (let i = 0; i < records.length; i += 10) {
-     
+
     await at(`/${encodeURIComponent(table)}`, {
       method: 'PATCH',
-      body: JSON.stringify({ records: records.slice(i, i + 10), typecast: false }),
+      body: JSON.stringify({ records: records.slice(i, i + 10), typecast }),
     });
   }
 }
@@ -294,9 +307,9 @@ async function buildSummary(name) {
       || TYPES.some((k) => s.t[k][0] || s.t[k][1] || s.t[k][2]))
     .sort((a, b) => {
       const pa = parseMonth(a.mon); const pb = parseMonth(b.mon);
-      return (pb.y * 12 + pb.n) - (pa.y * 12 + pa.n);   // 최신 달 먼저
+      return (pa.y * 12 + pa.n) - (pb.y * 12 + pb.n);   // 이른 달이 왼쪽 (Owner 지정)
     })
-    .slice(0, 12);
+    .slice(-12);   // 넘치면 오래된 쪽을 버린다
   return { name, months };
 }
 
@@ -304,7 +317,7 @@ async function buildSummary(name) {
 async function saveTargets(body) {
   const rid = String(body.rid || '');
   if (!/^rec[A-Za-z0-9]{14}$/.test(rid)) throw Object.assign(new Error('계약 레코드가 올바르지 않습니다.'), { status: 400 });
-  const by = EDITORS.includes(body.by) ? body.by : '';
+  const by = validEditor(body.by);
   if (!by) throw Object.assign(new Error('수정자를 고르세요.'), { status: 400 });
 
   const cur = await at(`/${encodeURIComponent(T_CAMPAIGN)}/${rid}`);
@@ -341,7 +354,8 @@ async function saveTargets(body) {
   patch['목표수정자'] = by;
   patch['목표수정일'] = new Date().toISOString();
 
-  await patchAll(T_CAMPAIGN, [{ id: rid, fields: patch }]);
+  // typecast — 목표수정자(singleSelect)에 키 아이디 옵션이 없으면 자동 생성
+  await patchAll(T_CAMPAIGN, [{ id: rid, fields: patch }], true);
   return { ok: true, changed: parts.length, line };
 }
 
@@ -361,7 +375,7 @@ async function ensureCampaign(body) {
   const month = one(body.month);
   if (!name) throw Object.assign(new Error('고객사를 알 수 없습니다.'), { status: 400 });
   if (!parseMonth(month)) throw Object.assign(new Error('월 형식이 올바르지 않습니다.'), { status: 400 });
-  const by = EDITORS.includes(body.by) ? body.by : '';
+  const by = validEditor(body.by);
   if (!by) throw Object.assign(new Error('수정자를 고르세요.'), { status: 400 });
 
   // 같은 매장의 계약 전부 (달 무관) — 껍데기까지 포함해서 본다
@@ -385,7 +399,7 @@ async function ensureCampaign(body) {
           목표수정자: by,
           목표수정일: new Date().toISOString(),
         },
-      }]);
+      }], true);
       return { ok: true, rid: exist.id, mode: 'revived' };
     }
     return { ok: true, rid: exist.id, mode: 'exists' };
@@ -413,6 +427,7 @@ async function ensureCampaign(body) {
           목표수정일: new Date().toISOString(),
         },
       }],
+      typecast: true,   // 목표수정자 키 아이디 옵션 자동 생성
     }),
   });
   return { ok: true, rid: created.records[0].id, mode: 'created' };
@@ -424,7 +439,7 @@ async function moveSettlement(body) {
   const to = one(body.to);
   if (!ids.length) throw Object.assign(new Error('옮길 예약이 없습니다.'), { status: 400 });
   if (!parseMonth(to)) throw Object.assign(new Error('옮길 달이 올바르지 않습니다.'), { status: 400 });
-  const by = EDITORS.includes(body.by) ? body.by : '';
+  const by = validEditor(body.by);
   if (!by) throw Object.assign(new Error('수정자를 고르세요.'), { status: 400 });
 
   const f = `OR(${ids.map((id) => `RECORD_ID()='${id}'`).join(',')})`;
@@ -509,7 +524,16 @@ export default async function handler(req, res) {
         res.status(400).json({ error: '월 형식이 올바르지 않습니다. 예) 2026. 7월' });
         return;
       }
-      res.status(200).json(await buildView(month));
+      // 수정자 = 키 아이디 (개인 키 로그인 도입 후). who 는 지금 로그인한 키의 아이디 —
+      // 화면이 수정자 기본값으로 쓴다. 공용키(admin)는 특정인이 아니라 기본값 없이 보낸다.
+      const ids = editorIds();
+      const who = adminWho(String(req.headers['x-admin-key'] || req.query?.k || ''));
+      const view = await buildView(month);
+      res.status(200).json({
+        ...view,
+        editors: ids.length ? ids : EDITORS,
+        who: who && who !== 'admin' ? who : '',
+      });
       return;
     }
 
