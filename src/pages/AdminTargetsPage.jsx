@@ -710,17 +710,36 @@ export default function AdminTargetsPage() {
               }}
             >
               <span className="atg-msc-m">{x.mon}<span className="atg-msc-p">{rate !== null ? `${rate}%` : '—'}</span></span>
-              {TYPES.map((k) => {
-                const a = x.t?.[k];
-                if (!a || (!a[0] && !a[1] && !a[2])) return null;
+              {(() => {
+                const tys = TYPES.filter((k) => {
+                  const a = x.t?.[k];
+                  return a && (a[0] || a[1] || a[2]);
+                });
+                if (!tys.length) return null;
                 return (
-                  <span className="atg-msc-t" key={k}>
-                    {k} <b>{a[1]}</b>/{a[0] || '—'}
-                    {a[2] ? <span className="atg-u"> 업{a[2]}</span> : null}
-                    {a[3] ? <span className="atg-c"> 취{a[3]}</span> : null}
+                  <span className="atg-msc-tb">
+                    <span className="atg-msc-c atg-msc-h" aria-hidden="true" />
+                    <span className="atg-msc-c atg-msc-h">목</span>
+                    <span className="atg-msc-c atg-msc-h">섭</span>
+                    <span className="atg-msc-c atg-msc-h">업</span>
+                    <span className="atg-msc-c atg-msc-h">취</span>
+                    {tys.map((k) => {
+                      const [g, v, u, cx] = x.t[k];
+                      const dv = g ? v - g : 0;   // 섭외 부족량 (음수 = 모자람)
+                      const du = g ? u - g : 0;   // 업완 부족량
+                      return (
+                        <React.Fragment key={k}>
+                          <span className="atg-msc-c atg-msc-k">{k}</span>
+                          <span className="atg-msc-c">{g || '—'}</span>
+                          <span className="atg-msc-c"><b>{v}</b>{dv < 0 ? <i className="atg-msc-d">({dv})</i> : null}</span>
+                          <span className="atg-msc-c"><b>{u}</b>{du < 0 ? <i className="atg-msc-d">({du})</i> : null}</span>
+                          <span className={`atg-msc-c${cx ? ' atg-c' : ''}`}>{cx || 0}</span>
+                        </React.Fragment>
+                      );
+                    })}
                   </span>
                 );
-              })}
+              })()}
               <span className="atg-msc-f">실적 {nf(x.ac)}{x.bud ? ` · 예산 ${nf(x.bud)}` : ''}</span>
             </button>
           );
