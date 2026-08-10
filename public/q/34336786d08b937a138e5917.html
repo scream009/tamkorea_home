@@ -412,7 +412,13 @@ function 항목그리기(){
     const i = +el.dataset.i, k = el.dataset.k;
     if (k === "삭제")      el.onclick = () => { 항목.splice(i, 1); 항목그리기(); render(); };
     else if (k === "열림") el.onclick = () => { 항목[i].열림 = !항목[i].열림; 항목그리기(); };
-    else if (k === "선택") el.onchange = () => { 항목[i].선택 = el.checked; 항목그리기(); render(); };
+    else if (k === "선택") el.onchange = () => {
+      // 목록 전체를 다시 그리면 폰에서 깜빡이고 스크롤이 튄다 → 그 줄만 바꾼다
+      항목[i].선택 = el.checked;
+      el.closest(".it").classList.toggle("on", el.checked);
+      el.closest(".it").classList.toggle("off", !el.checked);
+      render();
+    };
     else if (k === "내용") el.oninput = () => { 항목[i].내용 = el.value.split("\n"); render(); };
     else if (k === "공급가액") {
       el.oninput  = () => { 항목[i].공급가액 = 숫자(el.value); render(); };
