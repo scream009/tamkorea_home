@@ -77,8 +77,16 @@ export const CpcBanner = ({ cpc, isPartner }) => {
   if (!cpc) return null;
   const cls = cpc.status; // green | amber | red
   const label = cls === 'red' ? '🔴 충전 필요' : cls === 'amber' ? '🟡 소진 임박' : '🟢 정상';
+  // 잔액은 매일 줄어드는 값이라 수집이 오래되면 사실과 벌어진다.
+  // 2일 이상 지난 값으로 '광고가 중단됐다'고 단정하면, 그 사이 충전한
+  // 고객사에게 틀린 안내가 나간다(실측 2026-08-10 한라갈치: 08-08 수집분 0원).
+  // 하루만 지나도 그 사이 충전이 있을 수 있다. '중단됐다'는 단정은
+  // 오늘 수집한 값일 때만 한다.
+  const stale = cpc.ageDays != null && cpc.ageDays >= 1;
   const msg = cls === 'red'
-    ? '광고가 중단된 상태입니다. 충전하시면 즉시 재개됩니다.'
+    ? (stale
+        ? `${cpc.updated} 확인 기준으로 잔액이 소진된 상태였습니다. 이후 충전하셨다면 다음 갱신에 반영됩니다.`
+        : '광고가 중단된 상태입니다. 충전하시면 즉시 재개됩니다.')
     : cls === 'amber'
     ? `약 ${cpc.daysLeft}일 후 소진이 예상됩니다. 미리 충전을 권장드립니다.`
     : `광고가 정상 운영 중입니다. 약 ${cpc.daysLeft}일 후 소진이 예상됩니다.`;
@@ -119,8 +127,9 @@ export const CpcBanner = ({ cpc, isPartner }) => {
       {/* CPC 잔액은 '지금 상태'라 계약월과 무관하게 최신 수집분을 보여준다.
           링크의 달과 다르면 어느 달 회차인지 밝힌다 — 안 밝히면 7월 화면에
           8월 숫자가 왜 있는지 설명되지 않는다. */}
-      <div className="cpc-upd">
+      <div className={`cpc-upd${stale ? ' stale' : ''}`}>
         갱신: {cpc.updated}
+        {cpc.ageDays != null && cpc.ageDays >= 1 && <> · {cpc.ageDays}일 전</>}
         {cpc.fromOtherMonth && cpc.month && <> · {cpc.month} 수집분(최신)</>}
       </div>
     </div>

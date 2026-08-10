@@ -472,6 +472,14 @@ export default async function handler(req, res) {
         // 안 밝히면 7월 리포트에 8월 잔액이 섞여 나온 것처럼 보인다.
         month: sf['계약월'] || '',
         fromOtherMonth: (sf['계약월'] || '') !== month,
+        // 며칠 전 값인가. 잔액은 매일 줄어드는 값이라 오래되면 사실과 벌어진다.
+        // 실측 2026-08-10 한라갈치: 08-08 수집분이 0원인데 그 뒤 충전됐다 —
+        // 화면은 '광고 중단'이라 단정하고 있었다. 나이를 알려 주고 단정을 피한다.
+        ageDays: (() => {
+          const t = Date.parse(sf['CPC_갱신일'] || '');
+          if (Number.isNaN(t)) return null;
+          return Math.max(0, Math.floor((Date.now() - t) / 86400000));
+        })(),
         weekly: [1, 2, 3, 4, 5]
           .map((n) => sf[`CPC_주${n}잔액`])
           .filter((v) => v !== undefined && v !== null),
