@@ -245,7 +245,7 @@ const AdSettings = ({ ad, upside }) => {
   // 안 나갔다(2026-08-03 용담밭담). 설정 카드만 접고 제안은 그대로 내보낸다.
   if (!ad) return upside ? <div className="dpr-adset"><Upside p={upside} /></div> : null;
   const { budget, floatRatio, peak, bid, hours, hoursOn, yesterday, useRate, nudge, paused,
-          hasSettings } = ad;
+          hasSettings, snapAt } = ad;
 
   // 노출시간 문자열 → 24칸 막대.
   // ⚠️ 한 구간(`매일 11:00-21:00`)만 있는 게 아니다. 점심·저녁을 갈라 트는 매장이
@@ -330,7 +330,10 @@ const AdSettings = ({ ad, upside }) => {
       {/* 정지 중이면 아래 숫자들은 '지금 돌고 있는 값'이 아니라 '멈춘 채 남아 있는 값'이다.
           그 구분이 없으면 예산 150元이 매일 나가고 있는 것으로 읽힌다. */}
       <div className="dpr-adset-h">
-        ⚙️ 현재 광고 설정 <span className="dpr-sm">推广通 실측</span>
+        {/* 스냅샷이면 '현재'가 아니라 리포트 시점 값이다 — 시점을 정직하게 밝힌다
+            (본문 잔액과 이 섹션이 다른 시점을 말하면 한 문서에서 서로 모순된다) */}
+        ⚙️ {snapAt ? '광고 설정' : '현재 광고 설정'}{' '}
+        <span className="dpr-sm">{snapAt ? `리포트 시점 실측 · ${snapAt}` : '推广通 실측'}</span>
         {paused && <span className="dpr-adset-paused">일시정지 중 · 설정값 유지</span>}
       </div>
       <div className="dpr-adset-grid">
@@ -542,7 +545,7 @@ const CpcSection = ({ cpc, funnel, dominance, store, adSet, projection }) => {
 };
 
 // ── 광고 기여도 ────────────────────────────────────────────────────
-const AdflowSection = ({ adflow, name, cpc }) => {
+const AdflowSection = ({ adflow, name }) => {
   if (!adflow || !adflow.running || adflow.imp_share == null) {
     // 실제 미집행과 수집 실패를 구분해 안내한다.
     // 잔액만 보고 추측하면 잔액이 있는 미집행 매장을 '수집 실패'로 잘못 알린다.

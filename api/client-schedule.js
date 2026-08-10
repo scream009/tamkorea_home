@@ -520,6 +520,20 @@ export default async function handler(req, res) {
       };
     }
 
+    // 넛지 판정 — 현재값 경로와 리포트 스냅샷 경로가 **같은 규칙**을 쓰도록 한 곳에 둔다.
+    // 순서(정지 → 잔액 → 임박 → 예산바닥 → 미집행 → 여유)의 근거는 아래 adSet 블록 주석 참조.
+    const judgeNudge = ({ paused, bal, yst, useRate, daysLeft, hoursOn }) => {
+      if (paused) return 'paused';
+      if (bal != null && Number(bal) <= 0) return 'no_balance';   // 충전이 먼저
+      if (daysLeft != null && Number(daysLeft) <= 3) return 'low_balance';
+      if (useRate != null && useRate >= 95) return 'budget_capped';
+      if (yst != null && Number(yst) <= 0) return 'no_spend';
+      if (useRate != null && useRate < 60) {
+        return hoursOn != null && hoursOn >= 168 ? 'bid_only' : 'room_to_grow';
+      }
+      return null;
+    };
+
     // ── 광고 설정 (예산·클릭단가·노출시간) ─────────────────────
     // ad_settings.py 가 推广通 포털에서 읽어 Campaign_DB 에 적재한다.
     // 리포트가 "얼마 썼다"만 말하면 사장님이 손댈 곳이 안 보인다. 손잡이는 셋뿐이다
@@ -574,22 +588,7 @@ export default async function handler(req, res) {
         //    나란히 서서 서로를 반박한다(실측 2026-08-03 용담밭담).
         const pausedFlag = String(af['AD_캠페인상태'] || '') === 'paused';
         const paused = pausedFlag && !(yst != null && Number(yst) > 0);
-        let nudge = null;
-        if (paused) {
-          nudge = 'paused';
-        } else if (bal != null && Number(bal) <= 0) {
-          nudge = 'no_balance';           // 광고 꺼짐 — 설정 얘기보다 충전이 먼저
-        } else if (daysLeft != null && Number(daysLeft) <= 3) {
-          nudge = 'low_balance';          // 곧 멈춘다
-        } else if (useRate != null && useRate >= 95) {
-          nudge = 'budget_capped';        // 예산이 매일 바닥 → 증액 검토
-        } else if (yst != null && Number(yst) <= 0) {
-          nudge = 'no_spend';             // 잔액은 있는데 집행 0 — 예산 문제가 아니다
-        } else if (useRate != null && useRate < 60) {
-          // 예산이 남는 건 돈이 모자란 게 아니라 노출 기회가 없다는 뜻이다.
-          // 시간이 이미 168h면 늘릴 곳이 없어 단가밖에 남지 않는다.
-          nudge = hoursOn != null && hoursOn >= 168 ? 'bid_only' : 'room_to_grow';
-        }
+        const nudge = judgeNudge({ paused, bal, yst, useRate, daysLeft, hoursOn });
         adSet = {
           budget, budgetIsFallback: basic == null && budget != null,
           hasSettings: adFetched,   // false = 설정 미수집 → '미설정'이라 단정하면 안 된다
@@ -822,6 +821,46 @@ export default async function handler(req, res) {
         adShare: detail?.adflow?.running ? detail.adflow.imp_share : null,
         detail,
       };
+    }
+
+    // ── 월간 리포트 일관성 (Owner 룰 2026-08-10: 리포트는 작성 당시 데이터로) ──
+    // adSet 의 소비자는 리포트 화면(DpReportPage)뿐이다. 잔액·소진 같은 유동값을
+    // '지금' 기준으로 내리면 리포트 본문 스냅샷(잔액 4,350·어제 900)과 하단 광고 설정
+    // 분석("잔액이 없어 광고가 나가지 않는다")이 **한 문서 안에서 서로를 반박**한다
+    // (실측 2026-08-10 한라갈치 — CPC 재수집이 현재잔액을 0으로 갱신한 직후).
+    // 리포트에 생성 시점 스냅샷(detail.cpc / detail.ad_set)이 있으면 유동값과 넛지
+    // 판정을 그 시점으로 고정한다. 스냅샷이 없는 구 리포트는 현재값 그대로(한계).
+    {
+      const snapCpc = dpReport?.detail?.cpc || null;
+      const snapAd = dpReport?.detail?.ad_set || null;   // 신 리포트만 있음 (2026-08-10+)
+      if (adSet && snapCpc && snapCpc.balance != null) {
+        const bal = Number(snapCpc.balance);
+        const yst = snapCpc.yesterday != null ? Number(snapCpc.yesterday) : null;
+        const budget = (snapAd?.budget ?? adSet.budget) ?? (snapCpc.daily_budget ?? null);
+        const useRate = budget ? Math.round((Number(yst) / Number(budget)) * 100) : null;
+        const daysLeft = snapCpc.days_left ?? null;
+        // 스냅샷 시점에 집행이 있었으면 '정지' 주장은 기각 (현재값 경로와 같은 원칙)
+        const paused = adSet.paused && !(yst != null && yst > 0);
+        adSet = {
+          ...adSet,
+          paused,
+          yesterday: yst,
+          useRate,
+          daysLeft,
+          budget,
+          // 설정값도 스냅샷이 있으면 그 시점으로 (없으면 현재 레코드 값 유지)
+          bid: snapAd?.bid ?? adSet.bid,
+          hours: snapAd?.hours ?? adSet.hours,
+          hoursOn: snapAd?.hours_on ?? adSet.hoursOn,
+          floatRatio: snapAd?.float ?? adSet.floatRatio,
+          peak: snapAd?.peak ?? adSet.peak,
+          nudge: judgeNudge({
+            paused, bal, yst, useRate, daysLeft,
+            hoursOn: snapAd?.hours_on ?? adSet.hoursOn,
+          }),
+          snapAt: snapCpc.updated || null,   // 화면 라벨용 — 어느 시점 실측인지
+        };
+      }
     }
 
     // ── 따종 고객사 여부 (매장 단위) ──────────────────────────────
