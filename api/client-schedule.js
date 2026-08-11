@@ -915,11 +915,13 @@ export default async function handler(req, res) {
     // 계약도 실적도 없는데 레코드만 남아 있는 달이다(제주육림 서사라점 7월:
     // 계약은 5·6·8월뿐인데 7월 레코드가 남아 있다). 6월 링크에서 '다음 실적'을
     // 누르면 빈 화면이 한 번 끼어들고, 8월을 보려면 한 번 더 눌러야 했다.
-    // → 건너뛸 달을 지정해 두고, **가장 가까운 남은 달**로 간다.
+    // → 건너뛸 달을 지정해 두고, 그 달을 지나 다음 달로 간다.
     //
-    // 건너뛸 달은 _month-window.js FLOOR_EXCEPTIONS 에 손으로 적는다. 자동 판정을
-    // 쓰지 않는 이유는 그 파일 주석에 실측과 함께 적어 뒀다(진행 중인 달의 76%가
-    // '빈 달'로 잡혀 다른 고객사 링크의 월 이동이 통째로 사라진다).
+    // 건너뛸 달은 _month-window.js FLOOR_EXCEPTIONS 에 손으로 적되, **그 달이 아직
+    // 비어 있을 때만** 실제로 건너뛴다. 나중에 목표나 실적이 들어가면 저절로 다시
+    // 보인다(Owner 지시 2026-08-05: 레코드는 Airtable 에 그대로 두고, 값이 들어오면
+    // 그때 표출). 빈 상태 판정을 **지정된 달에만** 거는 게 핵심이다 — 전체에 걸면
+    // 진행 중인 달의 76%가 빈 달로 잡힌다(실측은 _month-window.js 주석).
     //
     // 범위를 넓히는 변경이 아니다. 어디까지 열지는 여전히 조회 가능 기간이 정한다
     // (하한 = _month-window.js · 매장별 예외 포함, 상한 = 다음 달).
@@ -930,7 +932,31 @@ export default async function handler(req, res) {
         const all = storeRecs;
         const cur = monthKey(month);
         // 링크가 가리키는 달 자체는 건너뛰지 않는다 — 숨길 화면이 아니라 지금 열린 화면이다.
-        const skip = skipKeysFor(campaignName);
+        const skipCandidates = skipKeysFor(campaignName);
+        // '이 달에 보여 줄 게 있는가' — 네 축 중 하나라도 있으면 살린다.
+        // 목표·실적만 보면 계약은 했는데 아직 목표를 안 넣은 달이 숨는다.
+        // 그래서 예약 링크와 계약 정보(계약유형·총예산)까지 함께 본다.
+        const num = (v) => Number(Array.isArray(v) ? v[0] : v) || 0;
+        const sum = (f, names) => names.reduce((s, k) => s + num(f[k]), 0);
+        const hasSubstance = (f) => {
+          // 필드명 폴백 목록은 위 stats 계산과 같은 규칙을 쓴다(리네임 이력 때문).
+          const target = sum(f, ['인플_목표', '인플_요청', '# 인플_목표', '# 인플_요청',
+            '체험_목표', '체험단_요청', '# 체험_목표', '# 체험단_요청',
+            '기자_목표', '기자단_요청', '# 기자_목표', '# 기자단_요청']);
+          const done = sum(f, ['인플_방문', '# 인플_방문', '인플_실적', '# 인플_실적',
+            '체험_방문', '# 체험_방문', '체험_실적', '# 체험_실적',
+            '기자_실적', '# 기자_실적']);
+          if (target > 0 || done > 0) return true;
+          if ((f['진행_DB_OLD'] || []).length > 0) return true;   // 예약은 잡혔고 방문 전
+          if (f['계약유형'] || num(f['총예산']) > 0) return true;  // 목표 입력 전 신규 계약월
+          return false;
+        };
+        // 지정된 달이라도 값이 들어왔으면 건너뛰지 않는다.
+        const skip = new Set(
+          all.filter((r) => skipCandidates.has(monthKey(r.fields['계약월']))
+                            && !hasSubstance(r.fields))
+             .map((r) => monthKey(r.fields['계약월']))
+        );
         // 조회 가능 기간 — 협력사 화면과 같은 규칙(_month-window.js).
         // 이 제한이 없으면 7월 링크에서 6월 → 5월 → 4월 로 계속 거슬러 올라가
         // 오래된 실적이 전부 열린다.
