@@ -3,7 +3,7 @@
  * GET /api/client-schedule?campaignId=recXXXXXXXX
  */
 
-import { monthKey, inMonthWindow } from './_month-window.js';
+import { monthKey, inMonthWindow, skipKeysFor } from './_month-window.js';
 import { composeSentMessage } from './_resv-message.js';
 import { storeSig, storeCodeDaily } from './_qr-sign.js';
 
@@ -909,14 +909,28 @@ export default async function handler(req, res) {
 
     // ── 같은 매장의 인접 실적월 ────────────────────────────────
     // 링크는 계약월 레코드 하나에 고정돼 있어 다른 달 실적을 볼 수 없다.
-    // 같은 매장의 전월/다음달 레코드 ID를 함께 주어 화면에서 전환하게 한다.
-    // (요청대로 ±1개월만 — 전체 목록을 열어주면 오래된 달까지 노출된다)
+    // 같은 매장의 이전/다음 레코드 ID를 함께 주어 화면에서 전환하게 한다.
+    //
+    // 예전엔 **정확히 ±1개월**만 봤다. 그러면 중간에 낀 빈 껍데기 달이 길을 막는다 —
+    // 계약도 실적도 없는데 레코드만 남아 있는 달이다(제주육림 서사라점 7월:
+    // 계약은 5·6·8월뿐인데 7월 레코드가 남아 있다). 6월 링크에서 '다음 실적'을
+    // 누르면 빈 화면이 한 번 끼어들고, 8월을 보려면 한 번 더 눌러야 했다.
+    // → 건너뛸 달을 지정해 두고, **가장 가까운 남은 달**로 간다.
+    //
+    // 건너뛸 달은 _month-window.js FLOOR_EXCEPTIONS 에 손으로 적는다. 자동 판정을
+    // 쓰지 않는 이유는 그 파일 주석에 실측과 함께 적어 뒀다(진행 중인 달의 76%가
+    // '빈 달'로 잡혀 다른 고객사 링크의 월 이동이 통째로 사라진다).
+    //
+    // 범위를 넓히는 변경이 아니다. 어디까지 열지는 여전히 조회 가능 기간이 정한다
+    // (하한 = _month-window.js · 매장별 예외 포함, 상한 = 다음 달).
     let siblings = { prev: null, next: null };
     if (brandName) {
       try {
         // 위에서 이미 매장 전체를 읽어 뒀다 — 같은 질의를 두 번 하지 않는다.
         const all = storeRecs;
         const cur = monthKey(month);
+        // 링크가 가리키는 달 자체는 건너뛰지 않는다 — 숨길 화면이 아니라 지금 열린 화면이다.
+        const skip = skipKeysFor(campaignName);
         // 조회 가능 기간 — 협력사 화면과 같은 규칙(_month-window.js).
         // 이 제한이 없으면 7월 링크에서 6월 → 5월 → 4월 로 계속 거슬러 올라가
         // 오래된 실적이 전부 열린다.
@@ -925,10 +939,27 @@ export default async function handler(req, res) {
         // 계약명을 넘겨 주면 그쪽이 이 매장에 맞는 하한을 골라 준다.
         // (제주육림 서사라점처럼 계약이 하한보다 앞에 걸친 곳을 위한 통로다)
         const list = all
-          .map((r) => ({ id: r.id, month: r.fields['계약월'] || '', k: monthKey(r.fields['계약월']) }))
-          .filter((x) => inMonthWindow(x.month, campaignName));
-        const prev = list.filter((x) => x.k === cur - 1)[0];
-        const next = list.filter((x) => x.k === cur + 1)[0];
+          .map((r) => ({
+            id: r.id,
+            month: r.fields['계약월'] || '',
+            k: monthKey(r.fields['계약월']),
+          }))
+          .filter((x) => !skip.has(x.k) && inMonthWindow(x.month, campaignName));
+        // 같은 달 레코드가 둘인 경우(중복 계약월 — 워치리스트 항목)는 먼저 잡히는 것.
+        const byKey = new Map();
+        for (const x of list) if (!byKey.has(x.k)) byKey.set(x.k, x);
+
+        // 종전대로 **바로 옆 달**만 본다. 건너뛰기로 지정된 달일 때만 한 칸 더 간다.
+        // (가장 가까운 달을 찾는 방식으로 열면, 레코드가 띄엄띄엄한 매장에서
+        //  6월 → 9월 처럼 몇 달을 건너뛰게 된다. 그건 요청한 적 없는 확장이다)
+        const step = (dir) => {
+          for (let k = cur + dir, guard = 0; guard < 12; k += dir, guard++) {
+            if (!skip.has(k)) return byKey.get(k) || null;
+          }
+          return null;
+        };
+        const prev = step(-1);
+        const next = step(1);
         siblings = {
           prev: prev ? { id: prev.id, month: prev.month } : null,
           next: next ? { id: next.id, month: next.month } : null,

@@ -30,23 +30,35 @@ export const FLOOR_LABEL = '2026. 6월';
  * 있다(링크를 배포할 때마다 한 줄씩 늘어났다). 그래서 예외를 **여기 한 곳에만**
  * 모으고, 언제·왜 열었는지를 줄마다 남긴다. 계약이 끝나 필요 없어지면 줄을 지운다.
  *
- * match  = Campaign_DB '계약명' 에 들어가는 문자열(공백 무시 부분일치).
- *          지점까지 적는다 — '제주육림' 만 적으면 다른 지점까지 같이 열린다.
- * floor  = 이 매장에만 적용할 하한.
+ * match = Campaign_DB '계약명' 에 들어가는 문자열(공백 무시 부분일치).
+ *         지점까지 적는다 — '제주육림' 만 적으면 다른 지점까지 같이 열린다.
+ * floor = 이 매장에만 적용할 하한.
+ * skip  = 월 이동에서 건너뛸 계약월. 계약이 없는데 레코드만 남아 있는 달이다.
  *
  * ⚠️ 예외는 **고객사 링크(/schedule)에만** 먹는다. 협력사 링크(/partner)는
  *    한 화면에 여러 고객사를 묶어 열기 때문에 '어느 매장 기준인지'가 성립하지 않는다.
  *    → 협력사는 FLOOR_LABEL 그대로.
+ *
+ * ⚠️ skip 을 **자동 판정으로 바꾸려 하지 말 것.** 한 번 시도했다가 접었다 —
+ *    '목표·실적·예약링크·계약정보가 전부 0이면 빈 달' 규칙을 전수로 돌려 보니
+ *    (실측 2026-08-05) 6월 88건 중 23건 · 7월 98건 중 56건 · **8월 120건 중 91건**
+ *    이 빈 달로 잡혔다. 진행 중인 달이 76% 지워지는 셈이다.
+ *    목표는 구글시트에서 이관하는 중이고 실적 rollup 은 방문 뒤에야 차기 때문에,
+ *    Campaign_DB 만으로는 '계약이 없는 달'과 '아직 안 채워진 달'을 구분할 수 없다.
+ *    → 사람이 아는 사실만 여기 손으로 적는다.
  */
 export const FLOOR_EXCEPTIONS = [
   {
-    // 계약이 5·6·8월에만 있고 7월은 빈 껍데기다(실측: 목표·실적 0). 6월 계약분도
-    // 실적 0건이라, 고객이 가진 6월 링크는 빈 화면을 연다. 실제 실적 6건은 5월에 있다.
-    // 링크를 따로 발급하기엔 애매한 상황이라(Owner) 이 매장만 5월까지 거슬러 열어 준다.
+    // 계약이 5·6·8월에만 있다(Owner 확인). 7월 레코드는 계약도 실적도 없는 껍데기라
+    // 6월 링크에서 '다음 실적'을 누르면 빈 화면이 한 번 끼어들었다.
+    // 6월 계약분도 실적 0건이라 고객이 가진 6월 링크는 그대로면 빈 화면만 연다.
+    // 실제 실적 6건은 5월에 있는데 링크를 따로 발급하기 애매한 상황이라(Owner)
+    // 이 매장만 5월까지 거슬러 열고, 7월은 건너뛴다.
     match: '제주육림서사라점',
     floor: '2026. 5월',
+    skip: ['2026. 7월'],
     since: '2026-08-05',
-    why: '5·6·8월 계약 — 6월 링크에서 5월 실적을 봐야 함',
+    why: '5·6·8월 계약 — 6월 링크에서 5월을 보고, 빈 7월은 건너뛴다',
   },
 ];
 
@@ -70,17 +82,29 @@ export const nowMonthKey = () => {
 
 const nospace = (v) => String(v || '').replace(/\s/g, '');
 
+// scope(계약명)에 걸리는 예외 한 건. 없으면 null.
+const exceptionFor = (scope) => {
+  const s = nospace(scope);
+  if (!s) return null;
+  return FLOOR_EXCEPTIONS.find((ex) => s.includes(nospace(ex.match))) || null;
+};
+
 /**
  * 이 매장에 적용할 하한. scope 를 안 주면 전역 하한이다.
  * @param {string} scope Campaign_DB '계약명'(또는 고객사명+지점명) — 예외 판정용
  */
 export const floorKeyFor = (scope) => {
-  const s = nospace(scope);
-  if (s) {
-    const hit = FLOOR_EXCEPTIONS.find((ex) => s.includes(nospace(ex.match)));
-    if (hit) return monthKey(hit.floor);
-  }
-  return FLOOR_KEY;
+  const ex = exceptionFor(scope);
+  return ex ? monthKey(ex.floor) : FLOOR_KEY;
+};
+
+/**
+ * 이 매장의 월 이동에서 건너뛸 계약월 — monthKey 집합.
+ * 링크가 가리키는 달 자체는 건너뛰지 않는다(부르는 쪽 책임).
+ */
+export const skipKeysFor = (scope) => {
+  const ex = exceptionFor(scope);
+  return new Set((ex?.skip || []).map(monthKey).filter(Boolean));
 };
 
 /**
