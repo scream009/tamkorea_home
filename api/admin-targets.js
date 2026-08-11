@@ -451,48 +451,55 @@ async function moveSettlement(body) {
     throw Object.assign(new Error('일부 예약을 찾지 못했습니다. 새로고침 후 다시 시도해 주세요.'), { status: 409 });
   }
 
-  // 옮겨갈 계약을 먼저 전부 확보한다. 하나라도 없으면 **한 건도 쓰지 않는다.**
-  // 반쯤 옮기면 어느 달에도 안 잡히는 건이 생긴다.
+  // 옮겨갈 계약을 먼저 찾는다. 있으면 귀속 링크를 **직접** 건다(오토메이션에 안 기댐).
   const targets = await fetchAll(T_CAMPAIGN, {
     formula: `{계약월}='${escFormula(to)}'`,
     fields: ['고객사명', '지점명', '계약월', '계약유형'],
   });
   const byStore = new Map();
   targets.forEach((c) => {
-    if (!one(c.fields['계약유형'])) return;
-    byStore.set(storeKey(c.fields['고객사명'], c.fields['지점명']), c.id);
+    // 계약유형이 비어도 받는다 — 껍데기 레코드라도 링크·롤업은 성립한다.
+    // 예전엔 여기서 걸러 "계약이 없다"고 거부했다(실측 2026-08-10 몽그레 월정리점 —
+    // 7월 레코드가 실존하는데 계약유형만 비어 있었다). 같은 매장에 레코드가 둘이면
+    // 계약유형 있는 쪽을 우선한다.
+    const key = storeKey(c.fields['고객사명'], c.fields['지점명']);
+    const typed = !!one(c.fields['계약유형']);
+    const cur = byStore.get(key);
+    if (!cur || (typed && !cur.typed)) byStore.set(key, { id: c.id, typed });
   });
 
   const jobs = [];
-  const missing = [];
   recs.forEach((r) => {
     const g = r.fields;
     const key = storeKey(g['고객명'], g['지점명']);
-    const target = byStore.get(key);
+    const target = byStore.get(key) || null;
     const label = `${one(g['Shoot_ID']) || r.id} (${one(g['고객명'])} ${one(g['지점명'])})`.trim();
-    if (!target) { missing.push(label); return; }
-    jobs.push({ id: r.id, from: one(g['정산월']), target, orig: g['(원)정산월'], hist: one(g['정산월수정이력']), label });
+    jobs.push({
+      id: r.id, from: one(g['정산월']), target: target ? target.id : null,
+      orig: g['(원)정산월'], hist: one(g['정산월수정이력']), label,
+    });
   });
-
-  if (missing.length) {
-    throw Object.assign(
-      new Error(`${to} 계약이 없어 옮길 수 없습니다: ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? ` 외 ${missing.length - 5}건` : ''}`),
-      { status: 409 },
-    );
-  }
 
   const memo = String(body.memo || '').trim().slice(0, 200);
   const stamp = nowKST();
+  const noCampaign = [];   // 계약이 없어 귀속 없이 옮긴 건 — 경고로 알린다 (Owner 지정: 막지 않는다)
   const patches = jobs
     .filter((j) => j.from !== to)
     .map((j) => {
       const fields = {
-        // 둘을 한 번에 쓴다. 정산월만 바꾸면 자동화 재실행이 보장되지 않는다.
         정산월: to,
-        '귀속 정산월': [j.target],
         정산월수정이력: [j.hist, `${stamp} ${by} · ${j.from || '(없음)'}→${to}${memo ? ` (${memo})` : ''}`]
           .filter(Boolean).join('\n').slice(-2000),
       };
+      if (j.target) {
+        // 계약이 있으면 정산월+귀속을 **한 번에** 쓴다 — 오토메이션 재실행에 기대지 않는다.
+        fields['귀속 정산월'] = [j.target];
+      } else {
+        // 계약이 없으면 귀속을 비워 둔다. 오토메이션이 입력 정산월로 다시 걸 수도 있지만
+        // 보장이 없다 — 그래서 응답 경고로 "계약을 만들라"고 알린다(화면의 [계약 만들기]).
+        fields['귀속 정산월'] = [];
+        noCampaign.push(j.label);
+      }
       if (!j.orig) fields['(원)정산월'] = j.from || undefined;
       if (fields['(원)정산월'] === undefined) delete fields['(원)정산월'];
       return { id: j.id, fields };
@@ -500,7 +507,13 @@ async function moveSettlement(body) {
 
   if (!patches.length) return { ok: true, moved: 0 };
   await patchAll(T_PROGRESS, patches);
-  return { ok: true, moved: patches.length, to };
+  const warning = noCampaign.length
+    ? `⚠ ${to} 계약이 없는 매장이 있어 ${noCampaign.length}건은 계약 연결 없이 옮겼습니다`
+      + ` (실적 집계에 안 잡힙니다): ${noCampaign.slice(0, 5).join(', ')}`
+      + `${noCampaign.length > 5 ? ` 외 ${noCampaign.length - 5}건` : ''}`
+      + ` — 그 매장의 ${to} [계약 만들기] 후 정산월을 한 번 더 저장하면 연결됩니다.`
+    : null;
+  return { ok: true, moved: patches.length, to, warning };
 }
 
 /* ── 진행상태 변경 ───────────────────────────────────────── */

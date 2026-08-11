@@ -297,11 +297,13 @@ export default function AdminTargetsPage() {
     setBusy(true);
     try {
       // 목적지가 다른 건이 섞여 있어도 되도록 값별로 묶어 던진다
+      const warns = [];
       const byTo = {};
       mvJobs.forEach((j) => { (byTo[j.to] = byTo[j.to] || []).push(j.id); });
       for (const [to, ids] of Object.entries(byTo)) {
 
-        await post({ action: 'settle', ids, to, memo: smMemo });
+        const j = await post({ action: 'settle', ids, to, memo: smMemo });
+        if (j.warning) warns.push(j.warning);
       }
       const byStatus = {};
       stJobs.forEach((j) => { (byStatus[j.to] = byStatus[j.to] || []).push(j.id); });
@@ -313,6 +315,8 @@ export default function AdminTargetsPage() {
       setStEdits({});
       setSel(new Set());
       setSmMemo('');
+      // 계약 없이 옮긴 건의 경고는 토스트로 흘리면 놓친다 — 알림창으로 명시
+      if (warns.length) window.alert(warns.join('\n\n'));
       say(`${mvJobs.length + stJobs.length}건 변경했습니다`);
       await load(month);
     } catch (e) { say(e.message); } finally { setBusy(false); }
