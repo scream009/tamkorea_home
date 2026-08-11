@@ -510,16 +510,37 @@ async function moveSettlement(body) {
  * 여기는 실적 정리(노쇼 마킹, 잘못 찍힌 상태 교정)를 위한 것.
  * 이력은 정산월수정이력 필드에 함께 남긴다(전용 필드를 늘리지 않는다 — 내용으로 구분).
  */
-const PROGRESS_STATUSES = [
-  '예약요청', '예약확정', '긴급예약', '변경요청', '변경확정',
-  '촬영완료', '취소_방문자', '취소_고객사', '노쇼',
+/* 선택지는 진행_DB_OLD 의 **실제 singleSelect 옵션**을 Meta API 로 읽는다 (10분 캐시).
+   하드코딩하면 옵션 추가·개명 때 화면이 낡는다 — 실측: 종결처리·업로드완료·영상이상·
+   송부완료 4종이 누락됐고, 반대로 '변경요청'은 이 테이블에 없는 옵션이라 저장이 깨졌을 것. */
+const STATUS_FALLBACK = [
+  '예약요청', '예약확정', '변경확정', '촬영완료', '긴급예약', '노쇼',
+  '취소_방문자', '취소_고객사', '업로드완료', '영상이상', '종결처리', '송부완료',
 ];
+let _statusCache = { at: 0, list: null };
+async function progressStatuses() {
+  if (_statusCache.list && Date.now() - _statusCache.at < 600000) return _statusCache.list;
+  try {
+    const r = await fetch(`https://api.airtable.com/v0/meta/bases/${BASE}/tables`, {
+      headers: { Authorization: `Bearer ${KEY}` },
+    });
+    const d = await r.json();
+    const list = d?.tables?.find((t) => t.name === T_PROGRESS)
+      ?.fields?.find((f) => f.name === '진행상태')
+      ?.options?.choices?.map((c) => c.name);
+    if (list && list.length) {
+      _statusCache = { at: Date.now(), list };
+      return list;
+    }
+  } catch { /* 메타 실패 시 폴백 */ }
+  return STATUS_FALLBACK;
+}
 
 async function changeStatus(body) {
   const ids = (Array.isArray(body.ids) ? body.ids : []).filter((x) => /^rec[A-Za-z0-9]{14}$/.test(x));
   const to = one(body.to);
   if (!ids.length) throw Object.assign(new Error('바꿀 예약이 없습니다.'), { status: 400 });
-  if (!PROGRESS_STATUSES.includes(to)) {
+  if (!(await progressStatuses()).includes(to)) {
     throw Object.assign(new Error('진행상태 값이 올바르지 않습니다.'), { status: 400 });
   }
   const by = validEditor(body.by);
@@ -581,7 +602,7 @@ export default async function handler(req, res) {
         ...view,
         editors: ids.length ? ids : EDITORS,
         who: who && who !== 'admin' ? who : '',
-        statuses: PROGRESS_STATUSES,   // 상세 리스트의 진행상태 선택지 (단일 정의처)
+        statuses: await progressStatuses(),   // 진행_DB_OLD 실제 옵션 (Meta API·캐시)
       });
       return;
     }
