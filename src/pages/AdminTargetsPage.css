@@ -1,6 +1,6 @@
 .atg-root{--bg:#0E1016;--panel:#161922;--line:#252A37;--line2:#2F3646; --ink:#E9EBF2;--ink2:#B7BCCB;--muted:#7F8598;--accent:#8B5CF6;--accent2:#C4B5FD; --ok:#10B981;--warn:#EAB308;--orange:#F97316;--bad:#EF4444; --sans:"Pretendard","Pretendard Variable",-apple-system,BlinkMacSystemFont,"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif; --mono:ui-monospace,"Cascadia Code","SFMono-Regular",Consolas,monospace;}
-.atg-ui{background:var(--panel);border:1px solid var(--line);border-radius:11px;overflow:hidden}
-.atg-ui-top{display:flex;flex-wrap:wrap;align-items:center;gap:.55rem;padding:.7rem 1rem;border-bottom:1px solid var(--line);background:#12151D}
+.atg-ui{background:var(--panel);border:1px solid var(--line);border-radius:11px;overflow:visible}
+.atg-ui-top{display:flex;flex-wrap:wrap;align-items:center;gap:.55rem;padding:.7rem 1rem;border-bottom:1px solid var(--line);background:#12151D; position:sticky;top:0;z-index:40;border-radius:11px 11px 0 0; box-shadow:0 6px 14px rgba(0,0,0,.35)}
 .atg-sel{background:#232838;border:1px solid var(--line2);border-radius:7px;padding:.25rem .66rem;font-weight:700;font-size:.83rem;color:var(--ink);cursor:pointer;font-family:inherit}
 .atg-sel.atg-on{border-color:var(--accent);background:#2A2340;color:#DDD6FE}
 .atg-sum{color:var(--muted);font-size:.76rem}
