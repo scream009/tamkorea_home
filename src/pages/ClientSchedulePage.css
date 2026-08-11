@@ -701,6 +701,14 @@
   font-size: 1rem;
   color: var(--text);
   padding-left: 1.5rem;
+  /* 공백 없는 긴 문자열(채널링크 URL·닉네임)이 상자 밖으로 삐져나가지 않게 한다.
+     실측 2026-08-05: 제주육림 샤오홍슈 프로필 URL 이 xsec_token 까지 붙어 200자를
+     넘으면서 모달에 가로 스크롤이 생겼다. 모달은 overflow-y 만 지정돼 있어
+     가로 방향이 auto 로 계산된 상태였다.
+     anywhere 를 모르는 구형 브라우저를 위해 break-word 를 함께 둔다.
+     띄어쓰기가 있는 문장은 영향받지 않는다 — 넘칠 때만 쪼갠다. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .memo-box {
@@ -711,6 +719,8 @@
   font-size: 0.95rem;
   line-height: 1.5;
   color: var(--text);
+  /* pre-wrap 은 줄바꿈을 보존할 뿐 공백 없는 긴 토큰은 쪼개지 않는다.
+     줄바꿈 규칙은 .detail-value 에 있다(memo-box 는 항상 그 클래스와 같이 쓴다). */
   white-space: pre-wrap;
 }
 
