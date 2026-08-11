@@ -11,7 +11,11 @@
  */
 export const resolveEventMessage = (event, fallbackBody) => {
   if (event.sentMessage) return event.sentMessage;
-  const body = event.changeMessage || fallbackBody;
+  // 평소 예약도 Airtable 예약메시지(= 식당에 실제로 나간 문구)를 그대로 쓴다.
+  // 화면이 자체 조립하면, 메시지 서식을 Airtable 에서 고쳐도 달력에 반영되지 않는다
+  // (실측 2026-08-05: 제주육림 채널링크가 취소·변경 건에만 나타났다).
+  // fallbackBody(자체 생성)는 그 원문을 못 찾았을 때만 쓴다.
+  const body = event.changeMessage || event.reservationMsg || fallbackBody;
   return event.noticeTail ? `${body}\n\n${event.noticeTail}` : body;
 };
 

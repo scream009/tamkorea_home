@@ -4,7 +4,7 @@
  */
 
 import { monthKey, inMonthWindow, skipKeysFor } from './_month-window.js';
-import { composeSentMessage } from './_resv-message.js';
+import { composeSentMessage, pickMessage, maskBrand } from './_resv-message.js';
 import { storeSig, storeCodeDaily } from './_qr-sign.js';
 
 const TOKEN = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
@@ -324,15 +324,26 @@ export default async function handler(req, res) {
       // 어긋나면 "취소한다더니 예약 화면엔 그대로냐"는 문의가 그대로 생긴다.
       // 봇은 발송문을 저장하지 않으므로(_resv-message.js 주석) 같은 규칙으로 조립한다.
       // 본문 우선순위도 봇과 같다: 예약입력_DB(봇이 읽는 원본) → 예약테이블 → 진행_DB_OLD 사본.
+      // 봇이 읽는 순서와 같다: 예약입력_DB(원본) → 예약테이블 → 진행_DB_OLD 사본.
+      const rawReservationMsg = (inTeam && inTeam['예약메시지'])
+        || (resvData && resvData.reservationMsg) || '';
       const { sentMessage, noticeTail } = composeSentMessage({
         status,
-        reservationMsg: (inTeam && inTeam['예약메시지'])
-          || (resvData && resvData.reservationMsg) || '',
+        reservationMsg: rawReservationMsg,
         changeMessage: (inTeam && inTeam['변경메시지'])
           || (resvData && resvData.changeMessage) || f['변경메시지'] || '',
         customerMemo: (inTeam && inTeam['고객전달메모'])
           || f['고객전달메모'] || (resvData && resvData.customerMemo) || '',
       });
+
+      // ── 평소 예약도 '보낸 그대로' ────────────────────────────────
+      // 취소·변경 건은 위에서 실제 발송문을 내려보내는데, 정작 **가장 많은 정상
+      // 예약**은 화면이 자체 조립한 문구를 보여 줬다(generateDynamicMemo).
+      // 그래서 Airtable 예약메시지 Formula 를 고쳐도 달력에는 반영되지 않았다
+      // (실측 2026-08-05: 제주육림 채널링크 추가분이 취소·변경 건에만 나타남).
+      // 화면이 '보낸 그대로'를 보여 준다는 원칙은 상태와 무관해야 한다.
+      // ⚠ 로 시작하는 값은 봇이 발송을 막는 문구라 여기서도 버린다(pickMessage).
+      const reservationMsg = pickMessage(rawReservationMsg);
 
 
       // 캠페인 레벨(Campaign_DB) 폴백
@@ -361,8 +372,11 @@ export default async function handler(req, res) {
         cancelNote,
         changedFrom,
         changedPaxFrom,
-        changeMessage,
-        sentMessage,   // 취소·노쇼일 때만 채워진다(본문 확보 실패 시 '')
+        // 세 메시지 모두 협력사 화면이면 브랜드를 협력사명으로 치환해 내보낸다.
+        // Formula 가 만든 완성 문장이라 본문에 브랜드가 박혀 있을 수 있다.
+        changeMessage: maskBrand(changeMessage, partnerName),
+        sentMessage: maskBrand(sentMessage, partnerName),  // 취소·노쇼일 때만 채워진다
+        reservationMsg: maskBrand(reservationMsg, partnerName),  // 평소 예약의 발송 원문
         noticeTail,    // 본문을 못 찾은 경우 화면이 자체 본문 뒤에 붙일 안내문
       };
 

@@ -44,6 +44,26 @@ export function noticeKind(status) {
   return s.includes('고객사') ? 'cancel_customer' : 'cancel_visitor';
 }
 
+/**
+ * 협력사 화면에 나갈 문구에서 탐코리아 브랜드를 협력사명으로 바꾼다.
+ *
+ * 예약메시지는 Airtable Formula 가 만드는 **완성된 문장**이라, 매장에 따라
+ * 브랜드가 본문에 박혀 있다(서귀포잠수함은 "【탐코리아】체험단 촬영 예약"으로 시작).
+ * 그 문구를 그대로 협력사 링크에 실으면 화이트라벨이 깨진다.
+ * 규칙은 숨김이 아니라 **치환**이다(CLAUDE.md §5 협력사 화이트라벨).
+ *
+ * 2026-08-05 실측으로는 아직 새지 않는다 — 협력사 예약은 고객명이
+ * '서귀포잠수함 (P)' 로 분리돼 있어 Formula 의 탐코리아 분기에 걸리지 않는다.
+ * 다만 그건 데이터가 그렇게 들어와 있어서일 뿐이라, 방어를 코드에 둔다.
+ */
+const BRAND_RE = /탐코리아|tam\s*korea/gi;
+export const maskBrand = (msg, partnerName) => {
+  if (!msg) return '';
+  // 직영(TAMKOREA)은 치환 대상이 아니다 — 자기 브랜드를 자기 화면에서 지울 이유가 없다.
+  if (!partnerName || partnerName === 'TAMKOREA') return String(msg);
+  return String(msg).replace(BRAND_RE, partnerName);
+};
+
 /** 발송 본문으로 쓸 수 있는 값만 통과시킨다(봇의 `*_valid` 판정과 같은 규칙) */
 export function pickMessage(v) {
   const s = String(firstValue(v) || '').trim();
