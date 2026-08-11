@@ -786,7 +786,7 @@ export default async function handler(req, res) {
     // 화면이 고를 수 있는 회차 목록. 조회 가능 기간 밖은 내보내지 않는다 —
     // 오래된 리포트는 값이 불완전해 화면이 깨진다(협력사 링크와 같은 규칙).
     const dpReportMonths = reportRecs
-      .filter((r) => inMonthWindow(r.fields['계약월']))
+      .filter((r) => inMonthWindow(r.fields['계약월'], campaignName))
       .map((r) => ({
         id: r.id,
         month: r.fields['계약월'] || '',
@@ -802,7 +802,7 @@ export default async function handler(req, res) {
     const wantExact = String(req.query.exact || '') === '1' && hasReport(cf);
     const rpt = wantExact
       ? { id: campaignId, fields: cf }
-      : (reportRecs.filter((r) => inMonthWindow(r.fields['계약월']))[0]
+      : (reportRecs.filter((r) => inMonthWindow(r.fields['계약월'], campaignName))[0]
          || (hasReport(cf) ? { id: campaignId, fields: cf } : null));
 
     let dpReport = null;
@@ -920,12 +920,13 @@ export default async function handler(req, res) {
         // 조회 가능 기간 — 협력사 화면과 같은 규칙(_month-window.js).
         // 이 제한이 없으면 7월 링크에서 6월 → 5월 → 4월 로 계속 거슬러 올라가
         // 오래된 실적이 전부 열린다.
-        // 예전엔 여기에 브랜드별 하한(양푼왕갈비 6월)을 하드코딩해 뒀었다.
-        // 하한이 절대값(2026. 6월)으로 바뀌면서 그 예외가 필요 없어졌다 —
-        // 링크를 새로 배포할 때마다 브랜드를 한 줄씩 추가하던 문제도 같이 사라진다.
+        // 예전엔 여기에 브랜드별 하한(양푼왕갈비 6월)을 하드코딩해 뒀었다. 지금은
+        // 매장별 예외도 _month-window.js 의 FLOOR_EXCEPTIONS 한 곳에만 산다 —
+        // 계약명을 넘겨 주면 그쪽이 이 매장에 맞는 하한을 골라 준다.
+        // (제주육림 서사라점처럼 계약이 하한보다 앞에 걸친 곳을 위한 통로다)
         const list = all
           .map((r) => ({ id: r.id, month: r.fields['계약월'] || '', k: monthKey(r.fields['계약월']) }))
-          .filter((x) => inMonthWindow(x.month));
+          .filter((x) => inMonthWindow(x.month, campaignName));
         const prev = list.filter((x) => x.k === cur - 1)[0];
         const next = list.filter((x) => x.k === cur + 1)[0];
         siblings = {

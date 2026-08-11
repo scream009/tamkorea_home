@@ -146,8 +146,11 @@ export default async function handler(req, res) {
         all = all.concat(d.records || []);
         off = d.offset || null;
       } while (off);
+      // ⚠️ `.filter(inMonthWindow)` 로 쓰면 안 된다 — filter 가 두 번째 인자로 주는
+      //    **인덱스**가 inMonthWindow 의 scope(매장별 예외 판정) 자리에 들어간다.
+      //    협력사 화면은 여러 고객사를 묶어 열어 '어느 매장 기준'이 없으므로 예외 없이 판정한다.
       months = [...new Set(all.map(x => x.fields['계약월']).filter(Boolean))]
-        .filter(inMonthWindow)
+        .filter((m) => inMonthWindow(m))
         .sort((a, b) => monthKey(a) - monthKey(b));
     } catch (e) {
       console.error('[client-partner] months lookup failed:', e.message);

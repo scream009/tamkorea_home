@@ -14,21 +14,41 @@
  *
  * 하한을 옮길 일이 생기면 FLOOR_LABEL 한 줄만 고친다.
  *
- * ── 2026-08-05: 6월 → 5월로 한 달 내렸다 (Owner 요청) ──────────────
- * 6월 계약분만 있는 링크가 빈 화면을 열어 준다는 문제가 실제로 나왔다.
- *   제주육림 서사라점 6월 링크(recFcB1wYOGj3LyaS): 6월 실적 0건인데
- *   5월엔 체험 6건이 있다. '‹ 이전 실적' 버튼이 하한에 막혀 안 나왔다.
- * 종전 주석은 "5월 이하는 값이 불완전해 화면이 깨질 수 있다"였는데,
- * 내리기 전에 5월 캠페인 10건(협력사 5 · 직영 5)을 API로 실측했다 —
- * 전부 200 응답에 실적·달력이 정상이었다. 깨지는 건 확인되지 않았다.
- * ⚠️ 4월 이하는 그대로 막는다. 표본을 확인하지 않았고, 확인 전엔 안 연다.
- * ⚠️ 하한은 고객사·협력사 링크가 **함께 쓴다.** 5월 협력사 계약 19건
- *    (광고시홍보동·웹플로우·제주에코·좋아좋아)도 이제 열린다. 협력사 필터가
- *    `{협력사}=자기이름` 이라 남의 고객사는 안 열리고, 자기 5월 실적만 보인다.
+ * ⚠️ **전역 하한을 내려서 개별 매장 문제를 풀지 않는다.** 하한의 목적은
+ *    '달을 타고 끝없이 과거로 올라가는 것'을 막는 것이다(Owner 지시 2026-08-05).
+ *    한 매장 때문에 전부 내리면 모든 고객사·협력사 링크가 같이 열린다.
+ *    그런 건은 아래 FLOOR_EXCEPTIONS 에 그 매장만 적는다.
  */
 
 // 하한 — 이 달부터의 실적만 공유 링크로 열린다.
-export const FLOOR_LABEL = '2026. 5월';
+export const FLOOR_LABEL = '2026. 6월';
+
+/**
+ * 매장별 임시 예외 — 계약이 하한보다 앞에 걸쳐 있는 곳만 한 칸씩 연다.
+ *
+ * 예전에 client-schedule.js 안에 브랜드별 하한을 흩어 놓고 땜질하다 실패한 적이
+ * 있다(링크를 배포할 때마다 한 줄씩 늘어났다). 그래서 예외를 **여기 한 곳에만**
+ * 모으고, 언제·왜 열었는지를 줄마다 남긴다. 계약이 끝나 필요 없어지면 줄을 지운다.
+ *
+ * match  = Campaign_DB '계약명' 에 들어가는 문자열(공백 무시 부분일치).
+ *          지점까지 적는다 — '제주육림' 만 적으면 다른 지점까지 같이 열린다.
+ * floor  = 이 매장에만 적용할 하한.
+ *
+ * ⚠️ 예외는 **고객사 링크(/schedule)에만** 먹는다. 협력사 링크(/partner)는
+ *    한 화면에 여러 고객사를 묶어 열기 때문에 '어느 매장 기준인지'가 성립하지 않는다.
+ *    → 협력사는 FLOOR_LABEL 그대로.
+ */
+export const FLOOR_EXCEPTIONS = [
+  {
+    // 계약이 5·6·8월에만 있고 7월은 빈 껍데기다(실측: 목표·실적 0). 6월 계약분도
+    // 실적 0건이라, 고객이 가진 6월 링크는 빈 화면을 연다. 실제 실적 6건은 5월에 있다.
+    // 링크를 따로 발급하기엔 애매한 상황이라(Owner) 이 매장만 5월까지 거슬러 열어 준다.
+    match: '제주육림서사라점',
+    floor: '2026. 5월',
+    since: '2026-08-05',
+    why: '5·6·8월 계약 — 6월 링크에서 5월 실적을 봐야 함',
+  },
+];
 
 // 상한 — 오늘 기준 몇 달 앞까지 열 것인가.
 const MONTHS_FWD = 1;
@@ -48,12 +68,32 @@ export const nowMonthKey = () => {
   return k.getUTCFullYear() * 12 + (k.getUTCMonth() + 1);
 };
 
-// 이 계약월을 공유 링크로 열어도 되는가.
-export const inMonthWindow = (label) => {
+const nospace = (v) => String(v || '').replace(/\s/g, '');
+
+/**
+ * 이 매장에 적용할 하한. scope 를 안 주면 전역 하한이다.
+ * @param {string} scope Campaign_DB '계약명'(또는 고객사명+지점명) — 예외 판정용
+ */
+export const floorKeyFor = (scope) => {
+  const s = nospace(scope);
+  if (s) {
+    const hit = FLOOR_EXCEPTIONS.find((ex) => s.includes(nospace(ex.match)));
+    if (hit) return monthKey(hit.floor);
+  }
+  return FLOOR_KEY;
+};
+
+/**
+ * 이 계약월을 공유 링크로 열어도 되는가.
+ * ⚠️ `.filter(inMonthWindow)` 로 넘기지 말 것 — Array.filter 가 두 번째 인자로
+ *    **인덱스**를 주는데 그게 scope 자리에 들어간다. 반드시 `.filter((m) => inMonthWindow(m))`.
+ */
+export const inMonthWindow = (label, scope) => {
   const k = monthKey(label);
-  return k >= FLOOR_KEY && k <= nowMonthKey() + MONTHS_FWD;
+  return k >= floorKeyFor(scope) && k <= nowMonthKey() + MONTHS_FWD;
 };
 
 // 막혔을 때 화면에 보여 줄 이유. 규칙이 바뀌면 문구도 같이 따라간다.
+// 예외 매장은 이 경로로 오지 않는다(협력사 전용 문구라 전역 하한만 쓴다).
 export const OUT_OF_RANGE_MESSAGE =
   `조회 가능 기간이 아닙니다 (${FLOOR_LABEL} 이후 실적만 조회할 수 있습니다).`;
