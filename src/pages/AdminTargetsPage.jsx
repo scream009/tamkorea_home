@@ -136,6 +136,8 @@ export default function AdminTargetsPage() {
   });
   const [toast, setToast] = useState('');
   const toastT = useRef(null);
+  const [q, setQ] = useState('');          // 고객사 검색
+  const [flt, setFlt] = useState('all');   // 'all' | 'behind'(섭외 미달만)
   // 고객사 펼침 상단의 월별 이력 요약 — 고객사별 1회 로드 후 캐시
   const [sums, setSums] = useState({});
   const sumsRef = useRef({});
@@ -226,8 +228,17 @@ export default function AdminTargetsPage() {
       if (!g) return 9;
       return (r.m[month].t[k][1] / g) - el;
     }));
-    return data.rows.filter((r) => r.m[month]).sort((a, b) => worst(a) - worst(b));
-  }, [data, month, goalOf]);
+    const qq = q.trim().toLowerCase();
+    // 섭외 미달 = 목표가 있는 유형 중 하나라도 섭외 수가 목표에 못 미침
+    const behind = (r) => TYPES.some((k) => {
+      const g = goalOf(r, month, k);
+      return g > 0 && (r.m[month]?.t?.[k]?.[1] || 0) < g;
+    });
+    return data.rows.filter((r) => r.m[month])
+      .filter((r) => !qq || r.n.toLowerCase().includes(qq))
+      .filter((r) => flt !== 'behind' || behind(r))
+      .sort((a, b) => worst(a) - worst(b));
+  }, [data, month, goalOf, q, flt]);
 
   if (loading && !data) return <div className="atg atg-root"><div className="atg-load">불러오는 중…</div></div>;
   if (err && !data) return <div className="atg atg-root"><div className="atg-err">{err}</div></div>;
@@ -815,6 +826,20 @@ export default function AdminTargetsPage() {
             <button key={m} type="button" className={`atg-sel${m === month ? ' atg-on' : ''}`} onClick={() => changeMonth(m)}>{m}</button>
           ))}
           <span className="atg-sum">권장 진도 <b>{Math.round(el * 100)}%</b></span>
+          <input
+            className="atg-q"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="🔍 고객사 검색"
+            aria-label="고객사 검색"
+          />
+          <button
+            type="button"
+            className={`atg-sel${flt === 'behind' ? ' atg-on' : ''}`}
+            title="목표가 있는 유형 중 섭외 수가 목표에 못 미치는 고객사만"
+            onClick={() => setFlt(flt === 'behind' ? 'all' : 'behind')}
+          >섭외 미달만</button>
+          {(q || flt === 'behind') && <span className="atg-sum">{rows.length}곳</span>}
           <div className="atg-right">
             {loading && <span className="atg-sum">불러오는 중…</span>}
             {err && <span className="atg-sum atg-bad">{err}</span>}

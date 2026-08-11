@@ -276,3 +276,8 @@ table.atg-fix{table-layout:fixed}
 
 .atg-root /* 진행상태 셀렉트 — 상태명이 길다(취소_방문자) */
 .atg-smx.atg-stx{max-width:7.6rem;width:100%}
+
+.atg-root /* 상단 고객사 검색 */
+.atg-q{background:#161A26;border:1px solid var(--line2);border-radius:7px;color:var(--ink);font-family:inherit;font-size:.83rem;padding:.28rem .6rem;width:11rem}
+.atg-q::placeholder{color:var(--muted)}
+.atg-q:focus{outline:none;border-color:var(--accent)}
