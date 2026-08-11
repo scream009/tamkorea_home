@@ -208,6 +208,17 @@ export default async function handler(req, res) {
       }
     }
 
+    // ── 종결처리 제외 (Owner 지정 2026-08-10) ─────────────────
+    // 종결처리 = 관리용 마감 상태. 취소·노쇼(달력에는 남겨 이력을 보여줌)와 달리
+    // 고객 화면에 보여줄 이유가 없다 — 달력뷰·리스트뷰 모두에서 완전히 뺀다.
+    {
+      const before = allRecords.length;
+      allRecords = allRecords.filter(
+        (rec) => String(rec.fields['진행상태'] || '').replace(/\s/g, '') !== '종결처리');
+      const dropped = before - allRecords.length;
+      if (dropped) console.log(`[client-schedule] ${campaignId} 종결처리 ${dropped}건 제외`);
+    }
+
     // 영상 이상(삭제/비공개) 판별 — 공백 무시('영상 이상' 표기도 인식)
     const isVideoIssue = (status) => (status || '').replace(/\s/g, '').includes('영상이상');
 
