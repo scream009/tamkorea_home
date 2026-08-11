@@ -127,6 +127,7 @@ export default function AdminTargetsPage() {
   const [edits, setEdits] = useState({});
   const [sel, setSel] = useState(() => new Set());
   const [smEdits, setSmEdits] = useState({});
+  const [stEdits, setStEdits] = useState({});   // 진행상태 변경 대기 {진행recId: 새 상태}
   const [smMemo, setSmMemo] = useState('');
   const [bulkTo, setBulkTo] = useState({});   // 일괄 지정 대상 월 — 리스트마다 따로 기억한다
   const [user, setUser] = useState(() => {
@@ -191,6 +192,7 @@ export default function AdminTargetsPage() {
     setOpenTy(new Set());
     setSel(new Set());
     setSmEdits({});
+    setStEdits({});
     load(m);
   };
 
@@ -272,30 +274,46 @@ export default function AdminTargetsPage() {
   };
 
   const commitMove = async (detRows) => {
-    const jobs = detRows
+    const mvJobs = detRows
       .map((x) => ({ id: x[9], from: x[5], to: smEdits[x[9]] }))
       .filter((j) => j.to && j.to !== j.from);
-    if (!jobs.length) return;
-    const lines = jobs.map((j) => `  ${mo(j.from)} → ${mo(j.to)}`).join('\n');
+    const stJobs = detRows
+      .map((x) => ({ id: x[9], from: x[3], to: stEdits[x[9]] }))
+      .filter((j) => j.to && j.to !== j.from);
+    if (!mvJobs.length && !stJobs.length) return;
+    const lines = [
+      ...mvJobs.map((j) => `  정산월 ${mo(j.from)} → ${mo(j.to)}`),
+      ...stJobs.map((j) => `  상태 ${j.from || '(없음)'} → ${j.to}`),
+    ].join('\n');
+    const warns = [];
+    if (mvJobs.length) warns.push('정산월이 바뀌면 그 건의 실적이 다른 달 계약으로 옮겨갑니다.');
+    if (stJobs.length) warns.push('상태 변경은 DB만 고칩니다 — 카톡 발송 없음 (매장 통보가 필요하면 발송큐에서).');
     const ok = window.confirm(
-      [`정산월을 바꿉니다 (${jobs.length}건)`, '', lines, '',
-        '정산월이 바뀌면 그 건의 실적이 다른 달 계약으로 옮겨갑니다.',
+      [`변경합니다 (${mvJobs.length + stJobs.length}건)`, '', lines, '',
+        ...warns,
         `기록: ${user}${smMemo ? ` · ${smMemo}` : ''}`, '', '진행할까요?'].join('\n'),
     );
     if (!ok) return;
     setBusy(true);
     try {
-      // 목적지가 다른 건이 섞여 있어도 되도록 달별로 묶어 던진다
+      // 목적지가 다른 건이 섞여 있어도 되도록 값별로 묶어 던진다
       const byTo = {};
-      jobs.forEach((j) => { (byTo[j.to] = byTo[j.to] || []).push(j.id); });
+      mvJobs.forEach((j) => { (byTo[j.to] = byTo[j.to] || []).push(j.id); });
       for (const [to, ids] of Object.entries(byTo)) {
-         
+
         await post({ action: 'settle', ids, to, memo: smMemo });
       }
+      const byStatus = {};
+      stJobs.forEach((j) => { (byStatus[j.to] = byStatus[j.to] || []).push(j.id); });
+      for (const [to, ids] of Object.entries(byStatus)) {
+
+        await post({ action: 'status', ids, to, memo: smMemo });
+      }
       setSmEdits({});
+      setStEdits({});
       setSel(new Set());
       setSmMemo('');
-      say(`${jobs.length}건 옮겼습니다`);
+      say(`${mvJobs.length + stJobs.length}건 변경했습니다`);
       await load(month);
     } catch (e) { say(e.message); } finally { setBusy(false); }
   };
@@ -342,7 +360,8 @@ export default function AdminTargetsPage() {
       return <div className="atg-det atg-empty">{k} 예약이 없습니다.{off ? ` (취소·노쇼 ${off}건은 제외)` : ''}</div>;
     }
     const ids = list.map((x) => x[9]);   // 레코드 ID — Shoot_ID 는 비거나 겹칠 수 있다
-    const pend = list.filter((x) => smEdits[x[9]] && smEdits[x[9]] !== x[5]);
+    const pend = list.filter((x) => (smEdits[x[9]] && smEdits[x[9]] !== x[5])
+      || (stEdits[x[9]] && stEdits[x[9]] !== x[3]));
     const picked = ids.filter((i) => sel.has(i));
     const opts = around(m);
     const before = list.filter((x) => gapOf(x) < 0).length;
@@ -401,7 +420,25 @@ export default function AdminTargetsPage() {
                     <td className="atg-no">{i + 1}</td>
                     <td className="atg-mono">{who}</td>
                     <td>{sub || '—'}</td>
-                    <td><span className={`atg-pill ${st.includes('변경') ? 'atg-p-chg' : 'atg-p-conf'}`}>{st}</span></td>
+                    <td className="atg-smc">
+                      {/* 상태도 정산월과 같은 패턴 — 고르면 대기, [변경 확정]으로 실제 반영.
+                          어드민 상태 변경은 DB 정정용(카톡 발송 없음) — 서버 주석 참조 */}
+                      <select
+                        className={`atg-smx atg-stx${stEdits[id] && stEdits[id] !== st ? ' atg-pend' : ''}`}
+                        value={stEdits[id] || st}
+                        title={stEdits[id] && stEdits[id] !== st ? `${st} → ${stEdits[id]}` : st}
+                        onChange={(e) => setStEdits((p) => {
+                          const q = { ...p };
+                          if (e.target.value === st) delete q[id]; else q[id] = e.target.value;
+                          return q;
+                        })}
+                      >
+                        {/* 현재 값이 표준 목록에 없어도(과거 데이터) 선택지에 남겨 표시가 깨지지 않게 */}
+                        {[...new Set([st, ...(data.statuses || [])])].filter(Boolean).map((o) => (
+                          <option key={o} value={o}>{o}</option>
+                        ))}
+                      </select>
+                    </td>
                     <td className="atg-mono atg-smc">
                       <select
                         className={`atg-smx${to && to !== sm ? ' atg-pend' : ''}`}
@@ -471,9 +508,10 @@ export default function AdminTargetsPage() {
                   value={smMemo}
                   onChange={(e) => setSmMemo(e.target.value)}
                 />
-                <button className="atg-ghost" type="button" onClick={() => setSmEdits((p) => {
-                  const q = { ...p }; ids.forEach((i) => delete q[i]); return q;
-                })}>되돌리기</button>
+                <button className="atg-ghost" type="button" onClick={() => {
+                  setSmEdits((p) => { const q = { ...p }; ids.forEach((i) => delete q[i]); return q; });
+                  setStEdits((p) => { const q = { ...p }; ids.forEach((i) => delete q[i]); return q; });
+                }}>되돌리기</button>
                 <button className="atg-act" type="button" disabled={busy} onClick={() => commitMove(list)}>변경 확정</button>
               </>
             )}

@@ -503,6 +503,54 @@ async function moveSettlement(body) {
   return { ok: true, moved: patches.length, to };
 }
 
+/* ── 진행상태 변경 ───────────────────────────────────────── */
+/**
+ * 어드민의 상태 변경은 **DB 정정용**이다 — 카톡 발송·예약입력_DB 캐스케이드를 하지 않는다.
+ * 취소·변경을 매장에 통보해야 하는 운영 흐름은 발송큐(봇 경로)가 담당한다(F1 결정).
+ * 여기는 실적 정리(노쇼 마킹, 잘못 찍힌 상태 교정)를 위한 것.
+ * 이력은 정산월수정이력 필드에 함께 남긴다(전용 필드를 늘리지 않는다 — 내용으로 구분).
+ */
+const PROGRESS_STATUSES = [
+  '예약요청', '예약확정', '긴급예약', '변경요청', '변경확정',
+  '촬영완료', '취소_방문자', '취소_고객사', '노쇼',
+];
+
+async function changeStatus(body) {
+  const ids = (Array.isArray(body.ids) ? body.ids : []).filter((x) => /^rec[A-Za-z0-9]{14}$/.test(x));
+  const to = one(body.to);
+  if (!ids.length) throw Object.assign(new Error('바꿀 예약이 없습니다.'), { status: 400 });
+  if (!PROGRESS_STATUSES.includes(to)) {
+    throw Object.assign(new Error('진행상태 값이 올바르지 않습니다.'), { status: 400 });
+  }
+  const by = validEditor(body.by);
+  if (!by) throw Object.assign(new Error('수정자를 고르세요.'), { status: 400 });
+
+  const f = `OR(${ids.map((id) => `RECORD_ID()='${id}'`).join(',')})`;
+  const recs = await fetchAll(T_PROGRESS, {
+    formula: f, fields: ['진행상태', '정산월수정이력', 'Shoot_ID'],
+  });
+  if (recs.length !== ids.length) {
+    throw Object.assign(new Error('일부 예약을 찾지 못했습니다. 새로고침 후 다시 시도해 주세요.'), { status: 409 });
+  }
+  const memo = String(body.memo || '').trim().slice(0, 200);
+  const stamp = nowKST();
+  const patches = recs
+    .filter((r) => one(r.fields['진행상태']) !== to)
+    .map((r) => ({
+      id: r.id,
+      fields: {
+        진행상태: to,
+        정산월수정이력: [one(r.fields['정산월수정이력']),
+          `${stamp} ${by} · 상태 ${one(r.fields['진행상태']) || '(없음)'}→${to}${memo ? ` (${memo})` : ''}`]
+          .filter(Boolean).join('\n').slice(-2000),
+      },
+    }));
+  if (!patches.length) return { ok: true, changed: 0 };
+  // typecast 없이 쓴다 — 상태 옵션은 실존 목록만 허용(오타로 새 옵션이 생기면 봇 판정이 깨진다)
+  await patchAll(T_PROGRESS, patches);
+  return { ok: true, changed: patches.length, to };
+}
+
 /* ── 핸들러 ──────────────────────────────────────────────── */
 export default async function handler(req, res) {
   if (blockedByAdminGate(req, res)) return;
@@ -533,6 +581,7 @@ export default async function handler(req, res) {
         ...view,
         editors: ids.length ? ids : EDITORS,
         who: who && who !== 'admin' ? who : '',
+        statuses: PROGRESS_STATUSES,   // 상세 리스트의 진행상태 선택지 (단일 정의처)
       });
       return;
     }
@@ -541,6 +590,7 @@ export default async function handler(req, res) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
       if (body.action === 'targets') { res.status(200).json(await saveTargets(body)); return; }
       if (body.action === 'settle') { res.status(200).json(await moveSettlement(body)); return; }
+      if (body.action === 'status') { res.status(200).json(await changeStatus(body)); return; }
       if (body.action === 'ensure') { res.status(200).json(await ensureCampaign(body)); return; }
       res.status(400).json({ error: '알 수 없는 요청입니다.' });
       return;
