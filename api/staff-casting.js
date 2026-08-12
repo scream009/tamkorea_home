@@ -312,8 +312,11 @@ async function pushToResv(applicantId, who, mgrOverride) {
     let submitUrl = '';
     try {
       const inflRec = await tk(`INFL_DB/${inflId}`);
+      // 정식 경로는 보안 토큰(Submit_Token, 수식 자동생성). 없을 때만 구형 inflId 폴백
+      const tok2 = inflRec.fields['Submit_Token'];
       const iid = inflRec.fields['INFL_ID'];
-      if (iid) submitUrl = `https://www.tamkorea.com/submit?inflId=${encodeURIComponent(iid)}`;
+      if (tok2) submitUrl = `https://www.tamkorea.com/submit?token=${encodeURIComponent(tok2)}`;
+      else if (iid) submitUrl = `https://www.tamkorea.com/submit?inflId=${encodeURIComponent(iid)}`;
     } catch { /* 링크는 부가 정보 — 실패해도 선발·예약은 유효 */ }
     return { status: 'ok', submitUrl, msg: `예약입력_DB 생성 (담당 ${mgr}, ${day} 12:00 가등록)` };
   } catch (e) {
