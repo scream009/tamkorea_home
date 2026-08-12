@@ -90,7 +90,7 @@ async function listAll(table, fields) {
   return rows;
 }
 
-function buildPayload(campRecs, applRecs) {
+function buildPayload(campRecs, applRecs, resvMap) {
   const bySlug = new Map();
   campRecs.forEach((r) => {
     const f = r.fields;
@@ -139,6 +139,7 @@ function buildPayload(campRecs, applRecs) {
       teamRole: f.team_role || '',
       status: st,
       bucket,
+      resv: (resvMap && resvMap[r.id]) || null,
       source: f.source || '',
       createdAt: r.createdTime || '',
     });
@@ -380,6 +381,35 @@ async function revertResv(applicantId, force, cancelKind) {
   }
 }
 
+/**
+ * 지원자 → 예약 상태 맵. 화면이 **누르기 전에** 올바른 버튼만 보여주기 위해 필요하다.
+ * 비고의 `IB:{지원서ID}` 태그로 역추적한다. 실패해도 목록은 살아야 하므로 빈 맵을 준다.
+ */
+async function fetchResvMap() {
+  try {
+    const qs = new URLSearchParams({ pageSize: '100' });
+    qs.set('filterByFormula', "FIND('IB:',{비고})");
+    ['비고', '진행상태', '자동발송체크', 'Shoot_ID'].forEach((f) => qs.append('fields[]', f));
+    const d = await tk(`${encodeURIComponent('예약입력_DB')}?${qs}`);
+    const map = {};
+    (d.records || []).forEach((r) => {
+      const m = /IB:(rec[A-Za-z0-9]+)/.exec(String(r.fields['비고'] || ''));
+      if (!m) return;
+      const st = Array.isArray(r.fields['진행상태']) ? r.fields['진행상태'][0] : (r.fields['진행상태'] || '');
+      map[m[1]] = {
+        shoot: r.fields['Shoot_ID'] || '',
+        status: st,
+        sent: !!r.fields['자동발송체크'],
+        // 지울 수 있는 건가 = 발송 큐의 삭제 규칙과 같은 잣대
+        removable: st === '예약요청' && !r.fields['자동발송체크'],
+      };
+    });
+    return map;
+  } catch {
+    return {};
+  }
+}
+
 export default async function handler(req, res) {
   const who = staffIdentity(req, res);
   if (!who) return;
@@ -390,11 +420,12 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const [camps, appls] = await Promise.all([
+      const [camps, appls, resvMap] = await Promise.all([
         listAll(T_CAMPAIGNS, CAMPAIGN_FIELDS),
         listAll(T_APPLICANTS, APPLICANT_FIELDS),
+        fetchResvMap(),
       ]);
-      res.status(200).json({ who, campaigns: buildPayload(camps, appls) });
+      res.status(200).json({ who, campaigns: buildPayload(camps, appls, resvMap) });
       return;
     }
 

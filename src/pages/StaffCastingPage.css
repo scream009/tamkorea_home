@@ -99,3 +99,6 @@
 .scast-refchip span{color:var(--muted);font-size:.64rem}
 .scast-refchip.on{border-color:var(--accent);color:var(--ink);background:#2A2340}
 .scast-refchip.me{box-shadow:0 0 0 1px rgba(16,185,129,.35)}
+
+.scast-resv{font-size:.66rem;color:var(--ink2);margin-top:.2rem}
+.scast-resv.sent{color:#FDE68A;font-weight:700}

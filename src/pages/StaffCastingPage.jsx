@@ -81,9 +81,24 @@ export default function StaffCastingPage() {
   }, [camp, filter, refSel]);
 
   async function act(applicant, action, force, cancelKind) {
-    const label = action === 'approve' ? '선발' : action === 'reject' ? '탈락'
-      : (applicant.bucket === 'approved' ? '선발 취소' : '신규로 되돌리기');
-    if (!force && !window.confirm(`${applicant.name || applicant.xhsName} — ${label} 처리할까요?`)) return;
+    const who = applicant.name || applicant.xhsName;
+    if (!force) {
+      // 취소(이미 나간 예약)는 결과가 고객사에 나가므로 전용 문구로 확인받는다
+      if (cancelKind) {
+        const shoot = (applicant.resv && applicant.resv.shoot) || '';
+        const ok = window.confirm(
+          `${who} — 선발을 취소합니다.\n\n`
+          + `예약(${shoot})은 이미 나간 건이라 「${cancelKind}」로 처리되고,\n`
+          + '고객사에 취소 안내가 자동 발송됩니다.\n\n계속할까요?',
+        );
+        if (!ok) return;
+        // 확인을 받았으므로 서버 재확인 없이 바로 진행
+        return act(applicant, action, true, cancelKind);
+      }
+      const label = action === 'approve' ? '선발' : action === 'reject' ? '탈락'
+        : (applicant.bucket === 'approved' ? '선발 되돌리기' : '신규로 되돌리기');
+      if (!window.confirm(`${who} — ${label} 처리할까요?`)) return;
+    }
     setBusy(applicant.id);
     try {
       const resp = await fetch('/api/staff-casting', {
@@ -257,6 +272,12 @@ export default function StaffCastingPage() {
                             {a.wechat && (
                               <div className="scast-wechat" title="선발 전 일정·동행 조율도 위챗으로">위챗: {a.wechat}</div>
                             )}
+                            {a.resv && (
+                              <div className={`scast-resv ${a.resv.removable ? "" : "sent"}`}
+                                title={a.resv.removable ? "미발송 — 되돌리면 예약도 삭제됩니다" : "이미 발송됨 — 취소 처리만 가능"}>
+                                예약 {a.resv.status}{a.resv.sent ? " · 발송됨" : ""}
+                              </div>
+                            )}
                           </td>
                           <td className="scast-actions">
                             {a.msg && (
@@ -266,26 +287,38 @@ export default function StaffCastingPage() {
                                 onClick={() => setOpenMsg(openMsg === a.id ? '' : a.id)}
                               >{openMsg === a.id ? '메시지 접기' : '메시지'}</button>
                             )}
-                            {/* 상태별로 할 수 있는 일만 보인다 —
-                                선발된 건에 「탈락」이 같이 떠서 예약이 고아로 남는 사고가 있었다 (2026-08-12) */}
-                            {a.bucket === 'approved' ? (
-                              <button
-                                type="button"
-                                className="scast-no"
-                                disabled={busy === a.id}
-                                title="선발을 취소합니다 — 연결된 예약도 함께 정리합니다"
-                                onClick={() => act(a, 'reset')}
-                              >선발취소</button>
-                            ) : (
+                            {/* 상태별로 할 수 있는 일만 보인다 (Owner 확정 2026-08-12)
+                                신규   : 선발 · 탈락
+                                선발됨 : 예약이 안 나갔으면 되돌리기 / 이미 나갔으면 취소만
+                                탈락   : 되돌리기
+                                → 선발된 건에 「탈락」이 같이 떠서 예약이 고아로 남는 사고가 있었다 */}
+                            {a.bucket === 'approved' && (
+                              a.resv && !a.resv.removable ? (
+                                <button
+                                  type="button"
+                                  className="scast-no"
+                                  disabled={busy === a.id}
+                                  title={`예약(${a.resv.shoot || ''})이 이미 나갔습니다 — 취소 안내가 고객사에 발송됩니다`}
+                                  onClick={() => act(a, 'reset', false, '취소_방문자')}
+                                >취소</button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="scast-ghost"
+                                  disabled={busy === a.id}
+                                  title="선발을 되돌립니다 — 연결된 예약(미발송)도 함께 삭제합니다"
+                                  onClick={() => act(a, 'reset')}
+                                >되돌리기</button>
+                              )
+                            )}
+                            {(a.bucket === 'new' || a.bucket === 'reviewing') && (
                               <>
                                 <button type="button" className="scast-ok" disabled={busy === a.id} onClick={() => act(a, 'approve')}>선발</button>
-                                {a.bucket !== 'rejected' && (
-                                  <button type="button" className="scast-no" disabled={busy === a.id} onClick={() => act(a, 'reject')}>탈락</button>
-                                )}
-                                {a.bucket === 'rejected' && (
-                                  <button type="button" className="scast-ghost" disabled={busy === a.id} onClick={() => act(a, 'reset')}>되돌리기</button>
-                                )}
+                                <button type="button" className="scast-no" disabled={busy === a.id} onClick={() => act(a, 'reject')}>탈락</button>
                               </>
+                            )}
+                            {a.bucket === 'rejected' && (
+                              <button type="button" className="scast-ghost" disabled={busy === a.id} onClick={() => act(a, 'reset')}>되돌리기</button>
                             )}
                           </td>
                         </tr>
