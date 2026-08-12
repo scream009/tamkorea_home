@@ -55,6 +55,7 @@ export default function InfluencerSubmitPage() {
   const [inflName, setInflName] = useState('');     // 인플루언서 닉네임
   const [resolvedInflId, setResolvedInflId] = useState(''); // 서버에서 해석한 실제 INFL_ID
   const [guideModal, setGuideModal] = useState({ isOpen: false, text: '', client: '' }); // 롱텍스트 가이드 모달
+  const [missionModal, setMissionModal] = useState(null); // IB 카드 미션 팝업 {client, mission}
   // ─── 입장 체크인 (v1.7 — 3단계) ─────────────────────────────
   // 1차: 페이지 안 라이브 카메라 스캔 (실시간 프레임 — 사진 한 장 디코드와 달리 모아레에 강함)
   // 2차: 매장 게시 일별 6자리 코드 입력 (카메라 권한이 안 열리는 폰)
@@ -480,15 +481,14 @@ export default function InfluencerSubmitPage() {
 
                     {/* 촬영가이드 (롱텍스트 팝업) */}
                     <td>
-                      {/* 카드가 있는 매장 = 모집사이트 미션이 정본. 옛 가이드는 카드 없는
-                          기존 운영 매장에서만 보인다 — 두 기준이 동시에 보이면 반드시 어긋난다 */}
-                      {rec.cardUrl ? (
-                        <a
+                      {/* 카드가 있는 매장 = 모집사이트 미션이 정본. **같은 화면 안에서** 팝업으로
+                          보여준다 — 링크아웃은 인플을 모집 문맥으로 튕겨내서 폐기 (Owner 2026-08-13).
+                          옛 가이드는 카드 없는 기존 운영 매장에서만 보인다 */}
+                      {rec.mission ? (
+                        <button
                           className="inf-btn-guide"
-                          href={rec.cardUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                        >📋 活动任务</a>
+                          onClick={() => setMissionModal({ client: rec.client, m: rec.mission })}
+                        >📋 活动任务</button>
                       ) : rec.guide ? (
                         <button
                           className="inf-btn-guide"
@@ -740,6 +740,70 @@ export default function InfluencerSubmitPage() {
                 </details>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* IB 카드 미션 팝업 — 데이터는 IB 정본을 실시간 조회, 렌더만 여기서 */}
+      {missionModal && (
+        <div className="inf-modal-backdrop" onClick={() => setMissionModal(null)}>
+          <div className="inf-modal-content" onClick={e => e.stopPropagation()}>
+            <div className="inf-modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)' }}>{missionModal.client} · 活动任务</h3>
+              <button onClick={() => setMissionModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
+            </div>
+            <div className="inf-modal-body" style={{ color: '#111', fontSize: '0.92rem', lineHeight: 1.65, maxHeight: '60vh', overflowY: 'auto', background: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid #e9ecef' }}>
+              {missionModal.m.provisions.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <b>🎁 提供内容</b>
+                  {missionModal.m.provisions.map((x, i) => <div key={i}>· {x}</div>)}
+                  {missionModal.m.notes.map((x, i) => <div key={i} style={{ color: '#c0392b', fontSize: '0.82rem' }}>{x}</div>)}
+                </div>
+              )}
+              {missionModal.m.tasks.map((t, ti) => (
+                <div key={ti} style={{ marginBottom: 12, background: '#fff', border: '1px solid #e9ecef', borderRadius: 8, padding: '10px 12px' }}>
+                  <b>{t.platform === 'xhs' ? '📕 小红书' : t.platform === 'dzdp' ? '📙 大众点评' : t.platform}</b>
+                  {t.photoMin > 0 && <div style={{ fontSize: '0.85rem', color: '#555' }}>照片 {t.photoMin}~{t.photoMax}张{t.wordMin ? ` · 正文${t.wordMin}字以上` : ''}</div>}
+                  {t.shots.length > 0 && (
+                    <div style={{ marginTop: 6 }}>
+                      <span style={{ fontSize: '0.8rem', color: '#888' }}>必拍内容</span>
+                      {t.shots.map((x, i) => <div key={i} style={{ fontSize: '0.88rem' }}>· {x}</div>)}
+                    </div>
+                  )}
+                  {t.must.length > 0 && (
+                    <div style={{ marginTop: 6 }}>
+                      <span style={{ fontSize: '0.8rem', color: '#888' }}>必须包含</span>
+                      {t.must.map((x, i) => <div key={i} style={{ fontSize: '0.88rem', color: '#c0392b' }}>▸ {x}</div>)}
+                    </div>
+                  )}
+                  {t.hashtags && (
+                    <div style={{ marginTop: 6 }}>
+                      <span style={{ fontSize: '0.8rem', color: '#888' }}>必须话题</span>
+                      <div style={{ fontSize: '0.85rem', wordBreak: 'break-all' }}>{t.hashtags}</div>
+                      <button
+                        style={{ marginTop: 4, fontSize: '0.78rem', padding: '3px 10px', borderRadius: 6, border: '1px solid #ccc', background: '#fff', cursor: 'pointer' }}
+                        onClick={async () => {
+                          try { await navigator.clipboard.writeText(t.hashtags + (t.hashtagsOpt ? ' ' + t.hashtagsOpt : '')); alert('话题已复制'); } catch { /* 무시 */ }
+                        }}
+                      >📋 复制话题</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {missionModal.m.cautions.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <b>⚠️ 注意事项</b>
+                  {missionModal.m.cautions.map((x, i) => <div key={i} style={{ fontSize: '0.85rem' }}>· {x}</div>)}
+                </div>
+              )}
+              {(missionModal.m.hours || missionModal.m.subway) && (
+                <div style={{ fontSize: '0.85rem', color: '#555' }}>
+                  {missionModal.m.hours && <div>🕐 {missionModal.m.hours}</div>}
+                  {missionModal.m.subway && <div>📍 {missionModal.m.subway}</div>}
+                  {missionModal.m.dzdpUrl && <div>🔗 <a href={missionModal.m.dzdpUrl} target="_blank" rel="noreferrer">大众点评</a></div>}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

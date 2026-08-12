@@ -31,37 +31,81 @@ const IB_BASE = process.env.IB_CASTING_BASE_ID || 'appDYOCw29mohYrIG';
 const CARD_ORIGIN = 'https://campaign.tamkorea.com';
 const ROUND_PRIORITY = { uploading: 0, recruiting: 1, closed: 2, completed: 3, hidden: 4 };
 
+async function ibList(table, fields) {
+  const rows = [];
+  let offset = '';
+  do {
+    const qs = new URLSearchParams({ pageSize: '100' });
+    (fields || []).forEach((f) => qs.append('fields[]', f));
+    if (offset) qs.set('offset', offset);
+    const resp = await fetch(`https://api.airtable.com/v0/${IB_BASE}/${encodeURIComponent(table)}?${qs}`, {
+      headers: { Authorization: `Bearer ${IB_KEY}` },
+    });
+    if (!resp.ok) return rows;
+    const d = await resp.json();
+    rows.push(...(d.records || []));
+    offset = d.offset || '';
+  } while (offset);
+  return rows;
+}
+
+const lines = (v) => String(v || '').split('\n').map((x) => x.trim()).filter(Boolean);
+
 async function fetchCardMap() {
   try {
-    const rows = [];
-    let offset = '';
-    do {
-      const qs = new URLSearchParams({ pageSize: '100' });
-      ['slug', 'client', 'display_status', 'recruit_start'].forEach((f) => qs.append('fields[]', f));
-      if (offset) qs.set('offset', offset);
-      const resp = await fetch(`https://api.airtable.com/v0/${IB_BASE}/Campaigns?${qs}`, {
-        headers: { Authorization: `Bearer ${IB_KEY}` },
-      });
-      if (!resp.ok) return {};
-      const d = await resp.json();
-      rows.push(...(d.records || []));
-      offset = d.offset || '';
-    } while (offset);
+    const [camps, tasks] = await Promise.all([
+      ibList('Campaigns', ['slug', 'client', 'display_status', 'recruit_start',
+        'provisions_zh', 'provision_notes_zh', 'cautions_zh', 'visit_hours_zh', 'subway_zh', 'dzdp_url']),
+      ibList('Platform_Tasks', ['task_id', 'platform', 'photo_count_min', 'photo_count_max',
+        'photo_required_shots_zh', 'hashtag_required_zh', 'hashtag_optional_zh',
+        'content_must_include_zh', 'content_word_min']),
+    ]);
 
-    // 고객사명 → 대표 라운드 slug (방문·업로드 중 > 모집 중 > 마감 순, 같은 급이면 최신)
+    // slug → 미션 목록
+    const taskBySlug = {};
+    tasks.forEach((t) => {
+      const f = t.fields || {};
+      const m = /^(.*)-(xhs|dzdp|weibo)$/.exec(String(f.task_id || ''));
+      if (!m) return;
+      (taskBySlug[m[1]] = taskBySlug[m[1]] || []).push({
+        platform: f.platform || m[2],
+        photoMin: f.photo_count_min || 0,
+        photoMax: f.photo_count_max || 0,
+        shots: lines(f.photo_required_shots_zh),
+        hashtags: String(f.hashtag_required_zh || ''),
+        hashtagsOpt: String(f.hashtag_optional_zh || ''),
+        must: lines(f.content_must_include_zh),
+        wordMin: f.content_word_min || 0,
+      });
+    });
+
+    // 고객사명 → 대표 라운드 (방문·업로드 중 > 모집 중 > 마감 순, 같은 급이면 최신)
     const best = {};
-    rows.forEach((r) => {
+    camps.forEach((r) => {
       const f = r.fields || {};
       if (!f.slug || !f.client) return;
       const cur = best[f.client];
       const pri = ROUND_PRIORITY[f.display_status] ?? 9;
       if (!cur || pri < cur.pri
         || (pri === cur.pri && String(f.recruit_start || '') > String(cur.start || ''))) {
-        best[f.client] = { slug: f.slug, pri, start: f.recruit_start };
+        best[f.client] = { f, pri, start: f.recruit_start };
       }
     });
+
     const map = {};
-    Object.keys(best).forEach((client) => { map[client] = `${CARD_ORIGIN}/campaign/${best[client].slug}`; });
+    Object.keys(best).forEach((client) => {
+      const f = best[client].f;
+      map[client] = {
+        url: `${CARD_ORIGIN}/campaign/${f.slug}`,
+        provisions: lines(f.provisions_zh),
+        notes: lines(f.provision_notes_zh),
+        cautions: lines(f.cautions_zh),
+        hours: f.visit_hours_zh || '',
+        subway: f.subway_zh || '',
+        dzdpUrl: f.dzdp_url || '',
+        tasks: taskBySlug[f.slug] || [],
+      };
+    });
     return map;
   } catch {
     return {};
@@ -69,9 +113,9 @@ async function fetchCardMap() {
 }
 
 function findCardUrl(cardMap, clientKr) {
-  if (!clientKr) return '';
+  if (!clientKr) return null;
   const hit = Object.keys(cardMap).find((c) => clientKr.includes(c));
-  return hit ? cardMap[hit] : '';
+  return hit ? cardMap[hit] : null;
 }
 const GUIDE_FIELD     = '拍摄剧本';       // 가이드 링크 (CS_DB에서 Lookup 필수)
 const DATE_FIELD      = '예약일시';        // 촬영일자 필드명
@@ -203,7 +247,7 @@ export default async function handler(req, res) {
         return {
           id:         rec.id,
           client:     rec.fields[ZH_CLIENT_FIELD] || rec.fields[CLIENT_FIELD] || '',
-          cardUrl:    findCardUrl(cardMap, String(rec.fields[CLIENT_FIELD] || '')),
+          mission:    findCardUrl(cardMap, String(rec.fields[CLIENT_FIELD] || '')),
           guide:      rec.fields[GUIDE_FIELD]   || '',
           date:       finalDate,
           deadline:   finalDate ? formatDeadline(finalDate, deadlineDaysForType(rec.fields[TYPE_FIELD])) : '',
