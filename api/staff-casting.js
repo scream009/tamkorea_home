@@ -16,7 +16,10 @@
 
 import { staffIdentity } from './_staff-auth.js';
 
-const KEY = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
+/* IB_Casting 은 TK_DB_V3 와 다른 base 라 기존 토큰(TAMLINK_API_KEY)에 권한이 없을 수 있다.
+ * 전용 토큰(IB_CASTING_TOKEN)을 먼저 찾고, 없으면 기존 토큰으로 폴백한다.
+ * 실측 2026-08-12: TAMLINK_API_KEY 는 IB_Casting 에 403 — Vercel 에 IB_CASTING_TOKEN 필요. */
+const KEY = process.env.IB_CASTING_TOKEN || process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const BASE = process.env.IB_CASTING_BASE_ID || 'appDYOCw29mohYrIG';
 const API = `https://api.airtable.com/v0/${BASE}`;
 
