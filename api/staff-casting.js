@@ -405,8 +405,12 @@ export default async function handler(req, res) {
         res.status(400).json({ error: 'id 와 action(approve|reject|reset)이 필요합니다.' });
         return;
       }
-      // 되돌리기: 먼저 예약 쪽을 본다 — 지울 수 없는 건이면 선발 상태를 건드리지 않고 확인을 받는다
-      if (action === 'reset') {
+      // 🔴 **Approved 를 벗어나는 모든 전이**에 예약 동기화를 건다 (되돌리기·탈락 모두).
+      // action 이름으로 분기하면 새 버튼이 생길 때마다 예약이 고아로 남는다 —
+      // 실제로 '탈락' 에 동기화가 빠져 예약만 살아남는 사고가 났다 (2026-08-12).
+      const cur = await at(`${T_APPLICANTS}/${encodeURIComponent(id)}`);
+      const curStatus = cur.fields.status || 'New';
+      if (curStatus === 'Approved' && next !== 'Approved') {
         const rv = await revertResv(id, !!force, cancelKind);
         if (rv.code === 'confirm') {
           res.status(200).json({ ok: false, needConfirm: true, resv: rv, who });

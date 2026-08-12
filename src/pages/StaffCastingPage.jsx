@@ -81,7 +81,8 @@ export default function StaffCastingPage() {
   }, [camp, filter, refSel]);
 
   async function act(applicant, action, force, cancelKind) {
-    const label = action === 'approve' ? '선발' : action === 'reject' ? '탈락' : '신규로 되돌리기';
+    const label = action === 'approve' ? '선발' : action === 'reject' ? '탈락'
+      : (applicant.bucket === 'approved' ? '선발 취소' : '신규로 되돌리기');
     if (!force && !window.confirm(`${applicant.name || applicant.xhsName} — ${label} 처리할까요?`)) return;
     setBusy(applicant.id);
     try {
@@ -265,14 +266,26 @@ export default function StaffCastingPage() {
                                 onClick={() => setOpenMsg(openMsg === a.id ? '' : a.id)}
                               >{openMsg === a.id ? '메시지 접기' : '메시지'}</button>
                             )}
-                            {a.bucket !== 'approved' && (
-                              <button type="button" className="scast-ok" disabled={busy === a.id} onClick={() => act(a, 'approve')}>선발</button>
-                            )}
-                            {a.bucket !== 'rejected' && (
-                              <button type="button" className="scast-no" disabled={busy === a.id} onClick={() => act(a, 'reject')}>탈락</button>
-                            )}
-                            {a.bucket !== 'new' && a.bucket !== 'reviewing' && (
-                              <button type="button" className="scast-ghost" disabled={busy === a.id} onClick={() => act(a, 'reset')}>되돌리기</button>
+                            {/* 상태별로 할 수 있는 일만 보인다 —
+                                선발된 건에 「탈락」이 같이 떠서 예약이 고아로 남는 사고가 있었다 (2026-08-12) */}
+                            {a.bucket === 'approved' ? (
+                              <button
+                                type="button"
+                                className="scast-no"
+                                disabled={busy === a.id}
+                                title="선발을 취소합니다 — 연결된 예약도 함께 정리합니다"
+                                onClick={() => act(a, 'reset')}
+                              >선발취소</button>
+                            ) : (
+                              <>
+                                <button type="button" className="scast-ok" disabled={busy === a.id} onClick={() => act(a, 'approve')}>선발</button>
+                                {a.bucket !== 'rejected' && (
+                                  <button type="button" className="scast-no" disabled={busy === a.id} onClick={() => act(a, 'reject')}>탈락</button>
+                                )}
+                                {a.bucket === 'rejected' && (
+                                  <button type="button" className="scast-ghost" disabled={busy === a.id} onClick={() => act(a, 'reset')}>되돌리기</button>
+                                )}
+                              </>
                             )}
                           </td>
                         </tr>
