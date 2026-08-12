@@ -98,3 +98,5 @@
   .scard-store{min-width:13rem}
   .scard-grid{grid-template-columns:1fr}
 }
+
+.scard-sitelink{margin-left:.7rem;font-size:.7rem;padding:.28rem .6rem;border-radius:7px;vertical-align:middle}

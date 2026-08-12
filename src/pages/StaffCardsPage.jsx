@@ -110,7 +110,17 @@ export default function StaffCardsPage() {
       <div className="scard-wrap">
         <StaffNav current="cards" />
         <header className="scard-head">
-          <h1>모집카드 관리</h1>
+          <h1>모집카드 관리
+            <button type="button" className="scard-ghost scard-sitelink"
+              title="사이트 전체 홍보 링크 (내 실적으로 기록)"
+              onClick={async () => {
+                const me = (data && data.who) || 'staff';
+                const url = `https://campaign.tamkorea.com/?ref=${encodeURIComponent(me)}`;
+                try { await navigator.clipboard.writeText(url); window.alert(`사이트 홍보링크 복사됨 (담당 ${me})`); }
+                catch { window.prompt('복사:', url); }
+              }}
+            >🔗 사이트 홍보링크</button>
+          </h1>
           <p className="scard-sub">
             카드 1장 = 모집 라운드. 새 모집은 직전 라운드를 복제해 올립니다 —
             같은 매장의 카드가 다른 기간으로 여러 장 있을 수 있습니다.
@@ -194,6 +204,17 @@ export default function StaffCardsPage() {
                           <button type="button" className="scard-ok" disabled={busy === r.id}
                             onClick={() => post({ action: 'show', id: r.id }, `${r.label} — 모집 중으로 올릴까요?`)}
                           >올리기</button>
+                        )}
+                        {r.status === 'recruiting' && (
+                          <button type="button" className="scard-ok"
+                            title="이 카드의 홍보 링크 — 지원서에 내 실적으로 자동 기록됩니다"
+                            onClick={async () => {
+                              const me = (data && data.who) || 'staff';
+                              const url = `https://campaign.tamkorea.com/campaign/${r.slug}?ref=${encodeURIComponent(me)}`;
+                              try { await navigator.clipboard.writeText(url); window.alert(`홍보링크 복사됨 (담당 ${me})`); }
+                              catch { window.prompt('복사:', url); }
+                            }}
+                          >홍보링크</button>
                         )}
                         <a className="scard-ghost scard-link" href={`/staff/casting`}>선발 화면</a>
                       </div>

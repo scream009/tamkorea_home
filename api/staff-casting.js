@@ -42,7 +42,7 @@ const APPLICANT_FIELDS = [
   'name', 'xhs_url', 'xhs_account_name', 'dzdp_account',
   'gender', 'birth_year', 'visa_status', 'preferred_visit_date', 'pax',
   'companion_xhs_account', 'application_message', 'status', 'source',
-  '🔒 pii_wechat', 'campaign_slug',
+  '🔒 pii_wechat', 'campaign_slug', 'referrer', 'team_key', 'team_role',
 ];
 
 /* 수동 선발이 만들 수 있는 상태 전이만 허용한다 */
@@ -132,6 +132,9 @@ function buildPayload(campRecs, applRecs) {
       companion: f.companion_xhs_account || '',
       msg: f.application_message || '',
       wechat: f['🔒 pii_wechat'] || '',
+      referrer: f.referrer || '',
+      teamKey: f.team_key || '',
+      teamRole: f.team_role || '',
       status: st,
       bucket,
       source: f.source || '',

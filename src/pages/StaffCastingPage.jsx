@@ -151,6 +151,11 @@ export default function StaffCastingPage() {
                             <div className="scast-name">{a.name || '—'}</div>
                             <div className="scast-mut">
                               {a.gender}{a.birth ? ` · ${a.birth}년생` : ''} · {fmtDate(a.createdAt)} 지원
+                              {a.referrer && <span className="scast-ref"> · 담당 {a.referrer}</span>}
+                              {a.teamRole === 'leader' && a.id && camp.applicants.some((x) => x.teamKey === a.id) && (
+                                <span className="scast-team"> · 팀 대표</span>
+                              )}
+                              {a.teamRole === 'member' && <span className="scast-team"> · 동행</span>}
                             </div>
                           </td>
                           <td>
@@ -164,8 +169,8 @@ export default function StaffCastingPage() {
                           <td>{a.pax || '—'}</td>
                           <td>
                             <span className={`scast-badge st-${a.bucket}`}>{BUCKET_LABEL[a.bucket]}</span>
-                            {a.bucket === 'approved' && a.wechat && (
-                              <div className="scast-wechat" title="위챗으로 선정 통보">위챗: {a.wechat}</div>
+                            {a.wechat && (
+                              <div className="scast-wechat" title="선발 전 일정·동행 조율도 위챗으로">위챗: {a.wechat}</div>
                             )}
                           </td>
                           <td className="scast-actions">
@@ -175,6 +180,18 @@ export default function StaffCastingPage() {
                                 className="scast-ghost"
                                 onClick={() => setOpenMsg(openMsg === a.id ? '' : a.id)}
                               >{openMsg === a.id ? '메시지 접기' : '메시지'}</button>
+                            )}
+                            {a.teamRole !== 'member' && (
+                              <button
+                                type="button"
+                                className="scast-ghost"
+                                title="동행 인플이 자기 정보로 팀 지원하는 링크 — 위챗으로 전달"
+                                onClick={async () => {
+                                  const url = `https://campaign.tamkorea.com/campaign/${camp.slug}/apply?team=${a.id}`;
+                                  try { await navigator.clipboard.writeText(url); window.alert('동행 초대 링크 복사됨'); }
+                                  catch { window.prompt('복사:', url); }
+                                }}
+                              >동행링크</button>
                             )}
                             {a.bucket !== 'approved' && (
                               <button type="button" className="scast-ok" disabled={busy === a.id} onClick={() => act(a, 'approve')}>선발</button>

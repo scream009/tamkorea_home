@@ -87,3 +87,6 @@
   .scast-camp{min-width:13rem}
   .scast-table{display:block;overflow-x:auto}
 }
+
+.scast-ref{color:var(--accent2)}
+.scast-team{color:#6EE7B7;font-weight:700}
