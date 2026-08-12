@@ -80,7 +80,7 @@ export default function StaffCastingPage() {
     return list.filter((a) => a.bucket === filter);
   }, [camp, filter, refSel]);
 
-  async function act(applicant, action, force) {
+  async function act(applicant, action, force, cancelKind) {
     const label = action === 'approve' ? '선발' : action === 'reject' ? '탈락' : '신규로 되돌리기';
     if (!force && !window.confirm(`${applicant.name || applicant.xhsName} — ${label} 처리할까요?`)) return;
     setBusy(applicant.id);
@@ -88,7 +88,7 @@ export default function StaffCastingPage() {
       const resp = await fetch('/api/staff-casting', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...staffHeaders() },
-        body: JSON.stringify({ id: applicant.id, action, ...(force ? { force: 1 } : {}) }),
+        body: JSON.stringify({ id: applicant.id, action, ...(force ? { force: 1 } : {}), ...(cancelKind ? { cancelKind } : {}) }),
       });
       const d = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(d.error || `HTTP ${resp.status}`);
@@ -98,15 +98,16 @@ export default function StaffCastingPage() {
         const rv = d.resv || {};
         const go = window.confirm(
           `⚠️ 이 건은 예약이 이미 나갔습니다 (${rv.reason || '확인 필요'} · ${rv.shoot || ''}).\n\n`
-          + '예약은 자동으로 지울 수 없습니다.\n'
-          + '계속하면 선발만 취소되고, 예약은 남습니다.\n\n'
-          + '→ 계속한 뒤 반드시 예약발송 화면에서 그 예약 건을 「취소」 처리하세요.',
+          + '[확인] 선발을 취소하고, 예약도 「취소_방문자」로 처리합니다.\n'
+          + '        → 고객사에 취소 안내가 자동 발송됩니다.\n\n'
+          + '[취소] 아무것도 하지 않습니다.',
         );
-        if (go) await act(applicant, 'reset', true);
+        if (!go) return;
+        await act(applicant, 'reset', true, '취소_방문자');
         return;
       }
-      if (d.resv && (d.resv.code === 'deleted' || d.resv.code === 'manual')) {
-        window.alert(d.resv.code === 'deleted' ? `✅ ${d.resv.msg}` : `⚠️ ${d.resv.msg}`);
+      if (d.resv && ['deleted', 'cancelled', 'manual'].includes(d.resv.code)) {
+        window.alert(d.resv.code === 'manual' ? `⚠️ ${d.resv.msg}` : `✅ ${d.resv.msg}`);
       }
       if (d.resv && d.resv.code === 'no_mgr') {
         // admin·공용키로 선발하면 담당자를 알 수 없다 → 물어보고 예약 연계만 재시도
@@ -263,18 +264,6 @@ export default function StaffCastingPage() {
                                 className="scast-ghost"
                                 onClick={() => setOpenMsg(openMsg === a.id ? '' : a.id)}
                               >{openMsg === a.id ? '메시지 접기' : '메시지'}</button>
-                            )}
-                            {a.teamRole !== 'member' && (
-                              <button
-                                type="button"
-                                className="scast-ghost"
-                                title="동행 인플이 자기 정보로 팀 지원하는 링크 — 위챗으로 전달"
-                                onClick={async () => {
-                                  const url = `https://campaign.tamkorea.com/campaign/${camp.slug}/apply?team=${a.id}`;
-                                  try { await navigator.clipboard.writeText(url); window.alert('동행 초대 링크 복사됨'); }
-                                  catch { window.prompt('복사:', url); }
-                                }}
-                              >동행링크</button>
                             )}
                             {a.bucket !== 'approved' && (
                               <button type="button" className="scast-ok" disabled={busy === a.id} onClick={() => act(a, 'approve')}>선발</button>

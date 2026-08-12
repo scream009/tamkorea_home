@@ -320,7 +320,7 @@ async function pushToResv(applicantId, who, mgrOverride) {
  *   {code:'confirm'} — 이미 나간 건이라 삭제 불가. force 로 재호출하면 선발만 취소
  *   {code:'manual'}  — force 로 진행. 예약은 발송 큐에서 취소 처리해야 함
  */
-async function revertResv(applicantId, force) {
+async function revertResv(applicantId, force, cancelKind) {
   try {
     const tag = `IB:${applicantId}`;
     const hits = await tkList('예약입력_DB', `FIND('${escFormula(tag)}',{비고})`,
@@ -342,16 +342,30 @@ async function revertResv(applicantId, force) {
         return cs !== '예약요청';
       });
       if (moved.length) {
-        return force
-          ? { code: 'manual', msg: `분할 진행 건 ${moved.length}건이 이미 진행 중 — 예약(${shoot})은 발송 큐에서 취소 처리하세요.` }
-          : { code: 'confirm', reason: `분할된 진행 건 ${moved.length}건이 이미 진행 중`, shoot };
+        if (!force) return { code: 'confirm', reason: `분할된 진행 건 ${moved.length}건이 이미 진행 중`, shoot };
+        if (!cancelKind) {
+          return { code: 'manual', msg: `분할 진행 건 ${moved.length}건이 진행 중 — 예약(${shoot})은 발송 화면에서 취소 처리하세요.` };
+        }
+        // 취소는 아래 공통 경로에서 처리된다 (진행상태 검사에 걸린다)
       }
     }
 
     if (st !== '예약요청' || sent) {
-      return force
-        ? { code: 'manual', msg: `예약(${shoot})은 이미 나간 건이라 자동 삭제하지 않았습니다 — 발송 큐에서 취소 처리하세요.` }
-        : { code: 'confirm', reason: sent ? '이미 발송됨' : `진행상태가 「${st}」`, shoot };
+      if (!force) return { code: 'confirm', reason: sent ? '이미 발송됨' : `진행상태가 「${st}」`, shoot };
+      if (cancelKind) {
+        // 발송 큐의 취소와 **완전히 같은 방식** — 자동발송체크를 켜면 봇이 취소 안내를 보낸다.
+        // 상태만 조용히 바꾸는 게 아니라 고객사에 실제로 통보된다.
+        await tk(`${encodeURIComponent('예약입력_DB')}/${r.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ fields: {
+            진행상태: cancelKind,
+            자동발송체크: true,
+            고객전달메모: '체험단 사정으로 방문이 취소되었습니다. 불편을 드려 죄송합니다.',
+          }, typecast: true }),
+        });
+        return { code: 'cancelled', msg: `예약(${shoot})을 「${cancelKind}」로 처리했습니다 — 취소 안내가 고객사에 발송됩니다.` };
+      }
+      return { code: 'manual', msg: `예약(${shoot})은 그대로 남아 있습니다 — 발송 화면에서 취소 처리하세요.` };
     }
 
     // 예약요청 & 미발송 → 자식부터 지우고 본체 삭제
@@ -385,7 +399,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { id, action, mgr, force } = req.body || {};
+      const { id, action, mgr, force, cancelKind } = req.body || {};
       const next = ACTIONS[action];
       if (!id || !next) {
         res.status(400).json({ error: 'id 와 action(approve|reject|reset)이 필요합니다.' });
@@ -393,7 +407,7 @@ export default async function handler(req, res) {
       }
       // 되돌리기: 먼저 예약 쪽을 본다 — 지울 수 없는 건이면 선발 상태를 건드리지 않고 확인을 받는다
       if (action === 'reset') {
-        const rv = await revertResv(id, !!force);
+        const rv = await revertResv(id, !!force, cancelKind);
         if (rv.code === 'confirm') {
           res.status(200).json({ ok: false, needConfirm: true, resv: rv, who });
           return;
