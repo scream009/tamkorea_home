@@ -14,6 +14,7 @@ const VIEW_ITEMS = [
   { key: 'board', to: '/staff', label: '진도 보드' },
   { key: 'queue', to: '/staff/queue', label: '예약발송' },
   { key: 'infl', to: '/staff/infl', label: '인플 보드' },
+  { key: 'casting', to: '/staff/casting', label: '체험단 선발' },
 ];
 const INPUT_ITEMS = [
   { key: 'new', to: '/staff/new', label: '＋ 예약입력' },
