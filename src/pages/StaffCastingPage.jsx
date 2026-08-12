@@ -90,7 +90,13 @@ export default function StaffCastingPage() {
         headers: { 'Content-Type': 'application/json', ...staffHeaders() },
         body: JSON.stringify({ id: applicant.id, action }),
       });
-      if (!resp.ok) throw new Error((await resp.json().catch(() => ({}))).error || `HTTP ${resp.status}`);
+      const d = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(d.error || `HTTP ${resp.status}`);
+      if (d.resv) {
+        window.alert(d.resv.status === 'ok'
+          ? `✅ ${d.resv.msg}\n발송은 예약발송 큐에서 따로 누르세요.`
+          : `⚠️ 선발은 완료. ${d.resv.msg}`);
+      }
       await load();
     } catch (e) {
       setError(e.message || '처리 실패');

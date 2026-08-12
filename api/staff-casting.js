@@ -15,6 +15,7 @@
  */
 
 import { staffIdentity } from './_staff-auth.js';
+import { escFormula } from './_admin-auth.js';
 
 /* IB_Casting 은 TK_DB_V3 와 다른 base 라 기존 토큰(TAMLINK_API_KEY)에 권한이 없을 수 있다.
  * 전용 토큰(IB_CASTING_TOKEN)을 먼저 찾고, 없으면 기존 토큰으로 폴백한다.
@@ -151,6 +152,154 @@ function buildPayload(campRecs, applRecs) {
   return campaigns;
 }
 
+/* ══════════════════════════════════════════════════════════════════
+ * 선발 → TK_DB_V3 예약입력_DB 연계 (Owner 확정 2026-08-12)
+ *
+ * 선발 순간 예약입력_DB 에 「예약요청」 레코드만 만든다. 자동발송체크는 건드리지
+ * 않으므로(OFF) 봇은 아무것도 보내지 않는다 — **발송은 기존 발송 큐에서 사람이
+ * 따로 누른다.** 담당(예약_ID) = referrer(홍보 링크 주인), 없으면 선발 누른 사람.
+ *
+ * 인플이 INFL_DB 에 없으면 신규 등록한다 (PAL 은 폼에서 안 받으므로 모집 최소
+ * 기준 1000 으로 넣고 비고에 미검증 표기 — 담당자가 조율하며 교정).
+ * 팀 동행(member)은 대표의 예약 레코드에 XHS_ID_ 로 합류시킨다.
+ *
+ * 실패해도 선발(Approve)은 유효하다 — 응답 warning 으로 알리고 수동(/staff/new) 처리.
+ * ══════════════════════════════════════════════════════════════════ */
+const TK_KEY = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
+const TK_BASE = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
+const TK_API = `https://api.airtable.com/v0/${TK_BASE}`;
+const MGRS = ['HH', 'LH', 'AN', 'FB'];
+
+async function tk(path, init) {
+  for (let i = 0; ; i += 1) {
+    const resp = await fetch(`${TK_API}/${path}`, {
+      ...init,
+      headers: { Authorization: `Bearer ${TK_KEY}`, 'Content-Type': 'application/json', ...(init && init.headers) },
+    });
+    if (resp.status === 429 && i < 4) { await sleep(600 * (i + 1)); continue; }
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => '');
+      throw new Error(`TK Airtable ${resp.status}: ${body.slice(0, 160)}`);
+    }
+    return resp.json();
+  }
+}
+
+async function tkList(table, formula, fields) {
+  const qs = new URLSearchParams({ pageSize: '20' });
+  if (formula) qs.set('filterByFormula', formula);
+  (fields || []).forEach((f) => qs.append('fields[]', f));
+  const d = await tk(`${encodeURIComponent(table)}?${qs}`);
+  return d.records;
+}
+
+function monthLabel(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${d.getFullYear()}. ${d.getMonth() + 1}월`;
+}
+
+/** 선발된 지원자를 예약입력_DB 로 넘긴다. 반환 {status:'ok'|'warn', msg} — throw 하지 않는다 */
+async function pushToResv(applicantId, who) {
+  try {
+    const a = (await at(`Applicants/${encodeURIComponent(applicantId)}`)).fields;
+    const slug = a.campaign_slug || '';
+    const tag = `IB:${applicantId}`;
+
+    const mgr = MGRS.includes(a.referrer) ? a.referrer : (MGRS.includes(who) ? who : null);
+    if (!mgr) {
+      return { status: 'warn', msg: `담당자 판별 불가 (referrer=${a.referrer || '없음'}, 선발자=${who}) — /staff/new 수동 입력` };
+    }
+
+    const camps = await listAll('Campaigns', ['slug', 'client', 'upload_start']);
+    const camp = camps.find((c) => c.fields.slug === slug);
+    if (!camp) return { status: 'warn', msg: `캠페인(${slug})을 찾지 못함 — 수동 입력` };
+    const client = camp.fields.client || '';
+
+    const dup = await tkList('예약입력_DB', `FIND('${escFormula(tag)}',{비고})`, ['Shoot_ID']);
+    if (dup.length) return { status: 'ok', msg: '이미 예약입력_DB에 있음' };
+
+    const stores = await tkList('CS_DB', `{고객사명(필수)}='${escFormula(client)}'`, ['고객사명(필수)', '지점명(필수)']);
+    if (stores.length !== 1) {
+      return { status: 'warn', msg: `매장 매칭 ${stores.length}건('${client}') — /staff/new 수동 입력` };
+    }
+    const storeId = stores[0].id;
+
+    const xid = String(a.xhs_account_name || '').trim();
+    if (!xid) return { status: 'warn', msg: '샤오홍슈 계정명이 비어 있음 — 수동 입력' };
+    let inflId;
+    let inflNew = false;
+    const found = await tkList('INFL_DB', `{XHS_ID(필수)}='${escFormula(xid)}'`, ['XHS_ID(필수)']);
+    if (found.length) {
+      inflId = found[0].id;
+    } else {
+      const made = await tk('INFL_DB', {
+        method: 'POST',
+        body: JSON.stringify({
+          records: [{ fields: {
+            'XHS_ID(필수)': xid,
+            '섭외_ID(필수)': mgr,
+            'XHS_link1(필수)': a.xhs_url || 'https://www.xiaohongshu.com',
+            'PAL(필수)': 1000,
+            WC_ID: a['🔒 pii_wechat'] || '',
+            닉네임: a.name || '',
+          } }],
+          typecast: true,
+        }),
+      });
+      inflId = made.records[0].id;
+      inflNew = true;
+    }
+
+    if (a.team_role === 'member' && a.team_key) {
+      const leadResv = await tkList('예약입력_DB', `FIND('IB:${escFormula(a.team_key)}',{비고})`, ['XHS_ID_', '비고']);
+      if (!leadResv.length) return { status: 'warn', msg: '팀 대표의 예약이 아직 없음 — 대표 먼저 선발 후 다시, 또는 수동 합류' };
+      const lr = leadResv[0];
+      const ids = new Set(lr.fields['XHS_ID_'] || []);
+      ids.add(inflId);
+      await tk(`예약입력_DB/${lr.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ fields: {
+          'XHS_ID_': [...ids],
+          'XHS_건수': ids.size,
+          'DP_건수': ids.size,
+          비고: `${lr.fields['비고'] || ''} | 동행 합류 ${xid} (${tag})`.trim(),
+        }, typecast: true }),
+      });
+      return { status: 'ok', msg: `팀 대표 예약에 동행 합류 (${xid})` };
+    }
+
+    const day = String(a.preferred_visit_date || '').slice(0, 10);
+    if (!day) return { status: 'warn', msg: '희망 방문일이 없음 — 수동 입력' };
+    const whenIso = new Date(`${day}T12:00:00+09:00`).toISOString();
+
+    await tk('예약입력_DB', {
+      method: 'POST',
+      body: JSON.stringify({
+        records: [{ fields: {
+          매장코드: [storeId],
+          '예약_ID': mgr,
+          유형: '체험',
+          진행상태: '예약요청',
+          정산월: monthLabel(camp.fields.upload_start) || monthLabel(new Date().toISOString()),
+          예약일시: whenIso,
+          총인원: Number(a.pax) || 1,
+          'XHS_건수': 1,
+          'DP_건수': 1,
+          대표인플: [inflId],
+          'XHS_ID_': [inflId],
+          인원메모: `모집사이트 선발 · 시간 미조율(기본 12:00) · 위챗 ${a['🔒 pii_wechat'] || '-'}`,
+          비고: `${tag} · 담당 ${mgr}${inflNew ? ' · 인플 신규등록(PAL 미검증)' : ''} · 계약월 확인 필요`,
+        } }],
+        typecast: true,
+      }),
+    });
+    return { status: 'ok', msg: `예약입력_DB 생성 (담당 ${mgr}, ${day} 12:00 가등록)` };
+  } catch (e) {
+    return { status: 'warn', msg: `예약입력_DB 연계 실패: ${e.message} — /staff/new 수동 입력` };
+  }
+}
+
 export default async function handler(req, res) {
   const who = staffIdentity(req, res);
   if (!who) return;
@@ -180,7 +329,10 @@ export default async function handler(req, res) {
         method: 'PATCH',
         body: JSON.stringify({ fields: { status: next } }),
       });
-      res.status(200).json({ ok: true, id: d.id, status: next, who });
+      // 선발이면 예약입력_DB 로 넘긴다 (실패해도 선발은 유효 — warning 으로 알림)
+      let resv = null;
+      if (action === 'approve') resv = await pushToResv(id, who);
+      res.status(200).json({ ok: true, id: d.id, status: next, who, resv });
       return;
     }
 
