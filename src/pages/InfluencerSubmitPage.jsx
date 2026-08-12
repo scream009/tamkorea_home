@@ -800,7 +800,13 @@ export default function InfluencerSubmitPage() {
                 <div style={{ fontSize: '0.85rem', color: '#555' }}>
                   {missionModal.m.hours && <div>🕐 {missionModal.m.hours}</div>}
                   {missionModal.m.subway && <div>📍 {missionModal.m.subway}</div>}
-                  {missionModal.m.dzdpUrl && <div>🔗 <a href={missionModal.m.dzdpUrl} target="_blank" rel="noreferrer">大众点评</a></div>}
+                  {(missionModal.m.dzdpUrl || missionModal.m.naverUrl) && (
+                    <div>🔗{' '}
+                      {missionModal.m.dzdpUrl && <a href={missionModal.m.dzdpUrl} target="_blank" rel="noreferrer">大众点评</a>}
+                      {missionModal.m.dzdpUrl && missionModal.m.naverUrl && ' · '}
+                      {missionModal.m.naverUrl && <a href={missionModal.m.naverUrl} target="_blank" rel="noreferrer">NAVER地图</a>}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

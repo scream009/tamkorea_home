@@ -55,7 +55,7 @@ async function fetchCardMap() {
   try {
     const [camps, tasks] = await Promise.all([
       ibList('Campaigns', ['slug', 'client', 'display_status', 'recruit_start',
-        'provisions_zh', 'provision_notes_zh', 'cautions_zh', 'visit_hours_zh', 'subway_zh', 'dzdp_url']),
+        'provisions_zh', 'provision_notes_zh', 'cautions_zh', 'visit_hours_zh', 'subway_zh', 'dzdp_url', 'naver_place_url']),
       ibList('Platform_Tasks', ['task_id', 'platform', 'photo_count_min', 'photo_count_max',
         'photo_required_shots_zh', 'hashtag_required_zh', 'hashtag_optional_zh',
         'content_must_include_zh', 'content_word_min']),
@@ -103,6 +103,7 @@ async function fetchCardMap() {
         hours: f.visit_hours_zh || '',
         subway: f.subway_zh || '',
         dzdpUrl: f.dzdp_url || '',
+        naverUrl: f.naver_place_url || '',
         tasks: taskBySlug[f.slug] || [],
       };
     });
