@@ -333,7 +333,11 @@ export default async function handler(req, res) {
       }
       const d = await at(`${T_APPLICANTS}/${encodeURIComponent(id)}`, {
         method: 'PATCH',
-        body: JSON.stringify({ fields: { status: next } }),
+        body: JSON.stringify({ fields: {
+          status: next,
+          // 선발자 기록 — 유입(referrer)과 별개로 남긴다. 정산 포함 여부는 내부협의 (Owner 2026-08-12)
+          ...(action === 'approve' ? { approved_by: who } : {}),
+        } }),
       });
       // 선발이면 예약입력_DB 로 넘긴다 (실패해도 선발은 유효 — warning 으로 알림)
       let resv = null;
