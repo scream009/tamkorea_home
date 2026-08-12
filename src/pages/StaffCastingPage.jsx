@@ -80,18 +80,34 @@ export default function StaffCastingPage() {
     return list.filter((a) => a.bucket === filter);
   }, [camp, filter, refSel]);
 
-  async function act(applicant, action) {
+  async function act(applicant, action, force) {
     const label = action === 'approve' ? '선발' : action === 'reject' ? '탈락' : '신규로 되돌리기';
-    if (!window.confirm(`${applicant.name || applicant.xhsName} — ${label} 처리할까요?`)) return;
+    if (!force && !window.confirm(`${applicant.name || applicant.xhsName} — ${label} 처리할까요?`)) return;
     setBusy(applicant.id);
     try {
       const resp = await fetch('/api/staff-casting', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...staffHeaders() },
-        body: JSON.stringify({ id: applicant.id, action }),
+        body: JSON.stringify({ id: applicant.id, action, ...(force ? { force: 1 } : {}) }),
       });
       const d = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(d.error || `HTTP ${resp.status}`);
+
+      // 되돌리기인데 예약이 이미 나간 건 — 경고 후 확인받아 선발만 취소한다
+      if (d.needConfirm) {
+        const rv = d.resv || {};
+        const go = window.confirm(
+          `⚠️ 이 건은 예약이 이미 나갔습니다 (${rv.reason || '확인 필요'} · ${rv.shoot || ''}).\n\n`
+          + '예약은 자동으로 지울 수 없습니다.\n'
+          + '계속하면 선발만 취소되고, 예약은 남습니다.\n\n'
+          + '→ 계속한 뒤 반드시 예약발송 화면에서 그 예약 건을 「취소」 처리하세요.',
+        );
+        if (go) await act(applicant, 'reset', true);
+        return;
+      }
+      if (d.resv && (d.resv.code === 'deleted' || d.resv.code === 'manual')) {
+        window.alert(d.resv.code === 'deleted' ? `✅ ${d.resv.msg}` : `⚠️ ${d.resv.msg}`);
+      }
       if (d.resv && d.resv.code === 'no_mgr') {
         // admin·공용키로 선발하면 담당자를 알 수 없다 → 물어보고 예약 연계만 재시도
         const pick = window.prompt('담당자를 입력하세요 (HH / LH / AN / FB)\n— 예약입력_DB의 담당(예약_ID)으로 들어갑니다', 'AN');

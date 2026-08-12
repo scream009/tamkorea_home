@@ -306,6 +306,66 @@ async function pushToResv(applicantId, who, mgrOverride) {
   }
 }
 
+
+/**
+ * 되돌리기(선발 취소) ↔ 예약입력_DB 동기화 (Owner 확정 2026-08-12)
+ *
+ * 발송 큐의 삭제 규칙과 **같은 잣대**를 쓴다 — 「예약요청 & 미발송」만 지운다.
+ * 그 조건이면 고객사에 나간 적이 없으므로 지워도 안전하고, 하나라도 벗어나면
+ * (예약확정·발송됨·진행_DB 로 쪼개져 진행 중) 지우지 않고 사람에게 넘긴다.
+ *
+ * 반환:
+ *   {code:'deleted'} — 예약도 같이 삭제함
+ *   {code:'none'}    — 연결된 예약이 없음
+ *   {code:'confirm'} — 이미 나간 건이라 삭제 불가. force 로 재호출하면 선발만 취소
+ *   {code:'manual'}  — force 로 진행. 예약은 발송 큐에서 취소 처리해야 함
+ */
+async function revertResv(applicantId, force) {
+  try {
+    const tag = `IB:${applicantId}`;
+    const hits = await tkList('예약입력_DB', `FIND('${escFormula(tag)}',{비고})`,
+      ['진행상태', '자동발송체크', '팀명생성기', 'Shoot_ID']);
+    if (!hits.length) return { code: 'none' };
+
+    const r = hits[0];
+    const st = Array.isArray(r.fields['진행상태']) ? r.fields['진행상태'][0] : (r.fields['진행상태'] || '');
+    const sent = !!r.fields['자동발송체크'];
+    const shoot = r.fields['Shoot_ID'] || r.id;
+
+    // 쪼개진 진행 건이 이미 움직였으면 손대지 않는다
+    let children = [];
+    const teamKey = r.fields['팀명생성기'];
+    if (teamKey) {
+      children = await tkList('진행_DB_OLD', `{팀명생성기}='${escFormula(teamKey)}'`, ['진행상태']);
+      const moved = children.filter((c) => {
+        const cs = Array.isArray(c.fields['진행상태']) ? c.fields['진행상태'][0] : (c.fields['진행상태'] || '');
+        return cs !== '예약요청';
+      });
+      if (moved.length) {
+        return force
+          ? { code: 'manual', msg: `분할 진행 건 ${moved.length}건이 이미 진행 중 — 예약(${shoot})은 발송 큐에서 취소 처리하세요.` }
+          : { code: 'confirm', reason: `분할된 진행 건 ${moved.length}건이 이미 진행 중`, shoot };
+      }
+    }
+
+    if (st !== '예약요청' || sent) {
+      return force
+        ? { code: 'manual', msg: `예약(${shoot})은 이미 나간 건이라 자동 삭제하지 않았습니다 — 발송 큐에서 취소 처리하세요.` }
+        : { code: 'confirm', reason: sent ? '이미 발송됨' : `진행상태가 「${st}」`, shoot };
+    }
+
+    // 예약요청 & 미발송 → 자식부터 지우고 본체 삭제
+    for (let k = 0; k < children.length; k += 10) {
+      const qs = children.slice(k, k + 10).map((c) => `records[]=${c.id}`).join('&');
+      await tk(`${encodeURIComponent('진행_DB_OLD')}?${qs}`, { method: 'DELETE' });
+    }
+    await tk(`${encodeURIComponent('예약입력_DB')}?records[]=${r.id}`, { method: 'DELETE' });
+    return { code: 'deleted', msg: `예약(${shoot}) 도 함께 삭제했습니다 — 예약요청·미발송 건이라 안전합니다.` };
+  } catch (e) {
+    return { code: 'manual', msg: `예약 동기화 실패: ${e.message} — 발송 큐에서 직접 확인하세요.` };
+  }
+}
+
 export default async function handler(req, res) {
   const who = staffIdentity(req, res);
   if (!who) return;
@@ -325,12 +385,27 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { id, action, mgr } = req.body || {};
+      const { id, action, mgr, force } = req.body || {};
       const next = ACTIONS[action];
       if (!id || !next) {
         res.status(400).json({ error: 'id 와 action(approve|reject|reset)이 필요합니다.' });
         return;
       }
+      // 되돌리기: 먼저 예약 쪽을 본다 — 지울 수 없는 건이면 선발 상태를 건드리지 않고 확인을 받는다
+      if (action === 'reset') {
+        const rv = await revertResv(id, !!force);
+        if (rv.code === 'confirm') {
+          res.status(200).json({ ok: false, needConfirm: true, resv: rv, who });
+          return;
+        }
+        const d0 = await at(`${T_APPLICANTS}/${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ fields: { status: next } }),
+        });
+        res.status(200).json({ ok: true, id: d0.id, status: next, who, resv: rv });
+        return;
+      }
+
       const d = await at(`${T_APPLICANTS}/${encodeURIComponent(id)}`, {
         method: 'PATCH',
         body: JSON.stringify({ fields: {
