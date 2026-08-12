@@ -15,6 +15,7 @@ const VIEW_ITEMS = [
   { key: 'queue', to: '/staff/queue', label: '예약발송' },
   { key: 'infl', to: '/staff/infl', label: '인플 보드' },
   { key: 'casting', to: '/staff/casting', label: '체험단 선발' },
+  { key: 'cards', to: '/staff/cards', label: '모집카드' },
 ];
 const INPUT_ITEMS = [
   { key: 'new', to: '/staff/new', label: '＋ 예약입력' },
