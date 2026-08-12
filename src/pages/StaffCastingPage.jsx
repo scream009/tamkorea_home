@@ -125,6 +125,12 @@ export default function StaffCastingPage() {
       if (d.resv && ['deleted', 'cancelled', 'manual'].includes(d.resv.code)) {
         window.alert(d.resv.code === 'manual' ? `⚠️ ${d.resv.msg}` : `✅ ${d.resv.msg}`);
       }
+      if (d.resv && d.resv.status === 'ok' && d.resv.submitUrl) {
+        try { await navigator.clipboard.writeText(d.resv.submitUrl); } catch { /* 무시 */ }
+        window.alert(`✅ ${d.resv.msg}\n\n📋 인플 전달 링크가 복사되었습니다.\n위챗 선발 통보에 붙여넣으세요 — 일정 확인·링크 제출·QR 체크인이 전부 이 링크에서 됩니다.\n${d.resv.submitUrl}`);
+      } else if (d.resv && d.resv.status === 'ok' && !d.resv.submitUrl && d.resv.code !== 'no_mgr') {
+        window.alert(`✅ ${d.resv.msg}\n발송은 예약발송 큐에서 따로 누르세요.`);
+      }
       if (d.resv && d.resv.code === 'no_mgr') {
         // admin·공용키로 선발하면 담당자를 알 수 없다 → 물어보고 예약 연계만 재시도
         const pick = window.prompt('담당자를 입력하세요 (HH / LH / AN / FB)\n— 예약입력_DB의 담당(예약_ID)으로 들어갑니다', 'AN');
@@ -142,10 +148,10 @@ export default function StaffCastingPage() {
         } else {
           window.alert('⚠️ 선발은 완료. 담당자 미지정 — 예약입력은 /staff/new 에서 수동으로.');
         }
-      } else if (d.resv) {
-        window.alert(d.resv.status === 'ok'
-          ? `✅ ${d.resv.msg}\n발송은 예약발송 큐에서 따로 누르세요.`
-          : `⚠️ 선발은 완료. ${d.resv.msg}`);
+      } else if (d.resv && d.resv.status === 'warn'
+        && !['deleted', 'cancelled', 'manual'].includes(d.resv.code)) {
+        // ok 계열은 위(전달링크 복사 블록)에서 이미 알렸다 — 여기서 또 띄우면 이중 알림
+        window.alert(`⚠️ 선발은 완료. ${d.resv.msg}`);
       }
       await load();
     } catch (e) {

@@ -259,9 +259,15 @@ async function pushToResv(applicantId, who, mgrOverride) {
     }
 
     if (a.team_role === 'member' && a.team_key) {
-      const leadResv = await tkList('예약입력_DB', `FIND('IB:${escFormula(a.team_key)}',{비고})`, ['XHS_ID_', '비고']);
+      const leadResv = await tkList('예약입력_DB', `FIND('IB:${escFormula(a.team_key)}',{비고})`,
+        ['XHS_ID_', '비고', '진행상태', '자동발송체크']);
       if (!leadResv.length) return { status: 'warn', msg: '팀 대표의 예약이 아직 없음 — 대표 먼저 선발 후 다시, 또는 수동 합류' };
       const lr = leadResv[0];
+      const lrSt = Array.isArray(lr.fields['진행상태']) ? lr.fields['진행상태'][0] : (lr.fields['진행상태'] || '');
+      if (lrSt !== '예약요청' || lr.fields['자동발송체크']) {
+        // 이미 나간 예약에 인원을 몰래 붙이면 고객사가 아는 인원과 어긋난다 — 변경요청 절차로
+        return { status: 'warn', msg: `대표 예약이 이미 나갔습니다(${lrSt}) — 동행 추가는 발송 화면의 「변경」으로 처리하세요.` };
+      }
       const ids = new Set(lr.fields['XHS_ID_'] || []);
       ids.add(inflId);
       await tk(`예약입력_DB/${lr.id}`, {
@@ -301,7 +307,15 @@ async function pushToResv(applicantId, who, mgrOverride) {
         typecast: true,
       }),
     });
-    return { status: 'ok', msg: `예약입력_DB 생성 (담당 ${mgr}, ${day} 12:00 가등록)` };
+    // 인플 전달용 링크 — 기존 /submit 체계(일정·링크제출·QR)가 INFL_ID 로 이미 돌고 있다.
+    // 선발 통보 위챗에 이 링크만 붙이면 이후 과정이 전부 그 링크 하나로 이어진다.
+    let submitUrl = '';
+    try {
+      const inflRec = await tk(`INFL_DB/${inflId}`);
+      const iid = inflRec.fields['INFL_ID'];
+      if (iid) submitUrl = `https://www.tamkorea.com/submit?inflId=${encodeURIComponent(iid)}`;
+    } catch { /* 링크는 부가 정보 — 실패해도 선발·예약은 유효 */ }
+    return { status: 'ok', submitUrl, msg: `예약입력_DB 생성 (담당 ${mgr}, ${day} 12:00 가등록)` };
   } catch (e) {
     return { status: 'warn', msg: `예약입력_DB 연계 실패: ${e.message} — /staff/new 수동 입력` };
   }
@@ -387,12 +401,19 @@ async function revertResv(applicantId, force, cancelKind) {
  */
 async function fetchResvMap() {
   try {
-    const qs = new URLSearchParams({ pageSize: '100' });
-    qs.set('filterByFormula', "FIND('IB:',{비고})");
-    ['비고', '진행상태', '자동발송체크', 'Shoot_ID'].forEach((f) => qs.append('fields[]', f));
-    const d = await tk(`${encodeURIComponent('예약입력_DB')}?${qs}`);
+    const records = [];
+    let offset = '';
+    do {
+      const qs = new URLSearchParams({ pageSize: '100' });
+      qs.set('filterByFormula', "FIND('IB:',{비고})");
+      ['비고', '진행상태', '자동발송체크', 'Shoot_ID'].forEach((f) => qs.append('fields[]', f));
+      if (offset) qs.set('offset', offset);
+      const d = await tk(`${encodeURIComponent('예약입력_DB')}?${qs}`);
+      records.push(...(d.records || []));
+      offset = d.offset || '';
+    } while (offset);
     const map = {};
-    (d.records || []).forEach((r) => {
+    records.forEach((r) => {
       const m = /IB:(rec[A-Za-z0-9]+)/.exec(String(r.fields['비고'] || ''));
       if (!m) return;
       const st = Array.isArray(r.fields['진행상태']) ? r.fields['진행상태'][0] : (r.fields['진행상태'] || '');
