@@ -480,7 +480,16 @@ export default function InfluencerSubmitPage() {
 
                     {/* 촬영가이드 (롱텍스트 팝업) */}
                     <td>
-                      {rec.guide ? (
+                      {/* 카드가 있는 매장 = 모집사이트 미션이 정본. 옛 가이드는 카드 없는
+                          기존 운영 매장에서만 보인다 — 두 기준이 동시에 보이면 반드시 어긋난다 */}
+                      {rec.cardUrl ? (
+                        <a
+                          className="inf-btn-guide"
+                          href={rec.cardUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >📋 活动任务</a>
+                      ) : rec.guide ? (
                         <button
                           className="inf-btn-guide"
                           onClick={() => setGuideModal({ isOpen: true, text: rec.guide, client: rec.client })}

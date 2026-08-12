@@ -20,6 +20,59 @@ const INFL_NAME_FIELD = 'XHS_ID(필수)';        // INFL_DB의 닉네임 필드
 const SCHEDULE_INFL_NAME_FIELD = 'XHS_ID_';        // 진행_DB_OLD의 닉네임 필드
 const CLIENT_FIELD    = '매장명_검색용';       // 고객사 필드명 (CS_DB에서 Lookup 필수)
 const ZH_CLIENT_FIELD = '중문명';           // 중문 고객사명 (CS_DB에서 Lookup 필수)
+
+/* ── 모집사이트(IB_Casting) 카드 연결 ─────────────────────────────
+ * 촬영 기준의 정본은 모집사이트 카드다 (Owner 확정 2026-08-13).
+ * 카드가 있는 매장은 CS_DB 옛 가이드 대신 카드 상세로 보낸다 — 정본이 두 곳이면
+ * 반드시 불일치가 난다. 카드가 없는 매장(기존 운영분)만 옛 가이드를 유지한다.
+ * IB 조회가 실패해도 스케줄은 살아야 하므로 빈 맵으로 넘어간다. */
+const IB_KEY = process.env.IB_CASTING_TOKEN || process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
+const IB_BASE = process.env.IB_CASTING_BASE_ID || 'appDYOCw29mohYrIG';
+const CARD_ORIGIN = 'https://campaign.tamkorea.com';
+const ROUND_PRIORITY = { uploading: 0, recruiting: 1, closed: 2, completed: 3, hidden: 4 };
+
+async function fetchCardMap() {
+  try {
+    const rows = [];
+    let offset = '';
+    do {
+      const qs = new URLSearchParams({ pageSize: '100' });
+      ['slug', 'client', 'display_status', 'recruit_start'].forEach((f) => qs.append('fields[]', f));
+      if (offset) qs.set('offset', offset);
+      const resp = await fetch(`https://api.airtable.com/v0/${IB_BASE}/Campaigns?${qs}`, {
+        headers: { Authorization: `Bearer ${IB_KEY}` },
+      });
+      if (!resp.ok) return {};
+      const d = await resp.json();
+      rows.push(...(d.records || []));
+      offset = d.offset || '';
+    } while (offset);
+
+    // 고객사명 → 대표 라운드 slug (방문·업로드 중 > 모집 중 > 마감 순, 같은 급이면 최신)
+    const best = {};
+    rows.forEach((r) => {
+      const f = r.fields || {};
+      if (!f.slug || !f.client) return;
+      const cur = best[f.client];
+      const pri = ROUND_PRIORITY[f.display_status] ?? 9;
+      if (!cur || pri < cur.pri
+        || (pri === cur.pri && String(f.recruit_start || '') > String(cur.start || ''))) {
+        best[f.client] = { slug: f.slug, pri, start: f.recruit_start };
+      }
+    });
+    const map = {};
+    Object.keys(best).forEach((client) => { map[client] = `${CARD_ORIGIN}/campaign/${best[client].slug}`; });
+    return map;
+  } catch {
+    return {};
+  }
+}
+
+function findCardUrl(cardMap, clientKr) {
+  if (!clientKr) return '';
+  const hit = Object.keys(cardMap).find((c) => clientKr.includes(c));
+  return hit ? cardMap[hit] : '';
+}
 const GUIDE_FIELD     = '拍摄剧本';       // 가이드 링크 (CS_DB에서 Lookup 필수)
 const DATE_FIELD      = '예약일시';        // 촬영일자 필드명
 const DEADLINE_FIELD  = '제출마감일';        // 제출마감일 필드
@@ -132,6 +185,7 @@ export default async function handler(req, res) {
       const inflName = resolvedInflName || firstFields[SCHEDULE_INFL_NAME_FIELD] || '';
 
       // 클라이언트에 필요한 데이터만 정제하여 반환
+      const cardMap = await fetchCardMap();
       const records = rawRecords.map(rec => {
         const progStatus = rec.fields[PROG_STATUS_FIELD] || '';
         
@@ -149,6 +203,7 @@ export default async function handler(req, res) {
         return {
           id:         rec.id,
           client:     rec.fields[ZH_CLIENT_FIELD] || rec.fields[CLIENT_FIELD] || '',
+          cardUrl:    findCardUrl(cardMap, String(rec.fields[CLIENT_FIELD] || '')),
           guide:      rec.fields[GUIDE_FIELD]   || '',
           date:       finalDate,
           deadline:   finalDate ? formatDeadline(finalDate, deadlineDaysForType(rec.fields[TYPE_FIELD])) : '',
