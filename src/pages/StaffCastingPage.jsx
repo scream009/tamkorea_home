@@ -29,6 +29,7 @@ export default function StaffCastingPage() {
   const [filter, setFilter] = useState('all');   // all | new | approved | rejected
   const [openMsg, setOpenMsg] = useState('');    // 메시지 펼친 지원자 id
   const [busy, setBusy] = useState('');          // 처리 중인 지원자 id
+  const [refSel, setRefSel] = useState('all');   // 담당자 필터 — 개인키 로그인이면 본인이 기본
 
   const load = useCallback(async () => {
     setError('');
@@ -41,6 +42,10 @@ export default function StaffCastingPage() {
       setSel((prev) => (d.campaigns.some((c) => c.slug === prev)
         ? prev
         : (d.campaigns[0]?.slug || '')));
+      // 원칙: 링크 뿌린 담당자가 선발한다 — 개인키로 들어왔고 내 지원자가 있으면 나부터 보인다
+      const mine = d.who && d.who !== 'staff' && d.who !== 'admin'
+        && d.campaigns.some((c) => c.applicants.some((a) => a.referrer === d.who));
+      setRefSel((prev) => (prev === 'all' && mine ? d.who : prev));
     } catch (e) {
       setError(e.message || '불러오기 실패');
     }
@@ -53,11 +58,27 @@ export default function StaffCastingPage() {
     [data, sel],
   );
 
+  // 담당자별 집계 (전 캠페인) — 지원·선발 수. referrer 빈 값은 「직접 유입」
+  const refStats = useMemo(() => {
+    if (!data) return [];
+    const m = new Map();
+    data.campaigns.forEach((c) => c.applicants.forEach((a) => {
+      const k = a.referrer || '직접';
+      if (!m.has(k)) m.set(k, { total: 0, approved: 0 });
+      const v = m.get(k);
+      v.total += 1;
+      if (a.bucket === 'approved') v.approved += 1;
+    }));
+    return [...m.entries()].sort((a, b) => b[1].total - a[1].total);
+  }, [data]);
+
   const rows = useMemo(() => {
     if (!camp) return [];
-    if (filter === 'all') return camp.applicants;
-    return camp.applicants.filter((a) => a.bucket === filter);
-  }, [camp, filter]);
+    let list = camp.applicants;
+    if (refSel !== 'all') list = list.filter((a) => (a.referrer || '직접') === refSel);
+    if (filter === 'all') return list;
+    return list.filter((a) => a.bucket === filter);
+  }, [camp, filter, refSel]);
 
   async function act(applicant, action) {
     const label = action === 'approve' ? '선발' : action === 'reject' ? '탈락' : '신규로 되돌리기';
@@ -85,8 +106,8 @@ export default function StaffCastingPage() {
       <header className="scast-head">
         <h1>체험단 선발</h1>
         <p className="scast-sub">
-          모집사이트 지원자를 캠페인별로 심사합니다. 선정 통보는 위챗으로 직접 —
-          선발된 행에 위챗 ID가 표시됩니다.
+          모집사이트 지원자를 캠페인별로 심사합니다. 원칙: 링크를 뿌린 담당자가 자기 지원자를 선발합니다 —
+          아래 담당자 칩으로 조회를 좁힐 수 있습니다. 조율·통보는 위챗으로.
         </p>
       </header>
 
@@ -120,6 +141,26 @@ export default function StaffCastingPage() {
           <main className="scast-main">
             {camp && (
               <>
+                {refStats.length > 0 && (
+                  <div className="scast-refbar">
+                    <button
+                      type="button"
+                      className={`scast-refchip ${refSel === 'all' ? 'on' : ''}`}
+                      onClick={() => setRefSel('all')}
+                    >전체 담당</button>
+                    {refStats.map(([k, v]) => (
+                      <button
+                        type="button"
+                        key={k}
+                        className={`scast-refchip ${refSel === k ? 'on' : ''} ${data.who === k ? 'me' : ''}`}
+                        title={`${k} — 유입 지원 ${v.total} · 선발 ${v.approved}`}
+                        onClick={() => setRefSel(refSel === k ? 'all' : k)}
+                      >
+                        {k}{data.who === k ? ' (나)' : ''} <b>{v.total}</b><span>/{v.approved}선발</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div className="scast-filters">
                   {['all', 'new', 'approved', 'rejected'].map((f) => (
                     <button

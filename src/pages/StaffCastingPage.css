@@ -90,3 +90,12 @@
 
 .scast-ref{color:var(--accent2)}
 .scast-team{color:#6EE7B7;font-weight:700}
+
+/* 담당자 필터 칩 — 실적(지원/선발) 표시 */
+.scast-refbar{display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.5rem}
+.scast-refchip{background:#12151D;border:1px solid var(--line2);border-radius:999px;
+  color:var(--ink2);padding:.28rem .7rem;font-size:.72rem;cursor:pointer;font-family:inherit}
+.scast-refchip b{color:var(--accent2);margin-left:.15rem}
+.scast-refchip span{color:var(--muted);font-size:.64rem}
+.scast-refchip.on{border-color:var(--accent);color:var(--ink);background:#2A2340}
+.scast-refchip.me{box-shadow:0 0 0 1px rgba(16,185,129,.35)}
