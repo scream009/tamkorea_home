@@ -209,6 +209,9 @@ export default function StaffCastingPage() {
                             {a.xhsUrl
                               ? <a href={a.xhsUrl} target="_blank" rel="noreferrer" className="scast-lnk">{a.xhsName || 'XHS ↗'}</a>
                               : (a.xhsName || '—')}
+                            {a.followers > 0 && (
+                              <div className="scast-mut">팔로워 {Number(a.followers).toLocaleString()}</div>
+                            )}
                             {a.companion && <div className="scast-mut">동행: {a.companion}</div>}
                           </td>
                           <td>{a.visa || '—'}</td>

@@ -40,7 +40,7 @@ const VISA_LEGACY = {
 };
 
 const APPLICANT_FIELDS = [
-  'name', 'xhs_url', 'xhs_account_name', 'dzdp_account',
+  'name', 'xhs_url', 'xhs_account_name', 'xhs_followers', 'dzdp_account',
   'gender', 'birth_year', 'visa_status', 'preferred_visit_date', 'pax',
   'companion_xhs_account', 'application_message', 'status', 'source',
   '🔒 pii_wechat', 'campaign_slug', 'referrer', 'team_key', 'team_role',
@@ -124,6 +124,7 @@ function buildPayload(campRecs, applRecs) {
       name: f.name || '',
       xhsUrl: f.xhs_url || '',
       xhsName: f.xhs_account_name || '',
+      followers: f.xhs_followers || 0,
       dzdp: f.dzdp_account || '',
       gender: f.gender || '',
       birth: f.birth_year || '',
@@ -240,7 +241,7 @@ async function pushToResv(applicantId, who) {
             'XHS_ID(필수)': xid,
             '섭외_ID(필수)': mgr,
             'XHS_link1(필수)': a.xhs_url || 'https://www.xiaohongshu.com',
-            'PAL(필수)': 1000,
+            'PAL(필수)': Number(a.xhs_followers) || 1000,   // 지원서 자기신고값 — 없을 때만 1000 가등록
             WC_ID: a['🔒 pii_wechat'] || '',
             닉네임: a.name || '',
           } }],
@@ -289,7 +290,7 @@ async function pushToResv(applicantId, who) {
           대표인플: [inflId],
           'XHS_ID_': [inflId],
           인원메모: `모집사이트 선발 · 시간 미조율(기본 12:00) · 위챗 ${a['🔒 pii_wechat'] || '-'}`,
-          비고: `${tag} · 담당 ${mgr}${inflNew ? ' · 인플 신규등록(PAL 미검증)' : ''} · 계약월 확인 필요`,
+          비고: `${tag} · 담당 ${mgr}${inflNew ? (a.xhs_followers ? ' · 인플 신규등록(PAL 자기신고)' : ' · 인플 신규등록(PAL 미검증)') : ''} · 계약월 확인 필요`,
         } }],
         typecast: true,
       }),
