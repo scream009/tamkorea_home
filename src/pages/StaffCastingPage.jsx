@@ -92,7 +92,24 @@ export default function StaffCastingPage() {
       });
       const d = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(d.error || `HTTP ${resp.status}`);
-      if (d.resv) {
+      if (d.resv && d.resv.code === 'no_mgr') {
+        // admin·공용키로 선발하면 담당자를 알 수 없다 → 물어보고 예약 연계만 재시도
+        const pick = window.prompt('담당자를 입력하세요 (HH / LH / AN / FB)\n— 예약입력_DB의 담당(예약_ID)으로 들어갑니다', 'AN');
+        const mgr = String(pick || '').trim().toUpperCase();
+        if (['HH', 'LH', 'AN', 'FB'].includes(mgr)) {
+          const r2 = await fetch('/api/staff-casting', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...staffHeaders() },
+            body: JSON.stringify({ id: applicant.id, action: 'approve', mgr }),
+          });
+          const d2 = await r2.json().catch(() => ({}));
+          window.alert(d2.resv && d2.resv.status === 'ok'
+            ? `✅ ${d2.resv.msg}\n발송은 예약발송 큐에서 따로 누르세요.`
+            : `⚠️ 선발은 완료. ${(d2.resv && d2.resv.msg) || '예약 연계 실패 — /staff/new 수동 입력'}`);
+        } else {
+          window.alert('⚠️ 선발은 완료. 담당자 미지정 — 예약입력은 /staff/new 에서 수동으로.');
+        }
+      } else if (d.resv) {
         window.alert(d.resv.status === 'ok'
           ? `✅ ${d.resv.msg}\n발송은 예약발송 큐에서 따로 누르세요.`
           : `⚠️ 선발은 완료. ${d.resv.msg}`);

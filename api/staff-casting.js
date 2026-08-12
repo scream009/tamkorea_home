@@ -201,15 +201,20 @@ function monthLabel(iso) {
 }
 
 /** 선발된 지원자를 예약입력_DB 로 넘긴다. 반환 {status:'ok'|'warn', msg} — throw 하지 않는다 */
-async function pushToResv(applicantId, who) {
+async function pushToResv(applicantId, who, mgrOverride) {
   try {
     const a = (await at(`Applicants/${encodeURIComponent(applicantId)}`)).fields;
     const slug = a.campaign_slug || '';
     const tag = `IB:${applicantId}`;
 
-    const mgr = MGRS.includes(a.referrer) ? a.referrer : (MGRS.includes(who) ? who : null);
+    // 담당 우선순위: 화면에서 지정 > 홍보링크 referrer > 선발자 개인키.
+    // admin·공용키로 선발하면 셋 다 아닐 수 있다 → no_mgr 로 돌려보내 화면이 물어본다.
+    const mgr = MGRS.includes(mgrOverride) ? mgrOverride
+      : MGRS.includes(a.referrer) ? a.referrer
+        : (MGRS.includes(who) ? who : null);
     if (!mgr) {
-      return { status: 'warn', msg: `담당자 판별 불가 (referrer=${a.referrer || '없음'}, 선발자=${who}) — /staff/new 수동 입력` };
+      return { status: 'warn', code: 'no_mgr',
+        msg: `담당자 판별 불가 (referrer=${a.referrer || '없음'}, 선발자=${who})` };
     }
 
     const camps = await listAll('Campaigns', ['slug', 'client', 'upload_start']);
@@ -320,7 +325,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { id, action } = req.body || {};
+      const { id, action, mgr } = req.body || {};
       const next = ACTIONS[action];
       if (!id || !next) {
         res.status(400).json({ error: 'id 와 action(approve|reject|reset)이 필요합니다.' });
@@ -332,7 +337,7 @@ export default async function handler(req, res) {
       });
       // 선발이면 예약입력_DB 로 넘긴다 (실패해도 선발은 유효 — warning 으로 알림)
       let resv = null;
-      if (action === 'approve') resv = await pushToResv(id, who);
+      if (action === 'approve') resv = await pushToResv(id, who, mgr);
       res.status(200).json({ ok: true, id: d.id, status: next, who, resv });
       return;
     }
