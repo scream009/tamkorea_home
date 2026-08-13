@@ -440,7 +440,19 @@ const CpcSection = ({ cpc, funnel, dominance, store, adSet, projection }) => {
   const r0 = (n) => Math.round(n).toLocaleString();
 
   let lvl, tag, bs, recomTitle, recomBody, contrib;
-  if (bal <= 0) {
+  if (bal <= 0 && yst > 0) {
+    // 잔액 0 + 소진 있음 = 광고비가 매장 계정 밖(대행 충전 계정)에서 나가는 중.
+    // 실측 2026-08-13 한라갈치 중문점: 잔액 0.00 · 어제 推广通 164.3元.
+    // '광고가 꺼져 있다'로 안내하면 정반대 보고가 된다.
+    lvl = 'ok'; tag = '집행중'; bs = '대행 충전 계정에서 운영';
+    recomTitle = '🟢 광고가 정상 집행되고 있습니다';
+    recomBody = (
+      <>광고비가 대행 충전 계정에서 집행되어 매장 잔액은 0으로 표시됩니다. 어제 <b>{r0(yst)}元</b>이 정상 집행됐습니다.</>
+    );
+    contrib = (
+      <>🔗 어제 <b>{r0(yst)}元</b>을 집행해 노출 도달 <b>{num(funnel?.exposure)}명</b>을 견인했습니다. 플랫폼 외부 <b>인플루언서·체험단 바이럴</b>과 내부 <b>CPC 상단 노출</b>이 맞물려 돌아가고 있습니다.</>
+    );
+  } else if (bal <= 0) {
     lvl = 'urgent'; tag = '비활성'; bs = '광고가 노출되지 않는 상태';
     recomTitle = '🔴 지금 광고가 꺼져 있습니다 — 충전이 필요합니다';
     recomBody = (

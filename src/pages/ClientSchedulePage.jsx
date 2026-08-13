@@ -75,21 +75,33 @@ const shortMonth = (m) => {
 
 export const CpcBanner = ({ cpc, isPartner }) => {
   if (!cpc) return null;
-  const cls = cpc.status; // green | amber | red
-  const label = cls === 'red' ? '🔴 충전 필요' : cls === 'amber' ? '🟡 소진 임박' : '🟢 정상';
+  // 외부(대행) 충전 판정을 상태보다 먼저 본다 — Airtable 에 옛 판정(충전필요)이
+  // 남아 있어도 잔액 0 + 소진 있음이면 광고는 돌고 있는 것이다.
+  const externalPre = Number(cpc.balance) <= 0 && Number(cpc.yesterday) > 0;
+  const cls = externalPre ? 'green' : cpc.status; // green | amber | red
+  const label = externalPre ? '🟢 집행중'
+    : cls === 'red' ? '🔴 충전 필요' : cls === 'amber' ? '🟡 소진 임박' : '🟢 정상';
   // 잔액은 매일 줄어드는 값이라 수집이 오래되면 사실과 벌어진다.
   // 2일 이상 지난 값으로 '광고가 중단됐다'고 단정하면, 그 사이 충전한
   // 고객사에게 틀린 안내가 나간다(실측 2026-08-10 한라갈치: 08-08 수집분 0원).
   // 하루만 지나도 그 사이 충전이 있을 수 있다. '중단됐다'는 단정은
   // 오늘 수집한 값일 때만 한다.
   const stale = cpc.ageDays != null && cpc.ageDays >= 1;
-  const msg = cls === 'red'
+  // 잔액 0 + 소진 있음 = 광고비가 매장 계정 밖(대행 계정)에서 나가는 중.
+  // 실측 2026-08-13 한라갈치 중문점: 잔액 0.00 인데 어제 推广通 164.3元 집행.
+  // '중단됐다'고 하면 멀쩡히 도는 광고를 멈췄다고 알리는 셈이다.
+  const external = Number(cpc.balance) <= 0 && Number(cpc.yesterday) > 0;
+  const msg = external
+    ? '광고비가 대행 충전 계정에서 집행되고 있어 매장 잔액은 0으로 표시됩니다. 광고는 정상 운영 중입니다.'
+    : cls === 'red'
     ? (stale
         ? `${cpc.updated} 확인 기준으로 잔액이 소진된 상태였습니다. 이후 충전하셨다면 다음 갱신에 반영됩니다.`
         : '광고가 중단된 상태입니다. 충전하시면 즉시 재개됩니다.')
     : cls === 'amber'
     ? `약 ${cpc.daysLeft}일 후 소진이 예상됩니다. 미리 충전을 권장드립니다.`
-    : `광고가 정상 운영 중입니다. 약 ${cpc.daysLeft}일 후 소진이 예상됩니다.`;
+    : cpc.daysLeft
+    ? `광고가 정상 운영 중입니다. 약 ${cpc.daysLeft}일 후 소진이 예상됩니다.`
+    : '광고가 정상 운영 중입니다.';
   const fmt = (n) => Number(n).toLocaleString();
   return (
     <div className={`cpc-banner ${cls}`}>
