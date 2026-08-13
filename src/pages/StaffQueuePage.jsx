@@ -28,6 +28,12 @@ const TABS = [
   { key: 'all', label: '전체' },
 ];
 
+/* 건수 라벨 — 기본 플랫폼(샤오홍슈/따종)은 기존 표기(小/大), 다른 플랫폼이면 이름 축약 */
+function platTag(plat, dflt) {
+  if (!plat || plat === '샤오홍슈' || plat === '따종디엔핑') return dflt;
+  return ({ 인스타그램: '인스타', 틱톡: '틱톡', 유튜브: '유튜브' }[plat] || plat);
+}
+
 function tabOf(it) {
   if (it.sent) return 'bot';                                       // 체크됨 = 봇 차례
   if (SENDABLE.includes(it.st) || it.st === '변경요청') return 'todo'; // 사람 차례
@@ -145,6 +151,7 @@ export default function StaffQueuePage() {
           sessionStorage.setItem('tk_resv_copy', JSON.stringify({
             storeId: it.storeId, mgr: it.mgr, ty: it.ty,
             pax: it.pax, nx: it.nx, nd: it.nd,
+            platX: it.platX || '', platD: it.platD || '',
             inflIds: it.inflIds, leadId: it.leadId,
             paxMemo: it.paxMemo, from: it.sid || it.store,
           }));
@@ -317,7 +324,7 @@ function QueueCard({ it, busy, h }) {
         <span>🗓 {it.when || '—'}</span>
         {it.chgWhen && <span className="stq-chg">변경 {it.chgWhen}</span>}
         <span>👥 {it.pax !== '' ? `${it.pax}명` : '—'}{it.chgPax !== '' && it.chgPax !== it.pax ? `→${it.chgPax}` : ''}</span>
-        <span>小{it.nx === '' ? 0 : it.nx} 大{it.nd === '' ? 0 : it.nd}</span>
+        <span>{platTag(it.platX, '小')}{it.nx === '' ? 0 : it.nx} {platTag(it.platD, '大')}{it.nd === '' ? 0 : it.nd}</span>
       </div>
       {it.infls && <div className="stq-infls" title={it.infls}>{it.infls}</div>}
       {(it.paxMemo || it.note) && <div className="stq-note">{[it.paxMemo, it.note].filter(Boolean).join(' · ')}</div>}
@@ -407,7 +414,7 @@ function ListRow({ it, busy, h }) {
           {it.chgWhen && <i className="stq-chg"> 변경 {it.chgWhen}</i>}
         </span>
         <span className="stq-row-cnt">
-          {it.pax !== '' ? `${it.pax}명` : '—'} · 小{it.nx === '' ? 0 : it.nx} 大{it.nd === '' ? 0 : it.nd}
+          {it.pax !== '' ? `${it.pax}명` : '—'} · {platTag(it.platX, '小')}{it.nx === '' ? 0 : it.nx} {platTag(it.platD, '大')}{it.nd === '' ? 0 : it.nd}
         </span>
         <span className="stq-row-btns" onClick={(e) => e.stopPropagation()}>
           <ActionButtons t={t} it={it} busy={busy} h={h} />

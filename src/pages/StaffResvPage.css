@@ -191,3 +191,10 @@ textarea.srv-input{resize:vertical}
   .srv-sinfo-blk.script span{max-height:7rem}
   .srv-row3{grid-template-columns:1fr 1fr 1fr}
 }
+
+/* 플랫폼 선택 라벨 (2026-08-13) — 라벨 자리에 드롭다운, 기본이 아니면 보라 강조 */
+.srv-lb-plat{display:flex;align-items:center;gap:.3rem}
+.srv-plat{background:#1b1e2b;border:1px solid #2e3345;border-radius:6px;color:#cfd3e4;
+  font-family:inherit;font-size:.78rem;padding:.14rem .3rem;max-width:9.5rem}
+.srv-plat:focus{outline:none;border-color:#8C52FF}
+.srv-plat-alt{border-color:#8C52FF;color:#d6c7ff;background:#241d3a;font-weight:700}

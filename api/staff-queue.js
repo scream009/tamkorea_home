@@ -34,6 +34,7 @@ const ENTRY_FIELDS = [
   'Shoot_ID', '예약_ID', '유형', '진행상태', '정산월',
   '고객명', '지점명', '매장코드_텍스트',
   '예약일시', '변경일시', '총인원', '변경인원', 'XHS_건수', 'DP_건수',
+  'XHS_플랫폼', 'DP_플랫폼',   // 플랫폼 다변화(2026-08-13) — 복사 프리필·표시용
   'XHS_ID', 'WC_ID (from 대표인플)', '인원메모', '고객전달메모', '비고',
   '예약메시지', '변경메시지', '자동발송체크', '팀명생성기', 'Created time',
   '매장코드', 'XHS_ID_', '대표인플',   // 링크 레코드 ID — 예약 복사(프리필)용
@@ -153,6 +154,8 @@ async function buildQueue() {
       pax: f['총인원'] ?? '',
       chgPax: f['변경인원'] ?? '',
       nx: f['XHS_건수'] ?? '',
+      platX: one(f['XHS_플랫폼']) || '',
+      platD: one(f['DP_플랫폼']) || '',
       nd: f['DP_건수'] ?? '',
       infls: allJoin(f['XHS_ID']).slice(0, 120),
       leadWc: one(f['WC_ID (from 대표인플)']),

@@ -477,9 +477,16 @@ export default function ClientSchedulePage() {
     const safeXhsCount = Array.isArray(event.xhsCount) ? event.xhsCount[0] : (event.xhsCount || 1);
     const safeDpCount = Array.isArray(event.dpCount) ? event.dpCount[0] : (event.dpCount || 0);
 
-    let contentStr = `샤오홍슈 ${safeXhsCount}건`;
+    // 플랫폼 다변화(2026-08-13) — 빈값·기본값은 기존 표기 유지, 인스타 등은 그 이름으로
+    const arr1 = (v) => (Array.isArray(v) ? (v[0] || '') : (v || ''));
+    const xp = arr1(event.xhsPlat);
+    const dpp = arr1(event.dpPlat);
+    const xLabel = !xp || xp === '샤오홍슈' ? '샤오홍슈' : xp;
+    const dLabel = !dpp || dpp === '따종디엔핑' ? '따중리뷰' : dpp;
+
+    let contentStr = `${xLabel} ${safeXhsCount}건`;
     if (Number(safeDpCount) > 0) {
-      contentStr += `, 따중리뷰 ${safeDpCount}건`;
+      contentStr += `, ${dLabel} ${safeDpCount}건`;
     }
 
     const brandLabel = brandName && branchName ? `${brandName} ${branchName}` : (brandName || campaignName || '캠페인');

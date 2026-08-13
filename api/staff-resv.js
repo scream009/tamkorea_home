@@ -284,6 +284,14 @@ async function createEntry(body) {
     );
   }
 
+  // 플랫폼 다변화 (2026-08-13) — 건수 슬롯 2개의 게시 플랫폼을 명시 기록.
+  // 기본값(샤오홍슈/따종디엔핑)도 항상 써서 "빈값 = 뭐지?"의 모호함을 없앤다.
+  // 진행_DB_OLD·예약테이블에는 lookup 체인으로 자동 전파된다(오토메이션 무관).
+  const PLAT_X = ['샤오홍슈', '인스타그램', '틱톡', '유튜브'];
+  const PLAT_D = ['따종디엔핑', '인스타그램', '틱톡', '유튜브'];
+  const platX = PLAT_X.includes(body.platX) ? body.platX : '샤오홍슈';
+  const platD = PLAT_D.includes(body.platD) ? body.platD : '따종디엔핑';
+
   const fields = {
     매장코드: [store],
     예약_ID: mgr,
@@ -294,6 +302,8 @@ async function createEntry(body) {
     총인원: pax,
     'XHS_건수': nx,
     'DP_건수': nd,
+    'XHS_플랫폼': platX,
+    'DP_플랫폼': platD,
     대표인플: [lead],
     'XHS_ID_': infls,
   };
