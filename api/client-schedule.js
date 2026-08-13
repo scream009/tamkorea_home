@@ -229,6 +229,24 @@ export default async function handler(req, res) {
       if (dropped) console.log(`[client-schedule] ${campaignId} 종결처리 ${dropped}건 제외`);
     }
 
+    // ── 미발송(예약요청·긴급예약) 제외 (Owner 지정 2026-08-13) ──
+    // 이 상태는 봇이 아직 매장에 발송하지 않은 예약이다. 매장도 모르는 예약이
+    // 고객 화면(달력뷰·리스트뷰)에 먼저 보이면 안 된다. 발송되면 봇이
+    // 예약확정으로 바꾸므로 그때 자동으로 나타난다.
+    // 단, 결과물이 이미 달린 건은 상태만 멈춘 실제 방문 건이므로 남긴다
+    // (실측 2026-08-13: 예약요청 23건 중 8건이 4~7월 결과물 보유 — 수동 운영 잔재).
+    {
+      const PRE_SEND = new Set(['예약요청', '긴급예약']);
+      const before = allRecords.length;
+      allRecords = allRecords.filter((rec) => {
+        const f = rec.fields;
+        if (!PRE_SEND.has(String(f['진행상태'] || '').replace(/\s/g, ''))) return true;
+        return Boolean(f['XHS_Result'] || f['DP_Result'] || f['DY_Result']);
+      });
+      const dropped = before - allRecords.length;
+      if (dropped) console.log(`[client-schedule] ${campaignId} 미발송 ${dropped}건 제외`);
+    }
+
     // 영상 이상(삭제/비공개) 판별 — 공백 무시('영상 이상' 표기도 인식)
     const isVideoIssue = (status) => (status || '').replace(/\s/g, '').includes('영상이상');
 

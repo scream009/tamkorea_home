@@ -167,6 +167,13 @@ export default async function handler(req, res) {
       // 취소·노쇼 레코드는 보고서에서 제외
       if (status.includes('취소') || status.includes('노쇼')) return;
 
+      // 미발송(예약요청·긴급예약) 제외 (Owner 지정 2026-08-13) — 아직 매장에
+      // 발송되지 않은 예약은 고객 화면에 보이면 안 된다. 결과물이 이미 달린
+      // 건은 상태만 멈춘 실제 방문 건이므로 남긴다 (client-schedule 과 같은 규칙).
+      const stNorm = status.replace(/\s/g, '');
+      if ((stNorm === '예약요청' || stNorm === '긴급예약')
+        && !(f['XHS_Result'] || f['DP_Result'] || f['DY_Result'])) return;
+
       // XHS_ID: 배열일 수 있음
       const xhsId    = Array.isArray(f['XHS_ID'])  ? f['XHS_ID'][0]  : (f['XHS_ID'] || '');
       const wcId     = Array.isArray(f['WC_ID'])    ? f['WC_ID'][0]   : (f['WC_ID'] || '');
