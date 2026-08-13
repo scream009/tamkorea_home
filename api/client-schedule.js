@@ -145,9 +145,6 @@ export default async function handler(req, res) {
             pax: r.fields['방문 인원'] || r.fields['방문인원'] || r.fields['# 방문 인원'] || r.fields['# 방문인원'] || '',
             xhsCount: r.fields['XHS_건수'],
             dpCount: r.fields['DP_건수'],
-            // 플랫폼 다변화(2026-08-13) — lookup 이라 배열로 온다
-            xhsPlat: Array.isArray(r.fields['XHS_플랫폼']) ? (r.fields['XHS_플랫폼'][0] || '') : (r.fields['XHS_플랫폼'] || ''),
-            dpPlat: Array.isArray(r.fields['DP_플랫폼']) ? (r.fields['DP_플랫폼'][0] || '') : (r.fields['DP_플랫폼'] || ''),
             specialNote: r.fields['특이사항'] || r.fields['인원메모'] || r.fields['비고'] || '',
             // 취소·노쇼 안내문 복원용. 예약입력_DB 를 못 찾은 건(팀명생성기 불일치)의
             // 유일한 본문 공급원이다 — 이 테이블은 링크로 걸려 있어 항상 따라온다.
@@ -256,10 +253,11 @@ export default async function handler(req, res) {
       let memo = f['특이사항'] || f['인원메모'] || f['비고'] || ''; 
       let xhsCount = f['XHS_건수'] || f['샤오홍슈 건수'];
       let dpCount = f['DP_건수'] || f['따중리뷰 건수'];
-      // 플랫폼 다변화(2026-08-13) — 진행_DB lookup(배열) → 없으면 예약테이블 → 빈값(=기본)
+      // 플랫폼 다변화(2026-08-13) — 값은 아래 inTeam(예약입력_DB, 팀명생성기 매칭)에서 온다.
+      // 빈값이면 기본(샤오홍슈/따종디엔핑)으로 취급하므로 구 데이터도 그대로 그려진다.
       const arr1 = (v) => (Array.isArray(v) ? (v[0] || '') : (v || ''));
-      let xhsPlat = arr1(f['XHS_플랫폼']);
-      let dpPlat = arr1(f['DP_플랫폼']);
+      let xhsPlat = '';
+      let dpPlat = '';
 
       const teamId = resvLinks.length > 0 ? resvLinks[0] : rec.id;
       const resvData = resvLinks.length > 0 ? resvMap[resvLinks[0]] : null;
@@ -269,8 +267,6 @@ export default async function handler(req, res) {
         if (resvData.specialNote) memo = resvData.specialNote;
         if (resvData.xhsCount !== undefined) xhsCount = resvData.xhsCount;
         if (resvData.dpCount !== undefined) dpCount = resvData.dpCount;
-        if (!xhsPlat && resvData.xhsPlat) xhsPlat = resvData.xhsPlat;
-        if (!dpPlat && resvData.dpPlat) dpPlat = resvData.dpPlat;
       }
 
       // ── 예약입력_DB(팀 단위 원본)가 있으면 표시값을 그것으로 덮는다 ──
@@ -292,6 +288,12 @@ export default async function handler(req, res) {
         if (inTeam['인원메모']) memo = inTeam['인원메모'];
         if (inTeam['XHS_건수'] !== undefined) xhsCount = inTeam['XHS_건수'];
         if (inTeam['DP_건수'] !== undefined) dpCount = inTeam['DP_건수'];
+        // ⚠️ 플랫폼의 **유일한 실제 공급원**이 여기다.
+        //    예약입력_DB ↔ 예약테이블 링크는 2,782건 전부 비어 있어(2026-08-13 실측)
+        //    lookup 체인으로는 값이 흐르지 않는다. 두 테이블을 잇는 건 팀명생성기 문자열뿐이고,
+        //    이 inTeam 이 바로 그 매칭 결과다.
+        if (inTeam['XHS_플랫폼']) xhsPlat = arr1(inTeam['XHS_플랫폼']);
+        if (inTeam['DP_플랫폼']) dpPlat = arr1(inTeam['DP_플랫폼']);
       }
 
       // 취소·노쇼 사유 — 담당자가 적어 둔 경우에만 달력에 함께 보여 준다.
