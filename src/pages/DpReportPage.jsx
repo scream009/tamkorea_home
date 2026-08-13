@@ -580,6 +580,7 @@ const AdflowSection = ({ adflow, name }) => {
     );
   }
   const imp = adflow.imp_share;
+  const hasClick = adflow.click_share != null && adflow.ad_click != null;
   return (
     <>
       <div className="dpr-box yes">
@@ -596,13 +597,18 @@ const AdflowSection = ({ adflow, name }) => {
         </div>
         <Stat items={[
           { value: `${imp}%`, label: '노출 기여도', color: '#9B70FF' },
-          { value: `${adflow.click_share}%`, label: '유입(클릭) 기여도', color: '#34d399' },
-          { value: <>{num(adflow.ad_click)}<span style={{ fontSize: '.7rem' }}>회</span></>, label: '광고 유입 클릭' },
-          { value: adflow.ad_ctr, label: '광고 클릭률' },
+          // 대체 경로(推广 리포트 API)는 클릭 지표를 안 준다. 없는 값을 0%로 쓰면
+          // '광고 유입이 하나도 없다'는 거짓말이 고객 화면에 나간다 → 칸 자체를 뺀다.
+          ...(hasClick ? [
+            { value: `${adflow.click_share}%`, label: '유입(클릭) 기여도', color: '#34d399' },
+            { value: <>{num(adflow.ad_click)}<span style={{ fontSize: '.7rem' }}>회</span></>, label: '광고 유입 클릭' },
+          ] : []),
+          ...(adflow.ad_charge ? [{ value: <>{num(adflow.ad_charge)}<span style={{ fontSize: '.7rem' }}>元</span></>, label: '기간 광고비' }] : []),
+          ...(adflow.ad_ctr ? [{ value: adflow.ad_ctr, label: '광고 클릭률' }] : []),
         ]} />
       </div>
       <div className="dpr-foot-note" style={{ marginTop: 14 }}>
-        💡 <b>광고를 끄면 무엇을 잃는가</b> — {name}의 노출 중 <b>{imp}%</b>가 광고에서 발생했고, 매장으로 들어온 클릭의 <b>{adflow.click_share}%</b>({num(adflow.ad_click)}회)가 광고 유입입니다. 광고를 중단하면 이 몫이 <b>그대로 사라지고</b> 상권 노출 순위도 함께 내려갑니다.{' '}
+        💡 <b>광고를 끄면 무엇을 잃는가</b> — {name}의 노출 중 <b>{imp}%</b>가 광고에서 발생했{hasClick ? <>고, 매장으로 들어온 클릭의 <b>{adflow.click_share}%</b>({num(adflow.ad_click)}회)가 광고 유입입니다</> : <>습니다</>}. 광고를 중단하면 이 몫이 <b>그대로 사라지고</b> 상권 노출 순위도 함께 내려갑니다.{' '}
         <span className="dpr-dim">※ 광고·전체 모두 '次(횟수)' 단위로 같은 기간({adflow.period})을 비교한 실측값입니다.</span>
       </div>
     </>

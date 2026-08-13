@@ -813,7 +813,9 @@ export default async function handler(req, res) {
     //   7월 레코드 = 07.03~08.01 (08-02 생성)  ← 이쪽이 최신
     // 계약월로 정렬하면 더 오래된 8월분을 '최신'이라 내보내게 된다.
     // 1순위 생성시각 → 2순위 수집기간 끝 → 3순위 계약월.
-    const periodEnd = (f) => String(f['DP_기간'] || '').split('~').pop().trim();
+    // 이미 쌓인 레코드에 '2026.08.12' 와 '2026-08-12' 가 섞여 있다(트래픽 미제공
+    // 매장은 폴백이 하이픈을 썼다). 구분자를 지워 비교해야 순서가 맞는다.
+    const periodEnd = (f) => String(f['DP_기간'] || '').split('~').pop().trim().replace(/[.-]/g, '');
     const reportRecs = storeRecs
       .filter((r) => hasReport(r.fields))
       .sort((a, b) => {
