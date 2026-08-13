@@ -1127,6 +1127,12 @@ export default function DpReportPage() {
           <div className="dpr-cn">{store?.cn}{store?.id ? ` · 编号 ${store.id}` : ''}</div>
           <div className="dpr-chips">
             <span className="dpr-chip">📅 {String(period || '').replace('~', ' ~ ')}</span>
+            {/* 같은 매장에 회차가 여러 개라 기간만으로는 방금 돌린 게 어느 것인지
+                알 수 없다(궁서체 2026-08-13). 생성 시각과 최신 여부를 밝힌다. */}
+            {data?.dpReport?.generatedAt && (
+              <span className="dpr-chip">🕒 {data.dpReport.generatedAt} 생성
+                {data.dpReport.isLatest ? ' · 최신' : ' · 지난 회차'}</span>
+            )}
             {store?.cat && <span className="dpr-chip">{store.cat}</span>}
             <span className="dpr-chip">🌏 중화권 관광객 · 인플루언서 바이럴</span>
           </div>
@@ -1136,12 +1142,12 @@ export default function DpReportPage() {
           {(data?.dpReport?.months || []).length > 1 && (
             <div className="dpr-months">
               <span className="dpr-months-l">리포트 회차</span>
-              {data.dpReport.months.map((m, i) => {
+              {data.dpReport.months.map((m) => {
                 const on = m.id === (data.dpReport.campaignId || campaignId);
                 return (
                   <a key={m.id} className={`dpr-mchip${on ? ' on' : ''}`}
                      href={`/dp-report?campaignId=${encodeURIComponent(m.id)}`}>
-                    {m.month}{i === 0 && <span className="dpr-mnew">최신</span>}
+                    {m.month}{m.isLatest && <span className="dpr-mnew">최신</span>}
                   </a>
                 );
               })}

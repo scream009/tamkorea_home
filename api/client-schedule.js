@@ -828,12 +828,13 @@ export default async function handler(req, res) {
     // 오래된 리포트는 값이 불완전해 화면이 깨진다(협력사 링크와 같은 규칙).
     const dpReportMonths = reportRecs
       .filter((r) => inMonthWindow(r.fields['계약월'], campaignName))
-      .map((r) => ({
+      .map((r, i) => ({
         id: r.id,
         month: r.fields['계약월'] || '',
         period: String(r.fields['DP_기간'] || '').replace(/~/, ' ~ '),
         generatedAt: fmtKST(genAt(r.fields)) || null,
         isCurrent: r.id === campaignId,
+        isLatest: i === 0,          // reportRecs 는 신선도 순 정렬 — 첫 항목이 최신본
       }));
 
     // 기본은 최신본. 조회 가능 기간 안에 없으면 이 레코드 것으로 물러선다.
@@ -861,6 +862,11 @@ export default async function handler(req, res) {
         month: rf['계약월'] || '',
         fromOtherMonth: (rf['계약월'] || '') !== month,
         months: dpReportMonths,
+        // 리포트를 **언제 만들었는지**. 같은 매장에 회차가 여러 개라
+        // 기간만 봐서는 방금 돌린 게 어느 것인지 알 수 없다(궁서체 2026-08-13).
+        generatedAt: fmtKST(genAt(rf)) || null,
+        // 이 회차가 최신본인가 — 지난 회차를 열었을 때 화면이 그렇게 밝힌다.
+        isLatest: !dpReportMonths.length || dpReportMonths[0].id === rid,
         url: storeCode ? `/reports/dp_${storeCode}.html` : null,
         period: String(rf['DP_기간'] || '').replace(/~/, ' ~ '),
         exposure: rf['DP_노출'] != null ? Number(rf['DP_노출']).toLocaleString() : null,

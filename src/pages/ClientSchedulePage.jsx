@@ -212,12 +212,13 @@ export const DpReportEntry = ({ report, campaignId }) => {
         <div className="dprep-tt">
           따종디엔핑 월간 마케팅 리포트
           {report.month && <span className="dprep-mon">{report.month}</span>}
+          {report.isLatest && <span className="dprep-new">최신</span>}
         </div>
         <div className="dprep-ss">
           {report.period} · 노출·리뷰·광고 종합
-          {/* 링크의 달과 다른 회차를 보여줄 때만 밝힌다. 안 밝히면 7월 링크에
-              8월 숫자가 섞인 것처럼 보인다. */}
-          {report.fromOtherMonth && <> · <b>최신 회차 기준</b></>}
+          {/* 같은 매장에 회차가 여러 개라 기간만으로는 방금 돌린 게 어느 것인지
+              알 수 없다(궁서체 2026-08-13). 생성 시각을 같이 밝힌다. */}
+          {report.generatedAt && <> · {report.generatedAt} 생성</>}
         </div>
         <div className="dprep-chips">
           {chips.map((c, i) => <span key={i} className="dprep-chip">{c}</span>)}

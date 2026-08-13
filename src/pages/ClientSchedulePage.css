@@ -983,3 +983,9 @@
 /* 수집이 오래된 CPC 값 — 잔액은 매일 줄어서 며칠 지나면 사실과 벌어진다.
    흐린 회색으로 두면 못 보고 지나치므로 눈에 띄게 한다. */
 .cpc-upd.stale{color:#fbbf24;font-weight:600}
+
+/* 리포트 진입 배지의 '최신' 표시 — 회차가 여러 개일 때 방금 돌린 게
+   어느 것인지 한눈에 보이게 한다. */
+.dprep-new{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;
+  font-size:.68rem;font-weight:800;letter-spacing:.02em;
+  background:linear-gradient(90deg,#7434FF,#9B70FF);color:#fff;vertical-align:middle}
