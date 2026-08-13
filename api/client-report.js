@@ -158,6 +158,8 @@ export default async function handler(req, res) {
     const experience = [];
     const press      = [];
     const videoIssue = [];
+    // 미발송으로 숨긴 건수 (유형별) — 아래에서 rollup 기반 stats 를 같이 깎는다
+    let hidInfl = 0, hidExp = 0, hidPress = 0;
 
     allRecords.forEach((rec) => {
       const f = rec.fields;
@@ -172,7 +174,13 @@ export default async function handler(req, res) {
       // 건은 상태만 멈춘 실제 방문 건이므로 남긴다 (client-schedule 과 같은 규칙).
       const stNorm = status.replace(/\s/g, '');
       if ((stNorm === '예약요청' || stNorm === '긴급예약')
-        && !(f['XHS_Result'] || f['DP_Result'] || f['DY_Result'])) return;
+        && !(f['XHS_Result'] || f['DP_Result'] || f['DY_Result'])) {
+        // 아래 카테고리 판정과 같은 규칙으로 센다
+        if (type.includes('인플')) hidInfl += 1;
+        else if (type.includes('기자')) hidPress += 1;
+        else hidExp += 1;
+        return;
+      }
 
       // XHS_ID: 배열일 수 있음
       const xhsId    = Array.isArray(f['XHS_ID'])  ? f['XHS_ID'][0]  : (f['XHS_ID'] || '');
@@ -212,6 +220,16 @@ export default async function handler(req, res) {
     [influencer, experience, press, videoIssue].forEach(
       (arr) => arr.forEach((r, i) => { r.seq = i + 1; })
     );
+
+    // 실적 카드 보정 — stats 는 Campaign_DB rollup 인데 그 rollup 이 예약요청 건도
+    // 센다(차백도 실측). 리스트에서 뺀 건은 숫자에서도 뺀다.
+    // ⚠️ Airtable rollup 조건을 나중에 고치면 이중 차감 — 그날엔 이 블록을 지운다.
+    if (hidInfl || hidExp || hidPress) {
+      const num = (v) => Number(Array.isArray(v) ? v[0] : v) || 0;
+      stats.infl_done  = Math.max(0, num(stats.infl_done)  - hidInfl);
+      stats.exp_done   = Math.max(0, num(stats.exp_done)   - hidExp);
+      stats.press_done = Math.max(0, num(stats.press_done) - hidPress);
+    }
 
     return res.status(200).json({
       campaignName,

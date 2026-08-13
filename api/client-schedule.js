@@ -238,13 +238,36 @@ export default async function handler(req, res) {
     {
       const PRE_SEND = new Set(['예약요청', '긴급예약']);
       const before = allRecords.length;
+      const hidden = [];
       allRecords = allRecords.filter((rec) => {
         const f = rec.fields;
         if (!PRE_SEND.has(String(f['진행상태'] || '').replace(/\s/g, ''))) return true;
-        return Boolean(f['XHS_Result'] || f['DP_Result'] || f['DY_Result']);
+        if (f['XHS_Result'] || f['DP_Result'] || f['DY_Result']) return true;
+        hidden.push(rec);
+        return false;
       });
       const dropped = before - allRecords.length;
       if (dropped) console.log(`[client-schedule] ${campaignId} 미발송 ${dropped}건 제외`);
+
+      // KPI 카드 보정 — stats 는 Campaign_DB rollup(인플_방문 등)인데, 그 rollup 이
+      // 예약요청 건도 센다(차백도 실측: 미발송 3건인데 rollup=3). 리스트에서 뺀
+      // 건은 숫자에서도 빼야 화면이 자기모순에 빠지지 않는다.
+      // ⚠️ Airtable 쪽 rollup 조건에 예약요청 제외를 추가하면 이 차감과 이중이
+      //    된다 — rollup 을 고치는 날에는 이 블록을 지워야 한다.
+      if (hidden.length) {
+        const num = (v) => Number(Array.isArray(v) ? v[0] : v) || 0;
+        let dInfl = 0, dExp = 0, dPress = 0;
+        hidden.forEach((rec) => {
+          const t = String(rec.fields['유형'] || '');
+          // 아래 '유형 → 카테고리 판정'과 같은 규칙 — 다르면 엉뚱한 칸이 깎인다
+          if (t === '인플' || t === '인플루언서' || t === '체험→인플' || t === '기자→인플') dInfl += 1;
+          else if (t === '기자' || t === '기자단') dPress += 1;
+          else dExp += 1;
+        });
+        stats.infl_done  = Math.max(0, num(stats.infl_done)  - dInfl);
+        stats.exp_done   = Math.max(0, num(stats.exp_done)   - dExp);
+        stats.press_done = Math.max(0, num(stats.press_done) - dPress);
+      }
     }
 
     // 영상 이상(삭제/비공개) 판별 — 공백 무시('영상 이상' 표기도 인식)
