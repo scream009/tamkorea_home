@@ -269,7 +269,11 @@ export default async function handler(req, res) {
       let xhsPlat = '';
       let dpPlat = '';
 
-      const teamId = resvLinks.length > 0 ? resvLinks[0] : rec.id;
+      // 팀 묶음 키 — 링크가 있으면 기존대로 예약테이블 레코드 ID(동작 불변),
+      // 예약테이블이 폐기돼 링크 필드가 사라지면 팀명생성기 문자열로 묶는다.
+      // 이 폴백이 없으면 테이블 삭제 순간 2인 팀이 달력에 낱개 블록으로 흩어진다.
+      const teamKeyStr = nospace(f['팀명생성기']);
+      const teamId = (resvLinks.length > 0 ? resvLinks[0] : '') || teamKeyStr || rec.id;
       const resvData = resvLinks.length > 0 ? resvMap[resvLinks[0]] : null;
 
       if (resvData) {

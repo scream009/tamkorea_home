@@ -119,6 +119,9 @@ async function fetchAllRecords(baseUrl) {
 }
 
 const firstOf = (v) => (Array.isArray(v) ? v[0] : v);
+const nospace = (v) => String(v || '').replace(/\s/g, '');
+// 백슬래시부터 늘려야 한다 — String.replace(/'/g, "\'") 는 no-op (_admin-auth.js 와 같은 규칙)
+const escFormula = (v) => String(v ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
 function emptyStats() {
   return { total: 0, completed: 0, inProgress: 0, cancelled: 0, noShow: 0 };
@@ -200,6 +203,34 @@ export default async function handler(req, res) {
       }
     }
 
+    /* ── 예약입력_DB (팀 단위 원본, 팀명생성기 매칭) ─────────
+       고객 달력(client-schedule c865d2c)과 같은 이관 — 예약테이블 폐기 후에도
+       예약·변경 메시지와 인원·건수가 나오도록 원본을 직접 읽는다.
+       매칭 키 = 팀명생성기(고객명 지점명_MMDD_대표인플). 수식 재료가 전부
+       자기 테이블 필드라 예약테이블과 무관하게 생성된다(Meta API 실측 2026-08-13). */
+    const resvInputMap = {};
+    try {
+      const teamKeys = [...new Set(
+        allRecords.map((r) => nospace(r.fields['팀명생성기'])).filter(Boolean)
+      )];
+      for (let i = 0; i < teamKeys.length; i += 20) {
+        const chunk = teamKeys.slice(i, i + 20);
+        const orParts = chunk
+          .map((k) => `SUBSTITUTE({팀명생성기}, " ", "")='${escFormula(k)}'`)
+          .join(',');
+        const u = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent('예약입력_DB')}`
+          + `?filterByFormula=${encodeURIComponent(`OR(${orParts})`)}&pageSize=100`;
+        const recs = await fetchAllRecords(u);
+        recs.forEach((r) => {
+          const k = nospace(r.fields['팀명생성기']);
+          if (k && !resvInputMap[k]) resvInputMap[k] = r.fields;
+        });
+      }
+    } catch (e) {
+      // 실패해도 화면은 떠야 한다 — 예약테이블 폴백/진행_DB 값으로 그린다.
+      console.error('[recruiter-schedule] 예약입력_DB 조회 실패:', e.message);
+    }
+
     /* ── 집계 ──────────────────────────────────── */
     const statsByMonth = Object.fromEntries(months.map((m) => [m, emptyStats()]));
     const statsByRecruiter = id === 'all'
@@ -248,7 +279,7 @@ export default async function handler(req, res) {
       const xhsResult = f['XHS_Result'] || '';
       const dpResult  = f['DP_Result']  || '';
       const dyResult  = f['DY_Result']  || '';
-      const reserveDate = f['예약일시'] || null;
+      let reserveDate = f['예약일시'] || null;
       const type = f['유형'] || '';
 
       const channelLink =
@@ -263,7 +294,7 @@ export default async function handler(req, res) {
       let memo = f['특이사항'] || f['인원메모'] || f['비고'] || '';
       let xhsCount = f['XHS_건수'];
       let dpCount = f['DP_건수'];
-      // 예약/변경 메시지 본문 — 예약테이블이 SoT. 진행_DB_OLD 직접 read 안 함.
+      // 예약/변경 메시지 본문 — 예약입력_DB(원본) 우선, 예약테이블(폐기예정)은 폴백.
       // ⚠️ 예전 주석은 "자동 송출기가 취소·노쇼 안내문을 예약메시지에 붙인다"고 했지만
       //    사실이 아니다. 예약메시지는 Formula 라 봇이 쓸 수 없고, 안내문은 발송 직전
       //    Python 이 조립하고 버린다. 그래서 취소 건도 원본 예약문만 떠 있었다.
@@ -272,7 +303,10 @@ export default async function handler(req, res) {
       let modificationMsg = '';
       let customerMemo = f['고객전달메모'] || '';   // 봇이 캐스케이드로 복사해 둔 값
 
-      const teamId = resvLinks.length > 0 ? resvLinks[0] : rec.id;
+      // 팀 묶음 키 — 링크가 있으면 기존대로(동작 불변), 예약테이블 폐기 후에는
+      // 팀명생성기 문자열로 묶는다. 없으면 팀이 낱개로 흩어진다.
+      const teamKeyStr = nospace(f['팀명생성기']);
+      const teamId = (resvLinks.length > 0 ? resvLinks[0] : '') || teamKeyStr || rec.id;
 
       if (resvLinks.length > 0 && resvMap[resvLinks[0]]) {
         const r = resvMap[resvLinks[0]];
@@ -283,6 +317,25 @@ export default async function handler(req, res) {
         reservationMsg = r.reservationMsg || '';
         modificationMsg = r.modificationMsg || '';   // placeholder는 resvMap 단계에서 ''로 정규화됨
         if (!customerMemo) customerMemo = r.customerMemo || '';
+      }
+
+      // 예약입력_DB(팀 단위 원본)가 있으면 그것으로 덮는다 — 고객 달력과 같은 우선순위.
+      // 변경일시가 있으면 그것이 최신 예약 시각이다(상태는 보지 않는다 — client-schedule 주석 참조).
+      const inTeam = resvInputMap[teamKeyStr];
+      if (inTeam) {
+        const d = inTeam['변경일시'] || inTeam['예약일시'];
+        if (d) reserveDate = d;
+        const pax = inTeam['변경인원'] ?? inTeam['총인원'];
+        if (pax !== undefined && pax !== null && pax !== '') totalPax = pax;
+        if (inTeam['인원메모']) memo = inTeam['인원메모'];
+        if (inTeam['XHS_건수'] !== undefined) xhsCount = inTeam['XHS_건수'];
+        if (inTeam['DP_건수'] !== undefined) dpCount = inTeam['DP_건수'];
+        // 예약메시지는 Formula 라 필드 미비 시 ⚠ 경고문을 반환한다 — 봇과 같은 가드
+        const rm = String(inTeam['예약메시지'] || '');
+        if (rm && !rm.startsWith('⚠')) reservationMsg = rm;
+        const mod = normalizeModMsg(inTeam['변경메시지']);
+        if (mod) modificationMsg = mod;
+        if (!customerMemo && inTeam['고객전달메모']) customerMemo = inTeam['고객전달메모'];
       }
 
       // 취소·노쇼면 담당자도 '내가 뭘 보냈는지'를 그대로 봐야 한다.
