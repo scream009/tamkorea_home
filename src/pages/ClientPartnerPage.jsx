@@ -35,6 +35,16 @@ const LinkBtn = ({ href, label }) =>
 const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
 const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 
+// ── 플랫폼 라벨 (2026-08-13) — 미기록·기본값은 기존 표기 유지, 인스타 등은 그 이름으로 ──
+const pv1 = (v) => (Array.isArray(v) ? (v[0] || '') : (v || ''));
+const xPlatOf = (it) => { const p = pv1(it.xhsPlat); return !p || p === '샤오홍슈' ? '샤오홍슈' : p; };
+const dPlatOf = (it) => { const p = pv1(it.dpPlat); return !p || p === '따종디엔핑' ? '따종디엔핑' : p; };
+// 컬럼 제목 — 플랫폼이 하나면 그 이름, 섞이면 '샤오홍슈·인스타그램' 병기
+const platHeader = (items, pick, dflt) => {
+  const u = [...new Set((items || []).map(pick))];
+  return u.length ? u.join('·') : dflt;
+};
+
 // 개별 고객사 대시보드 블록 컴포넌트
 // partnerName 은 화면에 찍는 이름이므로 **부모의 shownName** 을 받아야 한다.
 // URL 의 ?name= 을 그대로 넘기면 토큰 링크(?t=)에서는 빈 값이라 리스트 뷰
@@ -44,7 +54,13 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
   // 달력 기준월 = 그 캠페인의 계약월. 오늘 날짜로 잡으면 6월 실적을 골라도
   // 달력은 7월이 떠서 실적이 없는 것처럼 보인다.
   const [currentDate, setCurrentDate] = useState(() => monthToDate(camp.month));
-  useEffect(() => { setCurrentDate(monthToDate(camp.month)); }, [camp.month]);
+  // 월이 바뀌면 달력 기준월 재설정 — effect 대신 렌더 중 조정(React 권장 패턴,
+  // set-state-in-effect 룰 대응. effect 방식은 한 프레임 전 달이 깜빡였다).
+  const [seenCampMonth, setSeenCampMonth] = useState(camp.month);
+  if (seenCampMonth !== camp.month) {
+    setSeenCampMonth(camp.month);
+    setCurrentDate(monthToDate(camp.month));
+  }
   const [selectedEvent, setSelectedEvent] = useState(null);
   const modalCloseBtnRef = useRef(null);
 
@@ -137,8 +153,13 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
     const specialNote = safeMemo.trim() ? ` (${safeMemo.trim()})` : '';
     const safeXhs = Array.isArray(event.xhsCount) ? event.xhsCount[0] : (event.xhsCount || 1);
     const safeDp  = Array.isArray(event.dpCount)  ? event.dpCount[0]  : (event.dpCount  || 0);
-    let contentStr = `샤오홍슈 ${safeXhs}건`;
-    if (Number(safeDp) > 0) contentStr += `, 따중리뷰 ${safeDp}건`;
+    // 플랫폼 다변화(2026-08-13) — 미기록·기본값은 기존 표기, 인스타 등은 그 이름
+    const xp = pv1(event.xhsPlat);
+    const dpp = pv1(event.dpPlat);
+    const xLabel = !xp || xp === '샤오홍슈' ? '샤오홍슈' : xp;
+    const dLabel = !dpp || dpp === '따종디엔핑' ? '따중리뷰' : dpp;
+    let contentStr = `${xLabel} ${safeXhs}건`;
+    if (Number(safeDp) > 0) contentStr += `, ${dLabel} ${safeDp}건`;
     const brandLabel = camp.brandName && camp.branchName ? `${camp.brandName} ${camp.branchName}` : (camp.brandName || '캠페인');
     return `【${brandLabel}】 ${typeText}입니다.\n\n- 닉네임: ${ids}\n- 일정: ${dateStr}\n- 인원: ${paxStr}${specialNote}\n- 내용: ${contentStr}\n\n* 방문시간은 약간의 변동이 있을 수 있습니다.`;
   };
@@ -160,7 +181,13 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
   const handleDownloadCSV = () => {
     if (!camp.records) return;
     
-    const headers = ['구분', 'No.', '닉네임(ID)', '샤오홍슈 링크', '따종디엔핑 링크'];
+    const allItems = [
+      ...(camp.records.influencer || []), ...(camp.records.experience || []),
+      ...(camp.records.press || []),
+    ];
+    const headers = ['구분', 'No.', '닉네임(ID)',
+      `${platHeader(allItems, xPlatOf, '샤오홍슈')} 링크`,
+      `${platHeader(allItems, dPlatOf, '따종디엔핑')} 링크`];
     const rows = [];
     
     const escape = (text) => `"${(text || '').toString().replace(/"/g, '""')}"`;
@@ -373,13 +400,13 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
                   <h2 className="category-title"><TypeBadge type="influencer" /></h2>
                   <div className="premium-table-wrapper">
                     <table className="premium-table">
-                      <thead><tr><th style={{width:'6%'}}>No.</th><th style={{width:'28%'}}>방문자 ID</th><th style={{width:'33%'}}>샤오홍슈 결과물</th><th style={{width:'33%'}}>따종디엔핑</th></tr></thead>
+                      <thead><tr><th style={{width:'6%'}}>No.</th><th style={{width:'28%'}}>방문자 ID</th><th style={{width:'33%'}}>{platHeader(camp.records.influencer, xPlatOf, '샤오홍슈')} 결과물</th><th style={{width:'33%'}}>{platHeader(camp.records.influencer, dPlatOf, '따종디엔핑')}</th></tr></thead>
                       <tbody>
                         {camp.records.influencer.map(item => (
                           <tr key={item.id} className={!item.xhsResult && !item.dpResult ? 'row-pending' : ''}>
                             <td>{item.seq}</td><td><span className="id-tag">{item.displayId || '-'}</span></td>
-                            <td><LinkBtn href={item.xhsResult} label="샤오홍슈" /></td>
-                            <td><LinkBtn href={item.dpResult} label="따종디엔핑" /></td>
+                            <td><LinkBtn href={item.xhsResult} label={xPlatOf(item)} /></td>
+                            <td><LinkBtn href={item.dpResult} label={dPlatOf(item)} /></td>
                           </tr>
                         ))}
                       </tbody>
@@ -393,13 +420,13 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
                   <h2 className="category-title"><TypeBadge type="experience" /></h2>
                   <div className="premium-table-wrapper">
                     <table className="premium-table">
-                      <thead><tr><th style={{width:'6%'}}>No.</th><th style={{width:'28%'}}>방문자 ID</th><th style={{width:'33%'}}>샤오홍슈 결과물</th><th style={{width:'33%'}}>따종디엔핑</th></tr></thead>
+                      <thead><tr><th style={{width:'6%'}}>No.</th><th style={{width:'28%'}}>방문자 ID</th><th style={{width:'33%'}}>{platHeader(camp.records.experience, xPlatOf, '샤오홍슈')} 결과물</th><th style={{width:'33%'}}>{platHeader(camp.records.experience, dPlatOf, '따종디엔핑')}</th></tr></thead>
                       <tbody>
                         {camp.records.experience.map(item => (
                           <tr key={item.id} className={!item.xhsResult && !item.dpResult ? 'row-pending' : ''}>
                             <td>{item.seq}</td><td><span className="id-tag">{item.displayId || '-'}</span></td>
-                            <td><LinkBtn href={item.xhsResult} label="샤오홍슈" /></td>
-                            <td><LinkBtn href={item.dpResult} label="따종디엔핑" /></td>
+                            <td><LinkBtn href={item.xhsResult} label={xPlatOf(item)} /></td>
+                            <td><LinkBtn href={item.dpResult} label={dPlatOf(item)} /></td>
                           </tr>
                         ))}
                       </tbody>

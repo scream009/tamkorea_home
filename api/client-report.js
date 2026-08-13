@@ -27,6 +27,10 @@ async function atFetch(url) {
   return res.json();
 }
 
+const nospace = (v) => String(v || '').replace(/\s/g, '');
+// 백슬래시부터 늘려야 한다 — replace(/'/g, "\'") 는 no-op (_admin-auth.js 와 같은 규칙)
+const escFormula = (v) => String(v ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
 // 에어테이블 페이지네이션 처리 (100건 초과 시)
 async function fetchAllRecords(baseUrl) {
   let records = [];
@@ -80,6 +84,8 @@ export default async function handler(req, res) {
     // ─── 2. 진행_DB_OLD 레코드 가져오기 ────────────────────────────
     // 연결된 레코드 ID가 100개 이하면 RECORD_ID() 필터로 직접 조회
     // ID 목록을 OR 필터로 묶어서 요청
+    const PROG_FIELDS = ['유형','XHS_ID','WC_ID','INFL_ID','XHS_Result','DP_Result','DY_Result','진행상태','Shoot_ID','팀명생성기'];
+    const fieldQ = PROG_FIELDS.map((f) => `fields%5B%5D=${encodeURIComponent(f)}`).join('&');
     let allRecords = [];
 
     if (linkedRecIds.length > 0) {
@@ -89,20 +95,77 @@ export default async function handler(req, res) {
         const chunk = linkedRecIds.slice(i, i + chunkSize);
         const orParts = chunk.map(id => `RECORD_ID()='${id}'`).join(',');
         const formula = encodeURIComponent(`OR(${orParts})`);
-        const url = `https://api.airtable.com/v0/${BASE_ID}/${RECORD_TABLE}?filterByFormula=${formula}&fields%5B%5D=유형&fields%5B%5D=XHS_ID&fields%5B%5D=WC_ID&fields%5B%5D=INFL_ID&fields%5B%5D=XHS_Result&fields%5B%5D=DP_Result&fields%5B%5D=진행상태&fields%5B%5D=Shoot_ID`;
+        const url = `https://api.airtable.com/v0/${BASE_ID}/${RECORD_TABLE}?filterByFormula=${formula}&${fieldQ}`;
         const chunk_recs = await fetchAllRecords(url);
         allRecords = allRecords.concat(chunk_recs);
       }
     }
 
+    // '귀속 정산월' 링크가 비어도 실적을 찾는다 — 계약명(공백 제거)으로 보정.
+    // 오토메이션의 exact match 가 매장명 공백 때문에 실패한 레코드가 실재한다
+    // (구 ClientReportPage 가 브라우저에서 하던 보정을 서버로 이식, 2026-08-13).
+    try {
+      const key = nospace(campaignName);
+      if (key) {
+        const expr = `SUBSTITUTE({입력 정산월}, " ", "") = '${escFormula(key)}'`;
+        const u = `https://api.airtable.com/v0/${BASE_ID}/${RECORD_TABLE}`
+          + `?filterByFormula=${encodeURIComponent(expr)}&pageSize=100&${fieldQ}`;
+        const seen = new Set(allRecords.map((r) => r.id));
+        const extra = (await fetchAllRecords(u)).filter((r) => !seen.has(r.id));
+        if (extra.length) allRecords = allRecords.concat(extra);
+      }
+    } catch (e) {
+      // 보정 실패는 무시 — 링크로 찾은 실적은 그대로 보여준다
+      console.error('[client-report] 계약명 보정 실패:', e.message);
+    }
+
+    // ─── 2.5 게시 플랫폼 (예약입력_DB, 팀명생성기 매칭) ─────────────
+    // 인스타그램 인플 등 타매체 건의 컬럼 제목·버튼 라벨용. 빈값 = 기본(샤오홍슈/따종).
+    // 예약입력_DB↔진행_DB 는 링크가 없어 팀명생성기 문자열이 유일한 연결이다(2026-08-13 실측).
+    const platMap = {};
+    try {
+      const teamKeys = [...new Set(
+        allRecords.map((r) => nospace(r.fields['팀명생성기'])).filter(Boolean)
+      )];
+      for (let i = 0; i < teamKeys.length; i += 20) {
+        const chunk = teamKeys.slice(i, i + 20);
+        const orParts = chunk
+          .map((k) => `SUBSTITUTE({팀명생성기}, " ", "")='${escFormula(k)}'`)
+          .join(',');
+        const u = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent('예약입력_DB')}`
+          + `?filterByFormula=${encodeURIComponent(`OR(${orParts})`)}&pageSize=100`
+          + `&fields%5B%5D=${encodeURIComponent('팀명생성기')}`
+          + `&fields%5B%5D=${encodeURIComponent('XHS_플랫폼')}`
+          + `&fields%5B%5D=${encodeURIComponent('DP_플랫폼')}`;
+        const recs = await fetchAllRecords(u);
+        recs.forEach((r) => {
+          const k = nospace(r.fields['팀명생성기']);
+          if (k && !platMap[k]) {
+            platMap[k] = { x: r.fields['XHS_플랫폼'] || '', d: r.fields['DP_플랫폼'] || '' };
+          }
+        });
+      }
+    } catch (e) {
+      // 실패해도 보고서는 떠야 한다 — 기본 라벨로 그린다.
+      console.error('[client-report] 예약입력_DB 플랫폼 조회 실패:', e.message);
+    }
+
     // ─── 3. 유형별 분류 ─────────────────────────────────────────────
+    // 구 ClientReportPage(브라우저 직결)의 판정 규칙을 그대로 이식:
+    // 취소·노쇼 제외, includes 판정, 영상이상은 하단 별도 리스트.
+    const isVideoIssue = (s) => (s || '').replace(/\s/g, '').includes('영상이상');
     const influencer = [];
     const experience = [];
     const press      = [];
+    const videoIssue = [];
 
-    allRecords.forEach((rec, index) => {
+    allRecords.forEach((rec) => {
       const f = rec.fields;
-      const type = f['유형'] || '';
+      const type   = f['유형'] || '';
+      const status = f['진행상태'] || '';
+
+      // 취소·노쇼 레코드는 보고서에서 제외
+      if (status.includes('취소') || status.includes('노쇼')) return;
 
       // XHS_ID: 배열일 수 있음
       const xhsId    = Array.isArray(f['XHS_ID'])  ? f['XHS_ID'][0]  : (f['XHS_ID'] || '');
@@ -110,37 +173,36 @@ export default async function handler(req, res) {
       const inflId   = Array.isArray(f['INFL_ID'])  ? f['INFL_ID'][0] : (f['INFL_ID'] || '');
       const displayId = xhsId || wcId || inflId || '';
 
-      const xhsResult = f['XHS_Result'] || '';
-      const dpResult  = f['DP_Result']  || '';
-      const status    = f['진행상태']   || '';
-      const shootId   = f['Shoot_ID']   || '';
+      let category;
+      if (type.includes('인플')) category = 'influencer';
+      else if (type.includes('기자')) category = 'press';
+      else category = 'experience'; // 유형 불명확 → 체험으로 fallback
 
+      const plat = platMap[nospace(f['팀명생성기'])] || {};
       const item = {
         id:        rec.id,
-        seq:       index + 1,
-        shootId,
+        seq:       0,
+        category,
+        shootId:   f['Shoot_ID'] || '',
         displayId,
-        xhsResult,
-        dpResult,
+        xhsResult: (f['XHS_Result'] || '').trim(),
+        dpResult:  (f['DP_Result']  || '').trim(),
+        dyResult:  (f['DY_Result']  || '').trim(),
         status,
+        xhsPlat:   plat.x || '',   // 게시 플랫폼 — 빈값 = 기본(샤오홍슈/따종)
+        dpPlat:    plat.d || '',
       };
 
-      if (type === '인플' || type === '인플루언서' || type === '체험→인플' || type === '기자→인플') {
-        influencer.push(item);
-      } else if (type === '체험' || type === '체험단' || type === '기자→체험') {
-        experience.push(item);
-      } else if (type === '기자' || type === '기자단') {
-        press.push(item);
-      } else {
-        // 유형 불명확 → 체험으로 fallback
-        experience.push(item);
-      }
+      if (isVideoIssue(status)) { videoIssue.push(item); return; }
+      if (category === 'influencer') influencer.push(item);
+      else if (category === 'press') press.push(item);
+      else experience.push(item);
     });
 
     // seq 재부여
-    influencer.forEach((r, i) => { r.seq = i + 1; });
-    experience.forEach((r, i) => { r.seq = i + 1; });
-    press.forEach((r, i)      => { r.seq = i + 1; });
+    [influencer, experience, press, videoIssue].forEach(
+      (arr) => arr.forEach((r, i) => { r.seq = i + 1; })
+    );
 
     return res.status(200).json({
       campaignName,
@@ -149,7 +211,7 @@ export default async function handler(req, res) {
       month,
       partnerName,
       stats,
-      records: { influencer, experience, press },
+      records: { influencer, experience, press, videoIssue },
     });
 
   } catch (err) {

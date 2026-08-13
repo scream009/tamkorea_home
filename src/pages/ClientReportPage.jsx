@@ -2,67 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import './ClientReportPage.css';
 
-/* ── 에어테이블 직접 연동 설정 ───────────────────── */
-const TOKEN   = import.meta.env.VITE_AT_TOKEN;
-const BASE_ID = 'appdsAV2ewZWCkyIa';
-const AT_BASE = `https://api.airtable.com/v0/${BASE_ID}`;
-const CAMP_TB = encodeURIComponent('Campaign_DB');
-const PROG_TB = encodeURIComponent('진행_DB_OLD');
-
-async function atGet(url) {
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${TOKEN}` } });
-  if (!res.ok) { const t = await res.text(); throw new Error(t); }
-  return res.json();
-}
-
-async function fetchLinkedRecords(ids) {
-  if (!ids || ids.length === 0) return [];
-  const fields = ['유형','XHS_ID','WC_ID','INFL_ID','XHS_Result','DP_Result','DY_Result','진행상태','Shoot_ID'];
-  const fieldQ = fields.map(f => `fields[]=${encodeURIComponent(f)}`).join('&');
-  let all = [];
-  const chunkSize = 30;
-  for (let i = 0; i < ids.length; i += chunkSize) {
-    const chunk = ids.slice(i, i + chunkSize);
-    const orExpr = chunk.map(id => `RECORD_ID()='${id}'`).join(',');
-    const formula = encodeURIComponent(`OR(${orExpr})`);
-    const url = `${AT_BASE}/${PROG_TB}?filterByFormula=${formula}&${fieldQ}`;
-    let offset = null;
-    do {
-      const data = await atGet(offset ? `${url}&offset=${offset}` : url);
-      all = all.concat(data.records || []);
-      offset = data.offset || null;
-    } while (offset);
-  }
-  return all;
-}
-
-// '귀속 정산월' 링크가 비어도 실적을 찾는다.
-// Campaign_DB '계약명' 은 고객사명+지점명을 **공백 없이** 붙이는데,
-// 진행_DB_OLD '입력 정산월' 은 CS_DB 매장명(= '몽그레 월정리점') 기반이다.
-// 매장명에 공백이 있으면 두 문자열이 영원히 달라, 링크를 걸어주는
-// 오토메이션이 exact match 에 실패한다 → 실적이 DB 에 있는데도 화면에서 사라진다.
-// 문자열에 정산월이 들어 있어 다른 달을 끌어올 염려는 없다.
-async function fetchByCampaignName(campaignName) {
-  const key = String(campaignName || '').replace(/\s/g, '');
-  if (!key) return [];
-  const fields = ['유형','XHS_ID','WC_ID','INFL_ID','XHS_Result','DP_Result','DY_Result','진행상태','Shoot_ID'];
-  const fieldQ = fields.map(f => `fields[]=${encodeURIComponent(f)}`).join('&');
-  const expr = `SUBSTITUTE({입력 정산월}, " ", "") = '${key}'`;
-  const url = `${AT_BASE}/${PROG_TB}?filterByFormula=${encodeURIComponent(expr)}&pageSize=100&${fieldQ}`;
-  let all = [], offset = null;
-  do {
-    const data = await atGet(offset ? `${url}&offset=${offset}` : url);
-    all = all.concat(data.records || []);
-    offset = data.offset || null;
-  } while (offset);
-  return all;
-}
-
 /* ── 상수 ──────────────────────────────────────── */
+// 데이터는 /api/client-report 가 준다 (2026-08-13 서버 이관 — 이전에는 이 페이지가
+// 브라우저에서 Airtable 을 직접 불렀고, 그 토큰이 번들에 실려 나갔다).
 // 영상 이상 섹션 내 하위 그룹 순서 (유형 구분 표시용)
 const VIDEO_ISSUE_GROUPS = ['influencer', 'experience', 'press'];
-// 상태값 정규화(공백 제거) 후 '영상이상' 포함 여부 — '영상 이상' 표기도 함께 인식
-const isVideoIssue = (status) => (status || '').replace(/\s/g, '').includes('영상이상');
+
+// ── 플랫폼 라벨 (2026-08-13) — 미기록·기본값은 기존 표기 유지, 인스타 등은 그 이름으로 ──
+const pv1 = (v) => (Array.isArray(v) ? (v[0] || '') : (v || ''));
+const xPlatOf = (it) => { const p = pv1(it.xhsPlat); return !p || p === '샤오홍슈' ? '샤오홍슈' : p; };
+const dPlatOf = (it) => { const p = pv1(it.dpPlat); return !p || p === '따종디엔핑' ? '따종디엔핑' : p; };
+// 컬럼 제목 — 플랫폼이 하나면 그 이름, 섞이면 '샤오홍슈·인스타그램' 병기
+const platHeader = (items, pick, dflt) => {
+  const u = [...new Set((items || []).map(pick))];
+  return u.length ? u.join('·') : dflt;
+};
 
 /* ── 서브 컴포넌트 ──────────────────────────────── */
 const TypeBadge = ({ type }) => {
@@ -137,79 +91,17 @@ const ClientReportPage = () => {
           return;
         }
 
-        // ── 1. Campaign 기본 정보 ──────────────────────
-        const camp = await atGet(`${AT_BASE}/${CAMP_TB}/${recordId}`);
-        const cf = camp.fields;
-        const brandName   = Array.isArray(cf['고객사명']) ? cf['고객사명'][0] : (cf['고객사명'] || '');
-        const branchName  = Array.isArray(cf['지점명'])   ? cf['지점명'][0]   : (cf['지점명'] || '');
-        const month       = cf['계약월'] || '';
-        const campaignName= cf['계약명'] || '';
-        
-        const partnerField = cf['협력사명'] || cf['협력사'] || '';
-        const partnerRaw   = Array.isArray(partnerField) ? partnerField[0] : partnerField;
-        let partnerName  = (partnerRaw && partnerRaw !== '직영' && partnerRaw !== '탐코리아' && partnerRaw.toUpperCase() !== 'TAMKOREA') ? partnerRaw : 'TAMKOREA';
-        if (partnerName && partnerName.includes('에코')) {
-          partnerName = '에코';
+        // ── 서버 API 호출 (조립·분류·플랫폼 매칭은 전부 서버가 한다) ──
+        const r = await fetch(`/api/client-report?recordId=${encodeURIComponent(recordId)}`);
+        if (!r.ok) {
+          let msg = `보고서를 불러오지 못했습니다 (${r.status})`;
+          try { const j = await r.json(); if (j.error) msg = j.error; } catch { /* 본문 없음 */ }
+          throw new Error(msg);
         }
-
-        const linkedIds   = cf['진행_DB_OLD'] || [];
-
-        // 실적 수량: 인플/체험 = '_방문' rollup, 기자 = '기자_실적' rollup (스키마 리네임 반영)
-        const stats = {
-          infl_target:  cf['인플_목표'] || cf['인플_요청']  || 0, infl_done:  cf['인플_방문'] || cf['인플_실적'] || 0,
-          exp_target:   cf['체험_목표'] || cf['체험단_요청'] || 0, exp_done:   cf['체험_방문'] || cf['체험_실적'] || 0,
-          press_target: cf['기자_목표'] || cf['기자단_요청'] || 0, press_done: cf['기자_실적'] || 0,
-        };
-
-        // ── 2. 진행_DB_OLD 실적 레코드 ───────────────
-        // 링크로 먼저 찾고, 링크 누락분은 계약명으로 보정한다(위 주석 참고).
-        const rawRecs = await fetchLinkedRecords(linkedIds);
-        try {
-          const seen = new Set(rawRecs.map(r => r.id));
-          const extra = (await fetchByCampaignName(campaignName)).filter(r => !seen.has(r.id));
-          if (extra.length) rawRecs.push(...extra);
-        } catch {
-          // 보정 실패는 무시 — 링크로 찾은 실적은 그대로 보여준다
-        }
-
-        const influencer = [], experience = [], press = [], videoIssue = [];
-        rawRecs.forEach(rec => {
-          const f = rec.fields;
-          const type = f['유형'] || '';
-          const status = f['진행상태'] || '';
-          const xhsId   = Array.isArray(f['XHS_ID'])  ? f['XHS_ID'][0]  : (f['XHS_ID']  || '');
-          const wcId    = Array.isArray(f['WC_ID'])    ? f['WC_ID'][0]   : (f['WC_ID']   || '');
-          const inflId  = Array.isArray(f['INFL_ID']) ? f['INFL_ID'][0] : (f['INFL_ID'] || '');
-
-          // 취소·노쇼 레코드는 보고서에서 제외
-          if (status.includes('취소') || status.includes('노쇼')) return;
-
-          // 유형 → 카테고리 판정
-          let category;
-          if (type.includes('인플') || type.includes('체험→인플') || type.includes('기자→인플')) category = 'influencer';
-          else if (type.includes('기자')) category = 'press';
-          else category = 'experience'; // fallback
-
-          const item = {
-            id: rec.id, seq: 0,
-            category,
-            displayId:  xhsId || wcId || inflId || '',
-            xhsResult:  (f['XHS_Result'] || '').trim(),
-            dpResult:   (f['DP_Result']  || '').trim(),
-            dyResult:   (f['DY_Result']  || '').trim(),
-            status,
-          };
-
-          // 영상 이상(삭제/비공개) → 유형 표에서 빼내어 하단 별도 리스트로
-          if (isVideoIssue(status)) { videoIssue.push(item); return; }
-
-          if (category === 'influencer') influencer.push(item);
-          else if (category === 'press')  press.push(item);
-          else experience.push(item);
-        });
-        [influencer, experience, press, videoIssue].forEach(arr => arr.forEach((r,i) => r.seq = i+1));
-
-        setReportData({ campaignName, brandName, branchName, month, partnerName, stats, records:{ influencer, experience, press, videoIssue } });
+        const data = await r.json();
+        // 구 응답(videoIssue 없던 시절) 방어 — 빈 배열로 정규화
+        if (data.records && !data.records.videoIssue) data.records.videoIssue = [];
+        setReportData(data);
 
       } catch(e) {
         setError(e.message);
@@ -267,7 +159,13 @@ const ClientReportPage = () => {
   const handleDownloadCSV = () => {
     if (!records) return;
     
-    const headers = ['구분', 'No.', '닉네임(ID)', '샤오홍슈 링크', '따종디엔핑 링크', '틱톡(DY) 링크'];
+    const allItems = [
+      ...(records.influencer || []), ...(records.experience || []),
+      ...(records.press || []), ...(records.videoIssue || []),
+    ];
+    const headers = ['구분', 'No.', '닉네임(ID)',
+      `${platHeader(allItems, xPlatOf, '샤오홍슈')} 링크`,
+      `${platHeader(allItems, dPlatOf, '따종디엔핑')} 링크`, '틱톡(DY) 링크'];
     const rows = [];
     
     const escape = (text) => `"${(text || '').toString().replace(/"/g, '""')}"`;
@@ -366,8 +264,8 @@ const ClientReportPage = () => {
                 <thead><tr>
                   <th style={{width:'6%'}}>No.</th>
                   <th style={{width:'19%'}}>ID (닉네임)</th>
-                  <th style={{width:'25%', textAlign:'center'}}>샤오홍슈</th>
-                  <th style={{width:'25%', textAlign:'center'}}>따종디엔핑</th>
+                  <th style={{width:'25%', textAlign:'center'}}>{platHeader(records.influencer, xPlatOf, '샤오홍슈')}</th>
+                  <th style={{width:'25%', textAlign:'center'}}>{platHeader(records.influencer, dPlatOf, '따종디엔핑')}</th>
                   <th style={{width:'25%', textAlign:'center'}}>틱톡(DY)</th>
                 </tr></thead>
                 <tbody>
@@ -397,8 +295,8 @@ const ClientReportPage = () => {
                 <thead><tr>
                   <th style={{width:'6%'}}>No.</th>
                   <th style={{width:'19%'}}>ID (닉네임)</th>
-                  <th style={{width:'25%', textAlign:'center'}}>샤오홍슈</th>
-                  <th style={{width:'25%', textAlign:'center'}}>따종디엔핑</th>
+                  <th style={{width:'25%', textAlign:'center'}}>{platHeader(records.experience, xPlatOf, '샤오홍슈')}</th>
+                  <th style={{width:'25%', textAlign:'center'}}>{platHeader(records.experience, dPlatOf, '따종디엔핑')}</th>
                   <th style={{width:'25%', textAlign:'center'}}>틱톡(DY)</th>
                 </tr></thead>
                 <tbody>
@@ -464,8 +362,8 @@ const ClientReportPage = () => {
                       <thead><tr>
                         <th style={{width:'6%'}}>No.</th>
                         <th style={{width:'19%'}}>ID (닉네임)</th>
-                        <th style={{width:'25%', textAlign:'center'}}>샤오홍슈</th>
-                        <th style={{width:'25%', textAlign:'center'}}>따종디엔핑</th>
+                        <th style={{width:'25%', textAlign:'center'}}>{platHeader(items, xPlatOf, '샤오홍슈')}</th>
+                        <th style={{width:'25%', textAlign:'center'}}>{platHeader(items, dPlatOf, '따종디엔핑')}</th>
                         <th style={{width:'25%', textAlign:'center'}}>틱톡(DY)</th>
                       </tr></thead>
                       <tbody>
