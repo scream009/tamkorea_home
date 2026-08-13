@@ -130,8 +130,14 @@ export default async function handler(req, res) {
       resvLinks.forEach(id => reservationIds.add(id));
     });
 
+    // ⚠️ 예약테이블은 **폐기 예정 테이블**이다 (Owner 확인 2026-08-13 — 지금 흐름은
+    //    예약입력_DB → 진행_DB_OLD). 여기서는 옛 건의 폴백으로만 쓴다.
+    //    try/catch 가 필수다 — 테이블이 삭제되면 예전 코드는 통째로 500 이 나서
+    //    고객 달력이 열리지 않는다. 실패하면 폴백만 포기하고 화면은 그린다.
+    //    (실측 2026-08-13: 예약입력_DB 매칭률 8월 98% · 7월 87% · 6월 83%)
     const resvMap = {};
     if (reservationIds.size > 0) {
+      try {
       const resvArray = Array.from(reservationIds);
       const resvChunkSize = 30;
       for (let i = 0; i < resvArray.length; i += resvChunkSize) {
@@ -153,6 +159,10 @@ export default async function handler(req, res) {
             customerMemo: r.fields['고객전달메모'] || '',
           };
         });
+      }
+      } catch (e) {
+        // 폐기 테이블이 사라졌거나 조회 실패 — 폴백 없이 예약입력_DB 기준으로 그린다
+        console.error('[client-schedule] 예약테이블(폐기예정) 조회 실패 — 폴백 생략:', e.message);
       }
     }
 

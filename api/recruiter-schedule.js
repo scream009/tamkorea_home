@@ -169,8 +169,11 @@ export default async function handler(req, res) {
       links.forEach((rId) => reservationIds.add(rId));
     });
 
+    // ⚠️ 예약테이블은 **폐기 예정** (Owner 확인 2026-08-13). 삭제되면 이 조회가 던져
+    //    화면 전체가 500 이 된다 → try/catch 로 감싸 폴백만 포기한다.
     const resvMap = {};
     if (reservationIds.size > 0) {
+      try {
       const resvArray = Array.from(reservationIds);
       const chunkSize = 30;
       for (let i = 0; i < resvArray.length; i += chunkSize) {
@@ -191,6 +194,9 @@ export default async function handler(req, res) {
             customerMemo: r.fields['고객전달메모'] || '',
           };
         });
+      }
+      } catch (e) {
+        console.error('[recruiter-schedule] 예약테이블(폐기예정) 조회 실패 — 폴백 생략:', e.message);
       }
     }
 

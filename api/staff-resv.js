@@ -286,7 +286,8 @@ async function createEntry(body) {
 
   // 플랫폼 다변화 (2026-08-13) — 건수 슬롯 2개의 게시 플랫폼을 명시 기록.
   // 기본값(샤오홍슈/따종디엔핑)도 항상 써서 "빈값 = 뭐지?"의 모호함을 없앤다.
-  // 진행_DB_OLD·예약테이블에는 lookup 체인으로 자동 전파된다(오토메이션 무관).
+  // ⚠️ 진행_DB_OLD 로는 lookup 이 안 흐른다(둘을 잇는 링크가 없다 — 실측 2026-08-13).
+  //    화면들은 팀명생성기 문자열로 예약입력_DB 를 매칭해 읽는다(client-schedule 참조).
   const PLAT_X = ['샤오홍슈', '인스타그램', '틱톡', '유튜브'];
   const PLAT_D = ['따종디엔핑', '인스타그램', '틱톡', '유튜브'];
   const platX = PLAT_X.includes(body.platX) ? body.platX : '샤오홍슈';
