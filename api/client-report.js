@@ -84,7 +84,7 @@ export default async function handler(req, res) {
     // ─── 2. 진행_DB_OLD 레코드 가져오기 ────────────────────────────
     // 연결된 레코드 ID가 100개 이하면 RECORD_ID() 필터로 직접 조회
     // ID 목록을 OR 필터로 묶어서 요청
-    const PROG_FIELDS = ['유형','XHS_ID','WC_ID','INFL_ID','XHS_Result','DP_Result','DY_Result','진행상태','Shoot_ID','팀명생성기'];
+    const PROG_FIELDS = ['유형','XHS_ID','WC_ID','INFL_ID','XHS_Result','DP_Result','DY_Result','진행상태','Shoot_ID','팀명생성기','XHS_건수','DP_건수'];
     const fieldQ = PROG_FIELDS.map((f) => `fields%5B%5D=${encodeURIComponent(f)}`).join('&');
     let allRecords = [];
 
@@ -191,6 +191,8 @@ export default async function handler(req, res) {
         status,
         xhsPlat:   plat.x || '',   // 게시 플랫폼 — 빈값 = 기본(샤오홍슈/따종)
         dpPlat:    plat.d || '',
+        xhsCount:  f['XHS_건수'],  // 열 표시 판정용 — 大 건이 전혀 없으면 DP 열을 숨긴다
+        dpCount:   f['DP_건수'],
       };
 
       if (isVideoIssue(status)) { videoIssue.push(item); return; }

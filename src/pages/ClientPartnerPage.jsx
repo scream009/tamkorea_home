@@ -44,6 +44,9 @@ const platHeader = (items, pick, dflt) => {
   const u = [...new Set((items || []).map(pick))];
   return u.length ? u.join('·') : dflt;
 };
+// DP 열 표시 여부 — 섹션에 大 건수도 결과물도 전혀 없으면 열 자체를 뺀다
+const cnt1 = (v) => Number(Array.isArray(v) ? v[0] : v) || 0;
+const hasDpCol = (items) => (items || []).some((i) => cnt1(i.dpCount) > 0 || i.dpResult);
 
 // 개별 고객사 대시보드 블록 컴포넌트
 // partnerName 은 화면에 찍는 이름이므로 **부모의 shownName** 을 받아야 한다.
@@ -167,6 +170,9 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
   const hasInfl = camp.records.influencer.length > 0;
   const hasExp = camp.records.experience.length > 0;
   const hasPress = camp.records.press.length > 0;
+  // 大 건이 전혀 없는 섹션은 따종(대체 플랫폼) 열을 아예 그리지 않는다
+  const showDpInfl = hasDpCol(camp.records.influencer);
+  const showDpExp  = hasDpCol(camp.records.experience);
 
   const copyClientLink = () => {
     const link = `https://report.tamkorea.com/schedule?campaignId=${camp.id}`;
@@ -400,13 +406,13 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
                   <h2 className="category-title"><TypeBadge type="influencer" /></h2>
                   <div className="premium-table-wrapper">
                     <table className="premium-table">
-                      <thead><tr><th style={{width:'6%'}}>No.</th><th style={{width:'28%'}}>방문자 ID</th><th style={{width:'33%'}}>{platHeader(camp.records.influencer, xPlatOf, '샤오홍슈')} 결과물</th><th style={{width:'33%'}}>{platHeader(camp.records.influencer, dPlatOf, '따종디엔핑')}</th></tr></thead>
+                      <thead><tr><th style={{width:'6%'}}>No.</th><th style={{width:'28%'}}>방문자 ID</th><th style={{width: showDpInfl ? '33%' : '66%'}}>{platHeader(camp.records.influencer, xPlatOf, '샤오홍슈')} 결과물</th>{showDpInfl && <th style={{width:'33%'}}>{platHeader(camp.records.influencer, dPlatOf, '따종디엔핑')}</th>}</tr></thead>
                       <tbody>
                         {camp.records.influencer.map(item => (
                           <tr key={item.id} className={!item.xhsResult && !item.dpResult ? 'row-pending' : ''}>
                             <td>{item.seq}</td><td><span className="id-tag">{item.displayId || '-'}</span></td>
                             <td><LinkBtn href={item.xhsResult} label={xPlatOf(item)} /></td>
-                            <td><LinkBtn href={item.dpResult} label={dPlatOf(item)} /></td>
+                            {showDpInfl && <td><LinkBtn href={item.dpResult} label={dPlatOf(item)} /></td>}
                           </tr>
                         ))}
                       </tbody>
@@ -420,13 +426,13 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
                   <h2 className="category-title"><TypeBadge type="experience" /></h2>
                   <div className="premium-table-wrapper">
                     <table className="premium-table">
-                      <thead><tr><th style={{width:'6%'}}>No.</th><th style={{width:'28%'}}>방문자 ID</th><th style={{width:'33%'}}>{platHeader(camp.records.experience, xPlatOf, '샤오홍슈')} 결과물</th><th style={{width:'33%'}}>{platHeader(camp.records.experience, dPlatOf, '따종디엔핑')}</th></tr></thead>
+                      <thead><tr><th style={{width:'6%'}}>No.</th><th style={{width:'28%'}}>방문자 ID</th><th style={{width: showDpExp ? '33%' : '66%'}}>{platHeader(camp.records.experience, xPlatOf, '샤오홍슈')} 결과물</th>{showDpExp && <th style={{width:'33%'}}>{platHeader(camp.records.experience, dPlatOf, '따종디엔핑')}</th>}</tr></thead>
                       <tbody>
                         {camp.records.experience.map(item => (
                           <tr key={item.id} className={!item.xhsResult && !item.dpResult ? 'row-pending' : ''}>
                             <td>{item.seq}</td><td><span className="id-tag">{item.displayId || '-'}</span></td>
                             <td><LinkBtn href={item.xhsResult} label={xPlatOf(item)} /></td>
-                            <td><LinkBtn href={item.dpResult} label={dPlatOf(item)} /></td>
+                            {showDpExp && <td><LinkBtn href={item.dpResult} label={dPlatOf(item)} /></td>}
                           </tr>
                         ))}
                       </tbody>

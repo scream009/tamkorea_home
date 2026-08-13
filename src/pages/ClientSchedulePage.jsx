@@ -37,6 +37,9 @@ const platHeader = (items, pick, dflt) => {
   const u = [...new Set((items || []).map(pick))];
   return u.length ? u.join('·') : dflt;
 };
+// DP 열 표시 여부 — 섹션에 大 건수도 결과물도 전혀 없으면 열 자체를 뺀다 (Owner 지정 2026-08-13)
+const cnt1 = (v) => Number(Array.isArray(v) ? v[0] : v) || 0;
+const hasDpCol = (items) => (items || []).some((i) => cnt1(i.dpCount) > 0 || i.dpResult);
 
 // 서브 컴포넌트
 const TypeBadge = ({ type }) => {
@@ -561,6 +564,9 @@ export default function ClientSchedulePage() {
   const hasExp   = records?.experience?.length > 0;
   const hasPress = records?.press?.length > 0;
   const hasVideoIssue = records?.videoIssue?.length > 0;
+  // 大 건이 전혀 없는 섹션은 따종(대체 플랫폼) 열을 아예 그리지 않는다
+  const showDpInfl = hasDpCol(records?.influencer);
+  const showDpExp  = hasDpCol(records?.experience);
 
   const handleDownloadCSV = () => {
     if (!records) return;
@@ -830,8 +836,8 @@ export default function ClientSchedulePage() {
                         <thead><tr>
                           <th style={{width:'6%'}}>No.</th>
                           <th style={{width:'28%'}}>방문자 ID</th>
-                          <th style={{width:'33%'}}>{platHeader(records.influencer, xPlatOf, '샤오홍슈')} 결과물</th>
-                          <th style={{width:'33%'}}>{platHeader(records.influencer, dPlatOf, '따종디엔핑')}</th>
+                          <th style={{width: showDpInfl ? '33%' : '66%'}}>{platHeader(records.influencer, xPlatOf, '샤오홍슈')} 결과물</th>
+                          {showDpInfl && <th style={{width:'33%'}}>{platHeader(records.influencer, dPlatOf, '따종디엔핑')}</th>}
                         </tr></thead>
                         <tbody>
                           {records.influencer.map(item => (
@@ -839,7 +845,7 @@ export default function ClientSchedulePage() {
                               <td>{item.seq}</td>
                               <td><span className="id-tag">{item.displayId || '-'}</span></td>
                               <td><LinkBtn href={item.xhsResult} label={xPlatOf(item)} /></td>
-                              <td><LinkBtn href={item.dpResult} label={dPlatOf(item)} /></td>
+                              {showDpInfl && <td><LinkBtn href={item.dpResult} label={dPlatOf(item)} /></td>}
                             </tr>
                           ))}
                         </tbody>
@@ -858,8 +864,8 @@ export default function ClientSchedulePage() {
                         <thead><tr>
                           <th style={{width:'6%'}}>No.</th>
                           <th style={{width:'28%'}}>방문자 ID</th>
-                          <th style={{width:'33%'}}>{platHeader(records.experience, xPlatOf, '샤오홍슈')} 결과물</th>
-                          <th style={{width:'33%'}}>{platHeader(records.experience, dPlatOf, '따종디엔핑')}</th>
+                          <th style={{width: showDpExp ? '33%' : '66%'}}>{platHeader(records.experience, xPlatOf, '샤오홍슈')} 결과물</th>
+                          {showDpExp && <th style={{width:'33%'}}>{platHeader(records.experience, dPlatOf, '따종디엔핑')}</th>}
                         </tr></thead>
                         <tbody>
                           {records.experience.map(item => (
@@ -867,7 +873,7 @@ export default function ClientSchedulePage() {
                               <td>{item.seq}</td>
                               <td><span className="id-tag">{item.displayId || '-'}</span></td>
                               <td><LinkBtn href={item.xhsResult} label={xPlatOf(item)} /></td>
-                              <td><LinkBtn href={item.dpResult}  label={dPlatOf(item)} /></td>
+                              {showDpExp && <td><LinkBtn href={item.dpResult}  label={dPlatOf(item)} /></td>}
                             </tr>
                           ))}
                         </tbody>
@@ -910,6 +916,7 @@ export default function ClientSchedulePage() {
                     {VIDEO_ISSUE_GROUPS.map(cat => {
                       const items = records.videoIssue.filter(i => i.category === cat);
                       if (items.length === 0) return null;
+                      const showDp = hasDpCol(items);
                       return (
                         <div key={cat} className="vissue-group">
                           <h3 className="vissue-group-title">
@@ -921,8 +928,8 @@ export default function ClientSchedulePage() {
                               <thead><tr>
                                 <th style={{width:'6%'}}>No.</th>
                                 <th style={{width:'34%'}}>방문자 ID</th>
-                                <th style={{width:'30%'}}>{platHeader(items, xPlatOf, '샤오홍슈')}</th>
-                                <th style={{width:'30%'}}>{platHeader(items, dPlatOf, '따종디엔핑')}</th>
+                                <th style={{width: showDp ? '30%' : '60%'}}>{platHeader(items, xPlatOf, '샤오홍슈')}</th>
+                                {showDp && <th style={{width:'30%'}}>{platHeader(items, dPlatOf, '따종디엔핑')}</th>}
                               </tr></thead>
                               <tbody>
                                 {items.map((item, i) => (
@@ -930,7 +937,7 @@ export default function ClientSchedulePage() {
                                     <td>{i + 1}</td>
                                     <td><span className="id-tag">{item.displayId || '-'}</span></td>
                                     <td><LinkBtn href={item.xhsResult} label={xPlatOf(item)} /></td>
-                                    <td><LinkBtn href={item.dpResult}  label={dPlatOf(item)} /></td>
+                                    {showDp && <td><LinkBtn href={item.dpResult}  label={dPlatOf(item)} /></td>}
                                   </tr>
                                 ))}
                               </tbody>

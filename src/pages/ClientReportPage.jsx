@@ -17,6 +17,13 @@ const platHeader = (items, pick, dflt) => {
   const u = [...new Set((items || []).map(pick))];
   return u.length ? u.join('·') : dflt;
 };
+// 열 표시 여부 — 그 섹션에 건수도 결과물도 전혀 없는 매체 열은 아예 그리지 않는다
+// (Owner 지정 2026-08-13: "따종 건수 0이면 항목 제목도 표출 안 한다")
+const cnt1 = (v) => Number(Array.isArray(v) ? v[0] : v) || 0;
+const hasDpCol = (items) => (items || []).some((i) => cnt1(i.dpCount) > 0 || i.dpResult);
+const hasDyCol = (items) => (items || []).some((i) => i.dyResult);
+// 결과물 열 폭 — No.6% + ID 19% 를 뺀 75% 를 보이는 열끼리 나눈다
+const colW = (n) => `${Math.round(75 / Math.max(n, 1))}%`;
 
 /* ── 서브 컴포넌트 ──────────────────────────────── */
 const TypeBadge = ({ type }) => {
@@ -155,6 +162,11 @@ const ClientReportPage = () => {
   const hasExp   = records.experience?.length > 0;
   const hasPress = records.press?.length > 0;
   const hasVideoIssue = records.videoIssue?.length > 0;
+  // 건이 전혀 없는 매체 열은 섹션별로 숨긴다
+  const dpInfl = hasDpCol(records.influencer), dyInfl = hasDyCol(records.influencer);
+  const dpExp  = hasDpCol(records.experience), dyExp  = hasDyCol(records.experience);
+  const wInfl = colW(1 + dpInfl + dyInfl);
+  const wExp  = colW(1 + dpExp + dyExp);
 
   const handleDownloadCSV = () => {
     if (!records) return;
@@ -264,9 +276,9 @@ const ClientReportPage = () => {
                 <thead><tr>
                   <th style={{width:'6%'}}>No.</th>
                   <th style={{width:'19%'}}>ID (닉네임)</th>
-                  <th style={{width:'25%', textAlign:'center'}}>{platHeader(records.influencer, xPlatOf, '샤오홍슈')}</th>
-                  <th style={{width:'25%', textAlign:'center'}}>{platHeader(records.influencer, dPlatOf, '따종디엔핑')}</th>
-                  <th style={{width:'25%', textAlign:'center'}}>틱톡(DY)</th>
+                  <th style={{width:wInfl, textAlign:'center'}}>{platHeader(records.influencer, xPlatOf, '샤오홍슈')}</th>
+                  {dpInfl && <th style={{width:wInfl, textAlign:'center'}}>{platHeader(records.influencer, dPlatOf, '따종디엔핑')}</th>}
+                  {dyInfl && <th style={{width:wInfl, textAlign:'center'}}>틱톡(DY)</th>}
                 </tr></thead>
                 <tbody>
                   {records.influencer.map(item => (
@@ -274,8 +286,8 @@ const ClientReportPage = () => {
                       <td>{item.seq}</td>
                       <td><span className="id-tag">{item.displayId||'-'}</span></td>
                       <td style={{textAlign:'center'}}><LinkBtn href={item.xhsResult} label="확인" /></td>
-                      <td style={{textAlign:'center'}}><LinkBtn href={item.dpResult} label="확인" /></td>
-                      <td style={{textAlign:'center'}}><LinkBtn href={item.dyResult} label="확인" /></td>
+                      {dpInfl && <td style={{textAlign:'center'}}><LinkBtn href={item.dpResult} label="확인" /></td>}
+                      {dyInfl && <td style={{textAlign:'center'}}><LinkBtn href={item.dyResult} label="확인" /></td>}
                     </tr>
                   ))}
                 </tbody>
@@ -295,9 +307,9 @@ const ClientReportPage = () => {
                 <thead><tr>
                   <th style={{width:'6%'}}>No.</th>
                   <th style={{width:'19%'}}>ID (닉네임)</th>
-                  <th style={{width:'25%', textAlign:'center'}}>{platHeader(records.experience, xPlatOf, '샤오홍슈')}</th>
-                  <th style={{width:'25%', textAlign:'center'}}>{platHeader(records.experience, dPlatOf, '따종디엔핑')}</th>
-                  <th style={{width:'25%', textAlign:'center'}}>틱톡(DY)</th>
+                  <th style={{width:wExp, textAlign:'center'}}>{platHeader(records.experience, xPlatOf, '샤오홍슈')}</th>
+                  {dpExp && <th style={{width:wExp, textAlign:'center'}}>{platHeader(records.experience, dPlatOf, '따종디엔핑')}</th>}
+                  {dyExp && <th style={{width:wExp, textAlign:'center'}}>틱톡(DY)</th>}
                 </tr></thead>
                 <tbody>
                   {records.experience.map(item => (
@@ -305,8 +317,8 @@ const ClientReportPage = () => {
                       <td>{item.seq}</td>
                       <td><span className="id-tag">{item.displayId||'-'}</span></td>
                       <td style={{textAlign:'center'}}><LinkBtn href={item.xhsResult} label="확인" /></td>
-                      <td style={{textAlign:'center'}}><LinkBtn href={item.dpResult} label="확인" /></td>
-                      <td style={{textAlign:'center'}}><LinkBtn href={item.dyResult} label="확인" /></td>
+                      {dpExp && <td style={{textAlign:'center'}}><LinkBtn href={item.dpResult} label="확인" /></td>}
+                      {dyExp && <td style={{textAlign:'center'}}><LinkBtn href={item.dyResult} label="확인" /></td>}
                     </tr>
                   ))}
                 </tbody>
@@ -351,6 +363,8 @@ const ClientReportPage = () => {
             {VIDEO_ISSUE_GROUPS.map(cat => {
               const items = records.videoIssue.filter(i => i.category === cat);
               if (items.length === 0) return null;
+              const dpVi = hasDpCol(items), dyVi = hasDyCol(items);
+              const wVi = colW(1 + dpVi + dyVi);
               return (
                 <div key={cat} className="vissue-group">
                   <h3 className="vissue-group-title">
@@ -362,9 +376,9 @@ const ClientReportPage = () => {
                       <thead><tr>
                         <th style={{width:'6%'}}>No.</th>
                         <th style={{width:'19%'}}>ID (닉네임)</th>
-                        <th style={{width:'25%', textAlign:'center'}}>{platHeader(items, xPlatOf, '샤오홍슈')}</th>
-                        <th style={{width:'25%', textAlign:'center'}}>{platHeader(items, dPlatOf, '따종디엔핑')}</th>
-                        <th style={{width:'25%', textAlign:'center'}}>틱톡(DY)</th>
+                        <th style={{width:wVi, textAlign:'center'}}>{platHeader(items, xPlatOf, '샤오홍슈')}</th>
+                        {dpVi && <th style={{width:wVi, textAlign:'center'}}>{platHeader(items, dPlatOf, '따종디엔핑')}</th>}
+                        {dyVi && <th style={{width:wVi, textAlign:'center'}}>틱톡(DY)</th>}
                       </tr></thead>
                       <tbody>
                         {items.map((item, i) => (
@@ -372,8 +386,8 @@ const ClientReportPage = () => {
                             <td>{i + 1}</td>
                             <td><span className="id-tag">{item.displayId||'-'}</span></td>
                             <td style={{textAlign:'center'}}><LinkBtn href={item.xhsResult} label="확인" /></td>
-                            <td style={{textAlign:'center'}}><LinkBtn href={item.dpResult} label="확인" /></td>
-                            <td style={{textAlign:'center'}}><LinkBtn href={item.dyResult} label="확인" /></td>
+                            {dpVi && <td style={{textAlign:'center'}}><LinkBtn href={item.dpResult} label="확인" /></td>}
+                            {dyVi && <td style={{textAlign:'center'}}><LinkBtn href={item.dyResult} label="확인" /></td>}
                           </tr>
                         ))}
                       </tbody>
