@@ -454,7 +454,65 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { id, action, mgr, force, cancelKind } = req.body || {};
+      const { id, action, mgr, force, cancelKind, slug, count } = req.body || {};
+
+      // ── 교육용 연습 지원자 ──────────────────────────────────────────
+      // 실사이트에 가짜 지원수·마감을 노출하는 대신, **연습 대상만** 여기서 만든다.
+      // 전부 source='training' 으로 찍히므로 개시 전에 purge_test 한 번으로 걷힌다.
+      if (action === 'seed_test') {
+        if (!slug) { res.status(400).json({ error: 'slug 가 필요합니다.' }); return; }
+        const n = Math.min(Math.max(parseInt(count, 10) || 5, 1), 20);
+        const made = [];
+        for (let i = 0; i < n; i += 1) {
+          const seq = String(Date.now()).slice(-5) + i;
+          const d = await at(T_APPLICANTS, {
+            method: 'POST',
+            body: JSON.stringify({
+              fields: {
+                name: `测试·연습${seq}`,
+                gender: i % 2 ? '男' : '女',
+                birth_year: 1992 + (i % 8),
+                xhs_url: `https://www.xiaohongshu.com/user/profile/training${seq}`,
+                xhs_followers: 1200 + i * 830,
+                '🔒 pii_wechat': `training_${seq}`,
+                campaign_slug: slug,
+                status: 'New',
+                source: 'training',
+                agreed_wechat_contact: true,
+                referrer: who,
+              },
+              typecast: true,
+            }),
+          });
+          made.push(d.id);
+        }
+        res.status(200).json({ ok: true, made: made.length, slug, who });
+        return;
+      }
+
+      if (action === 'purge_test') {
+        // 선발까지 연습했다면 예약입력_DB 에 레코드가 생겼을 수 있다 → 먼저 되돌린다
+        const found = await at(
+          `${T_APPLICANTS}?pageSize=100&filterByFormula=${encodeURIComponent(
+            "OR({source}='training', LEFT({name},3)='测试·')"
+          )}`
+        );
+        let reverted = 0;
+        for (const r of found.records) {
+          if ((r.fields.status || '') === 'Approved') {
+            await revertResv(r.id, true, 'deleted');
+            reverted += 1;
+          }
+        }
+        const ids = found.records.map((r) => r.id);
+        for (let i = 0; i < ids.length; i += 10) {
+          const qs = ids.slice(i, i + 10).map((x) => `records[]=${encodeURIComponent(x)}`).join('&');
+          await at(`${T_APPLICANTS}?${qs}`, { method: 'DELETE' });
+        }
+        res.status(200).json({ ok: true, deleted: ids.length, reverted, who });
+        return;
+      }
+
       const next = ACTIONS[action];
       if (!id || !next) {
         res.status(400).json({ error: 'id 와 action(approve|reject|reset)이 필요합니다.' });

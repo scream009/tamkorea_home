@@ -171,6 +171,30 @@ export default function StaffCastingPage() {
           모집사이트 지원자를 캠페인별로 심사합니다. 원칙: 링크를 뿌린 담당자가 자기 지원자를 선발합니다 —
           아래 담당자 칩으로 조회를 좁힐 수 있습니다. 조율·통보는 위챗으로.
         </p>
+        {/* 🔴 개시 전 필수 — 교육 중 만든 연습 지원자는 실지원자와 섞이면 안 된다.
+            「모집카드 관리」의 '연습 지원자'로 만든 것과 옛 测试· 계정을 함께 걷는다. */}
+        <button
+          type="button"
+          className="scast-purge"
+          onClick={async () => {
+            if (!window.confirm(
+              '연습(测试·) 지원자를 전부 삭제합니다.\n\n'
+              + '선발까지 연습한 건은 예약입력_DB 레코드도 함께 지웁니다.\n'
+              + '실제 지원자는 건드리지 않습니다. 계속할까요?',
+            )) return;
+            try {
+              const resp = await fetch('/api/staff-casting', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...staffHeaders() },
+                body: JSON.stringify({ action: 'purge_test' }),
+              });
+              const d = await resp.json().catch(() => ({}));
+              if (!resp.ok) throw new Error(d.error || `HTTP ${resp.status}`);
+              window.alert(`연습 지원자 ${d.deleted}건 삭제 (예약 되돌림 ${d.reverted}건)`);
+              await load();
+            } catch (e) { setError(e.message || '삭제 실패'); }
+          }}
+        >연습 데이터 삭제</button>
       </header>
 
       {error && <div className="scast-err">{error} <button type="button" onClick={load}>다시 시도</button></div>}

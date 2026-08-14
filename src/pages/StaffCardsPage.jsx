@@ -205,6 +205,27 @@ export default function StaffCardsPage() {
                             onClick={() => post({ action: 'show', id: r.id }, `${r.label} — 모집 중으로 올릴까요?`)}
                           >올리기</button>
                         )}
+                        {/* 교육용 — 실사이트에 가짜 지원수를 노출하는 대신 연습 대상만 만든다.
+                            전부 source='training' 이라 개시 전 「연습 데이터 삭제」로 한 번에 걷힌다. */}
+                        <button type="button" className="scard-ghost" disabled={busy === r.id}
+                          title="선발 연습용 지원자를 이 라운드에 만듭니다 (개시 전 일괄 삭제)"
+                          onClick={async () => {
+                            const n = window.prompt(`${r.label} — 연습 지원자를 몇 명 만들까요? (1~20)`, '5');
+                            if (!n) return;
+                            setBusy(r.id);
+                            try {
+                              const resp = await fetch('/api/staff-casting', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', ...staffHeaders() },
+                                body: JSON.stringify({ action: 'seed_test', slug: r.slug, count: n }),
+                              });
+                              const d = await resp.json().catch(() => ({}));
+                              if (!resp.ok) throw new Error(d.error || `HTTP ${resp.status}`);
+                              window.alert(`연습 지원자 ${d.made}명 생성 — 「체험단 선발」 화면에서 연습하세요.`);
+                              await load();
+                            } catch (e) { setError(e.message || '생성 실패'); } finally { setBusy(''); }
+                          }}
+                        >연습 지원자</button>
                         {r.status === 'recruiting' && (
                           <button type="button" className="scard-ok"
                             title="이 카드의 홍보 링크 — 지원서에 내 실적으로 자동 기록됩니다"

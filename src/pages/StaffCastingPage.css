@@ -11,7 +11,13 @@
 .scast-wrap{max-width:1240px;margin:0 auto;padding:1.1rem 1.2rem 3rem}
 
 .scast-head h1{margin:0;font-size:1.05rem;font-weight:800}
-.scast-sub{color:var(--muted);font-size:.78rem;margin:.25rem 0 1rem}
+.scast-sub{color:var(--muted);font-size:.78rem;margin:.25rem 0 .6rem}
+
+/* 교육 기간에만 쓰는 정리 버튼 — 눈에 띄되 주 동선(선발)을 가리지 않게 낮은 채도로 */
+.scast-purge{margin:0 0 1rem;padding:.34rem .8rem;font-size:.72rem;font-weight:700;
+  cursor:pointer;border-radius:8px;color:#FCA5A5;background:rgba(239,68,68,.07);
+  border:1px solid rgba(239,68,68,.4);transition:background .2s,color .2s}
+.scast-purge:hover{background:rgba(239,68,68,.16);color:#FECACA}
 
 .scast-err{margin:.6rem 0;padding:.7rem 1rem;border:1px solid rgba(239,68,68,.5);
   background:rgba(239,68,68,.08);border-radius:10px;color:#FCA5A5;font-size:.82rem;
