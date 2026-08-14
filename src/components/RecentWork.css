@@ -60,8 +60,11 @@
     animation: rw-scroll var(--rw-duration, 60s) linear infinite;
 }
 
+/* 🔴 :focus-within 으로 멈추면 안 된다 — 카드를 한 번 클릭하면 그 링크에 포커스가 남아
+   영원히 멈춘 채로 있고, 화면 밖 카드는 영영 못 누른다(Owner 2026-08-15).
+   키보드 이동(:focus-visible)일 때만 멈춘다. */
 .recent-work .rw-marquee-wrap:hover .rw-marquee,
-.recent-work .rw-marquee-wrap:focus-within .rw-marquee {
+.recent-work .rw-marquee-wrap:has(:focus-visible) .rw-marquee {
     animation-play-state: paused;
 }
 
