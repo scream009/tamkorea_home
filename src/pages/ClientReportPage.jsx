@@ -72,9 +72,11 @@ const ClientReportPage = () => {
         if (!recordId) {
           // ── 프리뷰 Mock ─────────────────────────────
           await new Promise(r => setTimeout(r, 500));
+          // ⚠️ 샘플에 **실제 고객사명을 쓰지 않는다.** /report 는 토큰 없이도 열리는 경로라
+          //    공개 URL 에 거래처 이름이 남는다 (전수 점검 2026-08-15).
           setReportData({
-            campaignName: 'M1971본점 [2026. 3월]',
-            brandName: 'M1971', branchName: '본점', month: '2026. 3월',
+            campaignName: '샘플매장 [2026. 3월]',
+            brandName: '샘플매장', branchName: '', month: '2026. 3월',
             stats: { infl_target:5, infl_done:4, exp_target:20, exp_done:18, press_target:0, press_done:0 },
             records: {
               influencer: Array.from({length:4}).map((_,i) => ({
