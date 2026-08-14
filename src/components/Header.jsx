@@ -47,7 +47,9 @@ const Header = () => {
         <div className="container header-container">
           <div className="logo">
             <Link to="/" onClick={() => setMobileMenuOpen(false)}>
-              <img src="/images/tam-korea-icon.png" alt="Tam Korea (탐코리아) 로고" className="logo-icon" />
+              {/* 로고 확정 전까지 캠페인 사이트와 같은 T 마크를 쓴다 (Owner 2026-08-13) —
+                  기존 비행기 아이콘은 여행사로 오인된다는 피드백 */}
+              <span className="logo-icon logo-mark" aria-hidden="true">T</span>
               <span className="logo-text">TamKorea</span>
             </Link>
           </div>
@@ -57,7 +59,8 @@ const Header = () => {
             <ul className="nav-list">
               <li><Link to="/about" className="nav-link">{t('nav.about')}</Link></li>
               <li><Link to="/biz" className="nav-link">{t('nav.bizCenter')}</Link></li>
-              <li><Link to="/campaigns" className="nav-link">{t('nav.campaigns')}</Link></li>
+              {/* 캠페인은 별도 사이트(campaign.tamkorea.com)다 — 준비중 안내가 아니라 실제 사이트로 보낸다 */}
+              <li><a href="https://campaign.tamkorea.com" target="_blank" rel="noopener noreferrer" className="nav-link">{t('nav.campaigns')}</a></li>
             </ul>
           </nav>
 
@@ -108,7 +111,7 @@ const Header = () => {
           <ul className="mobile-nav-list">
             <li><Link to="/about" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>{t('nav.about')}</Link></li>
             <li><Link to="/biz" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>{t('nav.bizCenter')}</Link></li>
-            <li><Link to="/campaigns" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>{t('nav.campaigns')}</Link></li>
+            <li><a href="https://campaign.tamkorea.com" target="_blank" rel="noopener noreferrer" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>{t('nav.campaigns')}</a></li>
           </ul>
 
           <div className="mobile-lang-switcher">

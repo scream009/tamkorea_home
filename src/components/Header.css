@@ -35,6 +35,20 @@
     object-fit: contain;
 }
 
+/* T 마크 — 캠페인 사이트(casting_site)와 동일한 그라디언트로 자매 사이트임을 드러낸다 */
+.logo-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #6c4cd0 0%, #8b6fdb 100%);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
 .logo-text {
     font-size: 20px;
     font-weight: 800;

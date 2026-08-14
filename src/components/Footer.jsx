@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { Facebook, ChevronDown } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import './Footer.css';
-import Toast from './Toast';
 import NaverIcon from '../assets/images/naver_blog_icon.png';
 import KakaoIcon from '../assets/images/kakao_icon.png';
 import InstagramIcon from '../assets/images/instagram_icon.png';
@@ -11,12 +10,6 @@ import YoutubeIcon from '../assets/images/youtube_icon.png';
 
 const Footer = () => {
     const { t } = useLanguage();
-    const [showToast, setShowToast] = useState(false);
-
-    const handleComingSoon = (e) => {
-        e.preventDefault();
-        setShowToast(true);
-    };
     return (
         <footer className="footer">
             <div className="container">
@@ -46,9 +39,11 @@ const Footer = () => {
 
                     <div className="footer-right">
                         <div className="footer-family-site">
-                            <button className="family-site-btn" onClick={handleComingSoon}>
-                                {t('footer.familySite')} <ChevronDown size={14} />
-                            </button>
+                            {/* Family Site — 지금 자매 사이트는 캠페인 하나뿐이라 드롭다운 없이 바로 연결 */}
+                            <a className="family-site-btn" href="https://campaign.tamkorea.com"
+                               target="_blank" rel="noopener noreferrer">
+                                体验团 캠페인 <ChevronDown size={14} />
+                            </a>
                         </div>
                         <div className="footer-sns">
                             <a href="https://www.instagram.com/tamkorea8888?igsh=MzJmOXBrcW8wZDdq&utm_source=qr" target="_blank" rel="noopener noreferrer" className="sns-icon insta-icon-btn" aria-label="Instagram"><img src={InstagramIcon} alt="Instagram" /></a>
@@ -59,11 +54,6 @@ const Footer = () => {
                     </div>
                 </div>
             </div>
-            <Toast
-                message={t('footer.comingSoon')}
-                isVisible={showToast}
-                onClose={() => setShowToast(false)}
-            />
         </footer>
     );
 };
