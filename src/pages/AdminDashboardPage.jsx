@@ -140,7 +140,6 @@ export default function AdminDashboardPage() {
   const [selectedMonth, setSelectedMonth] = useState('2604'); // 기본값: 4월
   const [records, setRecords]   = useState([]);
   const [targetMap, setTargetMap] = useState({});
-  const [monthText, setMonthText] = useState('');
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
 
@@ -154,7 +153,6 @@ export default function AdminDashboardPage() {
         if (data.error) throw new Error(data.error);
         setRecords(data.records || []);
         setTargetMap(data.targetMap || {});
-        setMonthText(data.monthText || '');
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));

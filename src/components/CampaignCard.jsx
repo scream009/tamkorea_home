@@ -5,7 +5,7 @@ import dianpingLogo from '../assets/images/dianping_logo.png';
 import xhsLogo from '../assets/images/xhs_logo.png';
 import instagramLogo from '../assets/images/instagram_logo.png';
 
-const CampaignCard = ({ id, title, location, platform, platforms, status, imageUrl, applicants, maxApplicants, dDay }) => {
+const CampaignCard = ({ id, title, location, platform, platforms, status, imageUrl, maxApplicants, dDay }) => {
     const [imgError, setImgError] = useState(false);
 
     // Normalize platforms to array

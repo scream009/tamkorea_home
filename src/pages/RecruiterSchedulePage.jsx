@@ -87,12 +87,6 @@ function shortLabel(p) {
   const m = /^(\d{4})-(\d{1,2})$/.exec(p || '');
   return m ? `${parseInt(m[2], 10)}월` : p;
 }
-function parseAirtableMonth(s) {
-  if (!s) return null;
-  const m = /^(\d{4})\.\s*(\d+)월$/.exec(s);
-  if (!m) return null;
-  return new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, 1);
-}
 function shiftMonthParam(monthParam, delta) {
   const m = /^(\d{4})-(\d{1,2})$/.exec(monthParam || '');
   if (!m) return monthParam;
@@ -342,9 +336,8 @@ export default function RecruiterSchedulePage() {
     );
   }
 
-  const { months, monthLabels } = data;
+  const { months } = data;
   const recruiterName = RECRUITER_LABEL[recruiterId] || recruiterId;
-  const baseLabel = monthLabels[baseMonth] || paramToLabel(baseMonth);
 
   /* ── 렌더 ─────────────────────────────────── */
   return (

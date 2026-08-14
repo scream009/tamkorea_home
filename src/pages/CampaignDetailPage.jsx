@@ -1,11 +1,10 @@
 import React from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { campaigns } from '../data/mockData';
 import './CampaignDetailPage.css';
 
 const CampaignDetailPage = () => {
     const { id } = useParams();
-    const navigate = useNavigate();
     const campaign = campaigns.find(c => c.id === parseInt(id));
 
     if (!campaign) {

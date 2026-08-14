@@ -250,7 +250,7 @@ export default function AdminBoardPage() {
         p._dbType = p.fields['유형'];
       });
       setProgressData(data);
-    } catch (e) {
+    } catch {
       alert("매장 실적 데이터를 불러오는데 실패했습니다.");
     } finally {
       setLoadingData(false);
@@ -386,7 +386,7 @@ export default function AdminBoardPage() {
       if (!res.ok) throw new Error("서버 에러");
       alert(`성공적으로 반영되었습니다.`);
       await handleLoadData();
-    } catch (e) {
+    } catch {
       alert("일괄 확정 중 오류가 발생했습니다.");
     } finally {
       setIsConfirming(false);
