@@ -15,28 +15,26 @@
     margin: 0 auto 52px;
 }
 
-.recent-work .rw-eyebrow {
-    display: inline-block;
-    font-size: 0.72rem;
-    font-weight: 800;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: #764ba2;
-    margin-bottom: 14px;
-}
-
+/* 제목 위계는 이 홈의 다른 섹션과 같다 — 영문이 크고, 국문이 작게 받친다 */
 .recent-work .rw-title {
-    font-size: clamp(1.6rem, 3.4vw, 2.25rem);
+    font-size: clamp(1.9rem, 4vw, 2.6rem);
     font-weight: 800;
     letter-spacing: -0.02em;
     color: #111827;
-    margin: 0 0 14px;
+    margin: 0 0 10px;
+}
+
+.recent-work .rw-kr {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #764ba2;
+    margin: 0 0 12px;
 }
 
 .recent-work .rw-sub {
-    font-size: 0.94rem;
-    line-height: 1.75;
-    color: #6b7280;
+    font-size: 0.86rem;
+    line-height: 1.7;
+    color: #9ca3af;
     margin: 0;
 }
 
@@ -47,8 +45,8 @@
 
 .recent-work .rw-grid {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 20px;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 22px;
 }
 
 .recent-work .rw-card {
@@ -88,6 +86,7 @@
     font-weight: 800;
     padding: 3px 7px;
     border-radius: 999px;
+    -webkit-backdrop-filter: blur(6px);
     backdrop-filter: blur(6px);
 }
 
@@ -101,6 +100,7 @@
     font-weight: 700;
     padding: 3px 7px;
     border-radius: 999px;
+    -webkit-backdrop-filter: blur(6px);
     backdrop-filter: blur(6px);
 }
 

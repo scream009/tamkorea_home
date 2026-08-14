@@ -16,7 +16,7 @@
 
 const KEY = process.env.IB_CASTING_TOKEN || process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const BASE = process.env.IB_CASTING_BASE_ID || 'appDYOCw29mohYrIG';
-const LIMIT = 12;
+const LIMIT = 10;   // 5열 그리드 2줄에 딱 맞는 수. 남는 칸이 생기면 줄이 어그러진다
 
 function cover(v) {
   if (!Array.isArray(v) || !v.length) return '';

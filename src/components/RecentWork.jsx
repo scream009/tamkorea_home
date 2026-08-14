@@ -37,9 +37,11 @@ const RecentWork = () => {
     return (
         <section className="recent-work">
             <div className="container">
+                {/* 이 홈의 관례를 따른다: 큰 영문 제목 + 작은 국문 부제
+                    ("We Connect World" / "Core Technology" 와 같은 형태) */}
                 <div className="rw-head">
-                    <span className="rw-eyebrow">Recent Work</span>
-                    <h2 className="rw-title">실제로 발행된 콘텐츠</h2>
+                    <h2 className="rw-title">Recent Work</h2>
+                    <p className="rw-kr">실제로 발행된 콘텐츠</p>
                     <p className="rw-sub">
                         중국 인플루언서가 직접 촬영·발행한 샤오홍슈 콘텐츠입니다.
                         <br />
