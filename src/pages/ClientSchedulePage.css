@@ -186,7 +186,7 @@
 }
 
 /* Section Containers */
-.section {
+.schedule-page .section {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 20px;
@@ -194,7 +194,7 @@
   overflow: hidden;
 }
 
-.section-header {
+.schedule-page .section-header {
   padding: 20px 24px;
   border-bottom: 1px solid var(--border);
   display: flex;
@@ -202,7 +202,7 @@
   justify-content: space-between;
 }
 
-.section-title {
+.schedule-page .section-title {
   font-size: 14px;
   font-weight: 700;
   display: flex;
@@ -212,7 +212,7 @@
 }
 .section-title svg { color: var(--purple-light); }
 
-.section-title--lg {
+.schedule-page .section-title--lg {
   font-size: 1.15rem;
   font-weight: 800;
   letter-spacing: -0.01em;
