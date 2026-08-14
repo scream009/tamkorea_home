@@ -31,28 +31,71 @@
     margin: 0 0 12px;
 }
 
+/* 회색이 너무 옅어 안 읽혔다(Owner 2026-08-15) — 본문 회색(#6b7280)까지 올린다 */
 .recent-work .rw-sub {
-    font-size: 0.86rem;
+    font-size: 0.88rem;
     line-height: 1.7;
-    color: #9ca3af;
+    color: #6b7280;
     margin: 0;
 }
 
 .recent-work .rw-sub strong {
-    color: #4b5563;
+    color: #374151;
     font-weight: 700;
 }
 
-.recent-work .rw-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 22px;
+/* ── 흘러가는 트랙 ─────────────────────────────────────────────
+   정지 격자는 밋밋하다. 천천히 흐르면 섹션이 살아 있고, 마우스를 올리면 멈춰서 읽힌다. */
+.recent-work .rw-marquee-wrap {
+    position: relative;
+    overflow: hidden;
+    padding: 6px 0 10px;
 }
+
+.recent-work .rw-marquee {
+    display: flex;
+    align-items: flex-start;
+    gap: 22px;
+    width: max-content;
+    animation: rw-scroll var(--rw-duration, 60s) linear infinite;
+}
+
+.recent-work .rw-marquee-wrap:hover .rw-marquee,
+.recent-work .rw-marquee-wrap:focus-within .rw-marquee {
+    animation-play-state: paused;
+}
+
+@keyframes rw-scroll {
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(-50%, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .recent-work .rw-marquee { animation: none; }
+}
+
+/* 양끝 페이드 — 트랙이 화면 밖으로 자연스럽게 빠져나가게 */
+.recent-work .rw-fade {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 90px;
+    pointer-events: none;
+}
+.recent-work .rw-fade-l { left: 0; background: linear-gradient(90deg, #f9fafb, transparent); }
+.recent-work .rw-fade-r { right: 0; background: linear-gradient(270deg, #ffffff, transparent); }
 
 .recent-work .rw-card {
     text-decoration: none;
     display: block;
+    width: 208px;
+    flex-shrink: 0;
 }
+
+/* 높이를 셋으로 엇갈리게 — 한 줄이 자로 잰 듯 평평하면 정물처럼 보인다 */
+.recent-work .rw-stagger-0 { margin-top: 0; }
+.recent-work .rw-stagger-1 { margin-top: 26px; }
+.recent-work .rw-stagger-2 { margin-top: 13px; }
 
 .recent-work .rw-thumb {
     position: relative;
@@ -123,12 +166,13 @@
     text-overflow: ellipsis;
 }
 
-@media (max-width: 1024px) {
-    .recent-work .rw-grid { grid-template-columns: repeat(4, 1fr); }
-}
-
 @media (max-width: 640px) {
     .recent-work { padding: 72px 0; }
-    .recent-work .rw-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
-    .recent-work .rw-head { margin-bottom: 36px; }
+    .recent-work .rw-head { margin-bottom: 32px; }
+    .recent-work .rw-card { width: 148px; }
+    .recent-work .rw-marquee { gap: 14px; }
+    .recent-work .rw-fade { width: 44px; }
+    /* 좁은 화면에서 엇갈림이 크면 아래가 잘린다 */
+    .recent-work .rw-stagger-1 { margin-top: 16px; }
+    .recent-work .rw-stagger-2 { margin-top: 8px; }
 }

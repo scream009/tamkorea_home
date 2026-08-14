@@ -49,26 +49,41 @@ const RecentWork = () => {
                     </p>
                 </div>
 
-                <div className="rw-grid">
-                    {items.map((it) => (
-                        <a
-                            key={it.url}
-                            className="rw-card"
-                            href={it.url}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                        >
-                            <div className="rw-thumb">
-                                <img src={it.cover} alt={it.title || it.store} loading="lazy" />
-                                <span className="rw-badge">小红书</span>
-                                {it.followers > 0 && (
-                                    <span className="rw-fans">팔로워 {fmt(it.followers)}</span>
-                                )}
-                            </div>
-                            <p className="rw-store">{it.store}</p>
-                            <p className="rw-author">@{it.author}</p>
-                        </a>
-                    ))}
+                {/*
+                  격자로 세워 놓으면 정지 화면에 그림만 나열된 꼴이라 밋밋하다(Owner 2026-08-15).
+                  천천히 흘려보내면 섹션 자체가 살아 움직이고, 마우스를 올리면 멈춰서 읽힌다.
+                  트랙에 같은 목록을 두 벌 넣어야 -50% 지점에서 이음매 없이 되돌아온다.
+                  카드 높이를 셋으로 엇갈리게 줘서 한 줄이 평평하지 않게 했다.
+                */}
+                <div className="rw-marquee-wrap">
+                    <div
+                        className="rw-marquee"
+                        style={{ '--rw-duration': `${Math.max(items.length * 6, 48)}s` }}
+                    >
+                        {[...items, ...items].map((it, i) => (
+                            <a
+                                key={`${it.url}-${i}`}
+                                className={`rw-card rw-stagger-${i % 3}`}
+                                href={it.url}
+                                target="_blank"
+                                rel="noreferrer noopener"
+                                aria-hidden={i >= items.length}
+                                tabIndex={i >= items.length ? -1 : undefined}
+                            >
+                                <div className="rw-thumb">
+                                    <img src={it.cover} alt={it.title || it.store} loading="lazy" />
+                                    <span className="rw-badge">小红书</span>
+                                    {it.followers > 0 && (
+                                        <span className="rw-fans">팔로워 {fmt(it.followers)}</span>
+                                    )}
+                                </div>
+                                <p className="rw-store">{it.store}</p>
+                                <p className="rw-author">@{it.author}</p>
+                            </a>
+                        ))}
+                    </div>
+                    <div className="rw-fade rw-fade-l" aria-hidden="true" />
+                    <div className="rw-fade rw-fade-r" aria-hidden="true" />
                 </div>
             </div>
         </section>
