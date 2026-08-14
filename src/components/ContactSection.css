@@ -37,6 +37,9 @@
     font-weight: 800;
     margin-bottom: var(--spacing-md);
     color: var(--color-text-main);
+    /* '되셨나 / 요?' 처럼 조사만 넘어가 끊기던 것을 막는다 (2026-08-13 캡처 확인) */
+    word-break: keep-all;
+    text-wrap: balance;
 }
 
 .contact-desc {

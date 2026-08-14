@@ -17,6 +17,26 @@
     transition: transform 0.3s ease;
 }
 
+/* 숫자 위 짧은 강조선 — 정지 상태에서 각 지표가 '항목'으로 읽히게 (색은 기존 그라디언트 재사용) */
+.metric-item::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 28px;
+    height: 3px;
+    border-radius: 2px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    opacity: 0.35;
+    transition: opacity 0.3s ease, width 0.3s ease;
+}
+
+.metric-item:hover::before {
+    opacity: 1;
+    width: 44px;
+}
+
 .metric-item:hover {
     transform: translateY(-5px);
 }
