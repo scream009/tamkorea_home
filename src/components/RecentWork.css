@@ -1,0 +1,134 @@
+/* RecentWork.css — 「실제 성과」 섹션
+   ⚠️ 선택자는 전부 .recent-work 로 감싼다. 이 저장소는 Vite 가 모든 페이지 CSS 를
+   index.css 하나로 합치기 때문에, 접두어 없는 .section 같은 이름을 쓰면 사이트 전체가
+   물든다 (실제로 홈이 어두운 청색 블록으로 깨진 적이 있다). */
+
+.recent-work {
+    padding: 110px 0;
+    background: linear-gradient(180deg, #f9fafb 0%, #ffffff 100%);
+    border-top: 1px solid #e5e7eb;
+}
+
+.recent-work .rw-head {
+    text-align: center;
+    max-width: 640px;
+    margin: 0 auto 52px;
+}
+
+.recent-work .rw-eyebrow {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #764ba2;
+    margin-bottom: 14px;
+}
+
+.recent-work .rw-title {
+    font-size: clamp(1.6rem, 3.4vw, 2.25rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #111827;
+    margin: 0 0 14px;
+}
+
+.recent-work .rw-sub {
+    font-size: 0.94rem;
+    line-height: 1.75;
+    color: #6b7280;
+    margin: 0;
+}
+
+.recent-work .rw-sub strong {
+    color: #4b5563;
+    font-weight: 700;
+}
+
+.recent-work .rw-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 20px;
+}
+
+.recent-work .rw-card {
+    text-decoration: none;
+    display: block;
+}
+
+.recent-work .rw-thumb {
+    position: relative;
+    aspect-ratio: 3 / 4;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #f3f4f6;
+    box-shadow: 0 1px 3px rgba(17, 24, 39, 0.06);
+    transition: transform 0.28s ease, box-shadow 0.28s ease;
+}
+
+.recent-work .rw-card:hover .rw-thumb {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(118, 75, 162, 0.18);
+}
+
+.recent-work .rw-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.recent-work .rw-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(255, 255, 255, 0.92);
+    color: #764ba2;
+    font-size: 0.62rem;
+    font-weight: 800;
+    padding: 3px 7px;
+    border-radius: 999px;
+    backdrop-filter: blur(6px);
+}
+
+.recent-work .rw-fans {
+    position: absolute;
+    left: 8px;
+    bottom: 8px;
+    background: rgba(17, 24, 39, 0.62);
+    color: #fff;
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 999px;
+    backdrop-filter: blur(6px);
+}
+
+.recent-work .rw-store {
+    margin: 10px 0 2px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #1f2937;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.recent-work .rw-author {
+    margin: 0;
+    font-size: 0.72rem;
+    color: #9ca3af;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 1024px) {
+    .recent-work .rw-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (max-width: 640px) {
+    .recent-work { padding: 72px 0; }
+    .recent-work .rw-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .recent-work .rw-head { margin-bottom: 36px; }
+}
