@@ -72,13 +72,38 @@ export default function StaffCastingPage() {
     return [...m.entries()].sort((a, b) => b[1].total - a[1].total);
   }, [data]);
 
+  /**
+   * 🔴 담당자 필터를 **모든 숫자에 똑같이** 적용한다.
+   * 예전에는 목록만 필터를 타고 탭·좌측 개수는 서버가 준 캠페인 전체 수를 그대로 썼다.
+   * 그래서 담당자를 고르면 "전체 6" 이라고 쓰여 있는데 목록은 비는 일이 생겼고,
+   * 왜 안 보이는지 화면에서 알 방법이 없었다 (Owner 2026-08-15).
+   */
+  const byRef = useCallback(
+    (list) => (refSel === 'all' ? list : list.filter((a) => (a.referrer || '직접') === refSel)),
+    [refSel],
+  );
+
+  const statsOf = useCallback((c) => {
+    const list = byRef(c.applicants || []);
+    return {
+      total: list.length,
+      new: list.filter((a) => a.bucket === 'new').length,
+      approved: list.filter((a) => a.bucket === 'approved').length,
+      rejected: list.filter((a) => a.bucket === 'rejected').length,
+    };
+  }, [byRef]);
+
   const rows = useMemo(() => {
     if (!camp) return [];
-    let list = camp.applicants;
-    if (refSel !== 'all') list = list.filter((a) => (a.referrer || '직접') === refSel);
+    const list = byRef(camp.applicants);
     if (filter === 'all') return list;
     return list.filter((a) => a.bucket === filter);
-  }, [camp, filter, refSel]);
+  }, [camp, filter, byRef]);
+
+  // 담당자 필터 때문에 비었는지 — 그렇다면 그렇다고 말해 준다
+  const hiddenByRef = camp && refSel !== 'all' && rows.length === 0
+    && (camp.applicants || []).length > 0;
+  const campStats = camp ? statsOf(camp) : null;
 
   async function act(applicant, action, force, cancelKind) {
     const who = applicant.name || applicant.xhsName;
@@ -204,24 +229,27 @@ export default function StaffCastingPage() {
         <div className="scast-body">
           <aside className="scast-camps">
             {data.campaigns.length === 0 && <div className="scast-empty">지원자가 있는 캠페인이 없습니다.</div>}
-            {data.campaigns.map((c) => (
-              <button
-                type="button"
-                key={c.slug}
-                className={`scast-camp ${sel === c.slug ? 'on' : ''}`}
-                onClick={() => { setSel(c.slug); setFilter('all'); }}
-              >
-                <span className="scast-camp-title">{c.title}</span>
-                <span className="scast-camp-meta">
-                  모집 {c.max || '—'}명 · 마감 {fmtDate(c.recruit_end)}
-                </span>
-                <span className="scast-camp-stats">
-                  <b className={c.stats.new ? 'hot' : ''}>신규 {c.stats.new}</b>
-                  <span>선발 {c.stats.approved}{c.max ? `/${c.max}` : ''}</span>
-                  <span>전체 {c.stats.total}</span>
-                </span>
-              </button>
-            ))}
+            {data.campaigns.map((c) => {
+              const st = statsOf(c);
+              return (
+                <button
+                  type="button"
+                  key={c.slug}
+                  className={`scast-camp ${sel === c.slug ? 'on' : ''}`}
+                  onClick={() => { setSel(c.slug); setFilter('all'); }}
+                >
+                  <span className="scast-camp-title">{c.title}</span>
+                  <span className="scast-camp-meta">
+                    모집 {c.max || '—'}명 · 마감 {fmtDate(c.recruit_end)}
+                  </span>
+                  <span className="scast-camp-stats">
+                    <b className={st.new ? 'hot' : ''}>신규 {st.new}</b>
+                    <span>선발 {st.approved}{c.max ? `/${c.max}` : ''}</span>
+                    <span>전체 {st.total}</span>
+                  </span>
+                </button>
+              );
+            })}
           </aside>
 
           <main className="scast-main">
@@ -255,7 +283,7 @@ export default function StaffCastingPage() {
                       className={`scast-filter ${filter === f ? 'on' : ''}`}
                       onClick={() => setFilter(f)}
                     >
-                      {f === 'all' ? `전체 ${camp.stats.total}` : `${BUCKET_LABEL[f]} ${camp.stats[f]}`}
+                      {f === 'all' ? `전체 ${campStats.total}` : `${BUCKET_LABEL[f]} ${campStats[f]}`}
                     </button>
                   ))}
                 </div>
@@ -269,7 +297,17 @@ export default function StaffCastingPage() {
                   </thead>
                   <tbody>
                     {rows.length === 0 && (
-                      <tr><td colSpan={7} className="scast-empty">해당 상태의 지원자가 없습니다.</td></tr>
+                      <tr><td colSpan={7} className="scast-empty">
+                        {hiddenByRef ? (
+                          <>
+                            「{refSel}」 담당 지원자가 없습니다. 이 캠페인에는 지원자 {camp.applicants.length}명이 있습니다.
+                            {' '}
+                            <button type="button" className="scast-linkbtn" onClick={() => setRefSel('all')}>
+                              전체 담당으로 보기
+                            </button>
+                          </>
+                        ) : '해당 상태의 지원자가 없습니다.'}
+                      </td></tr>
                     )}
                     {rows.map((a) => (
                       <React.Fragment key={a.id}>

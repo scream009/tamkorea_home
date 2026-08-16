@@ -108,3 +108,8 @@
 
 .scast-resv{font-size:.66rem;color:var(--ink2);margin-top:.2rem}
 .scast-resv.sent{color:#FDE68A;font-weight:700}
+
+/* 담당자 필터 때문에 목록이 빈 경우의 해제 버튼 — 왜 안 보이는지 알려주고 바로 풀 수 있게 */
+.scast-linkbtn{background:none;border:none;padding:0;margin-left:.2rem;cursor:pointer;
+  font:inherit;color:#A78BFA;text-decoration:underline;text-underline-offset:2px}
+.scast-linkbtn:hover{color:#C4B5FD}
