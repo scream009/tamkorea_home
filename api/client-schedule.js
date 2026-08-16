@@ -151,7 +151,11 @@ export default async function handler(req, res) {
             pax: r.fields['방문 인원'] || r.fields['방문인원'] || r.fields['# 방문 인원'] || r.fields['# 방문인원'] || '',
             xhsCount: r.fields['XHS_건수'],
             dpCount: r.fields['DP_건수'],
-            specialNote: r.fields['특이사항'] || r.fields['인원메모'] || r.fields['비고'] || '',
+            // 🔴 **비고는 고객사에게 보이면 안 된다.** 여기는 고객사 공유 달력이다.
+            // 비고에는 내부 기록(예약 태그·담당자·위챗 ID·계약월 확인 등)이 들어간다 —
+            // 인원메모가 비면 그게 그대로 고객사 화면에 떴다 (2026-08-15).
+            // 고객사에게 보여줄 것은 특이사항·인원메모뿐이다.
+            specialNote: r.fields['특이사항'] || r.fields['인원메모'] || '',
             // 취소·노쇼 안내문 복원용. 예약입력_DB 를 못 찾은 건(팀명생성기 불일치)의
             // 유일한 본문 공급원이다 — 이 테이블은 링크로 걸려 있어 항상 따라온다.
             reservationMsg: r.fields['예약메시지'] || '',
@@ -301,7 +305,8 @@ export default async function handler(req, res) {
       let totalPax = f['# 총인원'] || f['총인원'] || f['총 인원'] || ''; // Fallback
       
       // 예약메시지 직접 생성을 위한 필드들 (특이사항, 건수 등)
-      let memo = f['특이사항'] || f['인원메모'] || f['비고'] || ''; 
+      let memo = f['특이사항'] || f['인원메모'] || '';   // 비고 제외 — 내부 기록이다
+      
       let xhsCount = f['XHS_건수'] || f['샤오홍슈 건수'];
       let dpCount = f['DP_건수'] || f['따중리뷰 건수'];
       // 플랫폼 다변화(2026-08-13) — 값은 아래 inTeam(예약입력_DB, 팀명생성기 매칭)에서 온다.
