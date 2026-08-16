@@ -282,9 +282,26 @@ async function pushToResv(applicantId, who, mgrOverride) {
       return { status: 'ok', msg: `팀 대표 예약에 동행 합류 (${xid})` };
     }
 
-    const day = String(a.preferred_visit_date || '').slice(0, 10);
+    // 🔴 지원자가 적어 낸 **시간을 그대로 쓴다.**
+    //    예전에는 날짜만 잘라 12:00 으로 덮어썼는데, 그 시절 지원서는 날짜만 받았기 때문이다.
+    //    지금 폼은 datetime-local 로 시간까지 받는다 — 덮어쓰면 조율된 시간이 사라진다
+    //    (Owner 2026-08-15: 10:30 으로 적어 낸 건이 12:00 으로 들어갔다).
+    //    자정(00:00)만 '시간 미기재'로 보고 12:00 으로 가등록한다 — 아무도 자정에 방문하지 않는다.
+    const rawVisit = String(a.preferred_visit_date || '');
+    const day = rawVisit.slice(0, 10);
     if (!day) return { status: 'warn', msg: '희망 방문일이 없음 — 수동 입력' };
-    const whenIso = new Date(`${day}T12:00:00+09:00`).toISOString();
+    const kst = rawVisit ? new Date(rawVisit) : null;
+    // Airtable 은 UTC 로 준다 → KST 로 옮겨 시:분을 본다
+    const kstMs = kst && !Number.isNaN(kst.getTime()) ? kst.getTime() + 9 * 3600 * 1000 : null;
+    const kstDate = kstMs !== null ? new Date(kstMs) : null;
+    const hh = kstDate ? kstDate.getUTCHours() : 0;
+    const mm = kstDate ? kstDate.getUTCMinutes() : 0;
+    const hasTime = kstDate !== null && !(hh === 0 && mm === 0);
+    const dayKst = kstDate
+      ? `${kstDate.getUTCFullYear()}-${String(kstDate.getUTCMonth() + 1).padStart(2, '0')}-${String(kstDate.getUTCDate()).padStart(2, '0')}`
+      : day;
+    const hhmm = hasTime ? `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}` : '12:00';
+    const whenIso = new Date(`${dayKst}T${hhmm}:00+09:00`).toISOString();
 
     await tk('예약입력_DB', {
       method: 'POST',
@@ -301,7 +318,7 @@ async function pushToResv(applicantId, who, mgrOverride) {
           'DP_건수': 1,
           대표인플: [inflId],
           'XHS_ID_': [inflId],
-          인원메모: `모집사이트 선발 · 시간 미조율(기본 12:00) · 위챗 ${a['🔒 pii_wechat'] || '-'}`,
+          인원메모: `모집사이트 선발 · ${hasTime ? `희망 ${hhmm}` : '시간 미기재(기본 12:00)'} · 위챗 ${a['🔒 pii_wechat'] || '-'}`,
           비고: `${tag} · 담당 ${mgr}${inflNew ? (a.xhs_followers ? ' · 인플 신규등록(PAL 자기신고)' : ' · 인플 신규등록(PAL 미검증)') : ''} · 계약월 확인 필요`,
         } }],
         typecast: true,
@@ -318,7 +335,8 @@ async function pushToResv(applicantId, who, mgrOverride) {
       if (tok2) submitUrl = `https://www.tamkorea.com/submit?token=${encodeURIComponent(tok2)}`;
       else if (iid) submitUrl = `https://www.tamkorea.com/submit?inflId=${encodeURIComponent(iid)}`;
     } catch { /* 링크는 부가 정보 — 실패해도 선발·예약은 유효 */ }
-    return { status: 'ok', submitUrl, msg: `예약입력_DB 생성 (담당 ${mgr}, ${day} 12:00 가등록)` };
+    return { status: 'ok', submitUrl,
+      msg: `예약입력_DB 생성 (담당 ${mgr}, ${dayKst} ${hhmm}${hasTime ? '' : ' 가등록'})` };
   } catch (e) {
     return { status: 'warn', msg: `예약입력_DB 연계 실패: ${e.message} — /staff/new 수동 입력` };
   }
