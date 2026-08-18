@@ -151,6 +151,7 @@ async function buildQueue() {
       when: kstDT(f['예약일시']),
       whenRaw: f['예약일시'] || '',   // 수정 모달 프리필용 (ISO)
       chgWhen: kstDT(f['변경일시']),
+      chgWhenRaw: f['변경일시'] || '',   // 변경 모달 프리필용 (ISO) — 이미 변경된 건은 이걸 기준으로 다시 고친다
       pax: f['총인원'] ?? '',
       chgPax: f['변경인원'] ?? '',
       nx: f['XHS_건수'] ?? '',

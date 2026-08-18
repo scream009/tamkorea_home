@@ -498,26 +498,44 @@ function EditModal({ item, busy, onClose, onSubmit }) {
   );
 }
 
+/* 30분 격자로 내림 — DateTime30 드롭다운은 :00/:30 만 있어 10:15 같은 값은 표시가 비어 보인다 */
+function snap30(local) {
+  const m = /^(\d{4}-\d{2}-\d{2}T\d{2}):(\d{2})$/.exec(local || '');
+  if (!m) return local || '';
+  return `${m[1]}:${Number(m[2]) >= 30 ? '30' : '00'}`;
+}
+
 /* ── 변경 모달 ── */
 function ModifyModal({ item, busy, onClose, onSubmit }) {
-  const [when, setWhen] = useState('');
-  const [pax, setPax] = useState(item.pax || '');
-  const [memo, setMemo] = useState('');
+  // 기존 값을 채워 놓고 고치게 한다 (Owner 지적 2026-08-13: 빈 칸이라 처음부터 다시 입력해야 했다).
+  // 이미 변경요청이 걸린 건은 변경일시가 현재 유효 시각이므로 그것을 기준으로 다시 고친다.
+  const baseWhen = snap30(isoToLocal(item.chgWhenRaw || item.whenRaw));
+  const basePax = item.chgPax !== '' && item.chgPax != null ? item.chgPax : (item.pax ?? '');
+  const baseMemo = item.clientMemo || '';
+  const [when, setWhen] = useState(baseWhen);
+  const [pax, setPax] = useState(basePax);
+  const [memo, setMemo] = useState(baseMemo);
+  // 아무것도 안 바꿨는데 '변경 요청'을 누르면 같은 내용의 변경 안내가 매장에 나간다 — 막는다
+  const dirty = when !== baseWhen || String(pax) !== String(basePax) || memo.trim() !== baseMemo.trim();
   return (
     <div className="stq-overlay" onClick={onClose}>
       <div className="stq-modal" onClick={(e) => e.stopPropagation()}>
         <h3>✏️ 예약 변경 — {item.store}</h3>
-        <p className="stq-modal-sub">변경요청 상태로 바뀌고 변경 안내가 발송 대기열에 오릅니다.</p>
+        <p className="stq-modal-sub">
+          변경요청 상태로 바뀌고 변경 안내가 발송 대기열에 오릅니다.
+          {' '}기존 <b>{item.chgWhen || item.when || '—'}</b>{basePax !== '' ? ` · ${basePax}명` : ''} — 바꿀 항목만 고치세요.
+        </p>
         <label>변경일시 (한국시각) <b className="rq">*</b> <span className="stq-opt">30분 단위</span></label>
         <DateTime30 value={when} onChange={setWhen} />
-        <label>변경인원 <span className="stq-opt">(선택 — 그대로면 비워두기)</span></label>
+        <label>변경인원 <span className="stq-opt">(그대로면 손대지 않기)</span></label>
         <input type="number" min="1" value={pax} onChange={(e) => setPax(e.target.value)} />
         <label>고객 전달 메모 <span className="stq-opt">(선택)</span></label>
         <textarea rows={2} value={memo} onChange={(e) => setMemo(e.target.value)} />
         <div className="stq-modal-btns">
           <button
             className="stq-primary"
-            disabled={busy || !when}
+            disabled={busy || !when || !dirty}
+            title={!dirty ? '바뀐 내용이 없습니다' : undefined}
             onClick={() => onSubmit({ when, pax, memo })}
           >{busy ? '처리 중…' : '변경 요청'}</button>
           <button className="stq-b" disabled={busy} onClick={onClose}>닫기</button>

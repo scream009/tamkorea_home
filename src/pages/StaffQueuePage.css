@@ -164,3 +164,6 @@
   .stq-grid{grid-template-columns:1fr}
   .stq-search{width:100%;margin-left:0}
 }
+
+/* 잠긴 버튼은 잠겨 보여야 한다 — 변경 모달의 '바뀐 내용 없음' 잠금이 보라색 그대로면 눌러도 반응이 없어 고장처럼 보인다 (2026-08-13) */
+.stq-primary:disabled, .stq-b:disabled{opacity:.45;cursor:not-allowed;filter:saturate(.6)}
