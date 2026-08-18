@@ -843,7 +843,7 @@ export default function AdminTargetsPage() {
           <div className="atg-right">
             {loading && <span className="atg-sum">불러오는 중…</span>}
             {err && <span className="atg-sum atg-bad">{err}</span>}
-            <span className="atg-sum">수정자</span>
+            <span className="atg-sum atg-usr-l">수정자</span>
             <select className="atg-usr" value={user} onChange={(e) => pickUser(e.target.value)}>
               {(data.editors || []).map((u) => <option key={u}>{u}</option>)}
             </select>

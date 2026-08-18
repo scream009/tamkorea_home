@@ -26,10 +26,14 @@ if (!process.env.TAMLINK_API_KEY && process.env.VITE_AT_TOKEN) {
 const app = express();
 app.use(express.json());
 
-const ROUTES = ['client-schedule', 'client-report', 'client-list', 'client-partner',
-                'admin-dianping', 'admin-check', 'admin-dashboard', 'admin-board-api',
-                'staff-check', 'staff-board', 'staff-resv', 'staff-queue', 'admin-stores',
-                'staff-game', 'staff-infl', 'checkin'];
+// api/ 의 핸들러를 전부 자동 등록한다 (밑줄로 시작하는 공용 모듈 제외).
+// 예전엔 이름을 손으로 나열해서 새 API(admin-targets 등)가 로컬에서 404 였다 —
+// 배포 전 확인이 목적인 서버가 최신 화면을 못 띄우는 구조라 폴더 스캔으로 바꿨다(2026-08-13).
+import fs from 'fs';
+const ROUTES = fs.readdirSync(path.resolve(process.cwd(), 'api'))
+  .filter((f) => f.endsWith('.js') && !f.startsWith('_'))
+  .map((f) => f.replace(/\.js$/, ''));
+console.log(`API ${ROUTES.length}개 등록: ${ROUTES.join(', ')}`);
 for (const name of ROUTES) {
   app.all(`/api/${name}`, async (req, res) => {
     try {

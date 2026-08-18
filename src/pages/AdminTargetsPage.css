@@ -6,7 +6,7 @@
 .atg-sum{color:var(--muted);font-size:.76rem}
 .atg-sum b{color:var(--ink);font-variant-numeric:tabular-nums}
 .atg-right{margin-left:auto;display:flex;gap:.4rem;align-items:center;flex-wrap:wrap}
-.atg-root /* 공통 그리드 — 상단 합계와 각 행이 같은 열을 쓴다 */
+/* 공통 그리드 — 상단 합계와 각 행이 같은 열을 쓴다 */
 .atg-grid{display:grid;grid-template-columns:14rem 1fr;gap:.7rem;align-items:start}
 .atg-head{padding:.7rem 1rem;border-bottom:1px solid var(--line);background:#12151D}
 .atg-money{display:flex;flex-direction:column;gap:.1rem}
@@ -15,7 +15,7 @@
 .atg-ml .atg-v{font-family:var(--mono);font-size:.88rem;font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
 .atg-ml .atg-v.atg-sm{font-size:.76rem;font-weight:600}
 .atg-tys{display:flex;flex-direction:column;gap:.28rem}
-.atg-root /* 유형 한 줄 */
+/* 유형 한 줄 */
 .atg-ty{display:grid;grid-template-columns:3.3rem 1fr 3.2rem;gap:.55rem;align-items:center; background:#12151D;border:1px solid #212634;border-radius:6px;padding:.26rem .55rem}
 .atg-ty.atg-empty2{opacity:.22}
 .atg-ty-l{font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;color:var(--muted);white-space:nowrap}
@@ -35,7 +35,7 @@
 .atg-bg-warn{background:var(--warn)}
 .atg-bg-orange{background:var(--orange)}
 .atg-bg-bad{background:var(--bad)}
-.atg-root /* 행 */
+/* 행 */
 .atg-r{padding:.55rem 1rem;border-bottom:1px solid #1C202B;cursor:pointer}
 .atg-r:hover{background:#191D28}
 .atg-r.atg-on{background:#1D1830;box-shadow:inset 3px 0 0 var(--accent)}
@@ -43,14 +43,14 @@
 .atg-r.atg-sub:hover{background:#161A26}
 .atg-r.atg-sub.atg-on{background:#1A1630;box-shadow:inset 3px 0 0 var(--accent2)}
 .atg-r.atg-sub.atg-none{opacity:.35;cursor:default}
-.atg-root /* 펼친 3개월 묶음 — 위아래 다른 고객사와 경계를 만든다 */
+/* 펼친 3개월 묶음 — 위아래 다른 고객사와 경계를 만든다 */
 .atg-expand{border:1px solid rgba(139,92,246,.55);border-left:3px solid var(--accent); background:#12141F;border-radius:0 8px 8px 0;margin:.35rem .6rem .5rem;overflow:hidden; box-shadow:0 0 0 1px rgba(139,92,246,.12), 0 6px 18px rgba(0,0,0,.45)}
 .atg-expand .atg-r{border-bottom:1px solid #1A1E2A}
 .atg-expand .atg-r:last-child{border-bottom:0}
 .atg-expand .atg-r.atg-sub{padding-left:1.4rem;background:transparent}
 .atg-expand, .atg-r, .atg-ui{max-width:100%}
 .atg-expand .atg-r.atg-sub:hover{background:rgba(139,92,246,.07)}
-.atg-root /* 칩(종합·추가)은 상태 표시, .atg-root 링크는 누르는 것 — 오른쪽으로 빼고 한 단계 키운다 */
+/* 칩(종합·추가)은 상태 표시, 링크는 누르는 것 — 오른쪽으로 빼고 한 단계 키운다 */
 .atg-lks{display:inline-flex;gap:.3rem;margin-left:auto;padding-left:.5rem}
 .atg-lk{display:inline-flex;align-items:center;gap:.22rem;font-family:var(--sans);font-weight:600; font-size:.7rem;letter-spacing:0;padding:.14rem .5rem .14rem .38rem;border-radius:999px; text-decoration:none;cursor:pointer;border:1px solid var(--line2);color:var(--ink2);background:#1E2430; transition:.15s;box-shadow:0 1px 0 rgba(0,0,0,.3)}
 .atg-lk i{font-style:normal;font-size:.74rem;line-height:1}
@@ -69,7 +69,7 @@
 .atg-ty.atg-clk:hover{background:#181D29;border-color:#333A4C}
 .atg-ty.atg-open{background:#1A1730;border-color:rgba(139,92,246,.5)}
 .atg-nm.atg-cnt2{margin-left:auto;color:var(--muted);font-size:.69rem;font-family:var(--mono)}
-.atg-root /* 상세 표 — 그룹 머리글을 행으로 넣어 열을 맞춘다 */
+/* 상세 표 — 그룹 머리글을 행으로 넣어 열을 맞춘다 */
 table.atg-fix{table-layout:fixed}
 .atg-root td.atg-xh{overflow:hidden;text-overflow:ellipsis}
 .atg-root td.atg-ck, .atg-root th.atg-ck{text-align:center;padding:0}
@@ -120,7 +120,7 @@ table.atg-fix{table-layout:fixed}
 .atg-root button.atg-act{background:rgba(139,92,246,.28);border:1px solid rgba(139,92,246,.6);color:#EDE9FE;border-radius:6px;padding:.24rem .75rem;font-size:.77rem;font-weight:700;cursor:pointer;font-family:inherit}
 .atg-root button.atg-act:hover{background:rgba(139,92,246,.42)}
 .atg-root button.atg-ghost{background:none;border:1px solid var(--line2);color:var(--muted);border-radius:6px;padding:.24rem .65rem;font-size:.77rem;cursor:pointer;font-family:inherit}
-.atg-root /* 상세 — 유형별 그룹 */
+/* 상세 — 유형별 그룹 */
 .atg-det{margin:.15rem 0 .35rem;border:1px solid #2A3040;border-radius:6px;overflow:hidden;background:#0D0F16}
 .atg-gh{display:flex;align-items:center;gap:.5rem;background:#171B25;padding:.28rem .6rem;font-size:.75rem;border-bottom:1px solid var(--line)}
 .atg-gh b{font-family:var(--mono);letter-spacing:.05em}
@@ -149,14 +149,7 @@ table.atg-fix{table-layout:fixed}
 @media (prefers-reduced-motion:reduce){
 .atg-root *{transition:none!important}
 }
-@media (max-width:900px){
-.atg-grid{grid-template-columns:1fr}
-.atg-r.atg-sub{padding-left:1.1rem}
-.atg-ty{grid-template-columns:2.4rem 1fr}
-.atg-ty-p{grid-column:2;text-align:left}
-.atg-bar{grid-column:1/3}
-}
-.atg-root /* ── 좁은 화면 ─────────────────────────────────────── */
+/* ── 좁은 화면 ─────────────────────────────────────── */
 .atg-det col.atg-c1{width:1.7rem}
 .atg-det col.atg-c2{width:1.7rem}
 .atg-det col.atg-c3{width:2.8rem}
@@ -176,7 +169,7 @@ table.atg-fix{table-layout:fixed}
 .atg-det-sc::-webkit-scrollbar-track{background:#0B0D13}
 @media (max-width:900px){
 .atg-grid{grid-template-columns:1fr;gap:.45rem}
-.atg-root /* 금액은 세로로 쌓지 말고 한 줄에 늘어놓는다 — 세로 길이를 아낀다 */
+/* 금액은 세로로 쌓지 말고 한 줄에 늘어놓는다 — 세로 길이를 아낀다 */
  .atg-money{flex-direction:row;flex-wrap:wrap;gap:.1rem .9rem}
 .atg-ml{grid-template-columns:auto auto;gap:.26rem}
 .atg-ml .atg-v{text-align:left}
@@ -196,7 +189,7 @@ table.atg-fix{table-layout:fixed}
 .atg-root input.atg-memo[data-e="smmemo"]{min-width:6rem;flex:1 1 100%}
 }
 @media (max-width:780px){
-.atg-root /* 대표인플은 참고용 — 좁으면 접고, .atg-root 정산월 셀 title 로 확인한다 */
+/* 대표인플은 참고용 — 좁으면 접고, 정산월 셀 title 로 확인한다 */
  .atg-det th, .atg-det td{padding:.22rem .28rem}
 .atg-det col.atg-c1{width:1.4rem}
 .atg-det col.atg-c2{width:1.4rem}
@@ -225,7 +218,7 @@ table.atg-fix{table-layout:fixed}
 .atg-smx.atg-pend .atg-fr, .atg-smx.atg-pend i{display:none}
 .atg-det th, .atg-det td{padding:.2rem .22rem;font-size:.7rem}
 .atg-root td.atg-no, .atg-root th.atg-no{padding-right:.2rem}
-.atg-root /* 옆으로 밀 수 있다는 걸 알려준다 — 안 그러면 잘린 줄 안다 */
+/* 옆으로 밀 수 있다는 걸 알려준다 — 안 그러면 잘린 줄 안다 */
  .atg-det-f::after{content:' · 표는 옆으로 밀어서 봅니다';color:var(--accent2)}
 .atg-ty{grid-template-columns:3.1rem 1fr 2.7rem;gap:.3rem}
 .atg-ty-p{font-size:.78rem}
@@ -256,7 +249,7 @@ table.atg-fix{table-layout:fixed}
 .atg-root select.atg-smx.atg-pend{color:#DDD6FE;background:rgba(139,92,246,.24);border-bottom-color:var(--accent);font-weight:700}
 .atg-root select.atg-smx option{background:#161922;color:var(--ink)}
 
-.atg-root /* 월별 이력 요약 스트립 — 고객사 펼침 상단 */
+/* 월별 이력 요약 스트립 — 고객사 펼침 상단 */
 .atg-mss{display:flex;gap:.45rem;overflow-x:auto;padding:.6rem 1rem .55rem;border-bottom:1px solid #1A1E2A;background:#10131C}
 .atg-msc{flex:0 0 auto;min-width:11rem;text-align:left;background:#161A26;border:1px solid #232838;border-radius:9px;padding:.45rem .62rem;color:var(--ink2);cursor:pointer;font-family:inherit;transition:.15s}
 .atg-msc:hover{border-color:var(--accent);background:rgba(139,92,246,.12);transform:translateY(-1px)}
@@ -274,10 +267,45 @@ table.atg-fix{table-layout:fixed}
 .atg-msc-f{display:block;font-size:.66rem;margin-top:.24rem;color:var(--muted);font-family:var(--mono);white-space:nowrap}
 .atg-mss-empty{font-size:.75rem;color:var(--muted);padding:.55rem 1rem;border-bottom:1px solid #1A1E2A;background:#10131C}
 
-.atg-root /* 진행상태 셀렉트 — 상태명이 길다(취소_방문자) */
+/* 진행상태 셀렉트 — 상태명이 길다(취소_방문자) */
 .atg-smx.atg-stx{max-width:7.6rem;width:100%}
 
-.atg-root /* 상단 고객사 검색 */
+/* 상단 고객사 검색 */
 .atg-q{background:#161A26;border:1px solid var(--line2);border-radius:7px;color:var(--ink);font-family:inherit;font-size:.83rem;padding:.28rem .6rem;width:11rem}
 .atg-q::placeholder{color:var(--muted)}
 .atg-q:focus{outline:none;border-color:var(--accent)}
+
+/* ── 모바일 다듬기 (2026-08-13, 실기기 폭 390px 실측 기준) ─────────────────
+   ⚠️ 이 파일의 모바일 규칙은 2026-08-13 까지 한 번도 적용된 적이 없었다 — 주석 앞에
+   잘못 붙은 '.atg-root ' 접두가 다음 줄 선택자의 특이도를 올려 미디어쿼리 규칙을 이겼다.
+   접두를 걷어낸 뒤에야 아래 규칙들이 산다. 다시 접두를 붙이지 말 것. */
+@media (max-width:900px){
+/* 유형 줄: 라벨 | 숫자 | % 한 줄 — %가 다음 줄로 밀리면 유형당 3단이 된다 */
+.atg-ty-p{grid-column:3;text-align:right}
+.atg-bar{grid-column:1/-1}
+/* '리스트 N건'은 숫자 줄 끝에 붙인다 (자기 줄을 차지하지 않게) */
+.atg-nm.atg-cnt2{margin-left:auto}
+}
+@media (max-width:560px){
+/* 상단 고정 바를 2줄로 — 3줄(≈210px)이면 844px 폰에서 화면 1/4을 먹는다.
+   1줄: 월 선택 + 진도 · 2줄: 검색(남는 폭) + 미달 필터 + 수정자(라벨 생략) */
+.atg-ui-top{row-gap:.35rem}
+.atg-q{flex:1 1 7rem;min-width:0;font-size:.8rem;padding:.3rem .55rem}
+.atg-right{width:auto;margin-left:0;gap:.3rem}
+.atg-usr-l{display:none}   /* '수정자' 라벨 — 셀렉트만으로 뜻이 통한다 (로딩·에러 문구는 남긴다) */
+.atg-root select.atg-usr{padding:.28rem .3rem}
+/* 상세 표: 폰에서는 참고용 대표인플 열을 접어 옆으로 밀 일을 줄인다 (title 로 남김) */
+.atg-det col.atg-c9{width:0}
+/* ⚠️ display:none 금지 — table-layout:fixed 에서 셀을 없애면 뒤 셀이 한 칸씩 당겨져
+   <col> 폭과 어긋난다(실측: 담당 열이 0px 로 붕괴). 폭 0 + 넘침 숨김으로 접는다. */
+.atg-det th.atg-lead, .atg-det td.atg-lead{padding:0;overflow:hidden;max-width:0;font-size:0;border:0}
+.atg-det col.atg-c8{width:6rem}        /* XHS ID — 길면 말줄임 */
+.atg-det col.atg-c2{width:0}            /* 순번(#) — 폰에서는 접는다(체크박스가 행 구분을 대신한다) */
+.atg-root td.atg-no, .atg-root th.atg-no{padding:0;overflow:hidden;max-width:0;font-size:0;border:0}
+.atg-det table.atg-fix{min-width:20rem}  /* 360px 폰(갤럭시 A) 컨테이너 325px 안에 든다 — 실측 320px */
+.atg-det th, .atg-det td{padding:.24rem .22rem;font-size:.72rem}
+.atg-det-f::after{content:none}          /* 이제 옆으로 밀 일이 없다 — 안내문 제거 */
+/* 요약 스트립 카드 폭 — 폰 폭에서 1.5장 대신 2장이 보이게 */
+.atg-msc{min-width:9.6rem;padding:.4rem .5rem}
+.atg-msc-tb{font-size:.68rem}
+}
