@@ -475,7 +475,9 @@ const CpcSection = ({ cpc, funnel, dominance, store, adSet, projection }) => {
     recomTitle = '🟢 안정적으로 운영 중';
     recomBody = `${by}매일 시간대별 클릭단가를 모니터링하며 점심·저녁 피크에 입찰가를 최적화하고 있습니다. 성수기(중국 연휴)엔 예산 상향으로 점유율 확대를 제안드립니다.`;
     contrib = (
-      <>🔗 어제 <b>{r0(yst)}元</b>을 집행해 노출 도달 <b>{num(funnel?.exposure)}명</b>을 견인했습니다. 플랫폼 외부 <b>인플루언서·체험단 바이럴</b>과 내부 <b>CPC 상단 노출</b>이 맞물려 상권 노출 랭킹 <b>{dominance?.rank}위</b>를 방어하고 있습니다.</>
+      // 순위는 플랫폼이 '최근 30일'에만 준다. 별도 리포트(커스텀 기간)엔 없으므로
+      // 없을 때는 그 대목을 통째로 뺀다 — '랭킹 위' 같은 빈 문장이 고객 화면에 나가면 안 된다.
+      <>🔗 어제 <b>{r0(yst)}元</b>을 집행해 노출 도달 <b>{num(funnel?.exposure)}명</b>을 견인했습니다. 플랫폼 외부 <b>인플루언서·체험단 바이럴</b>과 내부 <b>CPC 상단 노출</b>이 맞물려 {dominance?.rank ? <>상권 노출 랭킹 <b>{dominance.rank}위</b>를 방어하고 있습니다</> : <>상권 상단 노출을 방어하고 있습니다</>}.</>
     );
   }
 
@@ -611,6 +613,58 @@ const AdflowSection = ({ adflow, name }) => {
         💡 <b>광고를 끄면 무엇을 잃는가</b> — {name}의 노출 중 <b>{imp}%</b>가 광고에서 발생했{hasClick ? <>고, 매장으로 들어온 클릭의 <b>{adflow.click_share}%</b>({num(adflow.ad_click)}회)가 광고 유입입니다</> : <>습니다</>}. 광고를 중단하면 이 몫이 <b>그대로 사라지고</b> 상권 노출 순위도 함께 내려갑니다.{' '}
         <span className="dpr-dim">※ 광고·전체 모두 '次(횟수)' 단위로 같은 기간({adflow.period})을 비교한 실측값입니다.</span>
       </div>
+    </>
+  );
+};
+
+// ── 월별 추이 (별도 리포트 전용) ────────────────────────────────────
+// 달마다 일수가 다르고(6월 30일 / 7월 31일), 이번 달은 진행 중이라 총량 비교가
+// 불공정하다. **일평균**을 막대 기준으로 삼고 총량은 옆에 적는다.
+const MonthTrend = ({ months }) => {
+  const rows = (months || []).filter((m) => m && m.exposure != null);
+  if (!rows.length) return null;
+  const mx = Math.max(...rows.map((m) => m.daily_avg || 0)) || 1;
+  const first = rows[0]?.daily_avg || 0;
+  const last = rows[rows.length - 1]?.daily_avg || 0;
+  const growth = first ? Math.round(((last - first) / first) * 1000) / 10 : null;
+  return (
+    <>
+      <div className="dpr-gd">
+        달마다 일수가 달라 <b>하루 평균 노출</b>로 비교했습니다. 막대 길이가 그 값입니다.
+      </div>
+      <div style={{ margin: '14px 0 4px' }}>
+        {rows.map((m) => (
+          <div key={m.label} style={{ margin: '0 0 12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between',
+                          fontSize: '.86rem', marginBottom: 5 }}>
+              <b>{m.label}{m.partial ? ' (진행 중)' : ''}</b>
+              <span className="dpr-dim">
+                {m.period} · {m.days}일 · 총 {num(m.exposure)}회
+              </span>
+            </div>
+            <div className="dpr-share" style={{ height: 26 }}>
+              <div className="dpr-share-ad"
+                   style={{ width: `${Math.max(8, Math.round(((m.daily_avg || 0) / mx) * 100))}%` }}>
+                하루 {num(m.daily_avg)}
+              </div>
+            </div>
+            <div className="dpr-share-cap">
+              방문 {num(m.visit)}명 · 관심 {num(m.intent)}명
+              {m.visit_rate != null ? ` · 방문율 ${m.visit_rate}%` : ''}
+            </div>
+          </div>
+        ))}
+      </div>
+      {growth != null && (
+        <div className="dpr-foot-note">
+          {growth >= 0
+            ? <>📈 첫 달 대비 하루 평균 노출이 <b>{growth}% 늘었습니다</b>.</>
+            : <>📉 첫 달 대비 하루 평균 노출이 <b>{Math.abs(growth)}% 줄었습니다</b>.</>}{' '}
+          <span className="dpr-dim">
+            ※ 진행 중인 달은 아직 집계가 끝나지 않아 총량이 작게 보입니다 — 하루 평균으로 보십시오.
+          </span>
+        </div>
+      )}
     </>
   );
 };
@@ -1059,6 +1113,8 @@ const ActionPlan = ({ cpc, gb, actions }) => {
 export default function DpReportPage() {
   const [sp] = useSearchParams();
   const campaignId = sp.get('campaignId');
+  // alt=1 — 별도 리포트(예외 요청분)를 본다. 없으면 기본 월간이 나온다.
+  const altQ = sp.get('alt') === '1' ? '&alt=1' : '';
   const [state, setState] = useState({ loading: true, err: null, data: null });
 
   useEffect(() => {
@@ -1068,7 +1124,7 @@ export default function DpReportPage() {
       try {
         // exact=1 — 이 링크가 가리키는 회차를 그대로 본다.
         // 없으면 API 가 최신본으로 바꿔 주므로 지난 회차를 골라도 최신으로 튕긴다.
-        const res = await fetch(`/api/client-schedule?campaignId=${encodeURIComponent(campaignId)}&exact=1`);
+        const res = await fetch(`/api/client-schedule?campaignId=${encodeURIComponent(campaignId)}&exact=1${altQ}`);
         if (!res.ok) throw new Error(`데이터를 불러오지 못했습니다 (${res.status})`);
         const json = await res.json();
         if (alive) setState({ loading: false, err: null, data: json });
@@ -1077,7 +1133,7 @@ export default function DpReportPage() {
       }
     })();
     return () => { alive = false; };
-  }, [campaignId]);
+  }, [campaignId, altQ]);
 
   const { loading, err, data } = state;
   const detail = data?.dpReport?.detail;
@@ -1122,6 +1178,14 @@ export default function DpReportPage() {
   // 봇을 다시 돌리지 않아도 반영되도록 응답값을 우선하고, 리포트 JSON 에
   // 박혀 있는 값은 오프라인·구버전 대비 폴백으로만 쓴다.
   const cpt = data?.dpReport?.cpt || data?.cpt || detail.cpt || null;
+  // 별도 리포트 전환 — 같은 주소에 alt 파라미터만 붙였다 뗀다.
+  const altOn = !!data?.dpReport?.alt?.active;
+  const altHref = (on) => {
+    if (typeof window === 'undefined') return '#';
+    const u = new URL(window.location.href);
+    if (on) u.searchParams.set('alt', '1'); else u.searchParams.delete('alt');
+    return u.pathname + u.search;
+  };
 
   return (
     <BrandCtx.Provider value={{ brand, isPartner }}>
@@ -1142,6 +1206,17 @@ export default function DpReportPage() {
             {store?.cat && <span className="dpr-chip">{store.cat}</span>}
             <span className="dpr-chip">🌏 중화권 관광객 · 인플루언서 바이럴</span>
           </div>
+          {/* 별도 리포트 — "3개월치로 뽑아 달라" 같은 예외 요청분. 기본 월간과
+              **다른 칸**에 살아서 같은 링크로 오가며 볼 수 있다(2026-08-19). */}
+          {data?.dpReport?.alt && (
+            <div className="dpr-months" style={{ marginTop: 10 }}>
+              <span className="dpr-months-l">리포트 종류</span>
+              <a className={`dpr-month${altOn ? '' : ' on'}`} href={altHref(false)}>월간 (최근 30일)</a>
+              <a className={`dpr-month${altOn ? ' on' : ''}`} href={altHref(true)}>
+                {data.dpReport.alt.title}
+              </a>
+            </div>
+          )}
           {/* 회차 선택 — 기본은 최신본이고, 지난 회차도 볼 수 있다.
               링크는 계약월 하나에 묶여 있지만 리포트는 매달 새로 만들어지므로
               옛 링크를 받은 고객사도 최신본에 닿아야 한다. 2건 이상일 때만 보여준다. */}
@@ -1186,6 +1261,14 @@ export default function DpReportPage() {
           <div className="dpr-kpi"><div className="dpr-l">💬 리뷰 <span className="dpr-sm">评价</span></div><div className="dpr-v mono">{num(reviews?.total)}<small>건</small></div><div className="dpr-dd neu">누적 평가</div></div>
           <div className="dpr-kpi"><div className="dpr-l">⭐ 호평률 <span className="dpr-sm">好评</span></div><div className="dpr-v mono">{reviews?.good_rate ?? '-'}<small>%</small></div><div className="dpr-dd up">{reviews?.avg_star ? `최근 평균 ★${+Number(reviews.avg_star).toFixed(2)}` : `${num(reviews?.good)}건`}</div></div>
         </div>
+
+        {/* 월별 추이 — 별도 리포트(3개월치 등)에만 있는 블록.
+            한 구간 총량만 보면 '늘고 있는지'를 알 수 없어서 달별로 쪼개 보여준다. */}
+        {Array.isArray(detail.months) && detail.months.length > 1 && (
+          <Section icon="📈" title="월별 추이" note="달력 월 기준 · 플랫폼 실측">
+            <MonthTrend months={detail.months} />
+          </Section>
+        )}
 
         {!trafficNA && (
           <Section icon="🏆" title="상권 지배력 (우리 vs 상권 평균)" note="竞争分析 실측 · 순위·배수·전월 대비">

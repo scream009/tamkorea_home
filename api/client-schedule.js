@@ -901,6 +901,15 @@ export default async function handler(req, res) {
       const rid = rpt ? rpt.id : campaignId;
       let detail = null;
       try { detail = rf['DP_리포트JSON'] ? JSON.parse(rf['DP_리포트JSON']) : null; } catch { detail = null; }
+      // 별도 리포트 — "3개월치로 한 번 뽑아 달라" 같은 예외 요청분이 사는 칸.
+      // 기본 월간(DP_리포트JSON)을 덮어쓰지 않으려고 자리를 따로 뒀다(2026-08-19).
+      // ?alt=1 일 때만 본문을 바꿔치기한다. 기본 링크는 지금까지와 똑같이 동작한다.
+      const altSrc = rf['DP_별도리포트JSON'] ? rf : cf;
+      let altDetail = null;
+      try {
+        altDetail = altSrc['DP_별도리포트JSON'] ? JSON.parse(altSrc['DP_별도리포트JSON']) : null;
+      } catch { altDetail = null; }
+      const wantAlt = String(req.query.alt || '') === '1' && !!altDetail;
       const storeCode = rf['DP_매장코드'] || cf['DP_매장코드'] || '';
       dpReport = {
         cpt,
@@ -925,7 +934,14 @@ export default async function handler(req, res) {
         mom: rf['DP_전월비'] ? (String(rf['DP_전월비']).startsWith('-') ? rf['DP_전월비'] : `+${rf['DP_전월비']}`) : null,
         good: rf['DP_호평률'] != null ? `호평률 ${rf['DP_호평률']}%` : null,
         adShare: detail?.adflow?.running ? detail.adflow.imp_share : null,
-        detail,
+        // 별도 리포트가 있으면 화면이 '보기' 버튼을 띄운다. active 면 지금 그걸 보는 중.
+        alt: altDetail ? {
+          title: altSrc['DP_별도리포트_제목'] || '별도 리포트',
+          period: String(altSrc['DP_별도리포트_기간'] || '').replace(/~/, ' ~ '),
+          generatedAt: fmtKST(altSrc['DP_별도리포트_생성일']) || null,
+          active: wantAlt,
+        } : null,
+        detail: wantAlt ? altDetail : detail,
       };
     }
 
