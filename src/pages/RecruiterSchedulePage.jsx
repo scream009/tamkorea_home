@@ -96,6 +96,13 @@ function shiftMonthParam(monthParam, delta) {
   return `${y}-${mm}`;
 }
 
+// 팔로워 수 만 단위 표기 — 예약메시지(채널카드 formula)와 같은 규칙 (2026-08-20)
+const fmtPal = (v) => {
+  const n = Number(Array.isArray(v) ? v[0] : v);
+  if (!Number.isFinite(n) || n <= 0) return v;
+  return n >= 10000 ? `${Math.round(n / 1000) / 10}만` : String(n);
+};
+
 export default function RecruiterSchedulePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const recruiterId = searchParams.get('id');
@@ -783,7 +790,7 @@ export default function RecruiterSchedulePage() {
                   ).map((inf, i) => (
                     <div key={i} className="mgr-infl-item">
                       <span className="mgr-infl-name">{inf.displayId || '-'}</span>
-                      {inf.pal ? <span className="mgr-infl-pal">PAL {inf.pal}</span> : null}
+                      {inf.pal ? <span className="mgr-infl-pal">팔로워 {fmtPal(inf.pal)}</span> : null}
                       {inf.channelLink ? (
                         <a
                           href={inf.channelLink}
