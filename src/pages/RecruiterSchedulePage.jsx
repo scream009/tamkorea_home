@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import LinkifiedText from '../components/LinkifiedText';
 import { useSearchParams } from 'react-router-dom';
 import {
   Calendar as CalendarIcon,
@@ -775,9 +776,9 @@ export default function RecruiterSchedulePage() {
                       : selectedEvent.modificationMsg ? '변경 메시지' : '예약 메시지'}
                   </span>
                   <span className="detail-value memo-box" style={{ whiteSpace: 'pre-wrap' }}>
-                    {selectedEvent.sentMessage
+                    <LinkifiedText text={selectedEvent.sentMessage
                       || ((selectedEvent.modificationMsg || selectedEvent.reservationMsg)
-                          + (selectedEvent.noticeTail ? `\n\n${selectedEvent.noticeTail}` : ''))}
+                          + (selectedEvent.noticeTail ? `\n\n${selectedEvent.noticeTail}` : ''))} />
                   </span>
                 </div>
               )}

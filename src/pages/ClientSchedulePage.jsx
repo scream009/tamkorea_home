@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { resolveEventMessage, eventMessageLabel } from '../lib/eventMessage';
+import LinkifiedText from '../components/LinkifiedText';
 import './ClientSchedulePage.css';
 import './ClientReportPage.css';
 
@@ -1195,10 +1196,10 @@ export default function ClientSchedulePage() {
                   {/* 예약봇이 식당에 실제로 보낸 문구를 그대로 보여 준다.
                       취소·노쇼는 취소 안내까지, 변경 건은 기존 예약 + 변경 내용까지
                       한 덩어리로 들어 있어 고객사가 받은 카톡과 화면이 일치한다. */}
-                  {resolveEventMessage(
+                  <LinkifiedText text={resolveEventMessage(
                     selectedEvent,
                     generateDynamicMemo(selectedEvent, campaignName, brandName, branchName)
-                  )}
+                  )} />
                 </span>
               </div>
 

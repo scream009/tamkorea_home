@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { CpcBanner, DpReportEntry } from './ClientSchedulePage';
 import { resolveEventMessage, eventMessageLabel } from '../lib/eventMessage';
+import LinkifiedText from '../components/LinkifiedText';
 import './ClientSchedulePage.css';
 import './ClientReportPage.css';
 
@@ -513,7 +514,7 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
                 <span className="detail-value memo-box" style={{ whiteSpace: 'pre-wrap' }}>
                   {/* 고객사 화면(/schedule)과 같은 규칙 — 예약봇이 실제로 보낸 문구.
                       취소·노쇼면 취소 안내까지 붙은 최종 발송문이 나온다. */}
-                  {resolveEventMessage(selectedEvent, generateDynamicMemo(selectedEvent))}
+                  <LinkifiedText text={resolveEventMessage(selectedEvent, generateDynamicMemo(selectedEvent))} />
                 </span>
               </div>
               {selectedEvent.xhsResults && selectedEvent.xhsResults.length > 0 && (
