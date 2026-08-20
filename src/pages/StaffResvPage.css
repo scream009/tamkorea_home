@@ -55,6 +55,12 @@
 textarea.srv-input{resize:vertical}
 .srv-row2{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
 .srv-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem}
+/* 셀렉트 라벨(플랫폼)이 텍스트 라벨보다 키가 커서 입력칸 세로가 틀어진다 —
+   각 칸을 세로 flex 로 만들고 입력칸을 바닥에 붙여 항상 나란히 (2026-08-20) */
+.srv-row3>div{display:flex;flex-direction:column;min-width:0}
+.srv-row3 .srv-lb{display:flex;align-items:center;align-content:flex-end;flex-wrap:wrap;min-height:1.85rem;margin-bottom:.25rem}
+.srv-row3 .srv-input{margin-top:auto}
+.srv-row3 .srv-plat{max-width:100%;min-width:0}
 .srv-seg{display:flex;flex-wrap:wrap;gap:.3rem}
 .srv-seg button{background:#12151D;border:1px solid var(--line2);border-radius:8px;color:var(--ink2);
   padding:.35rem .7rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;transition:.13s}
@@ -189,7 +195,9 @@ textarea.srv-input{resize:vertical}
   .srv-grid{grid-template-columns:1fr}
   .srv-side{position:static;order:-1}
   .srv-sinfo-blk.script span{max-height:7rem}
-  .srv-row3{grid-template-columns:1fr 1fr 1fr}
+  .srv-row3{grid-template-columns:1fr 1fr 1fr;gap:.45rem}
+  .srv-row3 .srv-plat{font-size:.7rem;padding:.18rem .2rem}
+  .srv-row3 .srv-input{padding:.4rem .45rem}
 }
 
 /* 플랫폼 선택 라벨 (2026-08-13) — 라벨 자리에 드롭다운, 기본이 아니면 보라 강조 */

@@ -178,12 +178,15 @@ export default function StaffResvPage() {
   const [month, setMonth] = useState('');
   const [when, setWhen] = useState('');
   const [wKey, setWKey] = useState(0);   // DateTime30 리셋용 (리마운트 키)
-  const [pax, setPax] = useState(1);
+  // 숫자 입력은 문자열로 보관 (2026-08-20 Owner 지적) — 숫자로 두고 onChange 에서
+  // 즉시 클램프하면 '1' 을 지우는 순간 다시 1 이 채워져 값을 바꿀 수가 없다.
+  // 입력 중엔 빈 칸을 허용하고, 확정(제출·포커스아웃)에서만 기본값을 채운다.
+  const [pax, setPax] = useState('1');
   const [platX, setPlatX] = useState('샤오홍슈');
   const [platD, setPlatD] = useState('따종디엔핑');
-  const [nx, setNx] = useState(1);
+  const [nx, setNx] = useState('1');
   const [nxTouched, setNxTouched] = useState(false);
-  const [nd, setNd] = useState(1);       // 초기값 1,1,1 통일 (Owner 2026-08-05)
+  const [nd, setNd] = useState('1');     // 초기값 1,1,1 통일 (Owner 2026-08-05)
   const [ndTouched, setNdTouched] = useState(false);
   const [inflSel, setInflSel] = useState([]);
   const [lead, setLead] = useState('');
@@ -250,9 +253,9 @@ export default function StaffResvPage() {
     if (c.storeId) selectStore(c.storeId);
     if (['HH', 'LH', 'AN', 'FB'].includes(c.mgr)) setMgr(c.mgr);
     if (['체험', '인플', '기자'].includes(c.ty)) setType(c.ty);
-    if (c.pax) setPax(Math.max(1, Number(c.pax) || 1));
-    if (c.nx !== undefined && c.nx !== '') { setNx(Math.max(0, Number(c.nx) || 0)); setNxTouched(true); }
-    if (c.nd !== undefined && c.nd !== '') { setNd(Math.max(0, Number(c.nd) || 0)); setNdTouched(true); }
+    if (c.pax) setPax(String(Math.max(1, Number(c.pax) || 1)));
+    if (c.nx !== undefined && c.nx !== '') { setNx(String(Math.max(0, Number(c.nx) || 0))); setNxTouched(true); }
+    if (c.nd !== undefined && c.nd !== '') { setNd(String(Math.max(0, Number(c.nd) || 0))); setNdTouched(true); }
     // 복사 원본에 플랫폼이 있으면 따라가고, 없으면(구 데이터) 기본값으로
     setPlatX(PLAT_X.includes(c.platX) ? c.platX : '샤오홍슈');
     setPlatD(PLAT_D.includes(c.platD) ? c.platD : '따종디엔핑');
@@ -267,11 +270,12 @@ export default function StaffResvPage() {
   }, [meta, copyMode, store, selectStore]);
 
   /* 총인원 바꾸면 小红·大众 건수가 따라간다 (직접 만지기 전까지) */
+  const digitsOnly = (v) => String(v).replace(/\D/g, '').slice(0, 3);
   function changePax(v) {
-    const p = Math.max(1, Math.round(Number(v) || 1));
-    setPax(p);
-    if (!nxTouched) setNx(p);
-    if (!ndTouched) setNd(p);
+    const s = digitsOnly(v);
+    setPax(s);
+    if (!nxTouched) setNx(s);
+    if (!ndTouched) setNd(s);
   }
 
   /* 참여 인플이 바뀌면 대표인플 정합 유지 */
@@ -282,7 +286,7 @@ export default function StaffResvPage() {
 
   const chosen = guard?.byMonth?.[month];
   const canSubmit = !busy && store && mgr && month && chosen?.exists
-    && when && pax >= 1 && inflSel.length >= 1;
+    && when && Number(pax) >= 1 && inflSel.length >= 1;
 
   async function submit() {
     setErr('');
@@ -314,7 +318,11 @@ export default function StaffResvPage() {
     try {
       const payload = {
         action: 'create',
-        store, mgr, type, status, month, when, pax, nx, nd, platX, platD,
+        store, mgr, type, status, month, when,
+        pax: Math.max(1, Number(pax) || 1),
+        nx: Math.max(0, Number(nx) || 0),
+        nd: Math.max(0, Number(nd) || 0),
+        platX, platD,
         lead, infls: inflSel, paxMemo, clientMemo, engNames, note,
       };
       const post = (p) => fetch('/api/staff-resv', {
@@ -332,7 +340,7 @@ export default function StaffResvPage() {
         body = await res.json().catch(() => ({}));
       }
       if (!res.ok) throw new Error(body.error || `저장 실패 (${res.status})`);
-      const created = { ...body, when, pax, infls: inflSel.length, status, sent: false };
+      const created = { ...body, when, infls: inflSel.length, status, sent: false };
       setDone(created);
       // 자동 발송 체크 시 — 접수 직후 발송 대기열까지 한 번에
       if (autoSend && ['예약요청', '긴급예약'].includes(status)) {
@@ -395,10 +403,10 @@ export default function StaffResvPage() {
     setDone(null);
     setWhen('');
     setWKey((k) => k + 1);
-    setPax(1);
-    setNx(1);
+    setPax('1');
+    setNx('1');
     setNxTouched(false);
-    setNd(1);
+    setNd('1');
     setNdTouched(false);
     setInflSel([]);
     setLead('');
@@ -532,8 +540,10 @@ export default function StaffResvPage() {
               <div className="srv-row3">
                 <div>
                   <label className="srv-lb">총인원 <b className="rq">*</b></label>
-                  <input type="number" min="1" className="srv-input" value={pax}
-                    onChange={(e) => changePax(e.target.value)} />
+                  <input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={3}
+                    className="srv-input" value={pax}
+                    onChange={(e) => changePax(e.target.value)}
+                    onBlur={() => { if (!pax || Number(pax) < 1) changePax('1'); }} />
                 </div>
                 <div>
                   {/* 라벨 자체가 플랫폼 선택 — 기본 샤오홍슈, 인스타 인플이면 바꿔서 입력 */}
@@ -547,8 +557,10 @@ export default function StaffResvPage() {
                       {PLAT_X.map((p) => <option key={p} value={p}>{p === '샤오홍슈' ? '小红(샤오홍슈)' : p}</option>)}
                     </select> 건수
                   </label>
-                  <input type="number" min="0" className="srv-input" value={nx}
-                    onChange={(e) => { setNxTouched(true); setNx(Math.max(0, Math.round(Number(e.target.value) || 0))); }} />
+                  <input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={3}
+                    className="srv-input" value={nx}
+                    onChange={(e) => { setNxTouched(true); setNx(digitsOnly(e.target.value)); }}
+                    onBlur={() => { if (nx === '') setNx('0'); }} />
                 </div>
                 <div>
                   <label className="srv-lb srv-lb-plat">
@@ -561,8 +573,10 @@ export default function StaffResvPage() {
                       {PLAT_D.map((p) => <option key={p} value={p}>{p === '따종디엔핑' ? '大众(따종)' : p}</option>)}
                     </select> 건수
                   </label>
-                  <input type="number" min="0" className="srv-input" value={nd}
-                    onChange={(e) => { setNdTouched(true); setNd(Math.max(0, Math.round(Number(e.target.value) || 0))); }} />
+                  <input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={3}
+                    className="srv-input" value={nd}
+                    onChange={(e) => { setNdTouched(true); setNd(digitsOnly(e.target.value)); }}
+                    onBlur={() => { if (nd === '') setNd('0'); }} />
                 </div>
               </div>
 
