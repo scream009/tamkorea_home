@@ -13,6 +13,7 @@ import { getAdminKey, setAdminKey, clearAdminKey } from '../lib/adminKey';
 export default function AdminGate({ children }) {
   const [status, setStatus] = useState('checking');   // checking | locked | open
   const [keyInput, setKeyInput] = useState('');
+  const [remember, setRemember] = useState(false);   // '이 기기에 키 저장' (Owner 요청 2026-08-20)
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -57,7 +58,7 @@ export default function AdminGate({ children }) {
     setBusy(true);
     try {
       const ok = await verify(keyInput.trim());
-      if (ok) { setAdminKey(keyInput.trim()); setStatus('open'); }
+      if (ok) { setAdminKey(keyInput.trim(), remember); setStatus('open'); }
       else setError('키가 올바르지 않습니다.');
     } catch {
       setError('서버에 연결하지 못했습니다.');
@@ -91,10 +92,23 @@ export default function AdminGate({ children }) {
               style={styles.input}
             />
             {error && <div style={styles.error}>{error}</div>}
+            <label style={styles.remember}>
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+                style={styles.rememberBox}
+              />
+              이 기기에 키 저장 (홈화면 바로가기·위챗용)
+            </label>
             <button type="submit" disabled={busy} style={{ ...styles.button, opacity: busy ? 0.6 : 1 }}>
               {busy ? '확인 중…' : '들어가기'}
             </button>
-            <div style={styles.hint}>탭을 닫으면 키는 지워집니다.</div>
+            <div style={styles.hint}>
+              {remember
+                ? '로그아웃을 누르기 전까지 이 기기에 키가 남습니다 — 공용 기기에서는 켜지 마세요.'
+                : '탭을 닫으면 키는 지워집니다.'}
+            </div>
           </form>
         )}
       </div>
@@ -130,6 +144,8 @@ const styles = {
     transition: 'all 0.2s',
   },
   error: { fontSize: 12.5, color: '#fca5a5', lineHeight: 1.5 },
+  remember: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: '#9ca3af', cursor: 'pointer', userSelect: 'none' },
+  rememberBox: { width: 15, height: 15, accentColor: '#8b5cf6', cursor: 'pointer', margin: 0 },
   hint: { fontSize: 11.5, color: '#6b7280', textAlign: 'center', marginTop: 4 },
   checking: { fontSize: 13, color: '#9ca3af', padding: '12px 0' },
 };
