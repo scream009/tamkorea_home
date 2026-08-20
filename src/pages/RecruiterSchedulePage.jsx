@@ -96,11 +96,11 @@ function shiftMonthParam(monthParam, delta) {
   return `${y}-${mm}`;
 }
 
-// 팔로워 수 만 단위 표기 — 예약메시지(채널카드 formula)와 같은 규칙 (2026-08-20)
+// 팔로워 수 콤마 표기 — 예약메시지(채널카드 formula)와 같은 규칙 (2026-08-20, Owner: 단순하게)
 const fmtPal = (v) => {
   const n = Number(Array.isArray(v) ? v[0] : v);
   if (!Number.isFinite(n) || n <= 0) return v;
-  return n >= 10000 ? `${Math.round(n / 1000) / 10}만` : String(n);
+  return n.toLocaleString('en-US');
 };
 
 export default function RecruiterSchedulePage() {
