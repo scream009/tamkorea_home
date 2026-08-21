@@ -283,3 +283,16 @@
 /* 잔액 소진 경과 — 오래 멈춰 있을수록 눈에 띄게. 3일 주의 / 7일 이상 경고. */
 .dpa-age.warn { color: #f59e0b; background: rgba(245, 158, 11, .14); }
 .dpa-age.bad  { color: #f87171; background: rgba(248, 113, 113, .16); }
+
+/* 계약월 안의 리포트 회차 — 월 2~3회 돌리는 매장용 */
+.dpa-vers { display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.07); }
+.dpa-vers-l { font-size: 11px; color: #9ca3af; margin-right: 2px; }
+.dpa-ver { display: inline-flex; align-items: baseline; gap: 5px;
+  padding: 3px 8px; border-radius: 8px; font-size: 11px; font-weight: 700;
+  color: #cbd5e1; background: rgba(148,163,184,.10);
+  border: 1px solid rgba(148,163,184,.22); }
+.dpa-ver.on { color: #c4b5fd; background: rgba(140,82,255,.14);
+  border-color: rgba(140,82,255,.38); }
+.dpa-ver i { font-style: normal; font-weight: 500; opacity: .78; }
+.dpa-ver em { font-style: normal; font-weight: 500; opacity: .6; }

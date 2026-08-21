@@ -44,6 +44,26 @@ const ageOf = (iso) => {
 // 잔액 소진일 — 날짜와 '며칠째'를 같이 보여준다.
 // 며칠째가 중요한 이유: 0 인 매장은 늘 0 이라 날짜만 봐서는 심각도가 안 보인다.
 // 근사(~) 는 관측 간격 때문에 하루 이틀 어긋날 수 있다는 뜻이다.
+// 한 계약월 안의 리포트 회차 — 월 2~3회 돌리는 매장이 있어서 최신만 보면
+// "지난번 것"을 꺼낼 수 없다. 최신 → v2 → v3 로 밀려난 회차를 같이 보여준다.
+// 2건 이상일 때만 그린다(대부분은 1건이라 늘 띄우면 시끄럽다).
+const Versions = ({ m }) => {
+  const vs = m?.versions || [];
+  if (vs.length < 2) return null;
+  return (
+    <div className="dpa-vers">
+      <span className="dpa-vers-l">회차 {vs.length}건</span>
+      {vs.map((v) => (
+        <span key={v.v} className={`dpa-ver${v.latest ? ' on' : ''}`}>
+          {v.latest ? '최신' : `v${v.v}`}
+          <i>{v.generatedAt || v.period || '—'}</i>
+          {v.exposure != null && <em>노출 {n(v.exposure)}</em>}
+        </span>
+      ))}
+    </div>
+  );
+};
+
 const Depleted = ({ r }) => {
   if (!r?.depletedAt) return <span className="dpa-age none">—</span>;
   const d = r.depletedDays;
@@ -441,6 +461,7 @@ function Detail({ r, months, loading }) {
                 <Cell k="호평률" v={m.good != null ? `${m.good}%` : '—'} />
                 <Cell k="악평" v={n(m.bad)} />
               </div>
+              <Versions m={m} />
             </div>
           ))}
         </div>

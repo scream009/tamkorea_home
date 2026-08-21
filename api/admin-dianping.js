@@ -179,12 +179,37 @@ export default async function handler(req, res) {
       formula: `{DP_매장코드}='${escFormula(slug)}'`,
       fields: ['계약월', 'DP_기간', 'DP_노출', 'DP_클릭', 'DP_방문', 'DP_순위', 'DP_전월비',
                'DP_호평률', 'DP_중차평수', 'CPC_현재잔액', 'CPC_현재소진', 'AD_총소진',
-               '따종리포트_URL', 'DP_매장코드'],
+               '따종리포트_URL', 'DP_매장코드',
+               // 같은 계약월에 월 2~3회 돌린다 — 밀려난 회차도 꺼내 볼 수 있게 한다
+               'DP_리포트JSON', 'DP_리포트JSON_v2', 'DP_리포트JSON_v3'],
     });
+    // 리포트는 2026년 7월분부터 존재한다. 그 이전 계약월은 리포트 칸이 영영 비어 있어
+    // 목록에 남겨두면 "왜 안 나오지"를 매번 다시 확인하게 된다 — 아예 거른다.
+    const REPORT_FLOOR = 2026 * 12 + 7;
+    // 한 계약월 안의 회차 — 최신(DP_리포트JSON) → v2 → v3 순.
+    // 기간·생성시각은 JSON 안에 있으므로 파싱해서 뽑는다(별도 칸을 두지 않았다).
+    const versions = (f) => ['DP_리포트JSON', 'DP_리포트JSON_v2', 'DP_리포트JSON_v3']
+      .map((k, i) => {
+        if (!f[k]) return null;
+        let j = null;
+        try { j = JSON.parse(f[k]); } catch { return null; }
+        return {
+          v: i + 1,
+          latest: i === 0,
+          period: j.period || null,
+          generatedAt: j.generated_at ? String(j.generated_at).replace('T', ' ').slice(0, 16) : null,
+          exposure: j?.funnel?.exposure ?? null,
+          rank: j?.dominance?.rank ?? null,
+          adShare: j?.adflow?.running ? j.adflow.imp_share : null,
+        };
+      })
+      .filter(Boolean);
+
     const months = camp
       .map((r) => {
         const f = r.fields;
         return {
+          versions: versions(f),
           id: r.id, month: f['계약월'] || '', k: monthKey(f['계약월']),
           period: f['DP_기간'] || null,
           exposure: f['DP_노출'] ?? null, click: f['DP_클릭'] ?? null,
@@ -195,7 +220,7 @@ export default async function handler(req, res) {
           reportUrl: f['따종리포트_URL'] || null,
         };
       })
-      .filter((m) => m.k > 0)
+      .filter((m) => m.k >= REPORT_FLOOR)
       .sort((a, b) => b.k - a.k);
 
     // 목록은 화면이 이미 들고 있다 — 상세는 월별 이력만 돌려준다.
