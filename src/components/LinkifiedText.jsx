@@ -12,7 +12,8 @@ import React from 'react';
  *    → URL 로 인정하는 문자를 **ASCII URL 문자로 한정**한다. 한글·중문·이모지·쉼표·공백이
  *      나오는 순간 링크가 끝나므로, 원문이 붙어 있어도 링크 자체는 정상 동작한다.
  */
-const URL_CHARS = "A-Za-z0-9\-._~:/?#\[\]@!$&'()*+;=%";
+// 문자 클래스에 넣을 ASCII URL 문자 (대시는 맨 뒤 — 이스케이프 불필요)
+const URL_CHARS = "A-Za-z0-9._~:/?#@!$&'()*+;=%-";
 const URL_RE = new RegExp('(https?://[' + URL_CHARS + ']+)', 'g');
 const TRAIL = /[),.;:·。、\]】]+$/;
 
