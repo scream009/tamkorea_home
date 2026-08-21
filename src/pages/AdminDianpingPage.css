@@ -296,3 +296,27 @@
   border-color: rgba(140,82,255,.38); }
 .dpa-ver i { font-style: normal; font-weight: 500; opacity: .78; }
 .dpa-ver em { font-style: normal; font-weight: 500; opacity: .6; }
+
+/* 포털 계정 — 보고 고치는 칸. 비번은 기본 가림. */
+.dpa-acct { margin-top: 12px; padding: 12px; border-radius: 12px;
+  background: rgba(148,163,184,.06); border: 1px solid rgba(148,163,184,.16); }
+.dpa-acct-h { display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  font-size: 12px; color: #e2e8f0; }
+.dpa-acct-sp { flex: 1; }
+.dpa-acct-g { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+.dpa-acct-f { display: flex; flex-direction: column; gap: 4px; font-size: 11px; }
+.dpa-acct-f span { color: #94a3b8; }
+.dpa-acct-f i { font-style: normal; font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px; color: #e2e8f0; padding: 5px 8px; border-radius: 7px;
+  background: rgba(15,23,42,.5); border: 1px solid rgba(148,163,184,.16);
+  min-width: 120px; display: inline-block; }
+.dpa-acct-f input { font-family: ui-monospace, Consolas, monospace; font-size: 12px;
+  color: #e2e8f0; padding: 5px 8px; border-radius: 7px; width: 140px;
+  background: rgba(15,23,42,.7); border: 1px solid rgba(140,82,255,.45); outline: none; }
+.dpa-btn { font-size: 11px; font-weight: 700; color: #c4b5fd; cursor: pointer;
+  padding: 5px 10px; border-radius: 8px; background: rgba(140,82,255,.12);
+  border: 1px solid rgba(140,82,255,.35); }
+.dpa-btn:hover { background: rgba(140,82,255,.2); }
+.dpa-btn:disabled { opacity: .5; cursor: default; }
+.dpa-acct-m { margin-top: 8px; font-size: 11px; color: #86efac; }
+.dpa-acct-m.dim { color: #64748b; }

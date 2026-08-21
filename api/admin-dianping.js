@@ -82,6 +82,14 @@ function toRow(f) {
     depletedAt: f['DP_소진일'] || null,
     depletedDays: f['DP_소진경과일'] ?? null,
     depletedApprox: !!f['DP_소진일_근사'],
+    // 계정 정보 — 관리자 화면에서 보고 고친다. 비번이 자주 바뀌는데
+    // 그때마다 Airtable 을 직접 열기는 번거롭다(Owner 2026-08-21).
+    acctId: f['DP_계정ID'] || '',
+    acctPw: f['DP_계정PW'] || '',
+    shopNo: f['DP_편호'] || '',
+    acctAt: f['DP_계정수정일'] || null,
+    loginNeed: !!f['DP_로그인필요'],
+    loginWhy: f['DP_로그인실패사유'] || '',
     // 광고 설정
     budget: f['DP_일예산'] ?? null,
     floatRatio: f['DP_주말할증'] ?? null,
@@ -108,6 +116,9 @@ const CS_FIELDS = [
   'DP_광고상태', 'DP_캠페인상태', 'DP_정지사유', 'DP_캠페인수',
   'DP_잔액', 'DP_일소진', 'DP_소진예상일', 'DP_최근충전일', 'DP_잔액확인일',
   'DP_소진일', 'DP_소진경과일', 'DP_소진일_근사',
+  // 포털 계정 — 원본이 여기다. 각 PC 의 clients.json 은 이 값에서 만들어진다.
+  'DP_계정ID', 'DP_계정PW', 'DP_편호', 'DP_계정수정일',
+  'DP_로그인필요', 'DP_로그인실패사유', 'DP_로그인확인일',
   'DP_일예산', 'DP_주말할증', 'DP_피크예산', 'DP_클릭단가', 'DP_노출시간',
   'DP_주간노출시간', 'DP_캠페인ID', 'DP_설정확인일',
   'DP_CPT_만료일', 'DP_CPT_상태', 'DP_악평_7일', 'DP_악평_30일', 'DP_악평_누적', 'DP_리뷰확인일',
@@ -115,6 +126,46 @@ const CS_FIELDS = [
 
 export default async function handler(req, res) {
   if (blockedByAdminGate(req, res)) return;
+
+  // ── 계정 정보 수정 ────────────────────────────────────────────────
+  // 비번은 포털이 주기적으로 변경을 강제하고 FK·매장도 각자 바꾼다.
+  // 바뀔 때마다 Airtable 을 직접 열기는 번거로워 관리자 화면에서 고치게 한다.
+  // ⚠️ 고칠 수 있는 필드를 **화이트리스트로 못 박는다**. 본문에 담긴 아무 필드나
+  //    통과시키면 이 엔드포인트가 CS_DB 전체에 대한 쓰기 통로가 된다.
+  if (req.method === 'PATCH') {
+    const ALLOW = { acctId: 'DP_계정ID', acctPw: 'DP_계정PW', shopNo: 'DP_편호' };
+    const body = req.body || {};
+    const id = String(body.id || '').trim();
+    if (!/^rec[A-Za-z0-9]{14}$/.test(id)) {
+      return res.status(400).json({ error: 'bad record id' });
+    }
+    const fields = {};
+    for (const [k, fld] of Object.entries(ALLOW)) {
+      if (body[k] === undefined) continue;
+      const v = String(body[k] ?? '').trim();
+      if (v.length > 120) return res.status(400).json({ error: `${k} too long` });
+      fields[fld] = v;
+    }
+    if (!Object.keys(fields).length) {
+      return res.status(400).json({ error: 'nothing to update' });
+    }
+    fields['DP_계정수정일'] = new Date().toISOString();
+    try {
+      const r = await fetch(`https://api.airtable.com/v0/${BASE}/CS_DB/${id}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields }),
+      });
+      if (!r.ok) throw new Error(`Airtable ${r.status}: ${(await r.text()).slice(0, 200)}`);
+      // 비밀번호는 로그에 남기지 않는다 — 무엇을 고쳤는지만 남긴다.
+      console.log('[admin-dianping] 계정 수정', id, Object.keys(fields).join(','));
+      return res.status(200).json({ ok: true, updated: Object.keys(fields) });
+    } catch (e) {
+      console.error('[admin-dianping] 계정 수정 실패', e.message);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   try {

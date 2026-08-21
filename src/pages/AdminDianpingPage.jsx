@@ -47,6 +47,63 @@ const ageOf = (iso) => {
 // 한 계약월 안의 리포트 회차 — 월 2~3회 돌리는 매장이 있어서 최신만 보면
 // "지난번 것"을 꺼낼 수 없다. 최신 → v2 → v3 로 밀려난 회차를 같이 보여준다.
 // 2건 이상일 때만 그린다(대부분은 1건이라 늘 띄우면 시끄럽다).
+// 포털 계정 — 보고 고치는 칸.
+// 비번은 기본으로 가린다. 공용 PC·사무실 화면에서 여는 일이 많아 그대로 두면
+// 지나가는 사람이 다 본다. 눌러야 보이고, 복사는 가리고도 된다.
+const Account = ({ r, onSaved }) => {
+  const [open, setOpen] = useState(false);
+  const [edit, setEdit] = useState(false);
+  const [v, setV] = useState({ acctId: r.acctId || '', acctPw: r.acctPw || '', shopNo: r.shopNo || '' });
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  const save = async () => {
+    setBusy(true); setMsg('');
+    try {
+      const resp = await fetch('/api/admin-dianping', {
+        method: 'PATCH',
+        headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: r.id, ...v }),
+      });
+      if (!resp.ok) throw new Error(`저장 실패 (${resp.status})`);
+      setEdit(false);
+      setMsg('저장됨 — 실행 PC 는 다음 새벽에 받아 갑니다');
+      onSaved?.(r.id, v);
+    } catch (e) {
+      setMsg(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="dpa-acct">
+      <div className="dpa-acct-h">
+        <b>포털 계정</b>
+        {r.loginNeed && <span className="dpa-age bad">로그인 필요{r.loginWhy ? ` · ${r.loginWhy}` : ''}</span>}
+        <span className="dpa-acct-sp" />
+        {!edit && <button className="dpa-btn" onClick={() => setEdit(true)}>수정</button>}
+        {edit && <button className="dpa-btn" onClick={save} disabled={busy}>{busy ? '저장 중…' : '저장'}</button>}
+        {edit && <button className="dpa-btn" onClick={() => { setEdit(false); setV({ acctId: r.acctId || '', acctPw: r.acctPw || '', shopNo: r.shopNo || '' }); }}>취소</button>}
+      </div>
+      <div className="dpa-acct-g">
+        {[['아이디', 'acctId', false], ['비밀번호', 'acctPw', true], ['编号', 'shopNo', false]].map(([label, k, secret]) => (
+          <label key={k} className="dpa-acct-f">
+            <span>{label}</span>
+            {edit
+              ? <input value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })}
+                       type={secret && !open ? 'password' : 'text'} spellCheck={false} />
+              : <i>{!v[k] ? '—' : (secret && !open ? '••••••••' : v[k])}</i>}
+          </label>
+        ))}
+        <button className="dpa-btn" onClick={() => setOpen(!open)}>{open ? '비번 가리기' : '비번 보기'}</button>
+      </div>
+      {msg && <div className="dpa-acct-m">{msg}</div>}
+      {r.acctAt && <div className="dpa-acct-m dim">계정 최종 수정 {KST(r.acctAt)}</div>}
+    </div>
+  );
+};
+
 const Versions = ({ m }) => {
   const vs = m?.versions || [];
   if (vs.length < 2) return null;
@@ -422,6 +479,7 @@ function Detail({ r, months, loading }) {
         <Kv k="리뷰 확인" v={KST(r.reviewAt)} />
         <Kv k="캠페인" v={CAMPAIGN[r.campaign] || null} />
       </div>
+      <Account r={r} />
 
       {/* 정지 사유 — 포털 원문 그대로 둔다. 번역만 붙여서 판단은 사람이 하게 한다.
           '왜 꺼졌나'에 따라 대응이 갈린다(무소비 자동정지 vs 심사·위반). */}
