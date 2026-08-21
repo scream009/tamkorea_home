@@ -41,6 +41,25 @@ const ageOf = (iso) => {
   const t = Date.parse(iso);
   return Number.isNaN(t) ? null : (Date.now() - t) / 86400000;
 };
+// 잔액 소진일 — 날짜와 '며칠째'를 같이 보여준다.
+// 며칠째가 중요한 이유: 0 인 매장은 늘 0 이라 날짜만 봐서는 심각도가 안 보인다.
+// 근사(~) 는 관측 간격 때문에 하루 이틀 어긋날 수 있다는 뜻이다.
+const Depleted = ({ r }) => {
+  if (!r?.depletedAt) return <span className="dpa-age none">—</span>;
+  const d = r.depletedDays;
+  const cls = d == null ? '' : d >= 7 ? ' bad' : d >= 3 ? ' warn' : '';
+  return (
+    <>
+      {r.depletedApprox ? '~' : ''}{day(r.depletedAt)}
+      {d != null && (
+        <span className={`dpa-age${cls}`}>
+          {d <= 0 ? '어제 소진' : `${d}일째 멈춤`}
+        </span>
+      )}
+    </>
+  );
+};
+
 const Age = ({ at }) => {
   const d = ageOf(at);
   if (d == null) return <span className="dpa-age none">확인 안 됨</span>;
@@ -253,6 +272,9 @@ export default function AdminDianpingPage() {
               <Cell k="주말 할증" v={r.floatRatio == null ? '—' : `+${r.floatRatio}%`} />
               <Cell k="노출시간" v={r.hours ? r.hours.replace('매일 ', '') : '—'} wide />
               <Cell k="충전일" v={day(r.chargedAt)} />
+              {/* 잔액 0 이 된 날 — "며칠째 멈춰 있나"가 한눈에 보이게.
+                  플랫폼이 이력을 안 줘서 수집기가 관측으로 판정한 값이다. */}
+              <Cell k="소진일" v={<Depleted r={r} />} />
               <Cell
                 k="CPT"
                 v={r.cptExpire
@@ -370,6 +392,7 @@ function Detail({ r, months, loading }) {
         <Kv k="피크 예산" v={r.peak ? won(r.peak) : null} />
         <Kv k="일 소진" v={r.spend != null ? won(r.spend) : null} />
         <Kv k="소진 예상" v={r.daysLeft != null ? `약 ${r.daysLeft}일` : null} />
+        <Kv k="잔액 소진일" v={r.depletedAt ? <Depleted r={r} /> : null} />
         <Kv k="악평 30일 / 누적" v={`${n(r.bad30)} / ${n(r.badTotal)}`} />
         <Kv k="설정 확인" v={KST(r.settingAt)} />
         <Kv k="잔액 확인"

@@ -279,3 +279,7 @@
   border: 1px solid rgba(251, 191, 36, .3); }
 .dpa-age.none { color: #9ca3af; background: rgba(156, 163, 175, .12);
   border-color: rgba(156, 163, 175, .3); }
+
+/* 잔액 소진 경과 — 오래 멈춰 있을수록 눈에 띄게. 3일 주의 / 7일 이상 경고. */
+.dpa-age.warn { color: #f59e0b; background: rgba(245, 158, 11, .14); }
+.dpa-age.bad  { color: #f87171; background: rgba(248, 113, 113, .16); }

@@ -77,6 +77,11 @@ function toRow(f) {
     daysLeft: f['DP_소진예상일'] ?? null,
     chargedAt: f['DP_최근충전일'] || null,
     balanceAt: f['DP_잔액확인일'] || null,
+    // 잔액이 0 이 된 날 — 플랫폼이 이력을 안 줘서 수집기가 관측으로 판정한다.
+    // '며칠째 멈춰 있나'를 사람이 로그를 뒤져 세던 걸 대신한다(2026-08-21).
+    depletedAt: f['DP_소진일'] || null,
+    depletedDays: f['DP_소진경과일'] ?? null,
+    depletedApprox: !!f['DP_소진일_근사'],
     // 광고 설정
     budget: f['DP_일예산'] ?? null,
     floatRatio: f['DP_주말할증'] ?? null,
@@ -102,6 +107,7 @@ const CS_FIELDS = [
   'DP_업종', 'DP_업종_한글', 'DP_상점유형',
   'DP_광고상태', 'DP_캠페인상태', 'DP_정지사유', 'DP_캠페인수',
   'DP_잔액', 'DP_일소진', 'DP_소진예상일', 'DP_최근충전일', 'DP_잔액확인일',
+  'DP_소진일', 'DP_소진경과일', 'DP_소진일_근사',
   'DP_일예산', 'DP_주말할증', 'DP_피크예산', 'DP_클릭단가', 'DP_노출시간',
   'DP_주간노출시간', 'DP_캠페인ID', 'DP_설정확인일',
   'DP_CPT_만료일', 'DP_CPT_상태', 'DP_악평_7일', 'DP_악평_30일', 'DP_악평_누적', 'DP_리뷰확인일',
