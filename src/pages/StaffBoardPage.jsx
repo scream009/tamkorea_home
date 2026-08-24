@@ -576,7 +576,6 @@ export default function StaffBoardPage() {
                       row={r}
                       months={data.months}
                       el={data.el}
-                      flt={flt}
                       sel={sel}
                       setSel={setSel}
                       initMgr={recruiter}
@@ -697,14 +696,13 @@ function InfoItem({ k, v, wide, warn }) {
 }
 
 /* ── 펼침 — 앞뒤월 요약 블록 먼저, 요소를 누르면 세부리스트 ── */
-function Expand({ row, months, el, flt, sel, setSel, initMgr, memoEdits, onSaveMemo, onCancelRow, onCancelQuiet, onSaveResult, resEdits }) {
+function Expand({ row, months, el, sel, setSel, initMgr, memoEdits, onSaveMemo, onCancelRow, onCancelQuiet, onSaveResult, resEdits }) {
   return (
     <div className="stb-det" onClick={(e) => e.stopPropagation()}>
       <div className="stb-blks">
         {months.map((m) => {
           const cell = row.m[m];
           if (!cell) return <div key={m} className="stb-blk stb-blk-none"><b>{m}</b><span className="stb-mut">계약 없음</span></div>;
-          const agg = aggOf(cell, flt);
           const active = sel?.month === m;
           return (
             <div key={m} className={`stb-blk ${active ? 'on' : ''}`}>
@@ -719,37 +717,44 @@ function Expand({ row, months, el, flt, sel, setSel, initMgr, memoEdits, onSaveM
                   if (!n) return null;
                   const pc = paceClass(n.tg ? n.vis / n.tg : 0, el[m] ?? 0, n.tg);
                   const isSel = (b) => active && sel?.type === k && sel?.bucket === b;
+                  // 대기·지연은 유형별로 따로 (Owner 2026-08-24 — 합산이면 어느 유형의 지연인지 모른다)
+                  const tAgg = aggOf(cell, { type: k, recruiter: '' });
                   return (
-                    <div key={k} className="stb-blk-ty">
-                      <i>{k}</i>
-                      <span className="stb-cnum stb-cnum-tg"><i>목</i><b>{n.tg}</b></span>
-                      <NumBtn label="섭" value={n.vis} cls={pc} title="섭외(방문)"
-                        on={() => setSel({ month: m, type: k, bucket: 'visit' })} active={isSel('visit')} />
-                      <NumBtn label="업" value={n.up} cls="" title="업로드 완료"
-                        on={() => setSel({ month: m, type: k, bucket: 'upload' })} active={isSel('upload')} />
-                      <NumBtn label="취" value={n.cx} cls={n.cx > 0 ? 'orange' : 'mut'} title="취소·노쇼"
-                        on={() => setSel({ month: m, type: k, bucket: 'cancel' })} active={isSel('cancel')} />
-                      {n.tg > 0 && n.vis >= n.tg && (
-                        <span className="stb-done" title="이 달 목표를 채웠습니다. 신규 예약은 다음 달 정산월로 입력하세요.">
-                          ✅ 완료 · 다음달
-                        </span>
-                      )}
-                    </div>
+                    <React.Fragment key={k}>
+                      <div className="stb-blk-ty">
+                        <i>{k}</i>
+                        <span className="stb-cnum stb-cnum-tg"><i>목</i><b>{n.tg}</b></span>
+                        <NumBtn label="섭" value={n.vis} cls={pc} title="섭외(방문)"
+                          on={() => setSel({ month: m, type: k, bucket: 'visit' })} active={isSel('visit')} />
+                        <NumBtn label="업" value={n.up} cls="" title="업로드 완료"
+                          on={() => setSel({ month: m, type: k, bucket: 'upload' })} active={isSel('upload')} />
+                        <NumBtn label="취" value={n.cx} cls={n.cx > 0 ? 'orange' : 'mut'} title="취소·노쇼"
+                          on={() => setSel({ month: m, type: k, bucket: 'cancel' })} active={isSel('cancel')} />
+                        {n.tg > 0 && n.vis >= n.tg && (
+                          <span className="stb-done" title="이 달 목표를 채웠습니다. 신규 예약은 다음 달 정산월로 입력하세요.">
+                            ✅ 완료 · 다음달
+                          </span>
+                        )}
+                      </div>
+                      <div className="stb-blk-f stb-blk-f-ty">
+                        <NumBtn label="대기" value={tAgg.pend} cls={tAgg.pend > 0 ? 'warn' : 'mut'} title={`${k} 제출대기`}
+                          on={() => setSel({ month: m, type: k, bucket: 'pend' })} active={isSel('pend')} />
+                        <NumBtn label="지연" value={tAgg.late} cls={tAgg.late > 0 ? 'bad' : 'mut'} title={`${k} 마감 넘긴 미제출`}
+                          on={() => setSel({ month: m, type: k, bucket: 'late' })} active={isSel('late')} />
+                        <button
+                          type="button"
+                          className={`stb-cnum stb-all ${active && sel?.type === k && !sel?.bucket ? 'sel' : ''}`}
+                          onClick={() => setSel({ month: m, type: k, bucket: null })}
+                        >{k} 목록</button>
+                      </div>
+                    </React.Fragment>
                   );
                 })}
-              <div className="stb-blk-f">
-                <NumBtn label="대기" value={agg.pend} cls={agg.pend > 0 ? 'warn' : 'mut'} title="제출대기"
-                  on={() => setSel({ month: m, type: null, bucket: 'pend' })}
-                  active={active && sel?.bucket === 'pend'} />
-                <NumBtn label="지연" value={agg.late} cls={agg.late > 0 ? 'bad' : 'mut'} title="마감 넘긴 미제출"
-                  on={() => setSel({ month: m, type: null, bucket: 'late' })}
-                  active={active && sel?.bucket === 'late'} />
-                <button
-                  type="button"
-                  className={`stb-cnum stb-all ${active && !sel?.bucket ? 'sel' : ''}`}
-                  onClick={() => setSel({ month: m, type: null, bucket: null })}
-                >전체 목록</button>
-              </div>
+              {/* 기자단 — 가끔 있으니 실적이 있을 때만 건수 한 줄 (완료 링크를 받아 적는
+                  형태라 대기·지연 개념이 없다, Owner 2026-08-24) */}
+              {(cell.t?.기자?.[1] > 0) && (
+                <div className="stb-blk-press">기자단 <b>{cell.t.기자[1]}</b>건{cell.t.기자[0] > 0 ? ` / 목표 ${cell.t.기자[0]}` : ''}</div>
+              )}
             </div>
           );
         })}

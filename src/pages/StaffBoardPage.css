@@ -101,7 +101,10 @@
   border:1px solid var(--line2);border-radius:7px;padding:.14rem .5rem;cursor:pointer;
   font-family:inherit;color:var(--ink);transition:.13s;line-height:1.2}
 .stb-cnum i{font-style:normal;font-size:.62rem;color:var(--muted);font-weight:600}
-.stb-cnum b{font-family:var(--mono);font-size:.84rem;font-weight:800;font-variant-numeric:tabular-nums}
+/* 숫자는 두 자리 기준 우측 정렬로 폭을 고정 — 1자리·2자리가 섞여도 세로 열이 맞는다
+   (Owner 2026-08-24: 목표가 세 자리인 경우는 없다) */
+.stb-cnum b{font-family:var(--mono);font-size:.84rem;font-weight:800;font-variant-numeric:tabular-nums;
+  display:inline-block;min-width:2ch;text-align:right}
 button.stb-cnum:hover{border-color:var(--accent);background:rgba(139,92,246,.12)}
 .stb-cnum.sel{border-color:var(--accent);background:rgba(139,92,246,.22);box-shadow:0 0 0 1px rgba(139,92,246,.35)}
 .stb-cnum-tg{cursor:default;background:transparent;border-color:transparent}
@@ -319,3 +322,9 @@ button.stb-cnum:hover{border-color:var(--accent);background:rgba(139,92,246,.12)
 /* 상태 = 의미 단위 두 줄(변경/확정), 담당·유형 = 절대 안 꺾임 (2026-08-24) */
 .stb-td-nw{white-space:nowrap}
 .stb-td-st{white-space:nowrap;line-height:1.25;font-size:.78rem}
+
+/* 유형별 대기·지연·목록 줄 + 기자단 건수 (2026-08-24) */
+.stb-blk-f-ty{border-top:none;padding-top:0;margin-top:-.15rem;margin-bottom:.3rem;padding-left:2.55rem}
+.stb-blk-press{margin-top:.15rem;padding:.22rem .45rem;border-radius:6px;background:rgba(255,255,255,.03);
+  border:1px dashed var(--line2);font-size:.7rem;color:var(--ink2);font-family:var(--mono)}
+.stb-blk-press b{color:var(--ink)}
