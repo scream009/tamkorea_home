@@ -84,14 +84,18 @@
 /* ── 펼친 상세 ── */
 .dpa-detail > td { padding: 0 !important; background: rgba(0, 0, 0, .3); }
 .dpa-dt { padding: 18px 20px; border-top: 1px solid rgba(168, 85, 247, .25); }
+/* 칩 폭을 좁혀 넓은 화면에서 13개가 한 줄에 들어오게 한다 (Owner 2026-08-24).
+   auto-fit 이라 화면이 좁아지면 알아서 줄이 늘어난다. */
 .dpa-dt-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
-  gap: 9px; margin-bottom: 18px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 7px; margin-bottom: 18px;
 }
 .dpa-kv {
-  display: flex; flex-direction: column; gap: 2px; padding: 9px 11px; border-radius: 9px;
+  display: flex; flex-direction: column; gap: 2px; padding: 8px 9px; border-radius: 9px;
   background: rgba(255, 255, 255, .03); border: 1px solid rgba(255, 255, 255, .06);
+  min-width: 0;   /* 긴 값이 트랙을 넓히지 못하게 — 없으면 칩 하나가 줄을 깨뜨린다 */
 }
+.dpa-kv b { overflow-wrap: anywhere; line-height: 1.35; }
 .dpa-kv span { font-size: 10.5px; color: #6b7280; }
 .dpa-kv b { font-size: 12.5px; color: #e7e9f0; font-variant-numeric: tabular-nums; }
 .dpa-dt-h { font-size: 12.5px; font-weight: 700; color: #c4b5fd; margin-bottom: 8px; }

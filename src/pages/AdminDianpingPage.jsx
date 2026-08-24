@@ -495,9 +495,12 @@ function Detail({ r, months, loading }) {
         <Kv k="잔액 소진일" v={r.depletedAt ? <Depleted r={r} /> : null} />
         {(() => {
           const est = monthBudgetEst(r.budget, r.floatRatio, r.peak);
-          return <Kv k="월예산 추정" v={est
-            ? `${est.total.toLocaleString()}元 (평일 ${est.wd}일×${est.daily.toLocaleString()} + 주말 ${est.we}일×${est.peakVal.toLocaleString()})`
-            : null} />;
+          // 산식은 툴팁으로 — 값 칸에 그대로 두면 칩 하나가 줄 전체를 밀어낸다 (2026-08-24)
+          return <Kv k="월예산 추정"
+            v={est ? `${est.total.toLocaleString()}元` : null}
+            title={est
+              ? `평일 ${est.wd}일 × ${est.daily.toLocaleString()}元 + 주말 ${est.we}일 × ${est.peakVal.toLocaleString()}元`
+              : null} />;
         })()}
         <Kv k="악평 30일 / 누적" v={`${n(r.bad30)} / ${n(r.badTotal)}`} />
         <Kv k="설정 확인" v={KST(r.settingAt)} />
@@ -592,8 +595,8 @@ function Detail({ r, months, loading }) {
   );
 }
 
-const Kv = ({ k, v }) => (
-  <div className="dpa-kv"><span>{k}</span><b>{v || '—'}</b></div>
+const Kv = ({ k, v, title }) => (
+  <div className="dpa-kv" title={title || undefined}><span>{k}</span><b>{v || '—'}</b></div>
 );
 
 /** 정렬 비교자.

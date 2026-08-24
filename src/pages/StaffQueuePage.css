@@ -180,3 +180,8 @@
   .stq-finds{margin-left:0;flex:1 1 100%}
   .stq-row-infl{max-width:none;grid-area:auto}
 }
+
+/* 발송대기가 남아 있으면 탭을 띄운다 — 기본 화면이 '전체'가 되면서 놓치기 쉬워졌다 (2026-08-24) */
+.stq-tabs button.urgent{border-color:rgba(248,113,113,.55);color:#FCA5A5}
+.stq-tabs button.urgent b{color:#FCA5A5}
+.stq-tabs button.urgent.on{border-color:#F87171;background:rgba(248,113,113,.16);color:#FECACA}

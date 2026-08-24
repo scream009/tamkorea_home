@@ -62,11 +62,10 @@ export default function StaffQueuePage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState('todo');
+  const [tab, setTab] = useState('all');   // 기본 = 전체 리스트 (Owner 2026-08-24 확정)
   const [mgr, setMgr] = useState('');
   const [search, setSearch] = useState('');
   const [search2, setSearch2] = useState('');   // 2차 조건 — 1차와 AND (Owner 2026-08-21: 인플+매장 동시 필터)
-  const [autoTabDone, setAutoTabDone] = useState(false);
   const [busyId, setBusyId] = useState('');
   const [modal, setModal] = useState(null);   // {kind:'modify'|'cancel', item}
   const [toast, setToast] = useState('');
@@ -132,14 +131,10 @@ export default function StaffQueuePage() {
     return c;
   }, [data, mgr]);
 
-  /* 첫 로드 때 '발송대기'가 비어 있으면 전체로 연다 (Owner 2026-08-21).
-     기본 탭을 아예 '전체'로 바꾸자는 안이 있었지만, 발송대기(=지금 내 차례)는
-     '까먹음'을 막는 안전장치라 있을 때는 먼저 보여야 한다. 0건일 때만 비켜선다 —
-     빈 화면을 보고 "데이터가 없네?" 하는 혼란은 이걸로 사라진다. */
-  if (data && !autoTabDone) {
-    setAutoTabDone(true);
-    if (tab === 'todo' && counts.todo === 0) setTab('all');
-  }
+  /* 기본 화면은 '전체 리스트'다 (Owner 2026-08-24). Softr 처럼 목록을 먼저 보고
+     거기서 일을 찾는 흐름이 담당자에게 익숙하다는 판단.
+     대신 발송대기(=지금 내 차례)가 남아 있으면 탭을 빨갛게 띄워 '까먹음'을 막는다 —
+     그 안전장치가 이 화면의 존재 이유라서 숫자만 조용히 두지 않는다. */
 
   const items = useMemo(() => {
     // 조건 두 개를 AND 로 건다 — '인플 + 매장' 같은 교차 필터가 필요하다(Owner 2026-08-21).
@@ -229,8 +224,9 @@ export default function StaffQueuePage() {
             {TABS.map((t) => (
               <button
                 key={t.key}
-                className={tab === t.key ? 'on' : ''}
+                className={`${tab === t.key ? 'on' : ''}${t.key === 'todo' && counts.todo > 0 ? ' urgent' : ''}`}
                 onClick={() => setTab(t.key)}
+                title={t.key === 'todo' && counts.todo > 0 ? '아직 발송하지 않은 건이 있습니다' : undefined}
               >{t.label} <b>{counts[t.key]}</b></button>
             ))}
           </div>
