@@ -90,8 +90,10 @@ function inBucket(d, bucket) {
 function filterDetails(cell, { type, recruiter }) {
   return (cell?.d || []).filter((d) => {
     const ty = typeOf(d);
-    if (!VISIBLE_TYPES.includes(ty)) return false;
-    if (type && ty !== type) return false;
+    // 유형을 집어 열면(기자 포함) 그 유형만, 전체 목록은 VISIBLE_TYPES 만
+    // — 기자단은 줄엔 없지만 목록은 볼 수 있어야 한다 (Owner 2026-08-24)
+    if (type) { if (ty !== type) return false; }
+    else if (!VISIBLE_TYPES.includes(ty)) return false;
     if (recruiter && d.mgr !== recruiter) return false;
     return true;
   });
@@ -784,10 +786,15 @@ function Expand({ row, months, el, sel, setSel, initMgr, memoEdits, onSaveMemo, 
                     </React.Fragment>
                   );
                 })}
-              {/* 기자단 — 가끔 있으니 실적이 있을 때만 건수 한 줄 (완료 링크를 받아 적는
-                  형태라 대기·지연 개념이 없다, Owner 2026-08-24) */}
-              {(cell.t?.기자?.[1] > 0) && (
-                <div className="stb-blk-press">기자단 <b>{cell.t.기자[1]}</b>건{cell.t.기자[0] > 0 ? ` / 목표 ${cell.t.기자[0]}` : ''}</div>
+              {/* 기자단 — 가끔 있으니 목표·실적·예약 중 하나라도 있을 때만 건수 한 줄
+                  (대기·지연 개념 없음). 누르면 기자 목록 (Owner 2026-08-24) */}
+              {(cell.t?.기자?.[0] > 0 || cell.t?.기자?.[1] > 0
+                || (cell.d || []).some((x) => typeOf(x) === '기자')) && (
+                <button
+                  type="button"
+                  className={`stb-blk-press ${active && sel?.type === '기자' ? 'sel' : ''}`}
+                  onClick={() => setSel({ month: m, type: '기자', bucket: null })}
+                >기자단 <b>{cell.t?.기자?.[1] || 0}</b>건{cell.t?.기자?.[0] > 0 ? ` / 목표 ${cell.t.기자[0]}` : ''} · 목록</button>
               )}
             </div>
           );
