@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { staffHeaders } from '../lib/staffKey';
-import StaffNav from '../components/StaffNav';
 import InflRegModal from '../components/InflRegModal';
 import DateTime30 from '../components/DateTime30';
 import './StaffResvPage.css';
@@ -436,7 +435,6 @@ export default function StaffResvPage() {
             <span className="srv-scope">예약입력_DB → 자동 분할</span>
           </div>
           <div className="srv-nav">
-            <StaffNav current="new" />
           </div>
         </header>
 

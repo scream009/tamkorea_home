@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { staffHeaders } from '../lib/staffKey';
-import StaffNav from '../components/StaffNav';
 import './StaffCastingPage.css';
 
 /**
@@ -189,7 +188,6 @@ export default function StaffCastingPage() {
   return (
     <div className="scast-root">
       <div className="scast-wrap">
-      <StaffNav current="casting" />
       <header className="scast-head">
         <h1>체험단 선발</h1>
         <p className="scast-sub">

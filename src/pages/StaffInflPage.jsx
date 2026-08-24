@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { staffHeaders } from '../lib/staffKey';
-import StaffNav from '../components/StaffNav';
 import InflRegModal from '../components/InflRegModal';
 import './StaffInflPage.css';
 
@@ -132,7 +131,6 @@ export default function StaffInflPage() {
             {data && <span className="sif-cnt">{list.length} / {data.infls.length}명</span>}
             <button type="button" className="sif-newbtn" onClick={() => setReg(true)}>＋ 신규 등록</button>
           </div>
-          <StaffNav current="infl" />
         </header>
 
         {stats && (

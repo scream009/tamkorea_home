@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { staffHeaders } from '../lib/staffKey';
-import StaffNav from '../components/StaffNav';
 import './StaffCardsPage.css';
 
 /**
@@ -108,7 +107,6 @@ export default function StaffCardsPage() {
   return (
     <div className="scard-root">
       <div className="scard-wrap">
-        <StaffNav current="cards" />
         <header className="scard-head">
           <h1>모집카드 관리
             <button type="button" className="scard-ghost scard-sitelink"

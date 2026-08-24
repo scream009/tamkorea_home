@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { staffHeaders } from '../lib/staffKey';
-import StaffNav from '../components/StaffNav';
 import StaffGame from '../components/StaffGame';
 import './StaffBoardPage.css';
 
@@ -354,7 +353,6 @@ export default function StaffBoardPage() {
               <button className={sort === 'pace' ? 'on' : ''} onClick={() => setSort('pace')}>진도순</button>
               <button className={sort === 'name' ? 'on' : ''} onClick={() => setSort('name')}>이름순</button>
             </div>
-            <StaffNav current="board" />
             <button className="stb-ghost" onClick={() => load(month)} title="새로고침">⟳</button>
           </div>
         </header>

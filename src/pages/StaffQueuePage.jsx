@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { staffHeaders } from '../lib/staffKey';
-import StaffNav from '../components/StaffNav';
 import DateTime30 from '../components/DateTime30';
 import './StaffQueuePage.css';
 
@@ -214,7 +213,6 @@ export default function StaffQueuePage() {
             {data?.who && <span className="stq-who">{data.who}</span>}
           </div>
           <div className="stq-nav">
-            <StaffNav current="queue" />
             <button className="stq-ghost" onClick={load} title="새로고침">⟳</button>
           </div>
         </header>

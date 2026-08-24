@@ -1,0 +1,79 @@
+/* 담당자 화면은 마케팅 헤더가 없다 — 전역 body 상단 패딩을 끈다 (2026-08-24) */
+body.staff-fullbleed { padding-top: 0 !important; }
+
+/* 담당자 공통 상단 고정 메뉴 (2026-08-24)
+   — 화면을 옮겨도 메뉴가 늘 같은 자리에 있게 한다. */
+.sshell {
+  /* 담당자 화면 팔레트 — 각 staff 페이지(.stq-root 등)가 쓰는 값과 같게 맞춘다.
+     페이지 루트에만 정의돼 있어 셸에서는 참조할 수 없으므로 여기서 한 번 더 선언한다. */
+  --snv-bg: #0B0D14;
+  --snv-ink: #E9EBF2;
+  --snv-ink2: #C4B5FD;
+  --snv-muted: #9CA3AF;
+  --snv-muted2: #8B92A8;
+  --snv-accent: #8B5CF6;
+  --snv-line: rgba(255, 255, 255, .09);
+  --snv-line2: rgba(255, 255, 255, .14);
+  --snv-hover: rgba(255, 255, 255, .05);
+  min-height: 100vh;
+}
+
+.sshell-bar {
+  position: sticky; top: 0; z-index: 60;
+  background: color-mix(in srgb, var(--snv-bg) 92%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--snv-line);
+}
+
+.sshell-row { display: flex; align-items: center; gap: .35rem; padding: 0 1rem; }
+
+/* 1단 — 대분류 */
+.sshell-main { height: 46px; }
+.sshell-brand {
+  font-size: .64rem; letter-spacing: .18em; font-weight: 800; color: var(--snv-accent);
+  margin-right: .55rem; flex: 0 0 auto;
+}
+.sshell-sec {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .38rem .78rem; border-radius: 9px;
+  font-size: .86rem; font-weight: 700; color: var(--snv-muted); text-decoration: none;
+  border: 1px solid transparent; white-space: nowrap; transition: .15s;
+}
+.sshell-sec:hover { color: var(--snv-ink); background: var(--snv-hover); }
+.sshell-sec.on {
+  color: var(--snv-ink); background: color-mix(in srgb, var(--snv-accent) 20%, transparent);
+  border-color: color-mix(in srgb, var(--snv-accent) 55%, transparent);
+}
+.sshell-ic { font-size: .92rem; line-height: 1; }
+.sshell-out {
+  margin-left: auto; flex: 0 0 auto;
+  background: transparent; border: 1px solid var(--snv-line2); border-radius: 8px;
+  color: var(--snv-muted); font-size: .74rem; padding: .3rem .7rem; cursor: pointer; font-family: inherit;
+}
+.sshell-out:hover { color: var(--snv-ink); border-color: var(--snv-line2); }
+
+/* 2단 — 하위 메뉴 */
+.sshell-sub {
+  height: 38px; background: var(--snv-hover);
+  border-top: 1px solid var(--snv-hover);
+  overflow-x: auto; scrollbar-width: none;
+}
+.sshell-sub::-webkit-scrollbar { display: none; }
+.sshell-item {
+  padding: .3rem .7rem; border-radius: 7px; font-size: .8rem; color: var(--snv-muted2);
+  text-decoration: none; white-space: nowrap; flex: 0 0 auto; transition: .15s;
+}
+.sshell-item:hover { color: var(--snv-ink); background: var(--snv-hover); }
+.sshell-item.on { color: var(--snv-ink2); background: color-mix(in srgb, var(--snv-accent) 16%, transparent); font-weight: 700; }
+
+/* 모바일 — 두 줄을 유지하되 높이를 줄이고 가로로 흘려보낸다 */
+@media (max-width: 700px) {
+  .sshell-row { padding: 0 .6rem; gap: .25rem; }
+  .sshell-main { height: 42px; overflow-x: auto; scrollbar-width: none; }
+  .sshell-main::-webkit-scrollbar { display: none; }
+  .sshell-brand { display: none; }
+  .sshell-sec { padding: .32rem .6rem; font-size: .82rem; flex: 0 0 auto; }
+  .sshell-out { font-size: .7rem; padding: .26rem .55rem; }
+  .sshell-sub { height: 34px; }
+  .sshell-item { font-size: .76rem; padding: .26rem .55rem; }
+}
