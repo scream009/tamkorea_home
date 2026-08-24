@@ -100,7 +100,9 @@
 .stq-row-wrap:last-child{border-bottom:0}
 .stq-row-wrap.busy{opacity:.55;pointer-events:none}
 /* 버튼 열은 고정 폭 — auto 로 두면 버튼 없는 행(취소·노쇼)에서 열이 접혀 행마다 정렬이 깨진다 */
-.stq-row{display:grid;grid-template-columns:5.4rem minmax(8rem,1.2fr) minmax(7rem,1fr) minmax(9rem,1fr) minmax(7rem,.9fr) 17rem;
+/* 열 7개: 상태·매장·메타·일시·건수·인플·버튼 —
+   인플 열을 추가할 때 이 template 을 안 늘리면 버튼이 다음 줄로 밀린다(2026-08-24 실측) */
+.stq-row{display:grid;grid-template-columns:5.4rem minmax(7rem,1.1fr) minmax(6.5rem,.9fr) minmax(8.5rem,.9fr) minmax(6.5rem,.8fr) minmax(5.5rem,.8fr) 17rem;
   gap:.6rem;align-items:center;padding:.45rem .8rem;cursor:pointer;transition:.12s}
 .stq-row:hover{background:#191D28}
 .stq-row-store{font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -175,7 +177,7 @@
 .stq-clear{flex:0 0 auto;padding:.3rem .55rem}
 /* 리스트 행: 인플 아이디 — 취소·변경 대상 식별용 */
 .stq-row-infl{font-size:.72rem;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;
-  white-space:nowrap;min-width:0;max-width:14rem}
+  white-space:nowrap;min-width:0}
 @media (max-width:700px){
   .stq-finds{margin-left:0;flex:1 1 100%}
   .stq-row-infl{max-width:none;grid-area:auto}
