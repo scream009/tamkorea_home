@@ -23,6 +23,7 @@ import {
 import QRCode from 'qrcode';
 import { resolveEventMessage, eventMessageLabel } from '../lib/eventMessage';
 import LinkifiedText from '../components/LinkifiedText';
+import StoreLoginCard from '../components/StoreLoginCard';
 import './ClientSchedulePage.css';
 import './ClientReportPage.css';
 
@@ -712,6 +713,9 @@ export default function ClientSchedulePage() {
         {/* ★ 신규: 주간 CPC 배너 + 따종디엔핑 월간 리포트 진입 (달력 위) */}
         <CpcBanner cpc={cpcInfo} isPartner={isPartner} />
         <DpReportEntry report={dpReport} campaignId={campaignId} />
+        {/* 따종 운영 매장에만 — 계정 문의 대응용 (Owner 2026-08-21).
+            비번은 '보기'를 눌러야 서버에서 온다(StoreLoginCard 주석 참고). */}
+        {isDpClient && campaignId && <StoreLoginCard campaignId={campaignId} />}
 
         {/* 4. Main Content (Calendar / List) */}
         {viewMode === 'calendar' ? (

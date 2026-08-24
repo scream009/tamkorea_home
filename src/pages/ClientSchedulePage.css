@@ -989,3 +989,38 @@
 .dprep-new{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;
   font-size:.68rem;font-weight:800;letter-spacing:.02em;
   background:linear-gradient(90deg,#7434FF,#9B70FF);color:#fff;vertical-align:middle}
+
+/* ── 따종 상인포털 로그인 카드 (2026-08-21) ─────────────────────────
+   고객사가 계정을 물을 때마다 담당자가 Airtable 을 뒤지던 일을 없앤다. */
+.slog{margin:0 0 1.1rem;padding:.9rem 1.1rem;border-radius:14px;background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.1)}
+.slog-h{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap}
+.slog-ic{flex:0 0 auto;width:30px;height:30px;border-radius:9px;display:flex;align-items:center;
+  justify-content:center;background:rgba(139,92,246,.18);color:#C4B5FD}
+.slog-t{display:flex;flex-direction:column;gap:.1rem;min-width:0}
+.slog-t b{font-size:.88rem;color:#E9EBF2;font-weight:700}
+.slog-d{font-size:.72rem;color:#9CA3AF}
+.slog-btn{margin-left:auto;display:inline-flex;align-items:center;gap:.3rem;padding:.4rem .8rem;
+  border-radius:8px;border:1px solid rgba(139,92,246,.5);background:rgba(139,92,246,.16);
+  color:#DDD6FE;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s}
+.slog-btn:hover{background:rgba(139,92,246,.3)}
+.slog-btn:disabled{opacity:.55;cursor:default}
+.slog-rows{margin-top:.8rem;display:flex;flex-direction:column;gap:.45rem}
+.slog-row{display:flex;align-items:center;gap:.6rem;padding:.5rem .7rem;border-radius:9px;
+  background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.08)}
+.slog-k{flex:0 0 4.6rem;font-size:.74rem;color:#9CA3AF}
+.slog-v{flex:1;min-width:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9rem;
+  color:#fff;word-break:break-all;letter-spacing:.01em}
+.slog-pw{color:#FDE68A}
+.slog-cp{flex:0 0 auto;display:inline-flex;align-items:center;gap:.25rem;padding:.28rem .6rem;
+  border-radius:7px;border:1px solid rgba(255,255,255,.16);background:transparent;color:#C3C9DA;
+  font-size:.72rem;cursor:pointer;font-family:inherit;transition:.2s}
+.slog-cp:hover{border-color:rgba(255,255,255,.34);color:#fff}
+.slog-f{margin-top:.65rem;font-size:.72rem;color:#8B92A8;line-height:1.6}
+.slog-f b{color:#C4B5FD}
+.slog-warn{color:#FCA5A5}
+@media (max-width:640px){
+  .slog-btn{margin-left:0;width:100%;justify-content:center;margin-top:.5rem}
+  .slog-k{flex-basis:3.8rem}
+  .slog-v{font-size:.82rem}
+}
