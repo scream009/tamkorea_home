@@ -13,7 +13,8 @@
 /* ── 헤더 ── */
 .stb-head{display:flex;flex-wrap:wrap;align-items:center;gap:.7rem;margin-bottom:.8rem}
 .stb-title{display:flex;align-items:center;gap:.5rem}
-.stb-title h1{margin:0;font-size:1.05rem;font-weight:800;letter-spacing:-.01em}
+/* 전역 h1 이 라이트 팔레트 색(var(--text-color))을 강제해 다크 화면에서 안 보인다 — 명시 덮기 */
+.stb-title h1{margin:0;font-size:1.05rem;font-weight:800;letter-spacing:-.01em;color:var(--ink)}
 .stb-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent)}
 .stb-who{font-family:var(--mono);font-size:.68rem;font-weight:700;color:var(--accent2);
   background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.4);

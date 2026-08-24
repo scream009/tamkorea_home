@@ -7,7 +7,7 @@ import './StaffBoardPage.css';
 /**
  * 담당자 진도 보드 (/staff) — Phase 1, 조회 전용.
  *
- * 체험단 섭외담당용 — **인플 유형은 이 보드에서 뺀다** (체험·기자만).
+ * 범위는 헤더 토글: 전체(기본)/체험단(기자 포함)/인플 (Owner 2026-08-24).
  * 고객사 나래비 × 선택월. 숫자줄 = 목표·섭외(방문)·업로드·취소, 숫자를 누르면
  * 해당 목록만 필터돼 나온다. 업체명을 누르면 관리화면처럼 앞뒤월 요약 블록이
  * 먼저 나오고, 블록의 요소를 누르면 세부리스트가 나온다.
@@ -46,7 +46,7 @@ function shortMonth(v) {
   return p ? `${p.n}월` : v;
 }
 
-/* ── 보드 범위 — 오직 체험단. 인플·기자단은 이 보드가 다루지 않는다 ── */
+/* ── 보드 범위 — 헤더 토글: 전체(기본)/체험단(기자 포함)/인플 (Owner 2026-08-24) ── */
 /* 보드에 보이는 유형 — 배열 순서가 화면 순서다 (체험 블록 아래 인플, Owner 2026-08-24).
    데이터는 원래 전 유형이 내려오고 있었고 이 상수가 화면만 잠그고 있었다.
    ⚠️ 여기 추가하면 미니셀 합산·진도율·행 리스팅에도 그 유형이 포함된다. '기자'는 아직 제외. */
@@ -87,13 +87,16 @@ function inBucket(d, bucket) {
   return true;
 }
 
-function filterDetails(cell, { type, recruiter }) {
+function filterDetails(cell, { type, recruiter, scope }) {
   return (cell?.d || []).filter((d) => {
     const ty = typeOf(d);
-    // 유형을 집어 열면(기자 포함) 그 유형만, 전체 목록은 VISIBLE_TYPES 만
-    // — 기자단은 줄엔 없지만 목록은 볼 수 있어야 한다 (Owner 2026-08-24)
+    // 유형을 집어 열면(기자 포함) 그 유형만. 전체 목록은 헤더 범위(scope)를 따른다:
+    // 체험단 범위엔 기자도 함께, 인플 범위엔 인플만, 전체는 VISIBLE_TYPES (Owner 2026-08-24)
     if (type) { if (ty !== type) return false; }
-    else if (!VISIBLE_TYPES.includes(ty)) return false;
+    else {
+      const allow = scope === '체험' ? ['체험', '기자'] : scope ? [scope] : VISIBLE_TYPES;
+      if (!allow.includes(ty)) return false;
+    }
     if (recruiter && d.mgr !== recruiter) return false;
     return true;
   });
@@ -144,7 +147,7 @@ function typeNums(cell, k, recruiter) {
 }
 
 /** 월 셀 집계 (표시 유형 전체) — 미니 셀·KPI·정렬용 */
-function aggOf(cell, { type, recruiter }) {
+function aggOf(cell, { type, recruiter, scope }) {
   if (!cell) return null;
   let tg = 0; let vis = 0; let up = 0; let cx = 0;
   VISIBLE_TYPES.filter((k) => !type || k === type).forEach((k) => {
@@ -152,7 +155,7 @@ function aggOf(cell, { type, recruiter }) {
     if (!n) return;
     tg += n.tg; vis += n.vis; up += n.up; cx += n.cx;
   });
-  const c = countsOf(filterDetails(cell, { type, recruiter }));
+  const c = countsOf(filterDetails(cell, { type, recruiter, scope }));
   return { tg, vis, up, cx, pend: c.pend, late: c.late, pct: tg ? vis / tg : 0 };
 }
 
@@ -207,6 +210,7 @@ export default function StaffBoardPage() {
   const [recruiter, setRecruiter] = useState('');   // 지연·대기 카운트와 목록의 기본 담당자
   const [statusFilter, setStatusFilter] = useState(''); // '' | pace(섭외지연) | late(업로드지연) | done(완료)
   const [sort, setSort] = useState('name');       // name | late | pace — 기본 가나다 (Owner 2026-08-24)
+  const [scope, setScope] = useState('');         // '' 전체 | '체험'(기자 포함) | '인플'
   const [expanded, setExpanded] = useState(null); // 고객사명
   const [sel, setSel] = useState(null);           // {month, type|null, bucket|null}
   const [infoFor, setInfoFor] = useState(null);   // ⓘ 업체정보 카드가 열린 고객사명
@@ -297,7 +301,7 @@ export default function StaffBoardPage() {
   const focus = data?.months?.[1] || month;
   const el = data?.el?.[focus] ?? 0;
   // 담당자별 보기는 세부리스트 안의 버튼으로 한다 — 보드 숫자는 항상 정산 기준(rollup) 하나.
-  const flt = useMemo(() => ({ type: '', recruiter: '' }), []);
+  const flt = useMemo(() => ({ type: scope, recruiter: '' }), [scope]);
 
   /* ── 필터 전 단계 행 — 숫자는 rollup, 지연·대기만 담당자 기준 재계산 ── */
   const baseRows = useMemo(() => {
@@ -318,7 +322,7 @@ export default function StaffBoardPage() {
         const cell = r.m[focus];
         const agg = aggOf(cell, flt);
         if (!agg || !(agg.tg > 0 || agg.vis > 0 || agg.cx > 0)) return null;
-        const rc = recruiter ? countsOf(filterDetails(cell, { type: '', recruiter })) : null;
+        const rc = recruiter ? countsOf(filterDetails(cell, { type: scope, recruiter })) : null;
         return {
           ...r,
           agg,
@@ -329,7 +333,7 @@ export default function StaffBoardPage() {
         };
       })
       .filter(Boolean);
-  }, [data, focus, search, flt, recruiter, el]);
+  }, [data, focus, search, flt, recruiter, el, scope]);
 
   /* ── 상태 필터 카운트 (버튼 뱃지용) ── */
   const statusCounts = useMemo(() => ({
@@ -381,7 +385,15 @@ export default function StaffBoardPage() {
           <div className="stb-title">
             <span className="stb-dot" />
             <h1>진도 보드</h1>
-            <span className="stb-scope">체험단</span>
+            <div className="stb-seg stb-scope-seg">
+              {[['', '전체'], ['체험', '체험단'], ['인플', '인플']].map(([v, label]) => (
+                <button
+                  key={label}
+                  className={scope === v ? 'on' : ''}
+                  onClick={() => { setScope(v); setSel(null); }}
+                >{label}</button>
+              ))}
+            </div>
             {data?.who && <span className="stb-who">{data.who}</span>}
           </div>
           <div className="stb-monthnav">
@@ -528,6 +540,7 @@ export default function StaffBoardPage() {
                     {/* 선택월 — 체험단 바 + 숫자줄 */}
                     <div className="stb-main">
                       {VISIBLE_TYPES
+                        .filter((t) => !scope || t === scope)
                         .map((k) => {
                           const n = typeNums(cell, k, '');
                           if (!n) return null;
@@ -613,6 +626,7 @@ export default function StaffBoardPage() {
 
                   {open && (
                     <Expand
+                      scope={scope}
                       row={r}
                       months={data.months}
                       el={data.el}
@@ -736,7 +750,7 @@ function InfoItem({ k, v, wide, warn }) {
 }
 
 /* ── 펼침 — 앞뒤월 요약 블록 먼저, 요소를 누르면 세부리스트 ── */
-function Expand({ row, months, el, sel, setSel, initMgr, memoEdits, onSaveMemo, onCancelRow, onCancelQuiet, onSaveResult, resEdits }) {
+function Expand({ row, months, el, sel, setSel, scope, initMgr, memoEdits, onSaveMemo, onCancelRow, onCancelQuiet, onSaveResult, resEdits }) {
   return (
     <div className="stb-det" onClick={(e) => e.stopPropagation()}>
       <div className="stb-blks">
@@ -752,6 +766,7 @@ function Expand({ row, months, el, sel, setSel, initMgr, memoEdits, onSaveMemo, 
                 <span className="stb-blk-el">경과 {Math.round((el[m] ?? 0) * 100)}%</span>
               </div>
               {VISIBLE_TYPES
+                .filter((t) => !scope || t === scope)
                 .map((k) => {
                   const n = typeNums(cell, k, '');
                   if (!n) return null;
@@ -788,7 +803,7 @@ function Expand({ row, months, el, sel, setSel, initMgr, memoEdits, onSaveMemo, 
                 })}
               {/* 기자단 — 가끔 있으니 목표·실적·예약 중 하나라도 있을 때만 건수 한 줄
                   (대기·지연 개념 없음). 누르면 기자 목록 (Owner 2026-08-24) */}
-              {(cell.t?.기자?.[0] > 0 || cell.t?.기자?.[1] > 0
+              {scope !== '인플' && (cell.t?.기자?.[0] > 0 || cell.t?.기자?.[1] > 0
                 || (cell.d || []).some((x) => typeOf(x) === '기자')) && (
                 <button
                   type="button"
@@ -803,6 +818,7 @@ function Expand({ row, months, el, sel, setSel, initMgr, memoEdits, onSaveMemo, 
 
       {sel && row.m[sel.month] && (
         <DetailList
+          scope={scope}
           cell={row.m[sel.month]}
           onCancelRow={onCancelRow}
           onCancelQuiet={onCancelQuiet}
@@ -819,7 +835,7 @@ function Expand({ row, months, el, sel, setSel, initMgr, memoEdits, onSaveMemo, 
   );
 }
 
-function DetailList({ cell, sel, initMgr, memoEdits, onSaveMemo, onCancelRow, onCancelQuiet, onSaveResult, resEdits, onClose }) {
+function DetailList({ cell, sel, scope, initMgr, memoEdits, onSaveMemo, onCancelRow, onCancelQuiet, onSaveResult, resEdits, onClose }) {
   // 담당자별 보기 — 표 안에서 바로 전환한다 (FB 는 인플 입력용이라 버튼 없음).
   // 헤더에서 담당자를 골라뒀으면 그걸 기본값으로 물고, 헤더가 바뀌면 따라간다.
   const [mgr, setMgr] = useState(initMgr || '');
@@ -828,7 +844,7 @@ function DetailList({ cell, sel, initMgr, memoEdits, onSaveMemo, onCancelRow, on
     setPrevInit(initMgr);
     setMgr(initMgr || '');
   }
-  const base = filterDetails(cell, { type: sel.type, recruiter: '' })
+  const base = filterDetails(cell, { type: sel.type, recruiter: '', scope })
     .filter((d) => inBucket(d, sel.bucket));
   const ds = mgr ? base.filter((d) => d.mgr === mgr) : base;
   return (
