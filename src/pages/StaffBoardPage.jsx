@@ -809,7 +809,7 @@ function DetailList({ cell, sel, initMgr, memoEdits, onSaveMemo, onCancelRow, on
               <tr>
                 <th>담당</th><th>유형</th><th>상태</th>
                 <th>방문일시</th><th>대표인플</th><th>인플</th>
-                <th>인원·건수</th><th>제출링크</th><th className="stb-th-memo">메모</th>
+                <th className="stb-th-cnt">인원<br />건수</th><th>제출링크</th><th className="stb-th-memo">메모</th>
                 <th>전달</th><th className="stb-th-dl">기한</th><th className="stb-th-cx">처리</th>
               </tr>
             </thead>

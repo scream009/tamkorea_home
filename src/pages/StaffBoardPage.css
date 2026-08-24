@@ -211,9 +211,10 @@ button.stb-cnum:hover{border-color:var(--accent);background:rgba(139,92,246,.12)
 .stb-chg{color:var(--orange);font-size:.64rem;margin-top:.1rem}
 
 /* 인원·건수 */
-.stb-td-cnt{font-family:var(--mono);font-size:.72rem;white-space:nowrap}
+.stb-td-cnt{font-family:var(--mono);font-size:.72rem;white-space:nowrap;text-align:center}
+.stb-th-cnt{text-align:center !important;line-height:1.25}
 .stb-td-cnt .orange{margin-left:.15rem}
-.stb-cnt2{color:var(--muted);font-size:.66rem;margin-top:.1rem}
+.stb-cnt2{color:var(--muted);font-size:.66rem;margin-top:.1rem;text-align:center}
 
 /* 제출 링크 칩 — hover 하면 title 로 전체 URL */
 .stb-lnks{display:inline-flex;gap:.25rem;flex-wrap:wrap}
@@ -292,8 +293,11 @@ button.stb-cnum:hover{border-color:var(--accent);background:rgba(139,92,246,.12)
 .stb-td-cx{white-space:nowrap}
 
 /* ── 취소·노쇼/결과물 입력 모달 + 직접입력 버튼 (2026-08-24) ── */
+.stb-td-lnks{white-space:nowrap}
+.stb-td-lnks .stb-lnks{flex-wrap:nowrap;vertical-align:middle}
 .stb-res-edit{margin-left:.3rem;padding:.1rem .3rem;border-radius:5px;border:1px solid transparent;
-  background:transparent;font-size:.72rem;cursor:pointer;opacity:.55;transition:.15s}
+  background:transparent;font-size:.72rem;cursor:pointer;opacity:.55;transition:.15s;
+  display:inline-block;vertical-align:middle}
 .stb-res-edit:hover{opacity:1;border-color:var(--line2);background:#161A26}
 .stb-cxm-ov{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.62);display:flex;
   align-items:center;justify-content:center;padding:1rem}
