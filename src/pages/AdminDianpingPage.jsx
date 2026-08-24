@@ -121,6 +121,24 @@ const Versions = ({ m }) => {
   );
 };
 
+// 이번 달 예산 추정 = 일예산×평일 + 피크예산×주말 (피크 없으면 일예산×(1+할증%)).
+// ClientSchedulePage.monthBudgetEst 와 같은 식 — 값이 달라지면 고객 화면과 어긋나니 함께 고칠 것.
+const monthBudgetEst = (budget, ratio, peak, d = new Date()) => {
+  const b = Number(budget);
+  if (!b || b <= 0) return null;
+  const y = d.getFullYear(), m = d.getMonth();
+  const days = new Date(y, m + 1, 0).getDate();
+  let we = 0;
+  for (let i = 1; i <= days; i++) {
+    const w = new Date(y, m, i).getDay();
+    if (w === 0 || w === 6) we++;
+  }
+  const wd = days - we;
+  const p = Number(peak) > 0 ? Number(peak)
+    : (Number(ratio) > 0 ? Math.round(b * (1 + Number(ratio) / 100)) : b);
+  return { total: wd * b + we * p, wd, we, daily: b, peakVal: p, days, month: m + 1 };
+};
+
 const Depleted = ({ r }) => {
   if (!r?.depletedAt) return <span className="dpa-age none">—</span>;
   const d = r.depletedDays;
@@ -352,6 +370,11 @@ export default function AdminDianpingPage() {
               {/* 잔액 0 이 된 날 — "며칠째 멈춰 있나"가 한눈에 보이게.
                   플랫폼이 이력을 안 줘서 수집기가 관측으로 판정한 값이다. */}
               <Cell k="소진일" v={<Depleted r={r} />} />
+              {(() => {
+                const est = monthBudgetEst(r.budget, r.floatRatio, r.peak);
+                return <Cell k={`${new Date().getMonth() + 1}월 예산 추정`}
+                             v={est ? `${est.total.toLocaleString()}元` : '—'} />;
+              })()}
               <Cell
                 k="CPT"
                 v={r.cptExpire
@@ -470,6 +493,12 @@ function Detail({ r, months, loading }) {
         <Kv k="일 소진" v={r.spend != null ? won(r.spend) : null} />
         <Kv k="소진 예상" v={r.daysLeft != null ? `약 ${r.daysLeft}일` : null} />
         <Kv k="잔액 소진일" v={r.depletedAt ? <Depleted r={r} /> : null} />
+        {(() => {
+          const est = monthBudgetEst(r.budget, r.floatRatio, r.peak);
+          return <Kv k="월예산 추정" v={est
+            ? `${est.total.toLocaleString()}元 (평일 ${est.wd}일×${est.daily.toLocaleString()} + 주말 ${est.we}일×${est.peakVal.toLocaleString()})`
+            : null} />;
+        })()}
         <Kv k="악평 30일 / 누적" v={`${n(r.bad30)} / ${n(r.badTotal)}`} />
         <Kv k="설정 확인" v={KST(r.settingAt)} />
         <Kv k="잔액 확인"

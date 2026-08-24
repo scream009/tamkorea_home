@@ -88,7 +88,27 @@ const shortMonth = (m) => {
   return x ? `${Number(x[1])}월` : (m || '');
 };
 
-export const CpcBanner = ({ cpc, isPartner }) => {
+// 이번 달 CPC 예산 추정 — 일예산 × 평일 + 피크예산 × 주말.
+// 피크예산이 수집돼 있으면 그 값을, 없으면 일예산 × (1+주말할증%) 로 만든다.
+// 달마다 평일/주말 수가 달라 매달 값이 다르다 — 그래서 '고정 월예산'이 아니라 추정이다.
+// 한계: 명절 할증은 주말과 같은 규칙인지 포털이 안 알려줘 반영하지 않는다.
+const monthBudgetEst = (budget, ratio, peak, d = new Date()) => {
+  const b = Number(budget);
+  if (!b || b <= 0) return null;
+  const y = d.getFullYear(), m = d.getMonth();
+  const days = new Date(y, m + 1, 0).getDate();
+  let we = 0;
+  for (let i = 1; i <= days; i++) {
+    const w = new Date(y, m, i).getDay();
+    if (w === 0 || w === 6) we++;
+  }
+  const wd = days - we;
+  const p = Number(peak) > 0 ? Number(peak)
+    : (Number(ratio) > 0 ? Math.round(b * (1 + Number(ratio) / 100)) : b);
+  return { total: wd * b + we * p, wd, we, daily: b, peakVal: p, days, month: m + 1 };
+};
+
+export const CpcBanner = ({ cpc, adSet, isPartner }) => {
   if (!cpc) return null;
   // 잔액 0 + 어제 소진 있음 = **방금 바닥난 것**. 광고 공백이 막 시작된
   // 시점이라 오히려 가장 급하다(한때 '대행 계정 집행'으로 봤으나 근거가 없었다 —
@@ -130,6 +150,15 @@ export const CpcBanner = ({ cpc, isPartner }) => {
             <div className="cpc-bal cpc-bal--sub">{fmt(cpc.yesterday)}<span className="cpc-unit">元</span></div>
             <div className="cpc-ml">어제 소진</div>
           </div>
+          {(() => {
+            const est = adSet ? monthBudgetEst(adSet.budget, adSet.floatRatio, adSet.peak) : null;
+            return est ? (
+              <div className="cpc-mi">
+                <div className="cpc-bal cpc-bal--sub">{fmt(est.total)}<span className="cpc-unit">元</span></div>
+                <div className="cpc-ml">{est.month}월 예산 추정</div>
+              </div>
+            ) : null;
+          })()}
           <div className="cpc-mi cpc-mi--st">
             <span className={`cpc-pill ${cls}`}>{label}</span>
             <div className="cpc-ml">{cpc.daysLeft ? `약 ${cpc.daysLeft}일분 남음` : '상태'}</div>
@@ -711,7 +740,7 @@ export default function ClientSchedulePage() {
         </div>
 
         {/* ★ 신규: 주간 CPC 배너 + 따종디엔핑 월간 리포트 진입 (달력 위) */}
-        <CpcBanner cpc={cpcInfo} isPartner={isPartner} />
+        <CpcBanner cpc={cpcInfo} adSet={data?.adSet} isPartner={isPartner} />
         <DpReportEntry report={dpReport} campaignId={campaignId} />
         {/* 따종 운영 매장에만 — 계정 문의 대응용 (Owner 2026-08-21).
             비번은 '보기'를 눌러야 서버에서 온다(StoreLoginCard 주석 참고). */}
