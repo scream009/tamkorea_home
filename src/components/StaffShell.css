@@ -29,9 +29,12 @@ body.staff-fullbleed { padding-top: 0 !important; }
 
 /* 1단 — 대분류 */
 .sshell-main { height: 46px; }
+/* 양옆을 같은 폭으로 밀어 대분류를 정중앙에 둔다 */
+.sshell-side { flex: 1 1 0; min-width: 0; display: flex; align-items: center; }
+.sshell-side-r { justify-content: flex-end; }
+.sshell-secs { flex: 0 0 auto; display: flex; align-items: center; gap: .35rem; }
 .sshell-brand {
   font-size: .64rem; letter-spacing: .18em; font-weight: 800; color: var(--snv-accent);
-  margin-right: .55rem; flex: 0 0 auto;
 }
 .sshell-sec {
   display: inline-flex; align-items: center; gap: .3rem;
@@ -46,7 +49,7 @@ body.staff-fullbleed { padding-top: 0 !important; }
 }
 .sshell-ic { font-size: .92rem; line-height: 1; }
 .sshell-out {
-  margin-left: auto; flex: 0 0 auto;
+  flex: 0 0 auto;
   background: transparent; border: 1px solid var(--snv-line2); border-radius: 8px;
   color: var(--snv-muted); font-size: .74rem; padding: .3rem .7rem; cursor: pointer; font-family: inherit;
 }
@@ -54,7 +57,7 @@ body.staff-fullbleed { padding-top: 0 !important; }
 
 /* 2단 — 하위 메뉴 */
 .sshell-sub {
-  height: 38px; background: var(--snv-hover);
+  height: 38px; background: var(--snv-hover); justify-content: center;
   border-top: 1px solid var(--snv-hover);
   overflow-x: auto; scrollbar-width: none;
 }
@@ -72,6 +75,9 @@ body.staff-fullbleed { padding-top: 0 !important; }
   .sshell-main { height: 42px; overflow-x: auto; scrollbar-width: none; }
   .sshell-main::-webkit-scrollbar { display: none; }
   .sshell-brand { display: none; }
+  .sshell-side { flex: 0 0 auto; }
+  .sshell-secs { flex: 1 1 auto; justify-content: flex-start; }
+  .sshell-sub { justify-content: flex-start; }
   .sshell-sec { padding: .32rem .6rem; font-size: .82rem; flex: 0 0 auto; }
   .sshell-out { font-size: .7rem; padding: .26rem .55rem; }
   .sshell-sub { height: 34px; }

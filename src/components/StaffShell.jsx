@@ -15,25 +15,25 @@ import './StaffShell.css';
  */
 const SECTIONS = [
   {
-    key: 'board', label: '진도', icon: '📊',
+    key: 'board', label: '진행관리', icon: '📊',
     items: [{ to: '/staff', label: '진도 보드', match: (p) => p === '/staff' }],
   },
   {
-    key: 'resv', label: '예약', icon: '📤',
+    key: 'resv', label: '예약관리', icon: '📤',
     items: [
       { to: '/staff/queue', label: '예약발송', match: (p) => p.startsWith('/staff/queue') },
       { to: '/staff/new', label: '＋ 예약입력', match: (p) => p.startsWith('/staff/new') },
     ],
   },
   {
-    key: 'infl', label: '인플', icon: '👤',
+    key: 'infl', label: '인플관리', icon: '👤',
     items: [
       { to: '/staff/infl', label: '인플 보드', match: (p, s) => p.startsWith('/staff/infl') && !s.includes('new=1') },
       { to: '/staff/infl?new=1', label: '＋ 신규인플', match: (p, s) => p.startsWith('/staff/infl') && s.includes('new=1') },
     ],
   },
   {
-    key: 'exp', label: '체험단', icon: '🍽️',
+    key: 'exp', label: '체험단 모집', icon: '🍽️',
     items: [
       { to: '/staff/casting', label: '체험단 선발', match: (p) => p.startsWith('/staff/casting') },
       { to: '/staff/cards', label: '모집카드', match: (p) => p.startsWith('/staff/cards') },
@@ -60,23 +60,28 @@ export default function StaffShell({ children }) {
     <div className="sshell">
       <div className="sshell-bar">
         <div className="sshell-row sshell-main">
-          <span className="sshell-brand">STAFF</span>
-          {SECTIONS.map((s) => (
-            <Link
-              key={s.key}
-              to={s.items[0].to}
-              className={`sshell-sec ${s.key === active.key ? 'on' : ''}`}
-              aria-current={s.key === active.key ? 'page' : undefined}
-            >
-              <span className="sshell-ic" aria-hidden="true">{s.icon}</span>{s.label}
-            </Link>
-          ))}
+          {/* 좌·우를 같은 폭(flex:1)으로 잡아 대분류가 화면 정중앙에 오게 한다 (Owner 2026-08-24) */}
+          <span className="sshell-side sshell-brand">STAFF</span>
+          <div className="sshell-secs">
+            {SECTIONS.map((s) => (
+              <Link
+                key={s.key}
+                to={s.items[0].to}
+                className={`sshell-sec ${s.key === active.key ? 'on' : ''}`}
+                aria-current={s.key === active.key ? 'page' : undefined}
+              >
+                <span className="sshell-ic" aria-hidden="true">{s.icon}</span>{s.label}
+              </Link>
+            ))}
+          </div>
+          <span className="sshell-side sshell-side-r">
           <button
             type="button"
             className="sshell-out"
             title="키를 지우고 인증 화면으로 — 다른 키로 다시 입장할 수 있습니다"
             onClick={() => { clearStaffKey(); window.location.reload(); }}
           >로그아웃</button>
+          </span>
         </div>
         <div className="sshell-row sshell-sub">
           {active.items.map((it) => (
