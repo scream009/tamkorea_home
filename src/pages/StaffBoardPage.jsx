@@ -174,7 +174,8 @@ function PaceBadge({ n, pc, short }) {
   }
   let cls; let txt; let title;
   if (n.vis >= n.tg) {
-    cls = ''; txt = short ? '✅ 완료' : '✅ 섭외완료';
+    // ✅ 는 뒤에 — 앞에 붙이면 완료 줄만 글자 시작 위치가 밀려 열이 어긋난다 (Owner 2026-08-24)
+    cls = 'stb-st-done'; txt = short ? '완료' : '섭외완료';
     title = '이번 달 목표를 채웠습니다. 신규 예약은 다음 달 정산월로 입력하세요.';
   } else if (pc === 'ok') {
     cls = 'stb-st-go'; txt = short ? '진행' : '섭외진행'; title = '월 경과 대비 순항 중';
@@ -185,7 +186,14 @@ function PaceBadge({ n, pc, short }) {
     cls = 'stb-st-urgent'; txt = short ? '긴급' : '섭외긴급';
     title = '월 경과 대비 크게 부족 — 섭외 보강이 필요합니다';
   }
-  return <span className={`stb-done ${size} ${cls}`} title={title}>{txt}</span>;
+  return (
+    <span className={`stb-done ${size} ${cls}`} title={title}>
+      {txt}
+      {/* ✅ 는 별도 요소로 박스 우변에 — 텍스트에 이어 붙이면 완료 뱃지만 폭이 넘쳐
+          박스 폭이 달라진다 (Owner 2026-08-24) */}
+      {cls === 'stb-st-done' && <i className="stb-done-ic" aria-hidden="true">✅</i>}
+    </span>
+  );
 }
 
 export default function StaffBoardPage() {
@@ -543,8 +551,11 @@ export default function StaffBoardPage() {
                                 <NumBtn label="취" value={n.cx} cls={n.cx > 0 ? 'orange' : 'mut'} title="취소·노쇼"
                                   on={() => openSel(r.n, { month: focus, type: k, bucket: 'cancel' })}
                                   active={open && sel?.month === focus && sel?.type === k && sel?.bucket === 'cancel'} />
-                                <PaceBadge n={n} pc={pc} />
                               </div>
+                              {/* 뱃지는 숫자줄 밖 — 별도 고정폭 그리드 열. 숫자줄 안에 두면
+                                  뱃지 폭 차이가 진도바(1fr)를 먹어 바 길이가 행마다 달라진다
+                                  (Owner 2026-08-24) */}
+                              <PaceBadge n={n} pc={pc} />
                             </div>
                           );
                         })}
