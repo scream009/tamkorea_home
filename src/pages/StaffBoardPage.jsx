@@ -206,7 +206,7 @@ export default function StaffBoardPage() {
   const [search, setSearch] = useState('');
   const [recruiter, setRecruiter] = useState('');   // 지연·대기 카운트와 목록의 기본 담당자
   const [statusFilter, setStatusFilter] = useState(''); // '' | pace(섭외지연) | late(업로드지연) | done(완료)
-  const [sort, setSort] = useState('late');       // late | pace | name
+  const [sort, setSort] = useState('name');       // name | late | pace — 기본 가나다 (Owner 2026-08-24)
   const [expanded, setExpanded] = useState(null); // 고객사명
   const [sel, setSel] = useState(null);           // {month, type|null, bucket|null}
   const [infoFor, setInfoFor] = useState(null);   // ⓘ 업체정보 카드가 열린 고객사명
@@ -428,9 +428,9 @@ export default function StaffBoardPage() {
               >✅ 완료 {statusCounts.done || ''}</button>
             </div>
             <div className="stb-seg stb-sort">
+              <button className={sort === 'name' ? 'on' : ''} onClick={() => setSort('name')}>이름순</button>
               <button className={sort === 'late' ? 'on' : ''} onClick={() => setSort('late')}>지연순</button>
               <button className={sort === 'pace' ? 'on' : ''} onClick={() => setSort('pace')}>진도순</button>
-              <button className={sort === 'name' ? 'on' : ''} onClick={() => setSort('name')}>이름순</button>
             </div>
             <button className="stb-ghost" onClick={() => load(month)} title="새로고침">⟳</button>
           </div>
