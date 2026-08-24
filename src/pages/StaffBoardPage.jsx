@@ -207,6 +207,40 @@ export default function StaffBoardPage() {
     return j;
   }, []);
 
+  const cancelQuiet = useCallback(async (id, kind, memo) => {
+    const r = await fetch('/api/staff-board', {
+      method: 'POST',
+      headers: staffHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ action: 'cancelQuiet', id, kind, memo }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || `처리 실패 (${r.status})`);
+    return j;
+  }, []);
+
+  /* 결과물 링크 직접 입력 — 저장 성공분은 로컬 오버레이(resEdits)로 즉시 반영한다.
+     보드 전체 reload 는 무겁고, 방금 적은 링크가 안 보이면 저장이 안 된 줄 안다. */
+  const [resEdits, setResEdits] = useState({});
+  const saveResult = useCallback(async (id, vals) => {
+    const r = await fetch('/api/staff-board', {
+      method: 'POST',
+      headers: staffHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ action: 'result', id, ...vals }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || `저장 실패 (${r.status})`);
+    setResEdits((p) => {
+      const cur = { ...(p[id] || {}) };
+      for (const k of ['rx', 'rd', 'ry']) {
+        const v = String(vals[k] ?? '').trim();
+        if (v === '') continue;
+        cur[k] = v === '-' ? '' : v;
+      }
+      return { ...p, [id]: cur };
+    });
+    return j;
+  }, []);
+
   const saveMemo = useCallback(async (id, memo) => {
     const res = await fetch('/api/staff-board', {
       method: 'POST',
@@ -234,7 +268,15 @@ export default function StaffBoardPage() {
     const q = search.trim().toLowerCase();
     return data.rows
       .filter((r) => r.m[focus])
-      .filter((r) => !q || r.n.toLowerCase().includes(q))
+      .filter((r) => {
+        // 고객사명뿐 아니라 그 달 상세의 인플(참여·대표)로도 찾는다 (Owner 2026-08-24)
+        if (!q) return true;
+        if (r.n.toLowerCase().includes(q)) return true;
+        const cell = r.m[focus];
+        return ((cell && cell.d) || []).some((d) =>
+          String(d.infl || '').toLowerCase().includes(q)
+          || String(d.lead || '').toLowerCase().includes(q));
+      })
       .map((r) => {
         const cell = r.m[focus];
         const agg = aggOf(cell, flt);
@@ -316,7 +358,7 @@ export default function StaffBoardPage() {
           <div className="stb-tools">
             <input
               className="stb-search"
-              placeholder="고객사 검색"
+              placeholder="고객사·인플 검색"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -538,6 +580,9 @@ export default function StaffBoardPage() {
                       memoEdits={memoEdits}
                       onSaveMemo={saveMemo}
                       onCancelRow={cancelRow}
+                      onCancelQuiet={cancelQuiet}
+                      onSaveResult={saveResult}
+                      resEdits={resEdits}
                     />
                   )}
                 </React.Fragment>
@@ -649,7 +694,7 @@ function InfoItem({ k, v, wide, warn }) {
 }
 
 /* ── 펼침 — 앞뒤월 요약 블록 먼저, 요소를 누르면 세부리스트 ── */
-function Expand({ row, months, el, flt, sel, setSel, initMgr, memoEdits, onSaveMemo, onCancelRow }) {
+function Expand({ row, months, el, flt, sel, setSel, initMgr, memoEdits, onSaveMemo, onCancelRow, onCancelQuiet, onSaveResult, resEdits }) {
   return (
     <div className="stb-det" onClick={(e) => e.stopPropagation()}>
       <div className="stb-blks">
@@ -711,6 +756,9 @@ function Expand({ row, months, el, flt, sel, setSel, initMgr, memoEdits, onSaveM
         <DetailList
           cell={row.m[sel.month]}
           onCancelRow={onCancelRow}
+          onCancelQuiet={onCancelQuiet}
+          onSaveResult={onSaveResult}
+          resEdits={resEdits}
           sel={sel}
           initMgr={initMgr}
           memoEdits={memoEdits}
@@ -722,7 +770,7 @@ function Expand({ row, months, el, flt, sel, setSel, initMgr, memoEdits, onSaveM
   );
 }
 
-function DetailList({ cell, sel, initMgr, memoEdits, onSaveMemo, onCancelRow, onClose }) {
+function DetailList({ cell, sel, initMgr, memoEdits, onSaveMemo, onCancelRow, onCancelQuiet, onSaveResult, resEdits, onClose }) {
   // 담당자별 보기 — 표 안에서 바로 전환한다 (FB 는 인플 입력용이라 버튼 없음).
   // 헤더에서 담당자를 골라뒀으면 그걸 기본값으로 물고, 헤더가 바뀌면 따라간다.
   const [mgr, setMgr] = useState(initMgr || '');
@@ -773,6 +821,9 @@ function DetailList({ cell, sel, initMgr, memoEdits, onSaveMemo, onCancelRow, on
                   memoVal={memoEdits[d.id] !== undefined ? memoEdits[d.id] : d.memo}
                   onSaveMemo={onSaveMemo}
                   onCancelRow={onCancelRow}
+                  onCancelQuiet={onCancelQuiet}
+                  onSaveResult={onSaveResult}
+                  resOv={resEdits[d.id]}
                 />
               ))}
             </tbody>
@@ -875,7 +926,7 @@ function overdueHours(d) {
   return (h > 0.5 && h < 72) ? h : 0;
 }
 
-function DetailRow({ d, memoVal, onSaveMemo, onCancelRow }) {
+function DetailRow({ d, memoVal, onSaveMemo, onCancelRow, onCancelQuiet, onSaveResult, resOv }) {
   const submitted = d.sub.includes('제출완료') || d.sub.includes('✅');
   const odue = overdueHours(d);
   let dlNode = <span className="stb-mut">—</span>;
@@ -884,7 +935,12 @@ function DetailRow({ d, memoVal, onSaveMemo, onCancelRow }) {
     else if (d.dl <= 2) dlNode = <span className="warn">D-{d.dl}</span>;
     else dlNode = <span className="stb-mut">D-{d.dl}</span>;
   }
-  const hasResult = d.rx || d.rd || d.ry;
+  // 방금 저장한 링크(resOv)가 서버 값보다 우선 — 저장 즉시 화면에 보이게
+  const rx = resOv && resOv.rx !== undefined ? resOv.rx : d.rx;
+  const rd = resOv && resOv.rd !== undefined ? resOv.rd : d.rd;
+  const ry = resOv && resOv.ry !== undefined ? resOv.ry : d.ry;
+  const hasResult = rx || rd || ry;
+  const [resOpen, setResOpen] = useState(false);
   return (
     <tr className={d.dl !== null && d.dl < 0 && !submitted ? 'stb-tr-late' : ''}>
       <td>{d.mgr || '—'}</td>
@@ -930,12 +986,19 @@ function DetailRow({ d, memoVal, onSaveMemo, onCancelRow }) {
         {hasResult
           ? (
             <span className="stb-lnks">
-              <ResultLink label="小红" url={d.rx} />
-              <ResultLink label="大众" url={d.rd} />
-              <ResultLink label="抖音" url={d.ry} />
+              <ResultLink label="小红" url={rx} />
+              <ResultLink label="大众" url={rd} />
+              <ResultLink label="抖音" url={ry} />
             </span>
           )
           : <span className="stb-mut">—</span>}
+        {/* 전달링크로 안 오고 담당자가 받아 적는 경우 — 직접 입력 (Owner 2026-08-24) */}
+        <button type="button" className="stb-res-edit" title="결과물 링크 직접 입력"
+          onClick={(e) => { e.stopPropagation(); setResOpen(true); }}>✏️</button>
+        {resOpen && (
+          <ResultModal d={d} rx={rx} rd={rd} ry={ry}
+            onSave={onSaveResult} onClose={() => setResOpen(false)} />
+        )}
       </td>
       <td className="stb-td-memo">
         <MemoCell value={memoVal} onSave={(t) => onSaveMemo(d.id, t)} />
@@ -945,7 +1008,7 @@ function DetailRow({ d, memoVal, onSaveMemo, onCancelRow }) {
         <CopyBtn label="📋 가이드" text={d.guide} title="촬영 가이드 복사" />
       </td>
       <td className="stb-td-dl">{dlNode}</td>
-      <td className="stb-td-cx"><CancelCell d={d} onCancelRow={onCancelRow} /></td>
+      <td className="stb-td-cx"><CancelCell d={d} onCancelRow={onCancelRow} onCancelQuiet={onCancelQuiet} /></td>
     </tr>
   );
 }
@@ -958,31 +1021,12 @@ const CANCEL_OPTS = [
   { kind: '노쇼', label: '노쇼', full: '노쇼', cls: 'n' },
 ];
 
-function CancelCell({ d, onCancelRow }) {
-  const [busy, setBusy] = useState('');
+function CancelCell({ d, onCancelRow, onCancelQuiet }) {
+  const [modal, setModal] = useState(null);   // CANCEL_OPTS 항목
   const [done, setDone] = useState('');
   const st = String(d.st || '');
   if (done) return <span className="stb-cx-done">✅ {done}</span>;
   if (st.includes('취소') || st.includes('노쇼')) return <span className="stb-mut">{st}</span>;
-
-  const run = async (opt) => {
-    const memo = window.prompt(
-      `[${d.lead || d.infl || '이 예약'}] ${opt.full} 처리합니다.` + String.fromCharCode(10)
-      + '매장에 보낼 사유를 적어 주세요 (비워도 됩니다).' + String.fromCharCode(10)
-      + '※ 팀 단위로 처리되며, 예약봇이 매장에 안내를 보냅니다.',
-      '',
-    );
-    if (memo === null) return;
-    setBusy(opt.kind);
-    try {
-      await onCancelRow(d, opt.kind, memo);
-      setDone(opt.label);
-    } catch (e) {
-      window.alert(e.message);
-    } finally {
-      setBusy('');
-    }
-  };
 
   return (
     <span className="stb-cx">
@@ -991,11 +1035,115 @@ function CancelCell({ d, onCancelRow }) {
           key={o.kind}
           type="button"
           className={`stb-cx-b stb-cx-${o.cls}`}
-          disabled={!!busy}
-          title={`${o.full} — 예약봇이 매장에 안내를 보냅니다`}
-          onClick={(e) => { e.stopPropagation(); run(o); }}
-        >{busy === o.kind ? '…' : o.label}</button>
+          title={`${o.full} 처리`}
+          onClick={(e) => { e.stopPropagation(); setModal(o); }}
+        >{o.label}</button>
       ))}
+      {modal && (
+        <BoardCancelModal
+          d={d} opt={modal}
+          onCancelRow={onCancelRow} onCancelQuiet={onCancelQuiet}
+          onDone={(label) => { setDone(label); setModal(null); }}
+          onClose={() => setModal(null)}
+        />
+      )}
     </span>
+  );
+}
+
+/* 취소·노쇼 모달 — 핵심은 '매장에 안내 발송' 체크박스 (Owner 2026-08-24).
+   ON  = 팀(예약입력_DB) 상태 변경 + 예약봇이 매장에 취소 안내 발송 (팀 단위!)
+   OFF = 이 인플의 진행_DB 레코드만 조용히 상태 변경 — Softr 시절 방식.
+         시간이 지난 건 정리용. 매장은 아무 카톡도 받지 않는다. */
+function BoardCancelModal({ d, opt, onCancelRow, onCancelQuiet, onDone, onClose }) {
+  const [notify, setNotify] = useState(true);
+  const [memo, setMemo] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const run = async () => {
+    setBusy(true);
+    try {
+      if (notify) await onCancelRow(d, opt.kind, memo);
+      else await onCancelQuiet(d.id, opt.kind, memo);
+      onDone(opt.label + (notify ? '' : '(내부)'));
+    } catch (e) {
+      window.alert(e.message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="stb-cxm-ov" onClick={onClose} role="presentation">
+      <div className="stb-cxm" onClick={(e) => e.stopPropagation()} role="presentation">
+        <h4>{opt.full} — {d.lead || d.infl || '이 예약'}</h4>
+        <label className="stb-cxm-chk">
+          <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} />
+          매장에 취소 안내 발송 (예약봇)
+        </label>
+        <p className="stb-cxm-sub">
+          {notify
+            ? '⚠ 팀 단위로 처리됩니다 — 같은 예약의 다른 인플도 함께 취소되고, 예약봇이 매장 카톡방에 안내를 보냅니다.'
+            : '이 인플 건만 내부 상태를 바꿉니다. 매장에는 아무것도 보내지 않습니다 (지난 건 정리용).'}
+        </p>
+        <textarea
+          rows={2}
+          placeholder={notify ? '매장에 전달할 사유 (선택)' : '내부 기록용 사유 (선택 — 비고에 남습니다)'}
+          value={memo}
+          onChange={(e) => setMemo(e.target.value)}
+        />
+        <div className="stb-cxm-btns">
+          <button type="button" className={`stb-cx-b stb-cx-${opt.cls} stb-cxm-go`} disabled={busy} onClick={run}>
+            {busy ? '처리 중…' : `${opt.label} 처리`}
+          </button>
+          <button type="button" className="stb-ghost" disabled={busy} onClick={onClose}>닫기</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* 결과물 링크 직접 입력 모달 — 빈 칸은 안 건드리고, '-' 는 지운다 */
+function ResultModal({ d, rx, rd, ry, onSave, onClose }) {
+  const [vx, setVx] = useState(rx || '');
+  const [vd, setVd] = useState(rd || '');
+  const [vy, setVy] = useState(ry || '');
+  const [busy, setBusy] = useState(false);
+
+  const run = async () => {
+    setBusy(true);
+    try {
+      // 원래 값과 같은 칸은 보내지 않는다 — 안 바꾼 칸을 다시 쓰지 않게
+      const vals = {};
+      if (vx.trim() !== String(rx || '')) vals.rx = vx.trim() || '-';
+      if (vd.trim() !== String(rd || '')) vals.rd = vd.trim() || '-';
+      if (vy.trim() !== String(ry || '')) vals.ry = vy.trim() || '-';
+      if (!Object.keys(vals).length) { onClose(); return; }
+      await onSave(d.id, vals);
+      onClose();
+    } catch (e) {
+      window.alert(e.message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="stb-cxm-ov" onClick={onClose} role="presentation">
+      <div className="stb-cxm" onClick={(e) => e.stopPropagation()} role="presentation">
+        <h4>결과물 링크 입력 — {d.infl || d.lead || ''}</h4>
+        <p className="stb-cxm-sub">빈 칸으로 저장하면 그 칸은 지워집니다. 저장하면 제출상태가 자동 갱신됩니다.</p>
+        <label className="stb-cxm-lb">小红 (샤오홍슈)</label>
+        <input value={vx} onChange={(e) => setVx(e.target.value)} placeholder="https://…" />
+        <label className="stb-cxm-lb">大众 (따종디엔핑)</label>
+        <input value={vd} onChange={(e) => setVd(e.target.value)} placeholder="https://…" />
+        <label className="stb-cxm-lb">抖音 (더우인)</label>
+        <input value={vy} onChange={(e) => setVy(e.target.value)} placeholder="https://…" />
+        <div className="stb-cxm-btns">
+          <button type="button" className="stb-cx-b stb-cxm-go" disabled={busy} onClick={run}>
+            {busy ? '저장 중…' : '저장'}
+          </button>
+          <button type="button" className="stb-ghost" disabled={busy} onClick={onClose}>닫기</button>
+        </div>
+      </div>
+    </div>
   );
 }

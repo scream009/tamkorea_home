@@ -290,3 +290,24 @@ button.stb-cnum:hover{border-color:var(--accent);background:rgba(139,92,246,.12)
 .stb-cx-done{font-size:.7rem;color:#6EE7B7;font-weight:700;white-space:nowrap}
 .stb-th-cx{width:8.8rem}
 .stb-td-cx{white-space:nowrap}
+
+/* ── 취소·노쇼/결과물 입력 모달 + 직접입력 버튼 (2026-08-24) ── */
+.stb-res-edit{margin-left:.3rem;padding:.1rem .3rem;border-radius:5px;border:1px solid transparent;
+  background:transparent;font-size:.72rem;cursor:pointer;opacity:.55;transition:.15s}
+.stb-res-edit:hover{opacity:1;border-color:var(--line2);background:#161A26}
+.stb-cxm-ov{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.62);display:flex;
+  align-items:center;justify-content:center;padding:1rem}
+.stb-cxm{width:100%;max-width:24rem;background:#161927;border:1px solid rgba(139,92,246,.5);
+  border-radius:14px;padding:1.05rem 1.15rem;box-shadow:0 24px 60px rgba(0,0,0,.6);cursor:default}
+.stb-cxm h4{margin:0 0 .6rem;font-size:.92rem;color:var(--ink)}
+.stb-cxm-chk{display:flex;align-items:center;gap:.45rem;font-size:.82rem;color:var(--ink);
+  cursor:pointer;user-select:none;margin-bottom:.4rem}
+.stb-cxm-chk input{width:15px !important;flex:0 0 15px;height:15px;accent-color:var(--accent);cursor:pointer}
+.stb-cxm-sub{margin:0 0 .6rem;font-size:.73rem;color:var(--ink2);line-height:1.55}
+.stb-cxm-lb{display:block;font-size:.7rem;font-weight:700;color:var(--ink2);margin:.5rem 0 .2rem}
+.stb-cxm textarea,.stb-cxm input{width:100%;box-sizing:border-box;background:#0E1119;
+  border:1px solid var(--line2);border-radius:8px;color:var(--ink);padding:.4rem .55rem;
+  font-size:.8rem;font-family:inherit;outline:none}
+.stb-cxm textarea:focus,.stb-cxm input:focus{border-color:var(--accent)}
+.stb-cxm-btns{display:flex;gap:.45rem;margin-top:.85rem}
+.stb-cxm-go{padding:.4rem .9rem;font-size:.8rem}

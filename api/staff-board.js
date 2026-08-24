@@ -443,6 +443,71 @@ export default async function handler(req, res) {
         return;
       }
 
+      /* 조용한 취소·노쇼 (Owner 2026-08-24 — Softr 방식 복원).
+         시간이 지난 건을 정리할 때는 매장 안내가 오히려 이상하다 — 이 경로는
+         **진행_DB_OLD 의 그 레코드(인플 개별) 상태만** 바꾸고 발송체크를 건드리지
+         않으므로 예약봇이 아무것도 보내지 않는다. 팀·예약입력_DB 도 그대로 둔다.
+         (F1 "취소는 봇 발송 경로 통일" 정책의 예외 — Owner 명시 지시로 추가) */
+      if (body.action === 'cancelQuiet') {
+        const id = String(body.id || '');
+        const kind = String(body.kind || '');
+        if (!/^rec[A-Za-z0-9]{14}$/.test(id)) {
+          res.status(400).json({ error: '레코드가 올바르지 않습니다.' });
+          return;
+        }
+        if (!CANCEL_KINDS.includes(kind)) {
+          res.status(400).json({ error: '취소 유형은 취소_방문자·취소_고객사·노쇼 중 하나입니다.' });
+          return;
+        }
+        const fields = { 진행상태: kind };
+        const memo = String(body.memo || '').trim().slice(0, 300);
+        if (memo) {
+          // 사유는 비고에 흔적을 남긴다 — 내부 처리라 고객전달메모는 쓰지 않는다
+          const cur = await at(`/${encodeURIComponent(T_PROGRESS)}/${id}?fields%5B%5D=${encodeURIComponent(MEMO_FIELD)}`);
+          const prev = String((cur.fields || {})[MEMO_FIELD] || '').trim();
+          fields[MEMO_FIELD] = (prev ? prev + ' / ' : '') + `[내부 ${kind}] ${memo}`;
+        }
+        await at(`/${encodeURIComponent(T_PROGRESS)}/${id}`, {
+          method: 'PATCH', body: JSON.stringify({ fields, typecast: false }),
+        });
+        res.status(200).json({ ok: true, quiet: true });
+        return;
+      }
+
+      /* 결과물 링크 직접 입력 (Owner 2026-08-24) — 전달링크로 안 오고 담당자가
+         받아 적는 경우가 많다. 진행_DB_OLD 의 Result 3필드에 쓴다.
+         '제출상태'는 formula 라 XHS_Result 가 차면 자동으로 제출완료가 된다.
+         규칙: 빈 칸 = 안 건드림, '-' = 지움(null), 그 외 = http(s) URL 만 허용. */
+      if (body.action === 'result') {
+        const id = String(body.id || '');
+        if (!/^rec[A-Za-z0-9]{14}$/.test(id)) {
+          res.status(400).json({ error: '레코드가 올바르지 않습니다.' });
+          return;
+        }
+        const MAP = { rx: 'XHS_Result', rd: 'DP_Result', ry: 'DY_Result' };
+        const fields = {};
+        for (const [k, fname] of Object.entries(MAP)) {
+          if (body[k] === undefined) continue;
+          const v = String(body[k] || '').trim();
+          if (v === '') continue;                    // 빈 칸 = 기존 값 유지
+          if (v === '-') { fields[fname] = null; continue; }   // '-' = 지움
+          if (!/^https?:\/\//.test(v)) {
+            res.status(400).json({ error: `${fname}: http(s) 로 시작하는 링크만 저장할 수 있습니다. (지우려면 - 입력)` });
+            return;
+          }
+          fields[fname] = v.slice(0, 1000);
+        }
+        if (!Object.keys(fields).length) {
+          res.status(400).json({ error: '저장할 링크가 없습니다.' });
+          return;
+        }
+        await at(`/${encodeURIComponent(T_PROGRESS)}/${id}`, {
+          method: 'PATCH', body: JSON.stringify({ fields, typecast: false }),
+        });
+        res.status(200).json({ ok: true, saved: Object.keys(fields) });
+        return;
+      }
+
       res.status(400).json({ error: '알 수 없는 요청입니다.' });
       return;
     }
