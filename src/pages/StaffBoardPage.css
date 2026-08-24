@@ -44,9 +44,9 @@
 .stb-newbtn{display:inline-block;background:linear-gradient(135deg,#8B5CF6,#A855F7);border-radius:8px;
   color:#fff;font-weight:700;font-size:.76rem;padding:.32rem .7rem;text-decoration:none;transition:.15s}
 .stb-newbtn:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(139,92,246,.35)}
-.stb-addlink{display:inline-flex;align-items:center;justify-content:center;width:1.15rem;height:1.15rem;
-  border-radius:6px;border:1px solid var(--line2);color:var(--muted);font-size:.8rem;font-weight:700;
-  text-decoration:none;transition:.13s;line-height:1}
+.stb-addlink{display:inline-flex;align-items:center;justify-content:center;width:1.45rem;height:1.45rem;
+  border-radius:7px;border:1px solid var(--line2);color:var(--muted);font-size:1rem;font-weight:700;
+  text-decoration:none;transition:.13s;line-height:1;flex:0 0 auto}
 .stb-addlink:hover{border-color:var(--accent);color:#DDD6FE;background:rgba(139,92,246,.15)}
 
 /* ── KPI ── */
@@ -69,15 +69,17 @@
   padding:.55rem 1rem;border-bottom:1px solid #1C202B;cursor:pointer;align-items:center;transition:.12s}
 .stb-r:hover{background:#191D28}
 .stb-r.open{background:#1D1830;box-shadow:inset 3px 0 0 var(--accent)}
-.stb-name{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;min-width:0}
+.stb-name{display:flex;flex-direction:column;align-items:flex-start;gap:.24rem;min-width:0}
+.stb-name-t{display:flex;align-items:center;gap:.4rem;min-width:0;max-width:100%}
+.stb-name-b{display:flex;align-items:center;gap:.3rem;flex-wrap:wrap}
 .stb-name b{font-size:.85rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .stb-chip{font-size:.62rem;font-weight:600;color:var(--muted);background:#1A1E2A;
   border:1px solid var(--line2);border-radius:999px;padding:.06rem .42rem;white-space:nowrap}
 .stb-chip-p{color:#6EE7B7;border-color:rgba(16,185,129,.45);background:rgba(16,185,129,.12)}
 .stb-chip-add{color:#93C5FD;border-color:rgba(59,130,246,.5);background:rgba(59,130,246,.12);font-weight:700}
 .stb-chip-chk{color:#FDE68A;border-color:rgba(234,179,8,.5);background:rgba(234,179,8,.12);font-weight:700;cursor:help}
-.stb-info-btn{background:transparent;border:0;color:var(--muted);font-size:.85rem;cursor:pointer;
-  padding:0 .1rem;line-height:1;transition:.13s;font-family:inherit}
+.stb-info-btn{background:transparent;border:0;color:var(--muted);font-size:1.08rem;cursor:pointer;
+  padding:0 .1rem;line-height:1;transition:.13s;font-family:inherit;flex:0 0 auto}
 .stb-info-btn:hover,.stb-info-btn.on{color:var(--accent2)}
 
 /* 선택월 유형 라인 — [유형 | 바 | 숫자줄] */
@@ -181,9 +183,18 @@ button.stb-cnum:hover{border-color:var(--accent);background:rgba(139,92,246,.12)
 .stb-dlist-h b{font-family:var(--mono);font-size:.78rem;color:var(--accent2)}
 .stb-chip-b{color:#DDD6FE;border-color:rgba(139,92,246,.5);background:rgba(139,92,246,.15)}
 .stb-seg-sm button{padding:.2rem .5rem;font-size:.7rem;font-family:var(--mono)}
-.stb-done{display:inline-flex;align-items:center;font-size:.64rem;font-weight:700;color:#6EE7B7;
+.stb-done{display:inline-flex;align-items:center;justify-content:center;font-size:.64rem;font-weight:700;color:#6EE7B7;
   background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.45);border-radius:999px;
   padding:.1rem .5rem;white-space:nowrap}
+/* 상태 뱃지 4단계 — 모든 줄에 같은 폭으로 붙어 줄이 맞는다 (Owner 2026-08-24).
+   색은 진도 바·숫자와 같은 기준: --ok 진행 / --warn·--orange 지연 / --bad 긴급 */
+.stb-done-l{min-width:5.7em}
+.stb-done-s{min-width:3.7em}
+.stb-st-go{color:var(--ok);background:rgba(110,231,183,.07);border-color:rgba(110,231,183,.35)}
+.stb-st-slow{color:var(--warn);background:rgba(253,224,71,.07);border-color:rgba(253,224,71,.4)}
+.stb-st-slow2{color:var(--orange);background:rgba(251,146,60,.08);border-color:rgba(251,146,60,.45)}
+.stb-st-urgent{color:var(--bad);background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.55)}
+.stb-st-ph{visibility:hidden}
 
 /* 업로드지연 보기 — 행 안 지연 건 칩 */
 .stb-latein{display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;

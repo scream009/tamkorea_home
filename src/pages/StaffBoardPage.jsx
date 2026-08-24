@@ -164,6 +164,30 @@ function paceClass(pct, el, target) {
   return 'bad';
 }
 
+/* ── 섭외 상태 뱃지 — 완료/진행/지연/긴급 (Owner 2026-08-24)
+   모든 줄에 같은 폭으로 붙여 줄을 맞춘다. 색 기준은 paceClass(진도 바·숫자 색)와 동일:
+   ok=진행(초록) · warn/orange=지연(노랑·주황) · bad=긴급(빨강). 목표 0이면 투명 자리만. */
+function PaceBadge({ n, pc, short }) {
+  const size = short ? 'stb-done-s' : 'stb-done-l';
+  if (!n || !n.tg) {
+    return <span className={`stb-done ${size} stb-st-ph`} aria-hidden="true">진행</span>;
+  }
+  let cls; let txt; let title;
+  if (n.vis >= n.tg) {
+    cls = ''; txt = short ? '✅ 완료' : '✅ 섭외완료';
+    title = '이번 달 목표를 채웠습니다. 신규 예약은 다음 달 정산월로 입력하세요.';
+  } else if (pc === 'ok') {
+    cls = 'stb-st-go'; txt = short ? '진행' : '섭외진행'; title = '월 경과 대비 순항 중';
+  } else if (pc === 'warn' || pc === 'orange') {
+    cls = pc === 'warn' ? 'stb-st-slow' : 'stb-st-slow2';
+    txt = short ? '지연' : '섭외지연'; title = '월 경과 대비 섭외가 뒤처져 있습니다';
+  } else {
+    cls = 'stb-st-urgent'; txt = short ? '긴급' : '섭외긴급';
+    title = '월 경과 대비 크게 부족 — 섭외 보강이 필요합니다';
+  }
+  return <span className={`stb-done ${size} ${cls}`} title={title}>{txt}</span>;
+}
+
 export default function StaffBoardPage() {
   const [month, setMonth] = useState(currentMonth());
   const [data, setData] = useState(null);
@@ -457,29 +481,36 @@ export default function StaffBoardPage() {
                     onClick={() => toggleRow(r.n)}
                   >
                     <div className="stb-name">
-                      <b>{r.n}</b>
-                      <button
-                        type="button"
-                        className={`stb-info-btn ${infoFor === r.n ? 'on' : ''}`}
-                        title="제공내역·영업시간·주의사항 등 업체 정보"
-                        onClick={(e) => { e.stopPropagation(); setInfoFor(infoFor === r.n ? null : r.n); }}
-                      >ⓘ</button>
-                      {r.info?.sid && (
-                        <Link
-                          className="stb-addlink"
-                          to={`/staff/new?store=${r.info.sid}`}
-                          title="이 매장 예약입력"
-                          onClick={(e) => e.stopPropagation()}
-                        >＋</Link>
-                      )}
-                      {cell.add === 1 && <span className="stb-chip stb-chip-add" title="목표량 넘어도 추가 섭외 가능">추가OK</span>}
-                      {(cell.chk === 1 || cell.notice) && (
-                        <span
-                          className="stb-chip stb-chip-chk"
-                          title={cell.notice ? `관리자 전달사항:\n${cell.notice}` : '관리자 확인요망'}
-                        >🔔{cell.notice ? ' 전달' : ' 확인'}</span>
-                      )}
-                      {r.p && <span className="stb-chip stb-chip-p">{r.p}</span>}
+                      <div className="stb-name-t">
+                        <b>{r.n}</b>
+                        <button
+                          type="button"
+                          className={`stb-info-btn ${infoFor === r.n ? 'on' : ''}`}
+                          title="제공내역·영업시간·주의사항 등 업체 정보"
+                          onClick={(e) => { e.stopPropagation(); setInfoFor(infoFor === r.n ? null : r.n); }}
+                        >ⓘ</button>
+                        {r.info?.sid && (
+                          <Link
+                            className="stb-addlink"
+                            to={`/staff/new?store=${r.info.sid}`}
+                            title="이 매장 예약입력"
+                            onClick={(e) => e.stopPropagation()}
+                          >＋</Link>
+                        )}
+                      </div>
+                      <div className="stb-name-b">
+                        {/* 협력사명은 초록, 직영(빈값 포함)은 중립 칩 — 늘 표기해 양식을 맞춘다 */}
+                        {r.p && r.p !== '직영'
+                          ? <span className="stb-chip stb-chip-p">{r.p}</span>
+                          : <span className="stb-chip">직영</span>}
+                        {cell.add === 1 && <span className="stb-chip stb-chip-add" title="목표량 넘어도 추가 섭외 가능">추가OK</span>}
+                        {(cell.chk === 1 || cell.notice) && (
+                          <span
+                            className="stb-chip stb-chip-chk"
+                            title={cell.notice ? `관리자 전달사항:\n${cell.notice}` : '관리자 확인요망'}
+                          >🔔{cell.notice ? ' 전달' : ' 확인'}</span>
+                        )}
+                      </div>
                     </div>
 
                     <MiniCell cell={r.m[data.months[0]]} el={data.el[data.months[0]]} flt={flt} />
@@ -512,11 +543,7 @@ export default function StaffBoardPage() {
                                 <NumBtn label="취" value={n.cx} cls={n.cx > 0 ? 'orange' : 'mut'} title="취소·노쇼"
                                   on={() => openSel(r.n, { month: focus, type: k, bucket: 'cancel' })}
                                   active={open && sel?.month === focus && sel?.type === k && sel?.bucket === 'cancel'} />
-                                {n.tg > 0 && n.vis >= n.tg && (
-                                  <span className="stb-done" title="이번 달 목표를 채웠습니다. 신규 예약은 다음 달 정산월로 입력하세요.">
-                                    ✅ 섭외완료 · 다음달 입력
-                                  </span>
-                                )}
+                                <PaceBadge n={n} pc={pc} />
                               </div>
                             </div>
                           );
@@ -730,11 +757,7 @@ function Expand({ row, months, el, sel, setSel, initMgr, memoEdits, onSaveMemo, 
                           on={() => setSel({ month: m, type: k, bucket: 'upload' })} active={isSel('upload')} />
                         <NumBtn label="취" value={n.cx} cls={n.cx > 0 ? 'orange' : 'mut'} title="취소·노쇼"
                           on={() => setSel({ month: m, type: k, bucket: 'cancel' })} active={isSel('cancel')} />
-                        {n.tg > 0 && n.vis >= n.tg && (
-                          <span className="stb-done" title="이 달 목표를 채웠습니다. 신규 예약은 다음 달 정산월로 입력하세요.">
-                            ✅ 완료
-                          </span>
-                        )}
+                        <PaceBadge n={n} pc={pc} short />
                       </div>
                       <div className="stb-blk-f stb-blk-f-ty">
                         <NumBtn label="대기" value={tAgg.pend} cls={tAgg.pend > 0 ? 'warn' : 'mut'} title={`${k} 제출대기`}
