@@ -926,6 +926,20 @@ function overdueHours(d) {
   return (h > 0.5 && h < 72) ? h : 0;
 }
 
+/* 상태를 의미 단위 두 줄로 — 좁은 열에서 '변경확
+정' 처럼 꺾이는 것을 막는다 (Owner 2026-08-24).
+   '취소_방문자'류는 '_' 에서, 4글자는 2+2 로 나눈다. 그 외(노쇼 등)는 한 줄. */
+function StTwoLine({ st }) {
+  const s = String(st || '');
+  if (!s) return '—';
+  if (s.includes('_')) {
+    const [a, ...rest] = s.split('_');
+    return <>{a}<br />{rest.join('_')}</>;
+  }
+  if (s.length === 4) return <>{s.slice(0, 2)}<br />{s.slice(2)}</>;
+  return s;
+}
+
 function DetailRow({ d, memoVal, onSaveMemo, onCancelRow, onCancelQuiet, onSaveResult, resOv }) {
   const submitted = d.sub.includes('제출완료') || d.sub.includes('✅');
   const odue = overdueHours(d);
@@ -943,9 +957,9 @@ function DetailRow({ d, memoVal, onSaveMemo, onCancelRow, onCancelQuiet, onSaveR
   const [resOpen, setResOpen] = useState(false);
   return (
     <tr className={d.dl !== null && d.dl < 0 && !submitted ? 'stb-tr-late' : ''}>
-      <td>{d.mgr || '—'}</td>
-      <td>{d.ty || '—'}</td>
-      <td>{d.st || '—'}</td>
+      <td className="stb-td-nw">{d.mgr || '—'}</td>
+      <td className="stb-td-nw">{d.ty || '—'}</td>
+      <td className="stb-td-st"><StTwoLine st={d.st} /></td>
       <td className="stb-td-when">
         {d.visit || '—'}
         {d.chg && <div className="stb-chg" title="변경일시">변경 {d.chg}</div>}

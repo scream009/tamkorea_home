@@ -311,3 +311,7 @@ button.stb-cnum:hover{border-color:var(--accent);background:rgba(139,92,246,.12)
 .stb-cxm textarea:focus,.stb-cxm input:focus{border-color:var(--accent)}
 .stb-cxm-btns{display:flex;gap:.45rem;margin-top:.85rem}
 .stb-cxm-go{padding:.4rem .9rem;font-size:.8rem}
+
+/* 상태 = 의미 단위 두 줄(변경/확정), 담당·유형 = 절대 안 꺾임 (2026-08-24) */
+.stb-td-nw{white-space:nowrap}
+.stb-td-st{white-space:nowrap;line-height:1.25;font-size:.78rem}
