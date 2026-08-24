@@ -29,6 +29,8 @@ const API = `https://api.airtable.com/v0/${BASE}`;
 const T_CAMPAIGN = 'Campaign_DB';
 const T_PROGRESS = '진행_DB_OLD';
 const T_STORE = 'CS_DB';
+const T_ENTRY = '예약입력_DB';
+const CANCEL_KINDS = ['취소_방문자', '취소_고객사', '노쇼'];
 
 const TYPES = ['인플', '체험', '기자'];
 
@@ -61,6 +63,7 @@ const PROGRESS_FIELDS = [
   '총인원', '변경인원', 'XHS_건수', 'DP_건수',
   '비고', '인플전달링크', '인플전용링크', '拍摄剧本',
   '체크인일시',
+  '팀명생성기',   // 취소·노쇼 때 예약입력_DB(팀)를 찾는 키 — 두 테이블의 유일한 연결
 ];
 
 /** 담당자가 화면에서 고칠 수 있는 유일한 필드 — 메모(비고). 그 외 쓰기는 Phase 3. */
@@ -318,6 +321,7 @@ async function buildBoard(month) {
           nx: g['XHS_건수'] ?? '',
           nd: g['DP_건수'] ?? '',
           memo: one(g[MEMO_FIELD]),
+          team: one(g['팀명생성기']),   // 취소 버튼이 팀(예약입력_DB)을 찾는 데 쓴다
           give: one(g['인플전달링크']) || one(g['인플전용링크']),  // 인플 전달용 제출 링크
           guide: one(g['拍摄剧本']),                               // 촬영 가이드 (CS_DB 룩업)
           dl: pi ? pi.dl : null,   // 기한까지 남은 날 (음수=지연, null=대기 아님)
@@ -398,6 +402,44 @@ export default async function handler(req, res) {
         res.status(200).json({ ok: true });
         return;
       }
+      /* 취소·노쇼 (Owner 2026-08-21 — Softr 에 있던 버튼 복원).
+         ⚠️ 진행_DB_OLD 를 직접 고치지 않는다. F1 정책대로 **예약입력_DB(팀)** 의
+         진행상태 + 자동발송체크를 세워 예약봇이 매장에 안내를 보내게 한다.
+         봇이 팀명생성기 매칭으로 진행_DB_OLD 까지 캐스케이드한다. */
+      if (body.action === 'cancel') {
+        const team = String(body.team || '').trim();
+        const kind = String(body.kind || '');
+        if (!CANCEL_KINDS.includes(kind)) {
+          res.status(400).json({ error: '취소 유형은 취소_방문자·취소_고객사·노쇼 중 하나입니다.' });
+          return;
+        }
+        if (!team) {
+          res.status(409).json({ error: '이 건은 팀 정보(팀명생성기)가 비어 있어 취소할 수 없습니다. 예약발송 화면에서 처리해 주세요.' });
+          return;
+        }
+        // 팀명생성기 exact 매칭 — 예약봇 캐스케이드와 같은 키
+        const found = await at(`/${encodeURIComponent(T_ENTRY)}?filterByFormula=`
+          + encodeURIComponent(`{팀명생성기}='${escFormula(team)}'`)
+          + '&maxRecords=2&fields%5B%5D=' + encodeURIComponent('진행상태'));
+        const recs = found.records || [];
+        if (!recs.length) {
+          res.status(404).json({ error: '예약입력_DB 에서 이 팀을 찾지 못했습니다. 예약발송 화면에서 처리해 주세요.' });
+          return;
+        }
+        if (recs.length > 1) {
+          res.status(409).json({ error: '같은 팀명이 2건 이상입니다. 예약발송 화면에서 확인해 주세요.' });
+          return;
+        }
+        const fields = { 진행상태: kind, 자동발송체크: true };
+        const memo = String(body.memo || '').trim().slice(0, 500);
+        if (memo) fields['고객전달메모'] = memo;
+        await at(`/${encodeURIComponent(T_ENTRY)}/${recs[0].id}`, {
+          method: 'PATCH', body: JSON.stringify({ fields, typecast: false }),
+        });
+        res.status(200).json({ ok: true, entryId: recs[0].id });
+        return;
+      }
+
       res.status(400).json({ error: '알 수 없는 요청입니다.' });
       return;
     }

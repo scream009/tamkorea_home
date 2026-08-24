@@ -277,3 +277,16 @@ button.stb-cnum:hover{border-color:var(--accent);background:rgba(139,92,246,.12)
   .stb-blks{grid-template-columns:1fr}
   .stb-det{padding:.4rem .5rem .6rem}
 }
+
+/* ── 취소·노쇼 버튼 (2026-08-21, Softr 버튼 복원) ───────────────── */
+.stb-cx{display:flex;gap:.22rem;flex-wrap:nowrap}
+.stb-cx-b{padding:.16rem .4rem;border-radius:5px;font-size:.68rem;font-weight:700;cursor:pointer;
+  border:1px solid var(--line2);background:#161A26;color:var(--ink2);font-family:inherit;white-space:nowrap}
+.stb-cx-b:hover{border-color:#6B7280;color:#fff}
+.stb-cx-b:disabled{opacity:.5;cursor:default}
+.stb-cx-v:hover{border-color:rgba(248,113,113,.6);color:#FCA5A5}
+.stb-cx-c:hover{border-color:rgba(251,146,60,.6);color:#FDBA74}
+.stb-cx-n:hover{border-color:rgba(234,179,8,.6);color:#FDE68A}
+.stb-cx-done{font-size:.7rem;color:#6EE7B7;font-weight:700;white-space:nowrap}
+.stb-th-cx{width:8.8rem}
+.stb-td-cx{white-space:nowrap}

@@ -194,6 +194,20 @@ export default function StaffBoardPage() {
     }
   }, []);
 
+  /* 취소·노쇼 (Owner 2026-08-21 — Softr 에 있던 버튼 복원).
+     진행_DB 를 직접 고치지 않는다. 서버가 팀명생성기로 예약입력_DB 를 찾아
+     진행상태+자동발송체크를 세우고, 예약봇이 매장에 안내를 보낸다. */
+  const cancelRow = useCallback(async (d, kind, memo) => {
+    const r = await fetch('/api/staff-board', {
+      method: 'POST',
+      headers: staffHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ action: 'cancel', team: d.team, kind, memo }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || `처리 실패 (${r.status})`);
+    return j;
+  }, []);
+
   const saveMemo = useCallback(async (id, memo) => {
     const res = await fetch('/api/staff-board', {
       method: 'POST',
@@ -525,6 +539,7 @@ export default function StaffBoardPage() {
                       initMgr={recruiter}
                       memoEdits={memoEdits}
                       onSaveMemo={saveMemo}
+                      onCancelRow={cancelRow}
                     />
                   )}
                 </React.Fragment>
@@ -636,7 +651,7 @@ function InfoItem({ k, v, wide, warn }) {
 }
 
 /* ── 펼침 — 앞뒤월 요약 블록 먼저, 요소를 누르면 세부리스트 ── */
-function Expand({ row, months, el, flt, sel, setSel, initMgr, memoEdits, onSaveMemo }) {
+function Expand({ row, months, el, flt, sel, setSel, initMgr, memoEdits, onSaveMemo, onCancelRow }) {
   return (
     <div className="stb-det" onClick={(e) => e.stopPropagation()}>
       <div className="stb-blks">
@@ -697,6 +712,7 @@ function Expand({ row, months, el, flt, sel, setSel, initMgr, memoEdits, onSaveM
       {sel && row.m[sel.month] && (
         <DetailList
           cell={row.m[sel.month]}
+          onCancelRow={onCancelRow}
           sel={sel}
           initMgr={initMgr}
           memoEdits={memoEdits}
@@ -708,7 +724,7 @@ function Expand({ row, months, el, flt, sel, setSel, initMgr, memoEdits, onSaveM
   );
 }
 
-function DetailList({ cell, sel, initMgr, memoEdits, onSaveMemo, onClose }) {
+function DetailList({ cell, sel, initMgr, memoEdits, onSaveMemo, onCancelRow, onClose }) {
   // 담당자별 보기 — 표 안에서 바로 전환한다 (FB 는 인플 입력용이라 버튼 없음).
   // 헤더에서 담당자를 골라뒀으면 그걸 기본값으로 물고, 헤더가 바뀌면 따라간다.
   const [mgr, setMgr] = useState(initMgr || '');
@@ -748,7 +764,7 @@ function DetailList({ cell, sel, initMgr, memoEdits, onSaveMemo, onClose }) {
                 <th>담당</th><th>유형</th><th>상태</th>
                 <th>방문일시</th><th>대표인플</th><th>인플</th>
                 <th>인원·건수</th><th>제출링크</th><th className="stb-th-memo">메모</th>
-                <th>전달</th><th className="stb-th-dl">기한</th>
+                <th>전달</th><th className="stb-th-dl">기한</th><th className="stb-th-cx">처리</th>
               </tr>
             </thead>
             <tbody>
@@ -758,6 +774,7 @@ function DetailList({ cell, sel, initMgr, memoEdits, onSaveMemo, onClose }) {
                   d={d}
                   memoVal={memoEdits[d.id] !== undefined ? memoEdits[d.id] : d.memo}
                   onSaveMemo={onSaveMemo}
+                  onCancelRow={onCancelRow}
                 />
               ))}
             </tbody>
@@ -860,7 +877,7 @@ function overdueHours(d) {
   return (h > 0.5 && h < 72) ? h : 0;
 }
 
-function DetailRow({ d, memoVal, onSaveMemo }) {
+function DetailRow({ d, memoVal, onSaveMemo, onCancelRow }) {
   const submitted = d.sub.includes('제출완료') || d.sub.includes('✅');
   const odue = overdueHours(d);
   let dlNode = <span className="stb-mut">—</span>;
@@ -930,6 +947,57 @@ function DetailRow({ d, memoVal, onSaveMemo }) {
         <CopyBtn label="📋 가이드" text={d.guide} title="촬영 가이드 복사" />
       </td>
       <td className="stb-td-dl">{dlNode}</td>
+      <td className="stb-td-cx"><CancelCell d={d} onCancelRow={onCancelRow} /></td>
     </tr>
+  );
+}
+
+/* 취소·노쇼 버튼 — 이미 취소·노쇼면 상태만 보여 준다.
+   누르면 사유를 받고, 서버가 예약입력_DB(팀)를 찾아 봇 발송 경로로 넘긴다. */
+const CANCEL_OPTS = [
+  { kind: '취소_방문자', label: '방문취소', full: '방문자 사정 취소', cls: 'v' },
+  { kind: '취소_고객사', label: '고객취소', full: '고객사(매장) 사정 취소', cls: 'c' },
+  { kind: '노쇼', label: '노쇼', full: '노쇼', cls: 'n' },
+];
+
+function CancelCell({ d, onCancelRow }) {
+  const [busy, setBusy] = useState('');
+  const [done, setDone] = useState('');
+  const st = String(d.st || '');
+  if (done) return <span className="stb-cx-done">✅ {done}</span>;
+  if (st.includes('취소') || st.includes('노쇼')) return <span className="stb-mut">{st}</span>;
+
+  const run = async (opt) => {
+    const memo = window.prompt(
+      `[${d.lead || d.infl || '이 예약'}] ${opt.full} 처리합니다.` + String.fromCharCode(10)
+      + '매장에 보낼 사유를 적어 주세요 (비워도 됩니다).' + String.fromCharCode(10)
+      + '※ 팀 단위로 처리되며, 예약봇이 매장에 안내를 보냅니다.',
+      '',
+    );
+    if (memo === null) return;
+    setBusy(opt.kind);
+    try {
+      await onCancelRow(d, opt.kind, memo);
+      setDone(opt.label);
+    } catch (e) {
+      window.alert(e.message);
+    } finally {
+      setBusy('');
+    }
+  };
+
+  return (
+    <span className="stb-cx">
+      {CANCEL_OPTS.map((o) => (
+        <button
+          key={o.kind}
+          type="button"
+          className={`stb-cx-b stb-cx-${o.cls}`}
+          disabled={!!busy}
+          title={`${o.full} — 예약봇이 매장에 안내를 보냅니다`}
+          onClick={(e) => { e.stopPropagation(); run(o); }}
+        >{busy === o.kind ? '…' : o.label}</button>
+      ))}
+    </span>
   );
 }

@@ -65,6 +65,8 @@ export default function StaffQueuePage() {
   const [tab, setTab] = useState('todo');
   const [mgr, setMgr] = useState('');
   const [search, setSearch] = useState('');
+  const [search2, setSearch2] = useState('');   // 2차 조건 — 1차와 AND (Owner 2026-08-21: 인플+매장 동시 필터)
+  const [autoTabDone, setAutoTabDone] = useState(false);
   const [busyId, setBusyId] = useState('');
   const [modal, setModal] = useState(null);   // {kind:'modify'|'cancel', item}
   const [toast, setToast] = useState('');
@@ -130,16 +132,29 @@ export default function StaffQueuePage() {
     return c;
   }, [data, mgr]);
 
+  /* 첫 로드 때 '발송대기'가 비어 있으면 전체로 연다 (Owner 2026-08-21).
+     기본 탭을 아예 '전체'로 바꾸자는 안이 있었지만, 발송대기(=지금 내 차례)는
+     '까먹음'을 막는 안전장치라 있을 때는 먼저 보여야 한다. 0건일 때만 비켜선다 —
+     빈 화면을 보고 "데이터가 없네?" 하는 혼란은 이걸로 사라진다. */
+  if (data && !autoTabDone) {
+    setAutoTabDone(true);
+    if (tab === 'todo' && counts.todo === 0) setTab('all');
+  }
+
   const items = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    // 조건 두 개를 AND 로 건다 — '인플 + 매장' 같은 교차 필터가 필요하다(Owner 2026-08-21).
+    // 각 조건은 매장·인플·예약ID 어디에 걸려도 통과시킨다(어느 칸에 뭘 넣을지 고민 안 하게).
+    const hit = (it, q) => !q
+      || it.store.toLowerCase().includes(q)
+      || it.infls.toLowerCase().includes(q)
+      || it.sid.toLowerCase().includes(q);
+    const q1 = search.trim().toLowerCase();
+    const q2 = search2.trim().toLowerCase();
     return (data?.items || [])
       .filter((it) => !mgr || it.mgr === mgr)
       .filter((it) => tab === 'all' || tabOf(it) === tab)
-      .filter((it) => !q
-        || it.store.toLowerCase().includes(q)
-        || it.infls.toLowerCase().includes(q)
-        || it.sid.toLowerCase().includes(q));
-  }, [data, tab, mgr, search]);
+      .filter((it) => hit(it, q1) && hit(it, q2));
+  }, [data, tab, mgr, search, search2]);
 
   /* 카드·행이 같은 액션을 쓴다 */
   function handlersFor(it) {
@@ -226,12 +241,25 @@ export default function StaffQueuePage() {
               </button>
             ))}
           </div>
-          <input
-            className="stq-search"
-            placeholder="매장·인플·# 검색"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <div className="stq-finds">
+            <input
+              className="stq-search"
+              placeholder="매장·인플·# 검색"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <span className="stq-and">＋</span>
+            <input
+              className="stq-search"
+              placeholder="2차 조건 (예: 인플 아이디)"
+              value={search2}
+              onChange={(e) => setSearch2(e.target.value)}
+            />
+            {(search || search2) && (
+              <button type="button" className="stq-ghost stq-clear"
+                onClick={() => { setSearch(''); setSearch2(''); }} title="검색 초기화">✕</button>
+            )}
+          </div>
         </div>
 
         {error && <div className="stq-error">{error}<button onClick={load}>다시 시도</button></div>}
@@ -416,6 +444,8 @@ function ListRow({ it, busy, h }) {
         <span className="stq-row-cnt">
           {it.pax !== '' ? `${it.pax}명` : '—'} · {platTag(it.platX, '小')}{it.nx === '' ? 0 : it.nx} {platTag(it.platD, '大')}{it.nd === '' ? 0 : it.nd}
         </span>
+        {/* 인플 아이디를 접기 전에도 보여 준다 — 취소·변경 대상을 여기서 바로 고른다 */}
+        <span className="stq-row-infl" title={it.infls}>{it.infls || '—'}</span>
         <span className="stq-row-btns" onClick={(e) => e.stopPropagation()}>
           <ActionButtons t={t} it={it} busy={busy} h={h} />
         </span>
