@@ -732,7 +732,7 @@ function Expand({ row, months, el, sel, setSel, initMgr, memoEdits, onSaveMemo, 
                           on={() => setSel({ month: m, type: k, bucket: 'cancel' })} active={isSel('cancel')} />
                         {n.tg > 0 && n.vis >= n.tg && (
                           <span className="stb-done" title="이 달 목표를 채웠습니다. 신규 예약은 다음 달 정산월로 입력하세요.">
-                            ✅ 완료 · 다음달
+                            ✅ 완료
                           </span>
                         )}
                       </div>
@@ -843,7 +843,9 @@ function DetailList({ cell, sel, initMgr, memoEdits, onSaveMemo, onCancelRow, on
 
 /** 제출 링크 칩 — 마우스 올리면 전체 URL(title), 클릭하면 새 탭 */
 function ResultLink({ label, url }) {
-  if (!url) return null;
+  // 없는 종류도 같은 폭의 공란을 차지한다 — 있는 것만 나오면 따종만 있는 행에서
+  // 따종이 맨 앞으로 당겨져 종류별 세로 열이 어긋난다 (Owner 2026-08-24)
+  if (!url) return <span className="stb-lnk stb-lnk-empty" aria-hidden="true">{label}</span>;
   return (
     <a
       className="stb-lnk"
@@ -961,7 +963,6 @@ function DetailRow({ d, memoVal, onSaveMemo, onCancelRow, onCancelQuiet, onSaveR
   const rx = resOv && resOv.rx !== undefined ? resOv.rx : d.rx;
   const rd = resOv && resOv.rd !== undefined ? resOv.rd : d.rd;
   const ry = resOv && resOv.ry !== undefined ? resOv.ry : d.ry;
-  const hasResult = rx || rd || ry;
   const [resOpen, setResOpen] = useState(false);
   return (
     <tr className={d.dl !== null && d.dl < 0 && !submitted ? 'stb-tr-late' : ''}>
@@ -1005,15 +1006,11 @@ function DetailRow({ d, memoVal, onSaveMemo, onCancelRow, onCancelQuiet, onSaveR
         <div className="stb-cnt2">小{d.nx === '' ? 0 : d.nx} 大{d.nd === '' ? 0 : d.nd}</div>
       </td>
       <td className="stb-td-lnks">
-        {hasResult
-          ? (
-            <span className="stb-lnks">
-              <ResultLink label="小红" url={rx} />
-              <ResultLink label="大众" url={rd} />
-              <ResultLink label="抖音" url={ry} />
-            </span>
-          )
-          : <span className="stb-mut">—</span>}
+        <span className="stb-lnks">
+          <ResultLink label="小红" url={rx} />
+          <ResultLink label="大众" url={rd} />
+          <ResultLink label="抖音" url={ry} />
+        </span>
         {/* 전달링크로 안 오고 담당자가 받아 적는 경우 — 직접 입력 (Owner 2026-08-24) */}
         <button type="button" className="stb-res-edit" title="결과물 링크 직접 입력"
           onClick={(e) => { e.stopPropagation(); setResOpen(true); }}>✏️</button>

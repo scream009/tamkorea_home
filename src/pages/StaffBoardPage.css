@@ -225,6 +225,10 @@ button.stb-cnum:hover{border-color:var(--accent);background:rgba(139,92,246,.12)
   background:rgba(139,92,246,.14);border:1px solid rgba(139,92,246,.45);border-radius:999px;
   padding:.1rem .45rem;text-decoration:none;transition:.13s;white-space:nowrap}
 .stb-lnk:hover{background:rgba(139,92,246,.35);color:#fff;transform:translateY(-1px)}
+/* 없는 종류의 자리 지킴 공란 — 폭은 그대로, 보이지만 않게 (열 맞춤, 2026-08-24) */
+.stb-lnk-empty{visibility:hidden}
+/* flex-wrap 이면 좁을 때 칩이 줄바꿈돼 열이 다시 어긋난다 — 3칩은 항상 한 줄 */
+.stb-lnks{flex-wrap:nowrap}
 
 /* 복사 버튼 (전달용 링크·촬영 가이드) */
 .stb-td-give{white-space:nowrap}
