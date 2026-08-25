@@ -532,7 +532,7 @@ export default function StaffResvPage() {
                 <div className="srv-warn">⚠️ {month} 계약이 없습니다 — 관리자 화면에서 계약을 먼저 만들어야 합니다.</div>
               )}
 
-              <label className="srv-lb">예약일시 (한국시각) <b className="rq">*</b> <span className="srv-hint">시간은 30분 단위</span></label>
+              <label className="srv-lb">예약일시 (한국시각) <b className="rq">*</b> <span className="srv-hint">30분 단위 · 직접 입력 가능</span></label>
               <DateTime30 key={wKey} value={when} onChange={setWhen} inputClass="srv-input" />
 
               <div className="srv-row3">

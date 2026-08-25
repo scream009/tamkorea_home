@@ -473,7 +473,7 @@ function EditModal({ item, busy, onClose, onSubmit }) {
           발송 전이라 모든 항목을 자유롭게 고칠 수 있습니다. 예약일시·담당·유형은
           분할된 진행 건에도 함께 반영됩니다.
         </p>
-        <label>예약일시 (한국시각) <span className="stq-opt">30분 단위</span></label>
+        <label>예약일시 (한국시각) <span className="stq-opt">30분 단위 · 직접 입력 가능</span></label>
         <DateTime30 value={when} onChange={setWhen} />
         <div className="stq-modal-row3">
           <div>
@@ -522,18 +522,12 @@ function EditModal({ item, busy, onClose, onSubmit }) {
   );
 }
 
-/* 30분 격자로 내림 — DateTime30 드롭다운은 :00/:30 만 있어 10:15 같은 값은 표시가 비어 보인다 */
-function snap30(local) {
-  const m = /^(\d{4}-\d{2}-\d{2}T\d{2}):(\d{2})$/.exec(local || '');
-  if (!m) return local || '';
-  return `${m[1]}:${Number(m[2]) >= 30 ? '30' : '00'}`;
-}
-
 /* ── 변경 모달 ── */
 function ModifyModal({ item, busy, onClose, onSubmit }) {
   // 기존 값을 채워 놓고 고치게 한다 (Owner 지적 2026-08-13: 빈 칸이라 처음부터 다시 입력해야 했다).
   // 이미 변경요청이 걸린 건은 변경일시가 현재 유효 시각이므로 그것을 기준으로 다시 고친다.
-  const baseWhen = snap30(isoToLocal(item.chgWhenRaw || item.whenRaw));
+  // 30분 격자로 깎지 않는다 — DateTime30 이 10:15 같은 값을 직접입력 모드로 그대로 보여준다 (2026-08-25)
+  const baseWhen = isoToLocal(item.chgWhenRaw || item.whenRaw);
   const basePax = item.chgPax !== '' && item.chgPax != null ? item.chgPax : (item.pax ?? '');
   const baseMemo = item.clientMemo || '';
   const [when, setWhen] = useState(baseWhen);
@@ -549,7 +543,7 @@ function ModifyModal({ item, busy, onClose, onSubmit }) {
           변경요청 상태로 바뀌고 변경 안내가 발송 대기열에 오릅니다.
           {' '}기존 <b>{item.chgWhen || item.when || '—'}</b>{basePax !== '' ? ` · ${basePax}명` : ''} — 바꿀 항목만 고치세요.
         </p>
-        <label>변경일시 (한국시각) <b className="rq">*</b> <span className="stq-opt">30분 단위</span></label>
+        <label>변경일시 (한국시각) <b className="rq">*</b> <span className="stq-opt">30분 단위 · 직접 입력 가능</span></label>
         <DateTime30 value={when} onChange={setWhen} />
         <label>변경인원 <span className="stq-opt">(그대로면 손대지 않기)</span></label>
         <input type="number" min="1" value={pax} onChange={(e) => setPax(e.target.value)} />
