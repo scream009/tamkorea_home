@@ -275,19 +275,22 @@ export default function AdminFlyerPage() {
             인쇄 점검
           </button>
           <label className="afl-scale">
-            용지
+            출력 배율
             <select
               value={printScale}
               onChange={(e) => setPrintScale(Number(e.target.value))}
             >
-              <option value={1}>A4 · 100% (PC · PDF 저장)</option>
-              <option value={0.88}>A4 · 88% (여백 있는 프린터)</option>
-              <option value={0.85}>폰 · 85% (아이폰 기본)</option>
-              <option value={0.8}>US Letter · 80%</option>
-              <option value={0.75}>더 작게 · 75%</option>
-              <option value={0.7}>더 작게 · 70%</option>
-              <option value={0.6}>진단용 · 60%</option>
+              <option value={1}>100% — PC · PDF 저장</option>
+              <option value={0.88}>88% — 여백 있는 프린터</option>
+              <option value={0.85}>85% — 아이폰 권장</option>
+              <option value={0.8}>80% — US Letter</option>
+              <option value={0.75}>75%</option>
+              <option value={0.7}>70%</option>
+              <option value={0.6}>60% — 진단용</option>
             </select>
+            <b className="afl-mm">
+              {Math.round(210 * printScale)}×{Math.round(297 * printScale)}mm
+            </b>
           </label>
           {!ready && (
             <span className="afl-warn">
@@ -296,8 +299,9 @@ export default function AdminFlyerPage() {
           )}
           <span className="afl-hint2">
             누르면 새 창이 열리고 <b>사진·글꼴이 다 준비된 뒤 인쇄창이 저절로</b> 뜹니다.
-            인쇄창에서 <b>용지 = A4</b>, <b>크기 조절 = 100%</b> 로 두세요.
-            그래도 페이지가 넘어가면 왼쪽 <b>용지</b> 를 한 단계씩 내리세요.
+            아이폰 인쇄창은 <b>용지 A4 · 크기 조절 100%</b> 그대로 두고,
+            여기 <b>출력 배율</b> 로 맞추세요. 아이폰은 여백을 강제해
+            A4 인쇄 가능 높이가 약 271mm 뿐이라 <b>85%</b> 가 기본입니다.
           </span>
           {overflowPx > 0 && (
             <span className="afl-over">

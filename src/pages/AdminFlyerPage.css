@@ -366,3 +366,13 @@
   color: #C0392B;
   font-weight: 800;
 }
+
+.afl-mm {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #DC4A00;
+  background: #FFF3E8;
+  border-radius: 6px;
+  padding: 3px 7px;
+  white-space: nowrap;
+}
