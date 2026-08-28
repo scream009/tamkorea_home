@@ -197,21 +197,19 @@ export default function AdminFlyerPage() {
    */
   const print = () => {
     measureFit();
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    // 전단 창이 스스로 '준비 완료 후' 인쇄하게 한다.
+    // 부모에서 print() 를 부르면 폰트·이미지가 아직인 상태로 인쇄돼
+    // iOS 에서 '로드를 완료하지 않았습니다' 가 뜨고 사진·QR 이 빈 칸으로 나갔다.
+    const printable = buildFlyerHtml(store, { ...images, logo }, { printScale, autoPrint: true });
+    const blob = new Blob([printable], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const w = window.open(url, '_blank');
     if (!w) {
-      note('팝업이 막혀 미리보기 창을 열지 못했습니다 — 이 화면에서 인쇄합니다');
+      note('팝업이 막혀 창을 열지 못했습니다 — 팝업 차단을 풀고 다시 눌러주세요');
       URL.revokeObjectURL(url);
-      const f = frameRef.current?.contentWindow;
-      if (f) { f.focus(); f.print(); }
       return;
     }
-    w.addEventListener('load', () => {
-      w.focus();
-      w.print();
-      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
-    });
+    window.setTimeout(() => URL.revokeObjectURL(url), 120000);
   };
 
   const download = () => {
@@ -285,10 +283,9 @@ export default function AdminFlyerPage() {
             </span>
           )}
           <span className="afl-hint2">
+            누르면 새 창이 열리고 <b>사진·글꼴이 다 준비된 뒤 인쇄창이 저절로</b> 뜹니다.
             인쇄창에서 <b>용지 = A4</b>, <b>크기 조절 = 100%</b> 로 두세요.
-            아이폰은 여백을 강제해 A4 인쇄 가능 높이가 약 271mm 뿐입니다 —
-            그래서 폰에서는 왼쪽 <b>용지</b> 를 85% 이하로 씁니다.
-            빈 2페이지가 계속 나오면 한 단계 더 내리세요.
+            그래도 페이지가 넘어가면 왼쪽 <b>용지</b> 를 한 단계씩 내리세요.
           </span>
           {overflowPx > 0 && (
             <span className="afl-over">

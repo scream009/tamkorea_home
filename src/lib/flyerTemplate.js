@@ -645,6 +645,24 @@ export function buildFlyerHtml(store = {}, img = {}, opt = {}) {
   const s = Number(opt.printScale);
   const css = (s && s > 0 && s < 1) ? scaleCss(CSS, s) : CSS;
 
+  /* 준비가 끝난 뒤에 인쇄한다.
+     iOS 에서 '웹 페이지가 로드를 완료하지 않았습니다' 가 뜨고, 사은품 사진과 QR 이
+     빈 칸인 채로 인쇄되던 원인이다. 구글 폰트(CJK 라 무겁다)가 늦게 붙으면
+     폰트 없이 계산된 레이아웃이 더 길어져 페이지까지 늘어난다. */
+  const autoPrint = opt.autoPrint
+    ? `<script>
+(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  try { await document.fonts.ready; } catch (e) { /* 폰트 API 없으면 넘어간다 */ }
+  await Promise.all([...document.images].map(
+    (i) => (i.decode ? i.decode().catch(() => {}) : Promise.resolve())));
+  await wait(350);          // 마지막 리플로우가 앉을 시간
+  window.focus();
+  window.print();
+})();
+<${'/'}script>`
+    : '';
+
   return `<!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="UTF-8">
 <title>${E.nameKr || '따종 리뷰이벤트'} 리뷰이벤트</title>
@@ -652,5 +670,5 @@ export function buildFlyerHtml(store = {}, img = {}, opt = {}) {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>${css}</style></head>
-<body>${body}</body></html>`;
+<body>${body}${autoPrint}</body></html>`;
 }
