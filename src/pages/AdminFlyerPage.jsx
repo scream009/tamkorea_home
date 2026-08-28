@@ -51,6 +51,10 @@ export default function AdminFlyerPage() {
   const boxRef = useRef(null);
   const [scale, setScale] = useState(0.5);
   const [overflowPx, setOverflowPx] = useState(0);
+  // 아이폰 등은 인쇄 여백을 강제한다 → 상자를 줄여야 한 장에 들어간다
+  const [printScale, setPrintScale] = useState(
+    () => (/iPhone|iPad|Android/i.test(navigator.userAgent) ? 0.92 : 1),
+  );
 
   // 로고는 전단이 자기완결 HTML 이 되도록 data URI 로 바꿔 둔다.
   useEffect(() => {
@@ -73,8 +77,8 @@ export default function AdminFlyerPage() {
   }, []);
 
   const html = useMemo(
-    () => buildFlyerHtml(store, { ...images, logo }),
-    [store, images, logo],
+    () => buildFlyerHtml(store, { ...images, logo }, { printScale }),
+    [store, images, logo, printScale],
   );
 
   // 작업 중인 내용을 이 브라우저에 남긴다. 용량을 넘으면 이미지를 빼고 글자만 남긴다.
@@ -178,12 +182,31 @@ export default function AdminFlyerPage() {
   }, [measureFit]);
 
   // ── 출력 ──
+  /**
+   * 새 창에서 인쇄한다.
+   *
+   * iframe 을 그대로 print() 하면 일부 모바일 브라우저가 iframe 이 아니라
+   * **부모 화면(관리자 페이지)** 을 인쇄한다. 전단만 담긴 창을 따로 열어
+   * 그 창을 인쇄하면 그 문제가 생기지 않는다.
+   * 팝업이 막히면 예전 방식(iframe 인쇄)으로 되돌아간다.
+   */
   const print = () => {
-    const w = frameRef.current?.contentWindow;
-    if (!w) return;
     measureFit();
-    w.focus();
-    w.print();
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, '_blank');
+    if (!w) {
+      note('팝업이 막혀 미리보기 창을 열지 못했습니다 — 이 화면에서 인쇄합니다');
+      URL.revokeObjectURL(url);
+      const f = frameRef.current?.contentWindow;
+      if (f) { f.focus(); f.print(); }
+      return;
+    }
+    w.addEventListener('load', () => {
+      w.focus();
+      w.print();
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    });
   };
 
   const download = () => {
@@ -238,6 +261,18 @@ export default function AdminFlyerPage() {
           <button type="button" className="afl-btn" onClick={download}>
             HTML 내려받기
           </button>
+          <label className="afl-scale">
+            인쇄 크기
+            <select
+              value={printScale}
+              onChange={(e) => setPrintScale(Number(e.target.value))}
+            >
+              <option value={1}>100% (여백 없음)</option>
+              <option value={0.96}>96%</option>
+              <option value={0.92}>92% (아이폰 등)</option>
+              <option value={0.88}>88%</option>
+            </select>
+          </label>
           {!ready && (
             <span className="afl-warn">
               상호 · 제공내역 · 사진 2장이 다 채워져야 완성입니다

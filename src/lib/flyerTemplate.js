@@ -515,7 +515,7 @@ export const SAMPLE_STORE = {
  * @param {object} img   { gift, qr, logo } — data URI 또는 빈 값
  * @returns {string} 완성된 단일 HTML (외부 리소스는 구글 폰트뿐)
  */
-export function buildFlyerHtml(store = {}, img = {}) {
+export function buildFlyerHtml(store = {}, img = {}, opt = {}) {
   const E = {};
   for (const f of FLYER_FIELDS) E[f.k] = esc(store[f.k]);
 
@@ -624,12 +624,23 @@ export function buildFlyerHtml(store = {}, img = {}) {
         </div>
     </div>`;
 
+  /* 인쇄 축소.
+     아이폰 등 일부 기기는 인쇄 여백을 강제로 넣는다. 그러면 210x297mm 상자가
+     인쇄 가능 영역을 넘어 2페이지로 흘러넘친다. CSS 로 그 여백을 없앨 수는 없으므로
+     상자 자체를 줄인다. transform 이 아니라 zoom 을 쓰는 이유는, transform 은
+     레이아웃 크기를 그대로 두어 넘침이 안 없어지기 때문이다. */
+  const s = Number(opt.printScale);
+  const scaleCss = (s && s > 0 && s < 1)
+    ? `<style>@media print { .a4 { zoom: ${s}; } }</style>`
+    : '';
+
   return `<!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="UTF-8">
 <title>${E.nameKr || '따종 리뷰이벤트'} 리뷰이벤트</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<style>${CSS}</style></head>
+<style>${CSS}</style>
+${scaleCss}</head>
 <body>${body}</body></html>`;
 }
