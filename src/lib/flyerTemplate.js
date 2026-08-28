@@ -625,15 +625,19 @@ export function buildFlyerHtml(store = {}, img = {}, opt = {}) {
     </div>`;
 
   /* 인쇄 축소.
-     아이폰 등 일부 기기는 인쇄 여백을 강제로 넣는다. 그러면 210x297mm 상자가
-     인쇄 가능 영역을 넘어 2페이지로 흘러넘친다. CSS 로 그 여백을 없앨 수는 없으므로
-     상자 자체를 줄인다. transform 이 아니라 zoom 을 쓰는 이유는, transform 은
-     레이아웃 크기를 그대로 두어 넘침이 안 없어지기 때문이다.
-     zoom 은 .a4 가 아니라 html 에 건다 — body 도 297mm 로 고정돼 있어서
-     .a4 만 줄이면 body 가 그대로 페이지를 넘긴다(실측). */
+     iOS Safari 는 `@page { margin: 0 }` 을 무시하고 여백을 늘 강제한다.
+     그래서 297mm 짜리 상자가 인쇄 가능 영역을 넘어 빈 2페이지가 딸려 나온다.
+
+     zoom 은 쓰지 않는다 — Safari 가 인쇄에서 무시해 폰에서는 아무 효과가 없었다
+     (실측: 배율을 아무리 내려도 2페이지 유지). transform 은 인쇄에서도 먹지만
+     레이아웃 크기를 그대로 두므로, html/body 크기도 함께 줄여 페이지 수를 정한다.
+     이 <style> 은 본문 CSS 뒤에 오므로 같은 선택자에서 이긴다. */
   const s = Number(opt.printScale);
   const scaleCss = (s && s > 0 && s < 1)
-    ? `<style>@media print { html { zoom: ${s}; } }</style>`
+    ? `<style>@media print {
+  html, body { width: calc(210mm * ${s}); height: calc(297mm * ${s}); overflow: hidden; }
+  .a4 { transform: scale(${s}); transform-origin: top left; }
+}</style>`
     : '';
 
   return `<!DOCTYPE html>

@@ -51,10 +51,14 @@ export default function AdminFlyerPage() {
   const boxRef = useRef(null);
   const [scale, setScale] = useState(0.5);
   const [overflowPx, setOverflowPx] = useState(0);
-  // 아이폰 등은 인쇄 여백을 강제한다 → 상자를 줄여야 한 장에 들어간다.
-  // 용지가 US Letter(216x279mm)면 A4(297mm)보다 18mm 짧아 그것만으로도 넘친다.
+  /* 인쇄 축소 배율.
+     iOS Safari 는 `@page { margin: 0 }` 을 무시하고 약 12.7mm 여백을 늘 강제한다.
+     그래서 A4 의 실제 인쇄 가능 높이는 약 271.6mm 다. 297mm 짜리 전단을
+     92% 로 줄이면 273.2mm — 1.6mm 가 넘쳐 **빈 2페이지**가 딸려 나온다(실측).
+     경계에 걸치지 않게 모바일은 85%(252mm)로 시작한다.
+     용지가 US Letter(216x279mm)면 A4 보다 18mm 짧아 더 줄여야 한다. */
   const [printScale, setPrintScale] = useState(
-    () => (/iPhone|iPad|Android/i.test(navigator.userAgent) ? 0.92 : 1),
+    () => (/iPhone|iPad|Android/i.test(navigator.userAgent) ? 0.85 : 1),
   );
 
   // 로고는 전단이 자기완결 HTML 이 되도록 data URI 로 바꿔 둔다.
@@ -268,10 +272,11 @@ export default function AdminFlyerPage() {
               value={printScale}
               onChange={(e) => setPrintScale(Number(e.target.value))}
             >
-              <option value={1}>A4 · 100%</option>
-              <option value={0.92}>A4 · 92% (여백 강제 기기)</option>
-              <option value={0.85}>US Letter · 85%</option>
-              <option value={0.8}>더 작게 · 80%</option>
+              <option value={1}>A4 · 100% (PC · PDF 저장)</option>
+              <option value={0.88}>A4 · 88% (여백 있는 프린터)</option>
+              <option value={0.85}>폰 · 85% (아이폰 기본)</option>
+              <option value={0.8}>US Letter · 80%</option>
+              <option value={0.75}>더 작게 · 75%</option>
             </select>
           </label>
           {!ready && (
@@ -280,8 +285,10 @@ export default function AdminFlyerPage() {
             </span>
           )}
           <span className="afl-hint2">
-            인쇄창에서 <b>용지 크기 = A4</b> 확인. US Letter 면 A4 보다 18mm 짧아
-            그대로 두면 2페이지가 됩니다 — 왼쪽 <b>용지</b> 를 US Letter 로 바꾸세요.
+            인쇄창에서 <b>용지 = A4</b>, <b>크기 조절 = 100%</b> 로 두세요.
+            아이폰은 여백을 강제해 A4 인쇄 가능 높이가 약 271mm 뿐입니다 —
+            그래서 폰에서는 왼쪽 <b>용지</b> 를 85% 이하로 씁니다.
+            빈 2페이지가 계속 나오면 한 단계 더 내리세요.
           </span>
           {overflowPx > 0 && (
             <span className="afl-over">
