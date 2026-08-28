@@ -643,12 +643,23 @@ export function buildFlyerHtml(store = {}, img = {}, opt = {}) {
         </div>
     </div>`;
 
-  /* 인쇄 축소 — CSS 값을 실제로 줄여서 낸다.
-     iOS Safari 는 인쇄에서 zoom 을 무시하고, transform 은 레이아웃 크기를 안 줄여
-     overflow:hidden 까지 무시당하면 오히려 페이지가 늘어난다(둘 다 실측으로 실패).
-     그래서 브라우저가 해석할 여지가 없도록 mm/px 숫자 자체를 곱해 둔다. */
+  /* 인쇄 축소 — 사파리의 '용지 너비 맞춤'을 거스르지 않고 이용한다.
+     Safari 인쇄는 문서 너비를 용지 너비에 자동으로 맞춘다. 그래서 CSS 값을 줄여
+     문서를 좁게 만들면 사파리가 도로 늘려버려 배율이 아무 효과가 없었다(실측:
+     60%~88% 어느 값에서도 페이지 수가 동일했고 전단이 늘 종이를 꽉 채웠다).
+
+     그래서 반대로 간다 — 인쇄용 본문을 210mm/s 만큼 **넓게** 잡고 전단을 가운데
+     둔다. 사파리가 그 넓은 본문을 용지 너비에 맞추면서 전체가 s 배로 줄어든다.
+     화면 미리보기에는 영향이 없다(@media print 안에서만 적용). */
   const s = Number(opt.printScale);
-  const css = (s && s > 0 && s < 1) ? scaleCss(CSS, s) : CSS;
+  const fit = (s && s > 0 && s < 1)
+    ? `<style>@media print {
+  html, body { width: ${(210 / s).toFixed(1)}mm; height: auto; min-height: 0; max-height: none;
+    margin: 0; padding: 0; overflow: visible; }
+  .a4 { margin: 0 auto; }
+}</style>`
+    : '';
+  const css = CSS;
 
   /* 준비가 끝난 뒤에 인쇄한다.
      iOS 에서 '웹 페이지가 로드를 완료하지 않았습니다' 가 뜨고, 사은품 사진과 QR 이
@@ -701,6 +712,7 @@ font:11px/1.5 monospace;padding:4px 6px;white-space:pre">...</div>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<style>${css}</style></head>
+<style>${css}</style>
+${fit}</head>
 <body>${body}${debugBox}${autoPrint}</body></html>`;
 }
