@@ -1,0 +1,309 @@
+/* 리뷰이벤트 전단 생성기 — 좌 입력 / 우 미리보기 */
+
+.afl {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* ── 상단 액션 바 ── */
+.afl-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #E8EAEE;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.afl-bar-l,
+.afl-bar-r {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.afl-btn {
+  border: 1px solid #D9DDE3;
+  background: #fff;
+  color: #2A2D33;
+  border-radius: 9px;
+  padding: 8px 14px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.afl-btn:hover {
+  background: #F5F6F8;
+}
+
+.afl-btn.pri {
+  background: #FF6600;
+  border-color: #FF6600;
+  color: #fff;
+}
+
+.afl-btn.pri:hover {
+  background: #E24A00;
+}
+
+.afl-sel {
+  border: 1px solid #D9DDE3;
+  border-radius: 9px;
+  padding: 8px 10px;
+  font-size: 13px;
+  background: #fff;
+  max-width: 220px;
+}
+
+.afl-warn,
+.afl-busy,
+.afl-msg {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.afl-warn {
+  color: #B4741F;
+}
+
+.afl-busy {
+  color: #4A6FA5;
+}
+
+.afl-msg {
+  color: #2E7D4F;
+}
+
+/* ── 본문 2단 ── */
+.afl-body {
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .afl-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── 입력 ── */
+.afl-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.afl-sec {
+  background: #fff;
+  border: 1px solid #E8EAEE;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.afl-sec h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #2A2D33;
+}
+
+.afl-sec h3 small {
+  margin-left: 8px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #8A9099;
+}
+
+.afl-f {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.afl-f>span {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #5A6069;
+  margin-bottom: 4px;
+}
+
+.afl-f input {
+  width: 100%;
+  border: 1px solid #D9DDE3;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13.5px;
+  font-family: inherit;
+}
+
+.afl-f input:focus {
+  outline: none;
+  border-color: #FF9A5C;
+  box-shadow: 0 0 0 3px rgba(255, 102, 0, .12);
+}
+
+.afl-f>em {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-style: normal;
+  color: #C0392B;
+}
+
+/* ── 이미지 ── */
+.afl-drop {
+  border: 1px dashed #D9DDE3;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.afl-drop-h {
+  font-size: 13px;
+  font-weight: 800;
+  color: #2A2D33;
+  margin-bottom: 8px;
+}
+
+.afl-drop-h em {
+  float: right;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+  color: #8A9099;
+}
+
+.afl-drop input[type=file] {
+  font-size: 12.5px;
+  max-width: 100%;
+}
+
+.afl-thumb {
+  display: block;
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #E8EAEE;
+  margin-top: 10px;
+}
+
+.afl-thumb.qr {
+  object-fit: contain;
+  background: #fff;
+}
+
+.afl-zoom {
+  display: block;
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #5A6069;
+}
+
+.afl-zoom input {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.afl-chk {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: #4A4E55;
+}
+
+.afl-chk b {
+  font-weight: 700;
+}
+
+.afl-tip {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #8A9099;
+}
+
+.afl-tip.alert {
+  color: #C0392B;
+}
+
+/* ── 저장된 매장 ── */
+.afl-saved {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.afl-saved li {
+  display: flex;
+  gap: 6px;
+}
+
+.afl-saved button {
+  flex: 1;
+  text-align: left;
+  border: 1px solid #E8EAEE;
+  background: #FAFBFC;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.afl-saved button.x {
+  flex: 0 0 auto;
+  color: #C0392B;
+  font-weight: 700;
+}
+
+/* ── 미리보기 ── */
+.afl-prev {
+  background: #fff;
+  border: 1px solid #E8EAEE;
+  border-radius: 12px;
+  padding: 14px;
+  min-width: 0;
+}
+
+.afl-prev-h {
+  font-size: 13px;
+  font-weight: 800;
+  color: #2A2D33;
+  margin-bottom: 10px;
+}
+
+.afl-stage {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #5f6266;
+}
+
+.afl-stage iframe {
+  width: 842px;
+  height: 1190px;
+  border: 0;
+  transform-origin: top left;
+  display: block;
+}

@@ -36,6 +36,8 @@ import StaffCastingPage from './pages/StaffCastingPage';
 import StaffCardsPage from './pages/StaffCardsPage';
 import AdminDianpingPage from './pages/AdminDianpingPage';
 import AdminStoresPage from './pages/AdminStoresPage';
+import AdminToolsPage from './pages/AdminToolsPage';
+import AdminFlyerPage from './pages/AdminFlyerPage';
 import './components/AdminShell.css';
 import './App.css';
 
@@ -71,6 +73,8 @@ function App() {
           <Route path="/admin/dashboard" element={<AdminGate><AdminShell><AdminDashboardPage /></AdminShell></AdminGate>} />
           <Route path="/admin/dianping" element={<AdminGate><AdminShell><AdminDianpingPage /></AdminShell></AdminGate>} />
           <Route path="/admin/board" element={<AdminGate><AdminShell><AdminBoardPage /></AdminShell></AdminGate>} />
+          <Route path="/admin/tools" element={<AdminGate><AdminShell><AdminToolsPage /></AdminShell></AdminGate>} />
+          <Route path="/admin/tools/flyer" element={<AdminGate><AdminShell><AdminFlyerPage /></AdminShell></AdminGate>} />
 
           {/* 일반 페이지: Layout (헤더/푸터) 포함 */}
           <Route path="/*" element={
