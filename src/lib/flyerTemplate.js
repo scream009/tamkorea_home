@@ -65,6 +65,11 @@ const CSS = String.raw`:root {
             body {
                 width: 210mm;
                 height: 297mm;
+                /* 화면용 min-height: 100vh 를 반드시 푼다.
+                   안 풀면 본문이 늘 한 화면 높이 이상으로 남아, 전단을 아무리
+                   줄여도 페이지 수가 그대로다(실측: 60% 로 줄여도 3페이지). */
+                min-height: 0;
+                max-height: none;
                 margin: 0;
                 padding: 0;
                 background: none;
