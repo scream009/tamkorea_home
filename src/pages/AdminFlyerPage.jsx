@@ -50,6 +50,7 @@ export default function AdminFlyerPage() {
   const frameRef = useRef(null);
   const boxRef = useRef(null);
   const [scale, setScale] = useState(0.5);
+  const [overflowPx, setOverflowPx] = useState(0);
 
   // 로고는 전단이 자기완결 HTML 이 되도록 data URI 로 바꿔 둔다.
   useEffect(() => {
@@ -153,10 +154,34 @@ export default function AdminFlyerPage() {
     return () => { alive = false; };
   }, [qrRaw, cutCaption]);
 
+  /**
+   * 내용이 A4 한 장을 넘는지 잰다.
+   *
+   * 인쇄 CSS 가 `.a4 { height: 297mm; overflow: hidden }` 으로 못을 박아 두어서
+   * 페이지가 넘어가는 대신 **넘친 부분이 조용히 잘린다.** 잘린 걸 눈치채지 못하고
+   * 인쇄하는 게 더 나쁘므로 여기서 미리 알려 준다.
+   */
+  const measureFit = useCallback(() => {
+    const doc = frameRef.current?.contentDocument;
+    const layer = doc?.querySelector('.layer');
+    if (!layer) return;
+    const over = Math.max(0, layer.scrollHeight - layer.clientHeight);
+    setOverflowPx(over);
+  }, []);
+
+  // 폰트가 늦게 붙으면 높이가 바뀐다. 폰트 로딩까지 기다렸다가 잰다.
+  const onFrameLoad = useCallback(() => {
+    const doc = frameRef.current?.contentDocument;
+    measureFit();
+    doc?.fonts?.ready?.then(measureFit).catch(() => {});
+    window.setTimeout(measureFit, 600);
+  }, [measureFit]);
+
   // ── 출력 ──
   const print = () => {
     const w = frameRef.current?.contentWindow;
     if (!w) return;
+    measureFit();
     w.focus();
     w.print();
   };
@@ -216,6 +241,12 @@ export default function AdminFlyerPage() {
           {!ready && (
             <span className="afl-warn">
               상호 · 제공내역 · 사진 2장이 다 채워져야 완성입니다
+            </span>
+          )}
+          {overflowPx > 0 && (
+            <span className="afl-over">
+              내용이 A4 한 장을 약 {Math.round(overflowPx)}px 넘습니다 — 넘친 부분은 인쇄에서 잘립니다.
+              질문 수나 문구 길이를 줄이세요.
             </span>
           )}
           {busy && <span className="afl-busy">{busy}</span>}
@@ -342,12 +373,18 @@ export default function AdminFlyerPage() {
 
         {/* ── 미리보기 ── */}
         <div className="afl-prev" ref={boxRef}>
-          <div className="afl-prev-h">미리보기 · A4 1페이지</div>
+          <div className="afl-prev-h">
+            미리보기 · A4 1페이지
+            <b className={overflowPx > 0 ? 'bad' : 'ok'}>
+              {overflowPx > 0 ? '한 장을 넘침' : '한 장에 들어감'}
+            </b>
+          </div>
           <div className="afl-stage" style={{ height: 1190 * scale + 24 }}>
             <iframe
               ref={frameRef}
               title="전단 미리보기"
               srcDoc={html}
+              onLoad={onFrameLoad}
               style={{ transform: `scale(${scale})` }}
             />
           </div>

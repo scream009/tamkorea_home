@@ -56,16 +56,37 @@ const CSS = String.raw`:root {
             margin: 0;
         }
 
+        /* 인쇄는 무조건 1페이지다.
+           예전에는 .a4 뒤에 강제 페이지나눔이 걸려 빈 2페이지가 딸려 나왔다.
+           헤드리스 PDF 변환은 그 빈 페이지를 버리지만 실제 인쇄 대화상자는 버리지 않는다. */
         @media print {
+
+            html,
             body {
-                background: none;
+                width: 210mm;
+                height: 297mm;
+                margin: 0;
                 padding: 0;
+                background: none;
                 display: block;
+                overflow: hidden;
             }
 
             .a4 {
+                width: 210mm;
+                height: 297mm;
+                margin: 0;
                 box-shadow: none;
-                page-break-after: always;
+                overflow: hidden;
+                page-break-after: avoid;
+                page-break-inside: avoid;
+                break-after: avoid;
+                break-inside: avoid;
+            }
+
+            /* 전단 뒤에 무엇이 와도 페이지를 넘기지 못하게 한다 */
+            .a4~* {
+                display: none !important;
             }
         }
 
