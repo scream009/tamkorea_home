@@ -51,14 +51,15 @@ export default function AdminFlyerPage() {
   const boxRef = useRef(null);
   const [scale, setScale] = useState(0.5);
   const [overflowPx, setOverflowPx] = useState(0);
-  /* 인쇄 축소 배율.
-     iOS Safari 는 `@page { margin: 0 }` 을 무시하고 약 12.7mm 여백을 늘 강제한다.
-     그래서 A4 의 실제 인쇄 가능 높이는 약 271.6mm 다. 297mm 짜리 전단을
-     92% 로 줄이면 273.2mm — 1.6mm 가 넘쳐 **빈 2페이지**가 딸려 나온다(실측).
-     경계에 걸치지 않게 모바일은 85%(252mm)로 시작한다.
-     용지가 US Letter(216x279mm)면 A4 보다 18mm 짧아 더 줄여야 한다. */
+  /* 인쇄 축소 배율 — 아래 숫자는 전부 Owner 아이폰 실측이다.
+       iOS 는 `@page { margin: 0 }` 을 무시하고 여백 약 24mm 를 늘 강제한다.
+       A4(297mm)    -> 인쇄 가능 약 273mm : 92% 부터 1페이지
+       Letter(279mm)-> 인쇄 가능 약 255mm : 88%(261mm) 는 2페이지
+     아이폰 인쇄창의 용지가 US Letter 로 되돌아가는 일이 잦으므로,
+     어느 용지에서도 들어가는 80%(238mm)를 모바일 기본으로 둔다.
+     85%(252mm)도 Letter 에 들어가지만 여유가 3mm 뿐이라 기본으로 쓰지 않는다. */
   const [printScale, setPrintScale] = useState(
-    () => (/iPhone|iPad|Android/i.test(navigator.userAgent) ? 0.85 : 1),
+    () => (/iPhone|iPad|Android/i.test(navigator.userAgent) ? 0.8 : 1),
   );
 
   // 로고는 전단이 자기완결 HTML 이 되도록 data URI 로 바꿔 둔다.
@@ -281,9 +282,9 @@ export default function AdminFlyerPage() {
               onChange={(e) => setPrintScale(Number(e.target.value))}
             >
               <option value={1}>100% — PC · PDF 저장</option>
-              <option value={0.88}>88% — 여백 있는 프린터</option>
-              <option value={0.85}>85% — 아이폰 권장</option>
-              <option value={0.8}>80% — US Letter</option>
+              <option value={0.9}>90% — A4 전용</option>
+              <option value={0.85}>85% — A4·Letter (여유 적음)</option>
+              <option value={0.8}>80% — 아이폰 권장</option>
               <option value={0.75}>75%</option>
               <option value={0.7}>70%</option>
               <option value={0.6}>60% — 진단용</option>
@@ -299,9 +300,9 @@ export default function AdminFlyerPage() {
           )}
           <span className="afl-hint2">
             누르면 새 창이 열리고 <b>사진·글꼴이 다 준비된 뒤 인쇄창이 저절로</b> 뜹니다.
-            인쇄창에서 <b>용지 = A4</b> 확인.
-            <b>아이폰에서 2페이지로 나오면 인쇄창의 「크기 조절」을 92% 로</b> 내리세요
-            (실측 확인된 값). PC 는 100% 그대로 1페이지입니다.
+            아이폰은 인쇄창 용지가 <b>US Letter 로 되돌아가는 일이 잦아</b>
+            어느 용지든 들어가는 <b>80%</b> 를 기본으로 씁니다.
+            인쇄창의 「크기 조절」은 <b>100% 그대로</b> 두세요. PC 는 100% 배율로 1페이지입니다.
           </span>
           {overflowPx > 0 && (
             <span className="afl-over">
