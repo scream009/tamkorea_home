@@ -376,3 +376,48 @@
   padding: 3px 7px;
   white-space: nowrap;
 }
+
+/* ── 필수 표시 ── */
+.afl-req {
+  display: inline-block;
+  margin-left: 6px;
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .5px;
+  color: #fff;
+  background: #C0392B;
+  border-radius: 4px;
+  padding: 1px 6px;
+  vertical-align: middle;
+}
+
+.afl-f input.miss {
+  border-color: #E8837A;
+  background: #FFF7F6;
+}
+
+.afl-f input.miss:focus {
+  border-color: #C0392B;
+  box-shadow: 0 0 0 3px rgba(192, 57, 43, .12);
+}
+
+.afl-drop.miss {
+  border-color: #E8837A;
+  background: #FFF9F8;
+}
+
+.afl-warn b {
+  color: #C0392B;
+  font-weight: 800;
+}
+
+.afl-ok {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #2E7D4F;
+  background: #E8F5EE;
+  border: 1px solid #BFE3CE;
+  border-radius: 8px;
+  padding: 5px 10px;
+}

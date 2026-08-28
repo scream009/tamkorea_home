@@ -506,11 +506,11 @@ function mark(v) {
 
 /** 전단에 들어가는 매장별 항목. AdminFlyerPage 의 폼과 1:1 로 대응한다. */
 export const FLYER_FIELDS = [
-  { k: 'nameCn', label: '중문 상호 *', ph: '带鱼庭院', hint: '따종 상인포털 등록명 그대로. 모르면 ⟦확인필요⟧ 로 두고 지어내지 말 것' },
+  { k: 'nameCn', label: '중문 상호', req: true, ph: '带鱼庭院', hint: '따종 상인포털 등록명 그대로. 모르면 ⟦확인필요⟧ 로 두고 지어내지 말 것' },
   { k: 'nameKr', label: '한글 상호', ph: '제주갈치정원 제주본점' },
   { k: 'addrCn', label: '주소 (중문) — 비워도 됨', ph: '济州市 1100路 3124 (老衡洞) · 距济州机场约 10 分钟' },
   { k: 'hoursCn', label: '영업시간 (중문) — 비워도 됨', ph: '营业时间 10:00 – 22:00' },
-  { k: 'giftCn', label: '제공 내역 (중문) *', ph: '手工济州艾草年糕 2 个' },
+  { k: 'giftCn', label: '제공 내역 (중문)', req: true, ph: '手工济州艾草年糕 2 个' },
   { k: 'giftKr', label: '제공 내역 (한글)', ph: '제주 수제 오메기떡 2개' },
   { k: 'giftSubCn', label: '제공 내역 설명 (중문)', ph: '100% 韩国产糯米 + 济州艾草' },
   { k: 'leadCn', label: '헤드라인 아래 문구 (중문)', ph: '在大众点评完成打卡与带图点评，即可免费领取…', wide: true },

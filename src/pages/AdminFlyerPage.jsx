@@ -263,7 +263,13 @@ export default function AdminFlyerPage() {
     .flatMap((v) => (Array.isArray(v) ? v : [v]))
     .filter((v) => String(v || '').includes('⟦')).length;
 
-  const ready = Boolean(images.gift && images.qr && store.nameCn && store.giftCn);
+  const missing = [
+    !String(store.nameCn || '').trim() && '중문 상호',
+    !String(store.giftCn || '').trim() && '제공 내역',
+    !images.gift && '사은품 사진',
+    !images.qr && '따종 QR',
+  ].filter(Boolean);
+  const ready = missing.length === 0;
 
   return (
     <div className="afl">
@@ -301,10 +307,13 @@ export default function AdminFlyerPage() {
               {Math.round(210 * printScale)}×{Math.round(297 * printScale)}mm
             </b>
           </label>
-          {!ready && (
+          {missing.length > 0 && (
             <span className="afl-warn">
-              상호 · 제공내역 · 사진 2장이 다 채워져야 완성입니다
+              <b>필수 미입력</b> {missing.join(' · ')}
             </span>
+          )}
+          {ready && unknowns === 0 && (
+            <span className="afl-ok">필수 항목 완료</span>
           )}
           {unknowns > 0 && (
             <span className="afl-over">
@@ -351,11 +360,12 @@ export default function AdminFlyerPage() {
         {/* ── 입력 ── */}
         <div className="afl-form">
           <section className="afl-sec">
-            <h3>사진 <small>매장별로 반드시 교체</small></h3>
+            <h3>사진 <i className="afl-req">필수</i> <small>매장별로 반드시 교체</small></h3>
 
-            <div className="afl-drop">
+            <div className={`afl-drop${images.gift ? '' : ' miss'}`}>
               <div className="afl-drop-h">
                 사은품 사진
+                <i className="afl-req">필수</i>
                 {images.gift && <em>{giftKb}KB</em>}
               </div>
               <input type="file" accept="image/*" onChange={(e) => onGift(e.target.files?.[0])} />
@@ -375,9 +385,10 @@ export default function AdminFlyerPage() {
               )}
             </div>
 
-            <div className="afl-drop">
+            <div className={`afl-drop${images.qr ? '' : ' miss'}`}>
               <div className="afl-drop-h">
                 따종 QR
+                <i className="afl-req">필수</i>
                 {images.qr && <em>{qrKb}KB</em>}
               </div>
               <input type="file" accept="image/*" onChange={(e) => onQr(e.target.files?.[0])} />
@@ -407,18 +418,25 @@ export default function AdminFlyerPage() {
                 중문 상호는 포털 등록명 그대로 · 주소·영업시간은 비워도 됩니다(빈 줄 없이 빠짐)
               </small>
             </h3>
-            {FLYER_FIELDS.map((f) => (
-              <label key={f.k} className={`afl-f${f.wide ? ' wide' : ''}`}>
-                <span>{f.label}</span>
-                <input
-                  type="text"
-                  value={store[f.k] || ''}
-                  placeholder={f.ph}
-                  onChange={(e) => set(f.k, e.target.value)}
-                />
-                {f.hint && <em>{f.hint}</em>}
-              </label>
-            ))}
+            {FLYER_FIELDS.map((f) => {
+              const empty = !String(store[f.k] || '').trim();
+              return (
+                <label key={f.k} className={`afl-f${f.wide ? ' wide' : ''}`}>
+                  <span>
+                    {f.label}
+                    {f.req && <i className="afl-req">필수</i>}
+                  </span>
+                  <input
+                    type="text"
+                    className={f.req && empty ? 'miss' : ''}
+                    value={store[f.k] || ''}
+                    placeholder={f.ph}
+                    onChange={(e) => set(f.k, e.target.value)}
+                  />
+                  {f.hint && <em>{f.hint}</em>}
+                </label>
+              );
+            })}
           </section>
 
           <section className="afl-sec">
