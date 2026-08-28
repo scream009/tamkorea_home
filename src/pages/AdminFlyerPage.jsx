@@ -51,7 +51,8 @@ export default function AdminFlyerPage() {
   const boxRef = useRef(null);
   const [scale, setScale] = useState(0.5);
   const [overflowPx, setOverflowPx] = useState(0);
-  // 아이폰 등은 인쇄 여백을 강제한다 → 상자를 줄여야 한 장에 들어간다
+  // 아이폰 등은 인쇄 여백을 강제한다 → 상자를 줄여야 한 장에 들어간다.
+  // 용지가 US Letter(216x279mm)면 A4(297mm)보다 18mm 짧아 그것만으로도 넘친다.
   const [printScale, setPrintScale] = useState(
     () => (/iPhone|iPad|Android/i.test(navigator.userAgent) ? 0.92 : 1),
   );
@@ -262,15 +263,15 @@ export default function AdminFlyerPage() {
             HTML 내려받기
           </button>
           <label className="afl-scale">
-            인쇄 크기
+            용지
             <select
               value={printScale}
               onChange={(e) => setPrintScale(Number(e.target.value))}
             >
-              <option value={1}>100% (여백 없음)</option>
-              <option value={0.96}>96%</option>
-              <option value={0.92}>92% (아이폰 등)</option>
-              <option value={0.88}>88%</option>
+              <option value={1}>A4 · 100%</option>
+              <option value={0.92}>A4 · 92% (여백 강제 기기)</option>
+              <option value={0.85}>US Letter · 85%</option>
+              <option value={0.8}>더 작게 · 80%</option>
             </select>
           </label>
           {!ready && (
@@ -278,6 +279,10 @@ export default function AdminFlyerPage() {
               상호 · 제공내역 · 사진 2장이 다 채워져야 완성입니다
             </span>
           )}
+          <span className="afl-hint2">
+            인쇄창에서 <b>용지 크기 = A4</b> 확인. US Letter 면 A4 보다 18mm 짧아
+            그대로 두면 2페이지가 됩니다 — 왼쪽 <b>용지</b> 를 US Letter 로 바꾸세요.
+          </span>
           {overflowPx > 0 && (
             <span className="afl-over">
               내용이 A4 한 장을 약 {Math.round(overflowPx)}px 넘습니다 — 넘친 부분은 인쇄에서 잘립니다.

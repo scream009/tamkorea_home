@@ -354,3 +354,15 @@
   font-size: 12.5px;
   background: #fff;
 }
+
+.afl-hint2 {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #8A9099;
+  max-width: 460px;
+}
+
+.afl-hint2 b {
+  color: #C0392B;
+  font-weight: 800;
+}
