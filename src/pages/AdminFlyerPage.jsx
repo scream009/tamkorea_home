@@ -255,6 +255,14 @@ export default function AdminFlyerPage() {
 
   const giftKb = Math.round(dataUrlBytes(images.gift) / 1024);
   const qrKb = Math.round(dataUrlBytes(images.qr) / 1024);
+
+  /* 모르는 값을 그럴듯하게 지어내는 것이 이 전단의 가장 큰 위험이다.
+     1호 매장에서 중문 상호를 추론해 넣었다가 틀렸다(济州带鱼庭园 -> 실제 带鱼庭院).
+     확인이 필요한 자리는 ⟦…⟧ 로 적어 두면 인쇄면에 빨갛게 남고 여기서도 센다. */
+  const unknowns = Object.values(store)
+    .flatMap((v) => (Array.isArray(v) ? v : [v]))
+    .filter((v) => String(v || '').includes('⟦')).length;
+
   const ready = Boolean(images.gift && images.qr && store.nameCn && store.giftCn);
 
   return (
@@ -296,6 +304,12 @@ export default function AdminFlyerPage() {
           {!ready && (
             <span className="afl-warn">
               상호 · 제공내역 · 사진 2장이 다 채워져야 완성입니다
+            </span>
+          )}
+          {unknowns > 0 && (
+            <span className="afl-over">
+              확인 안 된 항목 {unknowns}개 (⟦ ⟧ 표시) — 인쇄면에도 빨갛게 찍힙니다.
+              모르는 값은 지어내지 말고 이대로 두었다가 확인 후 채우세요.
             </span>
           )}
           <span className="afl-hint2">
@@ -387,7 +401,12 @@ export default function AdminFlyerPage() {
           </section>
 
           <section className="afl-sec">
-            <h3>매장 정보 <small>중문 상호는 포털 등록명 그대로</small></h3>
+            <h3>
+              매장 정보
+              <small>
+                중문 상호는 포털 등록명 그대로 · 주소·영업시간은 비워도 됩니다(빈 줄 없이 빠짐)
+              </small>
+            </h3>
             {FLYER_FIELDS.map((f) => (
               <label key={f.k} className={`afl-f${f.wide ? ' wide' : ''}`}>
                 <span>{f.label}</span>

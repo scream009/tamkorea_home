@@ -489,13 +489,28 @@ function esc(v) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+/**
+ * 값을 인쇄용으로 이스케이프하되, ⟦…⟧ 로 감싼 부분은 눈에 띄게 표시한다.
+ *
+ * 모르는 값을 그럴듯하게 지어내는 것이 이 전단의 가장 큰 위험이다.
+ * 1호 매장에서 중문 상호를 추론해 넣었다가 틀렸다(济州带鱼庭园 -> 실제 带鱼庭院).
+ * 빈칸은 눈에 띄지만 그럴듯한 가짜는 아무도 안 본다.
+ * 그래서 확인이 필요한 자리는 ⟦확인필요⟧ 처럼 적어 두면 인쇄면에서도 빨갛게 남는다.
+ */
+function mark(v) {
+  const t = esc(v);
+  return t.replace(/⟦([^⟧]*)⟧/g,
+    '<span style="background:#FFE0E0;color:#C0392B;font-weight:900;'
+    + 'border-radius:3px;padding:0 3px">⟦$1⟧</span>');
+}
+
 /** 전단에 들어가는 매장별 항목. AdminFlyerPage 의 폼과 1:1 로 대응한다. */
 export const FLYER_FIELDS = [
-  { k: 'nameCn', label: '중문 상호', ph: '带鱼庭院', hint: '따종 상인포털 등록명 그대로. 추론 금지' },
+  { k: 'nameCn', label: '중문 상호 *', ph: '带鱼庭院', hint: '따종 상인포털 등록명 그대로. 모르면 ⟦확인필요⟧ 로 두고 지어내지 말 것' },
   { k: 'nameKr', label: '한글 상호', ph: '제주갈치정원 제주본점' },
-  { k: 'addrCn', label: '주소 (중문)', ph: '济州市 1100路 3124 (老衡洞) · 距济州机场约 10 分钟' },
-  { k: 'hoursCn', label: '영업시간 (중문)', ph: '营业时间 10:00 – 22:00' },
-  { k: 'giftCn', label: '제공 내역 (중문)', ph: '手工济州艾草年糕 2 个' },
+  { k: 'addrCn', label: '주소 (중문) — 비워도 됨', ph: '济州市 1100路 3124 (老衡洞) · 距济州机场约 10 分钟' },
+  { k: 'hoursCn', label: '영업시간 (중문) — 비워도 됨', ph: '营业时间 10:00 – 22:00' },
+  { k: 'giftCn', label: '제공 내역 (중문) *', ph: '手工济州艾草年糕 2 个' },
   { k: 'giftKr', label: '제공 내역 (한글)', ph: '제주 수제 오메기떡 2개' },
   { k: 'giftSubCn', label: '제공 내역 설명 (중문)', ph: '100% 韩国产糯米 + 济州艾草' },
   { k: 'leadCn', label: '헤드라인 아래 문구 (중문)', ph: '在大众点评完成打卡与带图点评，即可免费领取…', wide: true },
@@ -523,7 +538,17 @@ export const SAMPLE_STORE = {
  */
 export function buildFlyerHtml(store = {}, img = {}, opt = {}) {
   const E = {};
-  for (const f of FLYER_FIELDS) E[f.k] = esc(store[f.k]);
+  for (const f of FLYER_FIELDS) E[f.k] = mark(store[f.k]);
+
+  /* 주소·영업시간은 비워도 된다.
+     매장 안에 두는 전단이라 손님은 이미 그 자리에 있다. 몰라서 지어내느니 빼는 게 낫다.
+     빈 줄이 남지 않게 값이 있는 것만 이어 붙이고, 둘 다 없으면 블록째 뺀다. */
+  const footLines = [store.addrCn, store.hoursCn]
+    .filter((v) => String(v || '').trim())
+    .map((v) => mark(v));
+  const FOOT_ADDR = footLines.length
+    ? `<div class="foot-addr">${footLines.join('<br>')}</div>`
+    : '<div></div>';
 
   const HINTS = (store.hints || [])
     .filter((h) => String(h).trim())
@@ -617,10 +642,7 @@ export function buildFlyerHtml(store = {}, img = {}, opt = {}) {
 
             <!-- 공통 : 유의사항 (주소·시간만 STORE 에서 온다) -->
             <div class="foot">
-                <div class="foot-addr">
-                    <span id="addrCn">${E.addrCn}</span><br>
-                    <span id="hoursCn">${E.hoursCn}</span>
-                </div>
+                ${FOOT_ADDR}
                 <div class="foot-note">
                     * 礼品详情咨询商家 &nbsp;|&nbsp; 每桌每次消费限领 1 次<br>
                     * 点评删除后不可重复参与 &nbsp;|&nbsp; 赠品数量有限，送完为止
