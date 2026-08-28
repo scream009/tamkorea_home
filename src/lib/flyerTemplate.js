@@ -477,6 +477,20 @@ const CSS = String.raw`:root {
             text-align: right;
         }`;
 
+/**
+ * CSS 안의 mm / px 숫자를 s 배로 줄인다.
+ *
+ * 인쇄 축소를 zoom/transform 으로 하면 iOS Safari 에서 통하지 않았다(실측).
+ * 값을 직접 줄이면 레이아웃 자체가 작아지므로 어느 엔진에서나 같게 동작한다.
+ * %·unitless·색상은 건드리지 않는다.
+ */
+function scaleCss(css, s) {
+  return css.replace(/(-?\d*\.?\d+)(mm|px)/g, (m, n, unit) => {
+    const v = parseFloat(n) * s;
+    return `${Math.round(v * 1000) / 1000}${unit}`;
+  });
+}
+
 function esc(v) {
   return String(v == null ? '' : v)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -624,21 +638,12 @@ export function buildFlyerHtml(store = {}, img = {}, opt = {}) {
         </div>
     </div>`;
 
-  /* 인쇄 축소.
-     iOS Safari 는 `@page { margin: 0 }` 을 무시하고 여백을 늘 강제한다.
-     그래서 297mm 짜리 상자가 인쇄 가능 영역을 넘어 빈 2페이지가 딸려 나온다.
-
-     zoom 은 쓰지 않는다 — Safari 가 인쇄에서 무시해 폰에서는 아무 효과가 없었다
-     (실측: 배율을 아무리 내려도 2페이지 유지). transform 은 인쇄에서도 먹지만
-     레이아웃 크기를 그대로 두므로, html/body 크기도 함께 줄여 페이지 수를 정한다.
-     이 <style> 은 본문 CSS 뒤에 오므로 같은 선택자에서 이긴다. */
+  /* 인쇄 축소 — CSS 값을 실제로 줄여서 낸다.
+     iOS Safari 는 인쇄에서 zoom 을 무시하고, transform 은 레이아웃 크기를 안 줄여
+     overflow:hidden 까지 무시당하면 오히려 페이지가 늘어난다(둘 다 실측으로 실패).
+     그래서 브라우저가 해석할 여지가 없도록 mm/px 숫자 자체를 곱해 둔다. */
   const s = Number(opt.printScale);
-  const scaleCss = (s && s > 0 && s < 1)
-    ? `<style>@media print {
-  html, body { width: calc(210mm * ${s}); height: calc(297mm * ${s}); overflow: hidden; }
-  .a4 { transform: scale(${s}); transform-origin: top left; }
-}</style>`
-    : '';
+  const css = (s && s > 0 && s < 1) ? scaleCss(CSS, s) : CSS;
 
   return `<!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="UTF-8">
@@ -646,7 +651,6 @@ export function buildFlyerHtml(store = {}, img = {}, opt = {}) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<style>${CSS}</style>
-${scaleCss}</head>
+<style>${css}</style></head>
 <body>${body}</body></html>`;
 }
