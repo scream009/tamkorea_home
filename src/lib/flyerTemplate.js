@@ -663,6 +663,33 @@ export function buildFlyerHtml(store = {}, img = {}, opt = {}) {
 <${'/'}script>`
     : '';
 
+  /* 진단판 — 인쇄면에 실제 계산값을 찍는다.
+     iOS 인쇄를 이쪽에서 재현할 수단이 없어, 추측 대신 기기가 계산한 숫자를 받는다. */
+  const debugBox = opt.debug
+    ? `<div id="dbg" style="position:fixed;left:2mm;top:2mm;z-index:99999;background:#000;color:#0f0;
+font:11px/1.5 monospace;padding:4px 6px;white-space:pre">...</div>
+<script>
+(async () => {
+  try { await document.fonts.ready; } catch (e) {}
+  setTimeout(() => {
+    const mm = (px) => (px / 96 * 25.4).toFixed(1);
+    const a = document.querySelector('.a4').getBoundingClientRect();
+    const b = document.body.getBoundingClientRect();
+    document.getElementById('dbg').textContent =
+      'scale=${s || 1}
+' +
+      'a4  =' + mm(a.width) + ' x ' + mm(a.height) + 'mm
+' +
+      'body=' + mm(b.width) + ' x ' + mm(b.height) + 'mm
+' +
+      'win =' + mm(innerWidth) + ' x ' + mm(innerHeight) + 'mm
+' +
+      'dpr =' + devicePixelRatio;
+  }, 400);
+})();
+<${'/'}script>`
+    : '';
+
   return `<!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="UTF-8">
 <title>${E.nameKr || '따종 리뷰이벤트'} 리뷰이벤트</title>
@@ -670,5 +697,5 @@ export function buildFlyerHtml(store = {}, img = {}, opt = {}) {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>${css}</style></head>
-<body>${body}${autoPrint}</body></html>`;
+<body>${body}${debugBox}${autoPrint}</body></html>`;
 }

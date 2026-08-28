@@ -195,12 +195,14 @@ export default function AdminFlyerPage() {
    * 그 창을 인쇄하면 그 문제가 생기지 않는다.
    * 팝업이 막히면 예전 방식(iframe 인쇄)으로 되돌아간다.
    */
-  const print = () => {
+  const print = (debug = false) => {
     measureFit();
     // 전단 창이 스스로 '준비 완료 후' 인쇄하게 한다.
     // 부모에서 print() 를 부르면 폰트·이미지가 아직인 상태로 인쇄돼
     // iOS 에서 '로드를 완료하지 않았습니다' 가 뜨고 사진·QR 이 빈 칸으로 나갔다.
-    const printable = buildFlyerHtml(store, { ...images, logo }, { printScale, autoPrint: true });
+    const printable = buildFlyerHtml(
+      store, { ...images, logo }, { printScale, autoPrint: true, debug },
+    );
     const blob = new Blob([printable], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const w = window.open(url, '_blank');
@@ -258,11 +260,19 @@ export default function AdminFlyerPage() {
     <div className="afl">
       <div className="afl-bar">
         <div className="afl-bar-l">
-          <button type="button" className="afl-btn pri" onClick={print}>
+          <button type="button" className="afl-btn pri" onClick={() => print(false)}>
             인쇄 · PDF 저장
           </button>
           <button type="button" className="afl-btn" onClick={download}>
             HTML 내려받기
+          </button>
+          <button
+            type="button"
+            className="afl-btn"
+            title="인쇄면 왼쪽 위에 실제 계산값을 찍어 보여준다. 페이지가 안 맞을 때 화면을 캡처해 보내면 원인을 특정할 수 있다."
+            onClick={() => print(true)}
+          >
+            인쇄 점검
           </button>
           <label className="afl-scale">
             용지
@@ -275,6 +285,8 @@ export default function AdminFlyerPage() {
               <option value={0.85}>폰 · 85% (아이폰 기본)</option>
               <option value={0.8}>US Letter · 80%</option>
               <option value={0.75}>더 작게 · 75%</option>
+              <option value={0.7}>더 작게 · 70%</option>
+              <option value={0.6}>진단용 · 60%</option>
             </select>
           </label>
           {!ready && (
