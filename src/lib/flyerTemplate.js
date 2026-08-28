@@ -482,19 +482,6 @@ const CSS = String.raw`:root {
             text-align: right;
         }`;
 
-/**
- * CSS 안의 mm / px 숫자를 s 배로 줄인다.
- *
- * 인쇄 축소를 zoom/transform 으로 하면 iOS Safari 에서 통하지 않았다(실측).
- * 값을 직접 줄이면 레이아웃 자체가 작아지므로 어느 엔진에서나 같게 동작한다.
- * %·unitless·색상은 건드리지 않는다.
- */
-function scaleCss(css, s) {
-  return css.replace(/(-?\d*\.?\d+)(mm|px)/g, (m, n, unit) => {
-    const v = parseFloat(n) * s;
-    return `${Math.round(v * 1000) / 1000}${unit}`;
-  });
-}
 
 function esc(v) {
   return String(v == null ? '' : v)
