@@ -670,8 +670,11 @@ const MonthTrend = ({ months }) => {
 };
 
 // ── 상권 지배력 + Traffic Gap ──────────────────────────────────────
-const DominanceSection = ({ dominance, funnel, days, period }) => {
+const DominanceSection = ({ dominance, funnel, days, period, periodMode }) => {
   const d = dominance || {};
+  // "custom" = 8.1~8.31 처럼 달력으로 지정해 뽑은 회차. 예전 리포트에는 이 키가
+  // 없으므로(=최근 30일 프리셋) 없으면 false 로 본다.
+  const custom = periodMode === 'custom';
   const down = String(d.trend || '').startsWith('-');
   // 가입 첫 달은 플랫폼이 전월비를 주지 않는다. '-'·'null'·빈값 모두 없는 것으로 본다.
   const hasTrend = !!d.trend && !['-', 'null', 'undefined', '0', '0%'].includes(String(d.trend).trim());
@@ -688,13 +691,18 @@ const DominanceSection = ({ dominance, funnel, days, period }) => {
   return (
     <>
       <Stat items={[
-        { value: `${d.rank}위`, label: <>상권 노출 순위<br />({d.city} · {d.category})</>, color: '#9B70FF' },
+        // 달력 기간(8.1~8.31 등)으로 뽑은 리포트에는 순위가 없다. 플랫폼이 순위를
+        // 프리셋 기간(어제·近7天·近30天)에만 매기기 때문이다. 없는 걸 그리면
+        // 'null위'가 고객 화면에 찍힌다 — 자리는 두되 이유를 적는다.
+        d.rank
+          ? { value: `${d.rank}위`, label: <>상권 노출 순위<br />({d.city} · {d.category})</>, color: '#9B70FF' }
+          : { value: '—', label: <>상권 노출 순위<br /><span style={{ fontSize: '.62rem' }}>(달력 기간 · 플랫폼 미제공)</span></>, color: '#94a3b8' },
         { value: mult != null ? `${mult}배` : '-', label: '상권 평균 대비 노출', color: '#34d399' },
         // 가입 첫 달은 비교 대상이 없어 전월비가 없다. 'null'·'▲ -' 같은 시스템 값이
         // 고객 화면에 나가면 안 된다 — 없으면 '—' 로 두고 라벨로 이유를 알린다.
         hasTrend
           ? { value: `${down ? '▼' : '▲'} ${d.trend}`,
-              label: <>전월 대비 노출<br /><span style={{ fontSize: '.62rem' }}>(플랫폼 近30天)</span></>,
+              label: <>전월 대비 노출<br /><span style={{ fontSize: '.62rem' }}>{custom ? '(직전 동일 기간 대비)' : '(플랫폼 近30天)'}</span></>,
               color: down ? '#fca5a5' : '#6ee7b7' }
           : { value: '—',
               label: <>전월 대비 노출<br /><span style={{ fontSize: '.62rem' }}>(첫 달 · 비교 대상 없음)</span></>,
@@ -702,11 +710,18 @@ const DominanceSection = ({ dominance, funnel, days, period }) => {
         { value: `${num(dayAvg)}명`, label: '일평균 노출(사람)' },
       ]} />
       <div className="dpr-foot-note" style={{ marginTop: 14 }}>
-        💡 우리 매장은 <b>{d.city} {d.category}</b> 상권에서 노출 <b>{d.rank}위</b>, 노출량은 상권 평균의 <b>{mult}배</b>
+        💡 우리 매장은 <b>{d.city} {d.category}</b> 상권에서{d.rank ? <> 노출 <b>{d.rank}위</b>,</> : null} 노출량은 상권 평균의 <b>{mult}배</b>
         {hasTrend
-          ? <>이며, 전월 대비 <b>{d.trend} {down ? '감소' : '증가'}</b>했습니다.</>
+          ? <>이며, 전{custom ? '' : '월'} 기간 대비 <b>{d.trend} {down ? '감소' : '증가'}</b>했습니다.</>
           : <>입니다. <b>이번이 첫 달</b>이라 전월 대비 수치는 다음 리포트부터 제공됩니다.</>}{' '}
-        <span className="dpr-dim">※ 최근 30일({begin}~{end}, 조회 당일 제외) 기준 · 순위·전월비는 플랫폼 공식값(近30天)입니다.</span>
+        {custom ? (
+          <span className="dpr-dim">
+            ※ <b>{begin}~{end}</b> 달력 기간 실측입니다. 증감은 <b>직전 동일 기간</b> 대비 플랫폼 공식값입니다.
+            {!d.rank && <> 상권 순위는 플랫폼이 프리셋 기간(어제·최근 7일·최근 30일)에만 매겨 이 리포트에는 포함되지 않습니다.</>}
+          </span>
+        ) : (
+          <span className="dpr-dim">※ 최근 30일({begin}~{end}, 조회 당일 제외) 기준 · 순위·전월비는 플랫폼 공식값(近30天)입니다.</span>
+        )}
       </div>
 
       {region > 0 && (
@@ -1167,6 +1182,9 @@ export default function DpReportPage() {
   }
 
   const { store, period, days, funnel, dominance, adflow, cpc, reviews, series, generated_at: gen } = detail;
+  // 집계 창이 '조회일 기준 최근 30일'인지, 달력으로 못 박은 기간인지.
+  // 고객사가 "8월 리포트"를 요구해 8.1~8.31 로 뽑은 회차가 여기에 해당한다.
+  const periodMode = detail.period_mode || 'preset30';
   const name = store?.name || `${data?.brandName || ''} ${data?.branchName || ''}`.trim();
   const gb = !!funnel?.groupbuy_on;
   // 플랫폼이 유입 데이터를 안 주는 매장. 봇이 traffic_unavailable 로 표시해 준다.
@@ -1250,7 +1268,7 @@ export default function DpReportPage() {
             상권 비교·추이처럼 트래픽에 기대는 섹션은 아예 뺀다. */}
         <div className="dpr-kpis">
           {!trafficNA && (
-            <div className="dpr-kpi"><div className="dpr-l">🎯 노출 <span className="dpr-sm">曝光</span></div><div className="dpr-v mono">{num(funnel?.exposure)}<small>명</small></div><div className="dpr-dd up">상권 {dominance?.rank}위</div></div>
+            <div className="dpr-kpi"><div className="dpr-l">🎯 노출 <span className="dpr-sm">曝光</span></div><div className="dpr-v mono">{num(funnel?.exposure)}<small>명</small></div>{dominance?.rank ? <div className="dpr-dd up">상권 {dominance.rank}위</div> : <div className="dpr-dd neu">{period ? String(period).replace('~', ' ~ ') : '집계 기간'}</div>}</div>
           )}
           {!trafficNA && (
             <div className="dpr-kpi"><div className="dpr-l">👣 방문 <span className="dpr-sm">访问</span></div><div className="dpr-v mono">{num(funnel?.visit)}<small>명</small></div><div className="dpr-dd neu">클릭 유입</div></div>
@@ -1272,7 +1290,7 @@ export default function DpReportPage() {
 
         {!trafficNA && (
           <Section icon="🏆" title="상권 지배력 (우리 vs 상권 평균)" note="竞争分析 실측 · 순위·배수·전월 대비">
-            <DominanceSection dominance={dominance} funnel={{ ...funnel, storeName: name }} days={days} period={period} />
+            <DominanceSection dominance={dominance} funnel={{ ...funnel, storeName: name }} days={days} period={period} periodMode={periodMode} />
           </Section>
         )}
 
@@ -1281,7 +1299,9 @@ export default function DpReportPage() {
                    ? (cpt?.expired ? '유료 입점(CPT) 종료로 집계 중단'
                       : cpt?.pending ? '유료 입점(CPT) 개통 처리 중'
                       : '플랫폼 데이터 미제공 매장')
-                   : '经营参谋 실측 · 최근 30일(월간) · 노출·방문·관심=사람수, 클릭=횟수'}>
+                   : `经营参谋 실측 · ${periodMode === 'custom'
+                        ? `${String(period || '').replace('~', ' ~ ')} (${days}일)`
+                        : '최근 30일(월간)'} · 노출·방문·관심=사람수, 클릭=횟수`}>
           {trafficNA ? <TrafficUnavailable cpt={cpt} /> : (
             <>
               <CptExpirySoon cpt={cpt} />
@@ -1295,7 +1315,10 @@ export default function DpReportPage() {
         </Section>
 
         {!trafficNA && (
-          <Section icon="📈" title="일자별 노출 추이 (우리 vs 상권 평균)" note="최근 30일 일자별 노출 도달 · 우리 매장 vs 상권 평균">
+          <Section icon="📈" title="일자별 노출 추이 (우리 vs 상권 평균)"
+                   note={`${periodMode === 'custom'
+                     ? String(period || '').replace('~', ' ~ ')
+                     : '최근 30일'} 일자별 노출 도달 · 우리 매장 vs 상권 평균`}>
             <TrendChart series={series} />
           </Section>
         )}
