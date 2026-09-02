@@ -678,7 +678,12 @@ const DominanceSection = ({ dominance, funnel, days, period, periodMode }) => {
   const down = String(d.trend || '').startsWith('-');
   // 가입 첫 달은 플랫폼이 전월비를 주지 않는다. '-'·'null'·빈값 모두 없는 것으로 본다.
   const hasTrend = !!d.trend && !['-', 'null', 'undefined', '0', '0%'].includes(String(d.trend).trim());
-  const mult = d.multiple;
+  // 상권 평균 대비 배수. 리포트 JSON 의 multiple 은 소수 1자리라, 상권보다 한참
+  // 아래인 매장은 0.04 → "0배" 로 찍힌다(레일바이크 실측: 297명 / 상권 6,188명).
+  // '0배'는 사실이 아니고 정보도 아니다 → 1배 미만이면 원자료로 두 자리까지 되살린다.
+  const mult = (d.multiple != null && d.multiple < 1 && funnel?.exposure && d.region_view)
+    ? Number((funnel.exposure / d.region_view).toFixed(2))
+    : d.multiple;
   const dayAvg = d.daily_avg;
   const [begin, end] = String(period || '').split('~');
 
@@ -686,6 +691,8 @@ const DominanceSection = ({ dominance, funnel, days, period, periodMode }) => {
   const region = d.region_view && days ? Math.floor(d.region_view / days) : 0;
   const gapMult = region ? ours / region : 0;
   const lead = gapMult >= 1;
+  // 1배 미만은 소수 1자리로 자르면 '0.0배'가 된다 — 값이 없다는 뜻으로 읽힌다.
+  const gapTxt = gapMult >= 1 ? gapMult.toFixed(1) : gapMult.toFixed(2);
   const mx = Math.max(ours, region) || 1;
 
   return (
@@ -712,7 +719,7 @@ const DominanceSection = ({ dominance, funnel, days, period, periodMode }) => {
       <div className="dpr-foot-note" style={{ marginTop: 14 }}>
         💡 우리 매장은 <b>{d.city} {d.category}</b> 상권에서{d.rank ? <> 노출 <b>{d.rank}위</b>,</> : null} 노출량은 상권 평균의 <b>{mult}배</b>
         {hasTrend
-          ? <>이며, 전{custom ? '' : '월'} 기간 대비 <b>{d.trend} {down ? '감소' : '증가'}</b>했습니다.</>
+          ? <>이며, {custom ? '직전 동일 기간' : '전월'} 대비 <b>{d.trend} {down ? '감소' : '증가'}</b>했습니다.</>
           : <>입니다. <b>이번이 첫 달</b>이라 전월 대비 수치는 다음 리포트부터 제공됩니다.</>}{' '}
         {custom ? (
           <span className="dpr-dim">
@@ -728,7 +735,7 @@ const DominanceSection = ({ dominance, funnel, days, period, periodMode }) => {
         <div style={{ marginTop: 22 }}>
           <div className={`dpr-tg-box ${lead ? 'up' : 'down'}`}>
             <div className={`dpr-tg-badge ${lead ? 'up' : 'down'}`}>
-              {lead ? '▲' : '▼'} 상권 평균의 <b>{gapMult.toFixed(1)}배</b>
+              {lead ? '▲' : '▼'} 상권 평균의 <b>{gapTxt}배</b>
             </div>
             <div className="dpr-tg-row">
               <div className="dpr-tg-lb">우리 매장</div>
@@ -742,7 +749,7 @@ const DominanceSection = ({ dominance, funnel, days, period, periodMode }) => {
           </div>
           <div className="dpr-foot-note" style={{ marginTop: 14 }}>
             {lead
-              ? <>💪 <b>{funnel?.storeName}</b> 같은 상권 동종업종 평균보다 <b>{gapMult.toFixed(1)}배</b> 많이 노출되고 있습니다 (하루 {num(ours)}명 vs {num(region)}명). 이 격차가 곧 <b>신규 고객 유입 우위</b>입니다.</>
+              ? <>💪 <b>{funnel?.storeName}</b> 같은 상권 동종업종 평균보다 <b>{gapTxt}배</b> 많이 노출되고 있습니다 (하루 {num(ours)}명 vs {num(region)}명). 이 격차가 곧 <b>신규 고객 유입 우위</b>입니다.</>
               : <>⚠️ 상권 평균보다 노출이 <b>{(region / (ours || 1)).toFixed(1)}배 적습니다</b> (하루 {num(ours)}명 vs {num(region)}명). 경쟁 매장들이 노출을 가져가는 동안 우리 매장은 <b>고객에게 보이지 않는 상태</b>입니다. 같은 상권 내 광고 집행 매장은 평균의 8~9배까지 노출되고 있습니다.</>}
           </div>
         </div>
