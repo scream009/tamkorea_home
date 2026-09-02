@@ -177,7 +177,7 @@ details.adv .grid{margin-top:10px}
 .k th{font-size:11pt;text-align:center}
 .k th.small,.k td.cost{font-size:10pt}
 .k .svc{line-height:1.55;font-size:9pt}
-.k .svc div{text-indent:-8pt;padding-left:8pt}
+.k .svc div{text-indent:0;padding-left:0}
 .k .pay{font-weight:700;text-decoration:underline;text-underline-offset:3px}
 .k .brk{page-break-before:always;break-before:page}
 .k .sign{margin-top:26pt;padding-left:22pt;line-height:1.85}
@@ -368,7 +368,7 @@ const CATALOG = {
   "계좌계약": "농협은행 301-0346-8814-11 JIN YINLIAN (탐코리아)"
  }
 };
-const VER = "260810";
+const VER = "260902";
 
 /* ── 유틸 ── */
 const $ = id => document.getElementById(id);
@@ -495,21 +495,20 @@ function 계약서(d, s, its){
   return `
 <h1>계 약 서</h1>
 <div class="intro">
-  <p>${esc(d.업체명)}(이하 "갑"이라 칭함)와 ${esc(s.상호)}(이하 "을"이라 칭함)는</p>
-  <p>중화권 마케팅상품에 대해 아래와 같이 계약을 체결한다.</p>
+  <p>${esc(d.업체명)}(이하 "갑"이라 칭함)와 ${esc(s.상호)}(이하 "을"이라 칭함)는 중화권 마케팅상품에 대해 아래와 같이 계약을 체결한다.</p>
 </div>
 <div class="cl"><div class="h">1. "갑”이 신청한 "을"의 마케팅 상품</div>
  <table><colgroup><col style="width:30%"><col style="width:15%"><col style="width:47%"><col style="width:8%"></colgroup>
   <tr><th>상품명</th><th class="small">진행비용(원)</th><th>서비스 내용</th><th>기타</th></tr>
   ${its.map((it, i) => `<tr><td style="text-align:center">${i+1}. ${esc(it.항목)}</td>
     <td class="cost" style="text-align:center">₩${won(it.공급가액)}</td>
-    <td class="svc">${it.내용.filter(Boolean).map(x => `<div>· ${esc(x.replace(/^\*\s*/, ""))}</div>`).join("")}</td>
+    <td class="svc">${it.내용.filter(Boolean).map(x => `<div>${esc(x.replace(/^\*\s*/, ""))}</div>`).join("")}</td>
     <td></td></tr>`).join("")}
  </table></div>
 <div class="cl"><div class="h">2. 업무 진행</div><div class="bd"><ol>
  <li>“을”은 촬영 일정을 미리 “갑”에게 통보하여 동의를 얻은후 촬영을 진행하여야 한다.</li>
  <li>“갑”은 촬영 일정에 적극 협조하며 촬영시 필요한 촬영물은 무상으로 지원하여야 한다.</li>
- <li>“을”은 업로드 완료후 결과 보고서를 “갑”에게 제출하여야 한다.</li>
+ <li>“을”은 업로드 완료후 결과 보고서를 “갑”에게 제출하여야 한다(유효기간 2개월).</li>
 </ol></div></div>
 <div class="cl"><div class="h">3. 계약기간</div><div class="bd">본 계약은 ${esc(d.계약기간)} 진행한다.</div></div>
 <div class="cl"><div class="h">4. 계약의 해지</div><div class="bd">“갑”과 “을”은 본 계약을 해지하고자 할 경우 최소한 10일 전에 상대방에게 서면으로 통지하여야 한다.</div></div>
