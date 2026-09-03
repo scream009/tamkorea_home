@@ -353,6 +353,35 @@ a.acc-kin-row:focus-visible { outline: 2px solid var(--acc-aline); outline-offse
   box-shadow: 0 10px 30px rgba(0, 0, 0, .5);
 }
 
+/* 뷰어(서류 이미지) — 새 탭 대신 화면 안에서 */
+.acc-viewer {
+  position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 20px;
+  background: rgba(5, 6, 10, .78);
+}
+.acc-viewer-box {
+  width: min(960px, 100%); max-height: calc(100vh - 40px); display: flex; flex-direction: column;
+  background: var(--acc-panel); border: 1px solid var(--acc-line2); border-radius: 10px; overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .6);
+}
+.acc-viewer-head {
+  display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--acc-line);
+  font-size: 13px;
+}
+.acc-viewer-head span { color: var(--acc-muted); font-family: var(--acc-mono); font-size: 10.5px; flex: 1; }
+.acc-viewer-body { overflow: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+.acc-viewer-body img { max-width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--acc-line2); background: #000; }
+
+/* 레일 보기 전환 + 계열 그룹 */
+.acc-vtoggle { display: flex; gap: 5px; }
+.acc-grp { list-style: none; margin: 4px 0 0; }
+.acc-grp > ul { list-style: none; margin: 0; padding: 0; }
+.acc-grp-h {
+  display: flex; align-items: center; gap: 6px; padding: 5px 8px 3px;
+  font-family: var(--acc-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--acc-accent);
+}
+.acc-grp-h i { font-style: normal; color: var(--acc-faint); margin-left: auto; }
+.acc-grp .acc-item { padding-left: 14px; }
+
 /* ── 좁은 화면 ───────────────────────────────────
    세 칸이 접히면 **거래 → 신원 → 서류** 순으로 둔다.
    폰으로 여는 순간은 대개 외근 중 "이 집 이번 달 어떻게 되고 있지"라서

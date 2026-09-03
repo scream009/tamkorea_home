@@ -61,6 +61,7 @@ const BIZ_FIELDS = [
   '정산계좌_은행', '정산계좌_번호', '정산계좌_예금주', '계좌_확인일',
   '대표자', '실질오너', '실무자', '매장', '서류',
   '사업자등록증_이미지', '통장사본_이미지', '기타서류_이미지',   // 개수만 쓴다. URL 은 안 내보낸다
+  '실질오너명',
 ];
 
 const CAMPAIGN_FIELDS = [
@@ -145,7 +146,7 @@ function parseMonth(v) {
 async function buildList() {
   const [stores, bizList] = await Promise.all([
     fetchAll(T_STORE, { fields: STORE_FIELDS }),
-    fetchAll(T_BIZ, { fields: ['상호', '사업자등록번호', '상태', '사업자등록증_이미지', '통장사본_이미지', '대표자'] }),
+    fetchAll(T_BIZ, { fields: ['상호', '사업자등록번호', '상태', '사업자등록증_이미지', '통장사본_이미지', '대표자', '실질오너', '실질오너명'] }),
   ]);
 
   const bizById = new Map(bizList.map((b) => [b.id, b.fields || {}]));
@@ -169,6 +170,8 @@ async function buildList() {
       hasBiz: !!b,
       bizNo: b ? one(b['사업자등록번호']) : '',
       bizState: b ? one(b['상태']) : '',
+      /* 총괄대표(실질오너)가 명시된 곳만 — 실질오너명 수식은 비면 대표자로 떨어지므로 링크가 있을 때만 */
+      owner: b && arr(b['실질오너']).length ? one(b['실질오너명']) : '',
       docs: have,
       docsOk: have.사업자등록증 > 0 && have.통장사본 > 0,
       cptDue: one(f['DP_CPT_만료일']),
@@ -321,6 +324,7 @@ async function buildCard(storeId) {
       acct: one(bf['정산계좌_번호']),
       holder: one(bf['정산계좌_예금주']),
       acctAt: one(bf['계좌_확인일']),
+      owner: arr(bf['실질오너']).length ? one(bf['실질오너명']) : '',
       shots,
     } : null,
     people: persons.map((p) => {
@@ -339,7 +343,7 @@ async function buildCard(storeId) {
         idCard: arr(pf['신분증·사진']).length,
         kinStores: num(pf['계열_매장수']),
         kinBiz: num(pf['계열_사업자수']),
-        on: isRep ? '대표' : (isOwner ? '실질오너' : '실무'),
+        on: isOwner ? '총괄대표' : (isRep ? '대표' : '실무'),
       };
     }),
     campaigns: camps,
@@ -358,9 +362,38 @@ async function buildCard(storeId) {
 async function issueDocUrl(docId, who) {
   const rec = await at(`/${encodeURIComponent(T_DOC)}/${docId}`);
   const f = rec.fields || {};
-  const files = arr(f['파일']);
+  const kind = one(f['종류']);
+  const hash8 = String(f['파일해시'] || '').slice(0, 8);
+  let files = arr(f['파일']);
+
+  /* 서류_DB.파일 이 비어 있으면 사업자_DB 첨부칸에서 **해시로** 찾는다.
+     로더(scripts/docs_intake/load_airtable.py)가 이미지를 사업자_DB 의 종류별 칸에 올리고
+     서류_DB 에는 메타만 남겼다(2026-09-03). 파일명에 해시 앞 8자가 박혀 있다 —
+     예) 사업자등록증_v1_2026-03-10_06c0178c.jpg ↔ 파일해시 06c0178c861b8ac6.
+     실측: 배포 직후 122건 전부 "첨부 없음"이 떴다. 이 함수가 서류_DB.파일만 봤기 때문이다. */
+  if (!files.length && hash8) {
+    const bizId = one(f['대상_사업자']);
+    if (bizId) {
+      const b = await at(`/${encodeURIComponent(T_BIZ)}/${bizId}`);
+      const bf = b.fields || {};
+      const pool = [
+        ...arr(bf['사업자등록증_이미지']), ...arr(bf['통장사본_이미지']), ...arr(bf['기타서류_이미지']),
+      ];
+      files = pool.filter((x) => String(x.filename || '').includes(hash8));
+
+      /* 신분증은 사람 것이라 인물_DB.신분증·사진 에 있다 */
+      if (!files.length && kind === '신분증') {
+        for (const pid of arr(bf['대표자'])) {
+          const p = await at(`/${encodeURIComponent(T_PERSON)}/${pid}`);
+          const hit = arr(p.fields?.['신분증·사진']).filter((x) => String(x.filename || '').includes(hash8));
+          if (hit.length) { files = hit; break; }
+        }
+      }
+    }
+  }
+
   if (!files.length) {
-    const e = new Error('이 서류에는 첨부 파일이 없습니다.');
+    const e = new Error('이미지를 찾지 못했습니다. 서류_DB 파일해시와 사업자_DB 첨부 파일명이 어긋났을 수 있습니다 — 로더를 다시 돌리면 맞춰집니다.');
     e.status = 404;
     throw e;
   }
@@ -372,12 +405,12 @@ async function issueDocUrl(docId, who) {
     const prev = String(f['열람기록'] || '');
     await at(`/${encodeURIComponent(T_DOC)}/${docId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ fields: { 열람기록: `${line}\n${prev}`.slice(0, 99000) } }),
+      body: JSON.stringify({ fields: { 열람기록: [line, prev].join(String.fromCharCode(10)).slice(0, 99000) } }),
     });
   } catch { /* 기록 실패는 삼킨다 */ }
 
   return {
-    kind: one(f['종류']),
+    kind,
     files: files.map((x) => ({ url: x.url, name: x.filename, type: x.type, size: x.size })),
   };
 }

@@ -180,8 +180,10 @@ function Card({ data, onSave, onOpenDoc, opening }) {
         <h2>{s.client}</h2>
         <span className="acc-branch">{[s.branch, REGION_LABELS[s.region], s.area].filter(Boolean).join(' · ')}</span>
         <span className="acc-sp" />
-        {kin.length > 0 && (
-          <span className="acc-chip acc">계열 {kin.length + 1}곳</span>
+        {(kin.length > 0 || biz?.owner) && (
+          <span className="acc-chip acc">
+            계열 {kin.length + 1}곳{biz?.owner ? ` · 총괄 ${biz.owner}` : ''}
+          </span>
         )}
         <span className={`acc-chip ${haveCount === REQUIRED_DOCS.length ? 'ok' : 'warn'}`}>
           필수서류 {haveCount}/{REQUIRED_DOCS.length}
@@ -451,6 +453,7 @@ export default function AdminClientCardPage() {
   const [err, setErr] = useState('');
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState('use');   // use | needDoc | needCheck | all
+  const [byGroup, setByGroup] = useState(false); // 계열별(총괄대표) 묶기
   const [opening, setOpening] = useState('');
   const [toast, setToast] = useState('');
 
@@ -500,6 +503,20 @@ export default function AdminClientCardPage() {
     });
   }, [list, q, filter]);
 
+  /* 계열별: 총괄대표(실질오너)가 있는 매장을 그 사람 아래로 묶는다. 없는 곳은 맨 뒤 '계열 없음'. */
+  const groups = useMemo(() => {
+    if (!byGroup) return null;
+    const m = new Map();
+    rows.forEach((r) => {
+      const k = r.owner || '';
+      if (!m.has(k)) m.set(k, []);
+      m.get(k).push(r);
+    });
+    const named = [...m.entries()].filter(([k]) => k).sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], 'ko'));
+    const rest = m.get('') || [];
+    return rest.length ? [...named, ['', rest]] : named;
+  }, [rows, byGroup]);
+
   const save = useCallback(async (name, value) => {
     const r = await fetch('/api/admin-clients', {
       method: 'PATCH',
@@ -515,16 +532,25 @@ export default function AdminClientCardPage() {
     setToast('저장했습니다.');
   }, [id]);
 
+  /* 새 탭(window.open)은 fetch 를 기다린 뒤에 부르면 브라우저가 팝업으로 막는다 —
+     사용자 클릭과 같은 틱이 아니라서. 그래서 화면 안 뷰어로 띄운다. */
+  const [viewer, setViewer] = useState(null);
   const openDoc = useCallback(async (doc) => {
     setOpening(doc.id);
     try {
       const r = await fetch(`/api/admin-clients?doc=${encodeURIComponent(doc.id)}`, { headers: adminHeaders() });
       const b = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(b.error || '열 수 없습니다.');
-      (b.files || []).forEach((f) => window.open(f.url, '_blank', 'noopener'));
-      setToast(`${doc.kind} 를 열었습니다. 열람 기록이 남습니다.`);
+      setViewer({ kind: b.kind || doc.kind, files: b.files || [] });
     } catch (e) { setToast(e.message); } finally { setOpening(''); }
   }, []);
+
+  useEffect(() => {
+    if (!viewer) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setViewer(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [viewer]);
 
   return (
     <div className="acc-wrap">
@@ -549,8 +575,31 @@ export default function AdminClientCardPage() {
         {!list && !err && <p className="acc-empty">불러오는 중…</p>}
         {err && <p className="acc-err">{err}</p>}
 
+        <div className="acc-vtoggle" role="group" aria-label="보기">
+          <button type="button" className={`acc-fbtn${!byGroup ? ' on' : ''}`} onClick={() => setByGroup(false)}>매장별</button>
+          <button type="button" className={`acc-fbtn${byGroup ? ' on' : ''}`} onClick={() => setByGroup(true)}>계열별</button>
+        </div>
+
         <ul className="acc-list">
-          {rows.map((r) => (
+          {groups && groups.map(([owner, items]) => (
+            <li key={owner || '_none'} className="acc-grp">
+              <div className="acc-grp-h">
+                <b>{owner || '계열 없음'}</b><i>{items.length}</i>
+              </div>
+              <ul>
+                {items.map((r) => (
+                  <li key={r.id}>
+                    <button type="button" className={`acc-item${r.id === id ? ' on' : ''}`}
+                            onClick={() => nav(`/admin/clients/${r.id}`)}>
+                      <span className="acc-i-nm">{r.client}{r.branch && <i>{r.branch}</i>}</span>
+                      <span className="acc-i-meta"><i>{r.campaigns || 0}</i></span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+          {!groups && rows.map((r) => (
             <li key={r.id}>
               <button type="button" className={`acc-item${r.id === id ? ' on' : ''}`}
                       onClick={() => nav(`/admin/clients/${r.id}`)}>
@@ -592,6 +641,27 @@ export default function AdminClientCardPage() {
         )}
       </main>
 
+      {viewer && (
+        <div className="acc-viewer" role="dialog" aria-modal="true" aria-label={`${viewer.kind} 보기`}
+             onClick={() => setViewer(null)}>
+          <div className="acc-viewer-box" onClick={(e) => e.stopPropagation()}>
+            <div className="acc-viewer-head">
+              <b>{viewer.kind}</b>
+              <span>{viewer.files.length}장 · 열람 기록이 남습니다</span>
+              <button type="button" className="acc-mini" onClick={() => setViewer(null)}>닫기 (Esc)</button>
+            </div>
+            <div className="acc-viewer-body">
+              {viewer.files.map((f) => (
+                String(f.type || '').startsWith('image/')
+                  ? <img key={f.url} src={f.url} alt={f.name} />
+                  : <a key={f.url} href={f.url} target="_blank" rel="noreferrer" className="acc-kin-row">
+                      <span>{f.name}</span><span className="c">새 탭에서 열기</span>
+                    </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       {toast && <div className="acc-toast" role="status">{toast}</div>}
     </div>
   );
