@@ -512,7 +512,10 @@ export default function AdminClientCardPage() {
     if (mode === 'store') return null;
     const keyOf = {
       owner: (r) => r.owner || '',
-      partner: (r) => (r.partner && r.partner !== '직영' ? r.partner : ''),
+      /* 롤업은 "제주에코, 직영" 처럼 달마다 달랐던 값을 다 이어 준다(실측 7곳, 꼬리 쉼표도 있음).
+         협력사가 하나라도 있으면 '직영'·빈값은 버리고 협력사 이름들로만 묶는다. */
+      partner: (r) => String(r.partner || '').split(',').map((x) => x.trim())
+        .filter((x) => x && x !== '직영').join(', '),
       region: (r) => [REGION_LABELS[r.region] || r.region, r.area].filter(Boolean).join(' · '),
     }[mode];
     const emptyLabel = { owner: '계열 없음', partner: '직영', region: '지역 미지정' }[mode];
