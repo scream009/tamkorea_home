@@ -372,7 +372,7 @@ a.acc-kin-row:focus-visible { outline: 2px solid var(--acc-aline); outline-offse
 .acc-viewer-body img { max-width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--acc-line2); background: #000; }
 
 /* 레일 보기 전환 + 계열 그룹 */
-.acc-vtoggle { display: flex; gap: 5px; }
+.acc-vtoggle { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
 .acc-grp { list-style: none; margin: 4px 0 0; }
 .acc-grp > ul { list-style: none; margin: 0; padding: 0; }
 .acc-grp-h {

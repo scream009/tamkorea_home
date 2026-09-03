@@ -453,7 +453,7 @@ export default function AdminClientCardPage() {
   const [err, setErr] = useState('');
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState('use');   // use | needDoc | needCheck | all
-  const [byGroup, setByGroup] = useState(false); // 계열별(총괄대표) 묶기
+  const [mode, setMode] = useState('store');     // store | owner | partner | region — 레일 묶는 축
   const [opening, setOpening] = useState('');
   const [toast, setToast] = useState('');
 
@@ -503,19 +503,30 @@ export default function AdminClientCardPage() {
     });
   }, [list, q, filter]);
 
-  /* 계열별: 총괄대표(실질오너)가 있는 매장을 그 사람 아래로 묶는다. 없는 곳은 맨 뒤 '계열 없음'. */
+  /* 레일 묶기 — 축 하나를 고르면 그 값 아래로 매장이 모인다.
+       계열   총괄대표(사업자_DB.실질오너). 없으면 '계열 없음'
+       협력사  계약에 붙은 협력사(CS_DB 롤업). '직영'·빈값 → '직영'
+       지역   지역 + 권역 (예: 제주 · 市区). 권역이 없으면 지역만
+     빈 값 묶음은 맨 뒤로 — 묶인 것부터 보는 게 이 화면의 목적이라서. */
   const groups = useMemo(() => {
-    if (!byGroup) return null;
+    if (mode === 'store') return null;
+    const keyOf = {
+      owner: (r) => r.owner || '',
+      partner: (r) => (r.partner && r.partner !== '직영' ? r.partner : ''),
+      region: (r) => [REGION_LABELS[r.region] || r.region, r.area].filter(Boolean).join(' · '),
+    }[mode];
+    const emptyLabel = { owner: '계열 없음', partner: '직영', region: '지역 미지정' }[mode];
     const m = new Map();
     rows.forEach((r) => {
-      const k = r.owner || '';
+      const k = keyOf(r);
       if (!m.has(k)) m.set(k, []);
       m.get(k).push(r);
     });
-    const named = [...m.entries()].filter(([k]) => k).sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], 'ko'));
+    const named = [...m.entries()].filter(([k]) => k)
+      .sort((x, y) => y[1].length - x[1].length || x[0].localeCompare(y[0], 'ko'));
     const rest = m.get('') || [];
-    return rest.length ? [...named, ['', rest]] : named;
-  }, [rows, byGroup]);
+    return (rest.length ? [...named, ['', rest]] : named).map(([k, items]) => [k || emptyLabel, items]);
+  }, [rows, mode]);
 
   const save = useCallback(async (name, value) => {
     const r = await fetch('/api/admin-clients', {
@@ -575,16 +586,17 @@ export default function AdminClientCardPage() {
         {!list && !err && <p className="acc-empty">불러오는 중…</p>}
         {err && <p className="acc-err">{err}</p>}
 
-        <div className="acc-vtoggle" role="group" aria-label="보기">
-          <button type="button" className={`acc-fbtn${!byGroup ? ' on' : ''}`} onClick={() => setByGroup(false)}>매장별</button>
-          <button type="button" className={`acc-fbtn${byGroup ? ' on' : ''}`} onClick={() => setByGroup(true)}>계열별</button>
+        <div className="acc-vtoggle" role="group" aria-label="묶기">
+          {[['store', '매장별'], ['owner', '계열별'], ['partner', '협력사별'], ['region', '지역별']].map(([k, lab]) => (
+            <button key={k} type="button" className={`acc-fbtn${mode === k ? ' on' : ''}`} onClick={() => setMode(k)}>{lab}</button>
+          ))}
         </div>
 
         <ul className="acc-list">
-          {groups && groups.map(([owner, items]) => (
-            <li key={owner || '_none'} className="acc-grp">
+          {groups && groups.map(([label, items]) => (
+            <li key={label} className="acc-grp">
               <div className="acc-grp-h">
-                <b>{owner || '계열 없음'}</b><i>{items.length}</i>
+                <b>{label}</b><i>{items.length}</i>
               </div>
               <ul>
                 {items.map((r) => (

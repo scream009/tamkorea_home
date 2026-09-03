@@ -52,7 +52,7 @@ const STORE_FIELDS = [
   /* 캠페인 링크는 두 필드에 갈라져 있다 — 'Campain_DB'(오타지만 실제로 쓰이는 쪽)와
      'Campaign_DB'(비어 있는 쪽). 실측(2026-09-03): 우아연은 Campain_DB 9건 / Campaign_DB 0건.
      어느 쪽이 채워질지 모르니 둘을 합쳐 읽는다. */
-  'Campain_DB', 'Campaign_DB',
+  'Campain_DB', 'Campaign_DB', '협력사(R)',
 ];
 
 const BIZ_FIELDS = [
@@ -165,6 +165,9 @@ async function buildList() {
       branch: one(f['지점명(필수)']),
       cls: one(f['분류']),
       region: one(f['지역']),
+      area: one(f['권역']),
+      /* 협력사는 매장이 아니라 계약(Campaign_DB.협력사)에 붙는다 → CS_DB 롤업 '협력사(R)' 로 읽는다. '직영'·빈값 = 직영 */
+      partner: one(f['협력사(R)']),
       use: !!f['사용여부'],
       campaigns: new Set([...arr(f['Campain_DB']), ...arr(f['Campaign_DB'])]).size,
       hasBiz: !!b,
