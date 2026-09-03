@@ -36,6 +36,7 @@ import StaffCastingPage from './pages/StaffCastingPage';
 import StaffCardsPage from './pages/StaffCardsPage';
 import AdminDianpingPage from './pages/AdminDianpingPage';
 import AdminStoresPage from './pages/AdminStoresPage';
+import AdminClientCardPage from './pages/AdminClientCardPage';
 import AdminToolsPage from './pages/AdminToolsPage';
 import AdminFlyerPage from './pages/AdminFlyerPage';
 import './components/AdminShell.css';
@@ -69,6 +70,8 @@ function App() {
           {/* /admin 은 대표·관리자가 먼저 보는 화면이다 — 목표·실적이 첫 화면이 된다.
               담당자별 실적(구 대시보드)은 /admin/dashboard 로 내렸다. */}
           <Route path="/admin" element={<AdminGate><AdminShell><AdminTargetsPage /></AdminShell></AdminGate>} />
+          <Route path="/admin/clients" element={<AdminGate><AdminShell><AdminClientCardPage /></AdminShell></AdminGate>} />
+          <Route path="/admin/clients/:id" element={<AdminGate><AdminShell><AdminClientCardPage /></AdminShell></AdminGate>} />
           <Route path="/admin/stores" element={<AdminGate><AdminShell><AdminStoresPage /></AdminShell></AdminGate>} />
           <Route path="/admin/dashboard" element={<AdminGate><AdminShell><AdminDashboardPage /></AdminShell></AdminGate>} />
           <Route path="/admin/dianping" element={<AdminGate><AdminShell><AdminDianpingPage /></AdminShell></AdminGate>} />
