@@ -31,7 +31,15 @@ const OUT_FIELDS = ['키', '매장코드', '리뷰ID', '리뷰일시', '별점',
   '고객회신', '게시시각', '게시결과', '주차', '수집일'];
 
 async function at(method, path, body) {
-  const r = await fetch(`https://api.airtable.com/v0/${BASE}/${encodeURIComponent(path)}`, {
+  // 🔴 경로를 통째로 encodeURIComponent 하면 `CS_DB/recXXX` 의 슬래시가 %2F 로 바뀐다.
+  //    그러면 Airtable 이 "CS_DB/recXXX" 라는 **테이블 이름**을 찾다가 실패하고
+  //    403 INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND 를 준다 — 권한 문제로 착각하기 쉽다.
+  //    (2026-09-09 실측: admin 리뷰 화면의 매장 체크박스가 이걸로 전부 실패. 읽기는
+  //     fetchAll 이 테이블명만 인코딩해서 정상이었고 **쓰기만** 죽어 있었다.
+  //     같은 버그를 `client-review-pdf.js` 에서 먼저 겪었다 — TRAPS §17)
+  //    한글 테이블명은 인코딩이 필요하니 **구분자를 남기고 세그먼트만** 인코딩한다.
+  const seg = String(path).split('/').map(encodeURIComponent).join('/');
+  const r = await fetch(`https://api.airtable.com/v0/${BASE}/${seg}`, {
     method,
     headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,

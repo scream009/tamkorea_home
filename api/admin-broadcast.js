@@ -24,7 +24,14 @@ const BASE = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
 const TBL = '단체메시지_DB';
 
 async function at(method, path, body) {
-  const r = await fetch(`https://api.airtable.com/v0/${BASE}/${encodeURIComponent(path)}`, {
+  // 🔴 경로를 통째로 encodeURIComponent 하면 `단체메시지_DB/recXXX` 의 슬래시가 %2F 가 되고
+  //    Airtable 이 그 전체를 **테이블 이름**으로 찾다 실패해 403
+  //    INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND 를 준다(권한 문제로 착각하기 쉽다).
+  //    이 파일에서는 **레코드 상태 변경(승인)** 이 이 경로를 탄다 — 즉 승인 버튼이 죽어 있었다.
+  //    (2026-09-09 실측 · 같은 버그 계보: `client-review-pdf.js`(TRAPS §17) → `admin-reviews.js`)
+  //    한글 테이블명은 인코딩이 필요하니 **구분자를 남기고 세그먼트만** 인코딩한다.
+  const seg = String(path).split('/').map(encodeURIComponent).join('/');
+  const r = await fetch(`https://api.airtable.com/v0/${BASE}/${seg}`, {
     method,
     headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
