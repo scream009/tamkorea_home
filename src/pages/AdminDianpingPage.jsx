@@ -215,6 +215,259 @@ const FILTERS = [
   { k: 'cpt', label: 'CPT 만료' },
 ];
 
+
+/* ── 신규 고객사 등록 (A안: 계정 직접 입력 — Owner 확정 2026-09-09) ──────────
+   등록의 정본은 CS_DB. 여기서 행을 만들면 admin 목록에 바로 뜨고, 실행 PC 가
+   새벽 pull 로 수집 목록에 자동 편입하며, 세션 없음은 아침 알림망이 통보한다. */
+function RegisterPanel() {
+  const [f, setF] = useState({ name: '', branch: '', acctId: '', acctPw: '', slug: '' });
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const up = (k) => (e) => {
+    const v = e.target.value;
+    setF((p) => {
+      const nx = { ...p, [k]: v };
+      // slug 는 계정번호에서 자동 제안하되, 사람이 고친 뒤에는 건드리지 않는다
+      if (k === 'acctId' && (!p.slug || p.slug === 's' + p.acctId)) nx.slug = 's' + v.trim();
+      return nx;
+    });
+  };
+  async function submit() {
+    if (!f.name || !f.acctId || !f.acctPw) { setMsg('❌ 매장명·계정번호·비밀번호는 필수입니다'); return; }
+    setBusy(true); setMsg('');
+    try {
+      const r = await fetch('/api/admin-broadcast', {
+        method: 'POST',
+        headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'register', ...f }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      setMsg(`✅ 등록 완료 (${j.month} 레코드 생성) — 실행 PC가 새벽에 자동 편입합니다. `
+        + '세션이 없어 아침 9시 업무방에 "로그인 필요"로 알림이 오면, 그 PC에서 로그인 한 번만 해주세요.');
+      setF({ name: '', branch: '', acctId: '', acctPw: '', slug: '' });
+    } catch (e) { setMsg('❌ ' + e.message); }
+    setBusy(false);
+  }
+  const box = { display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' };
+  const inp = { background: '#1d1d22', border: '1px solid #3a3a44', borderRadius: 8,
+                color: '#eee', padding: '9px 12px', fontSize: 14 };
+  return (
+    <div style={{ background: '#232329', border: '1px solid #33333c', borderRadius: 14, padding: 18 }}>
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>➕ 신규 고객사 등록</div>
+      <div style={{ color: '#9a9aa5', fontSize: 13, marginBottom: 12 }}>
+        따종 포털(가게 백오피스) 계정을 그대로 입력합니다 — FK 시트의 계정·비번 값입니다.
+        등록하면 이 화면 목록·월 레코드·수집 편입까지 자동입니다.
+      </div>
+      <div style={box}>
+        <input style={{ ...inp, width: 170 }} placeholder="매장명 (예: 우아연)" value={f.name} onChange={up('name')} />
+        <input style={{ ...inp, width: 130 }} placeholder="지점명 (예: 노형본점)" value={f.branch} onChange={up('branch')} />
+        <input style={{ ...inp, width: 120 }} placeholder="계정번호" value={f.acctId} onChange={up('acctId')} />
+        <input style={{ ...inp, width: 130 }} placeholder="비밀번호" type="password" value={f.acctPw} onChange={up('acctPw')} />
+        <input style={{ ...inp, width: 150 }} placeholder="영문코드(자동)" value={f.slug} onChange={up('slug')} />
+        <button className="dpa-btn" disabled={busy} onClick={submit}
+                style={{ background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 8,
+                         padding: '9px 18px', cursor: 'pointer', fontWeight: 700 }}>
+          {busy ? '등록 중…' : '등록'}
+        </button>
+      </div>
+      {msg && <div style={{ marginTop: 10, fontSize: 13, lineHeight: 1.6 }}>{msg}</div>}
+    </div>
+  );
+}
+
+/* ── 단체 메시지 (admin 작성·승인 → 예약봇 발송) ─────────────────────────
+   여기서는 절대 발송하지 않는다 — 명세만 쓴다. '승인'만 봇이 집어가고,
+   [테스트]는 업무방으로 실물 1건. 발송중·완료 상태는 봇 전용이라 API 가 막는다. */
+const BC_TONE = { '작성중': '#9a9aa5', '승인': '#E8A33D', '발송중': '#5aa9ff',
+                  '완료': '#2CC985', '일부실패': '#ff6b6b', '취소': '#666' };
+
+function BroadcastPanel() {
+  const [d, setD] = useState(null);
+  const [err, setErr] = useState('');
+  const [c, setC] = useState({ title: '', body: '', target: '따종운영', targetIds: [], sendAt: '' });
+  const [busy, setBusy] = useState('');
+  const [note, setNote] = useState('');
+  const load = async () => {
+    try {
+      const r = await fetch('/api/admin-broadcast', { headers: adminHeaders() });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      setD(j); setErr('');
+    } catch (e) { setErr(String(e.message || e)); }
+  };
+  useEffect(() => { load(); }, []);
+
+  const targetCount = useMemo(() => {
+    if (!d) return 0;
+    if (c.target === '개별') return c.targetIds.length;
+    if (c.target === '따종운영') return d.stores.filter((s2) => s2.dp).length;
+    return d.stores.length;
+  }, [d, c.target, c.targetIds]);
+
+  async function post(body) {
+    const r = await fetch('/api/admin-broadcast', {
+      method: 'POST',
+      headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+    return j;
+  }
+
+  async function create() {
+    if (!c.title.trim()) { setNote('❌ 제목을 입력하세요'); return; }
+    setBusy('new'); setNote('');
+    try {
+      const sendAt = c.sendAt ? new Date(c.sendAt).toISOString() : '';
+      await post({ action: 'create', title: c.title, body: c.body, target: c.target,
+                   targetIds: c.targetIds, sendAt });
+      setC({ title: '', body: '', target: '따종운영', targetIds: [], sendAt: '' });
+      setNote('✅ 저장됨(작성중) — 이미지가 필요하면 아래 목록에서 첨부 후, [테스트]로 확인하고 [승인]하세요');
+      await load();
+    } catch (e) { setNote('❌ ' + e.message); }
+    setBusy('');
+  }
+
+  async function act(id, set, label) {
+    setBusy(id); setNote('');
+    try { await post({ action: 'update', id, set }); await load(); }
+    catch (e) { setNote(`❌ ${label} 실패: ` + e.message); }
+    setBusy('');
+  }
+
+  async function uploadImg(id, file) {
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) { setNote('❌ 이미지는 3MB 이하로'); return; }
+    setBusy(id); setNote('');
+    try {
+      const dataUrl = await new Promise((ok2, no) => {
+        const fr = new FileReader();
+        fr.onload = () => ok2(fr.result);
+        fr.onerror = no;
+        fr.readAsDataURL(file);
+      });
+      await post({ action: 'upload', id, filename: file.name,
+                   contentType: file.type, dataBase64: String(dataUrl).split(',')[1] });
+      await load();
+      setNote('✅ 이미지 첨부됨');
+    } catch (e) { setNote('❌ 업로드 실패: ' + e.message); }
+    setBusy('');
+  }
+
+  const kst = (iso) => (iso ? new Date(iso).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : '즉시(승인 시)');
+  const inp = { background: '#1d1d22', border: '1px solid #3a3a44', borderRadius: 8,
+                color: '#eee', padding: '9px 12px', fontSize: 14 };
+  const btn = (bg) => ({ background: bg, color: '#fff', border: 'none', borderRadius: 8,
+                         padding: '7px 14px', cursor: 'pointer', fontWeight: 700, fontSize: 13 });
+
+  if (err) return <div className="dpa-msg err">{err}</div>;
+  if (!d) return <div className="dpa-msg">불러오는 중…</div>;
+
+  return (
+    <div style={{ display: 'grid', gap: 16 }}>
+      <div style={{ background: '#232329', border: '1px solid #33333c', borderRadius: 14, padding: 18 }}>
+        <div style={{ fontWeight: 700, marginBottom: 10 }}>📣 새 단체 메시지</div>
+        <div style={{ display: 'grid', gap: 8 }}>
+          <input style={inp} placeholder="제목 (관리용 — 메시지에는 안 나감)" value={c.title}
+                 onChange={(e) => setC({ ...c, title: e.target.value })} />
+          <textarea style={{ ...inp, minHeight: 110, resize: 'vertical' }} placeholder="본문 (카톡으로 나갈 내용)"
+                    value={c.body} onChange={(e) => setC({ ...c, body: e.target.value })} />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+            <select style={inp} value={c.target}
+                    onChange={(e) => setC({ ...c, target: e.target.value })}>
+              <option value="따종운영">따종 운영 매장만</option>
+              <option value="전체">전체 (톡방 있는 모든 고객사)</option>
+              <option value="개별">개별 선택</option>
+            </select>
+            <input style={inp} type="datetime-local" value={c.sendAt}
+                   onChange={(e) => setC({ ...c, sendAt: e.target.value })} />
+            <span style={{ color: '#9a9aa5', fontSize: 13 }}>
+              비우면 승인 즉시 · 대상 <b style={{ color: '#E8A33D' }}>{targetCount}곳</b>
+            </span>
+            <button style={btn('#7c3aed')} disabled={busy === 'new'} onClick={create}>저장 (작성중)</button>
+          </div>
+          {c.target === '개별' && (
+            <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid #33333c',
+                          borderRadius: 8, padding: 8, display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 4 }}>
+              {d.stores.map((s2) => (
+                <label key={s2.id} style={{ fontSize: 13, color: '#ccc', display: 'flex', gap: 6 }}>
+                  <input type="checkbox" checked={c.targetIds.includes(s2.id)}
+                         onChange={(e) => setC({
+                           ...c,
+                           targetIds: e.target.checked
+                             ? [...c.targetIds, s2.id]
+                             : c.targetIds.filter((x) => x !== s2.id),
+                         })} />
+                  {s2.name}{s2.dp ? '' : ' (비따종)'}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+        {note && <div style={{ marginTop: 10, fontSize: 13 }}>{note}</div>}
+      </div>
+
+      {d.messages.map((m) => (
+        <div key={m.id} style={{ background: '#232329', border: '1px solid #33333c',
+                                 borderRadius: 14, padding: 16 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+            <b>{m['제목'] || '(제목 없음)'}</b>
+            <span style={{ color: BC_TONE[m['상태']] || '#999', fontWeight: 700, fontSize: 13 }}>
+              ● {m['상태'] || '작성중'}{m['테스트요청'] ? ' · 테스트 대기' : ''}
+            </span>
+            <span style={{ color: '#9a9aa5', fontSize: 13 }}>
+              {m['대상'] || '따종운영'} · 발송 {kst(m['발송시각'])} · 이미지 {(m['이미지'] || []).length}장
+            </span>
+          </div>
+          {m['본문'] && (
+            <pre style={{ whiteSpace: 'pre-wrap', color: '#ccc', fontSize: 13, margin: '8px 0',
+                          fontFamily: 'inherit' }}>{m['본문']}</pre>
+          )}
+          {(m['상태'] === '작성중' || m['상태'] === '승인') && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+              <label style={{ ...btn('#3a3a44'), display: 'inline-block' }}>
+                🖼 이미지 첨부
+                <input type="file" accept="image/*" style={{ display: 'none' }}
+                       onChange={(e) => uploadImg(m.id, e.target.files[0])} />
+              </label>
+              <button style={btn('#3a6ea5')} disabled={busy === m.id}
+                      onClick={() => act(m.id, { '테스트요청': true }, '테스트')}>
+                🧪 테스트 발송 (업무방)
+              </button>
+              {m['상태'] === '작성중' ? (
+                <button style={btn('#2CC985')} disabled={busy === m.id}
+                        onClick={() => {
+                          if (window.confirm(`'${m['제목']}' — 승인하면 예약봇이 실제 고객사 톡방으로 발송합니다. 진행할까요?`)) {
+                            act(m.id, { '상태': '승인' }, '승인');
+                          }
+                        }}>
+                  ✅ 승인 (발송 대상화)
+                </button>
+              ) : (
+                <button style={btn('#666')} disabled={busy === m.id}
+                        onClick={() => act(m.id, { '상태': '작성중' }, '승인 취소')}>
+                  ⏸ 승인 취소
+                </button>
+              )}
+              <button style={btn('#8a3a3a')} disabled={busy === m.id}
+                      onClick={() => act(m.id, { '상태': '취소' }, '취소')}>취소</button>
+            </div>
+          )}
+          {m['발송결과'] && (
+            <pre style={{ whiteSpace: 'pre-wrap', background: '#1a1a1f', borderRadius: 8,
+                          padding: 10, color: '#9a9aa5', fontSize: 12, marginTop: 8,
+                          maxHeight: 200, overflowY: 'auto' }}>{m['발송결과']}</pre>
+          )}
+        </div>
+      ))}
+      {!d.messages.length && <div className="dpa-msg">아직 작성된 단체 메시지가 없습니다.</div>}
+    </div>
+  );
+}
+
 export default function AdminDianpingPage() {
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
@@ -226,6 +479,7 @@ export default function AdminDianpingPage() {
   const [open, setOpen] = useState(null);          // 펼친 매장 officeId
   const [months, setMonths] = useState({});        // officeId → 월별 이력
   const [loadingM, setLoadingM] = useState(null);
+  const [view, setView] = useState('status');   // status | broadcast | register
 
   useEffect(() => {
     let alive = true;
@@ -289,8 +543,24 @@ export default function AdminDianpingPage() {
   if (!data) return <div className="dpa-msg">불러오는 중…</div>;
 
   const s = data.summary || {};
+  const navBtn = (id, label) => (
+    <button key={id} onClick={() => setView(id)}
+            style={{ background: view === id ? '#7c3aed' : '#2a2a31', color: '#fff',
+                     border: '1px solid #3a3a44', borderRadius: 10, padding: '9px 16px',
+                     cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>{label}</button>
+  );
+  const nav = (
+    <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+      {navBtn('status', '📊 고객 현황')}
+      {navBtn('broadcast', '📣 단체 메시지')}
+      {navBtn('register', '➕ 신규 등록')}
+    </div>
+  );
+  if (view === 'broadcast') return <div className="dpa">{nav}<BroadcastPanel /></div>;
+  if (view === 'register') return <div className="dpa">{nav}<RegisterPanel /></div>;
   return (
     <div className="dpa">
+      {nav}
       {/* ── 요약 ── */}
       <div className="dpa-sum">
         <Tile label="따종 매장" value={s.total} />
