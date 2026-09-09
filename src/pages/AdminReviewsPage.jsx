@@ -155,7 +155,17 @@ export default function AdminReviewsPage() {
     try {
       const body = { action: 'store', id: s.id, set: { [field]: on } };
       if (field === '리뷰서비스' && on) {
-        const start = window.prompt('리뷰서비스 시작일 (이 날 이후 리뷰만 다룹니다, YYYY-MM-DD)', new Date().toISOString().slice(0, 10));
+        // 🔴 기본값은 **기존 시작일**이다. 오늘 날짜를 기본값으로 두면, 껐다 다시 켤 때
+        //    엔터 한 번에 시작일이 오늘로 덮이고 그 이전 리뷰가 수집에서 영구히 빠진다
+        //    (2026-09-09 실사고: 얍 스위치 테스트로 09-03 → 09-09 로 밀렸다).
+        //    이미 켜 본 매장이면 그 값을, 처음이면 오늘을 준다.
+        const dflt = s.start || new Date().toISOString().slice(0, 10);
+        const start = window.prompt(
+          s.start
+            ? `리뷰서비스 시작일 — 이 매장은 이미 ${s.start} 로 설정돼 있습니다.\n`
+              + '그대로 두려면 확인만 누르세요. 바꾸면 그 이전 리뷰는 수집에서 빠집니다.'
+            : '리뷰서비스 시작일 (이 날 이후 리뷰만 다룹니다, YYYY-MM-DD)',
+          dflt);
         if (!start) { setBusy(''); return; }
         body.start = start;
       }
