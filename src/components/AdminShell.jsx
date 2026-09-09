@@ -17,6 +17,7 @@ const MENU = [
   { to: '/admin', label: '목표·실적', desc: '월별 고객사', icon: '🎯', end: true },
   { to: '/admin/clients', label: '고객카드', desc: 'CS·계약·서류 한눈에', icon: '🗂️' },
   { to: '/admin/dianping', label: '따종 고객 현황', desc: '광고·리뷰 상태', icon: '🏮' },
+  { to: '/admin/reviews', label: '리뷰 승인', desc: '답글 초안 검토·승인', icon: '💬' },
   { to: '/admin/dashboard', label: '담당자별 실적', desc: '월실적 조정', icon: '📊' },
   { to: '/admin/stores', label: '고객사 등록', desc: 'CS·계약 목표', icon: '🏪' },
   { to: '/admin/board', label: '예약 보드', desc: '순서 조정', icon: '🗂️' },

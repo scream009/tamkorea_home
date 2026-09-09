@@ -1,0 +1,75 @@
+/* 리뷰 승인 큐 — 색은 토큰으로만 쓴다(raw color 금지 규칙). 다크 관리자 화면 톤은 AdminShell 과 맞춘다. */
+.rq {
+  --rq-panel: #232329;
+  --rq-line: #33333c;
+  --rq-inset: #1d1d22;
+  --rq-ink: #e9e9ee;
+  --rq-mute: #9a9aa5;
+  --rq-accent: var(--revu-purple, #7c3aed);
+  --rq-ok: #2cc985;
+  --rq-warn: #e8a33d;
+  --rq-bad: #ff6b6b;
+  --rq-info: #5aa9ff;
+  display: grid;
+  gap: 16px;
+  color: var(--rq-ink);
+  font-family: Inter, Pretendard, 'Noto Sans KR', sans-serif;
+}
+.rq-panel { background: var(--rq-panel); border: 1px solid var(--rq-line); border-radius: 14px; padding: 16px 18px; }
+.rq-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.rq-head b { font-size: 16px; }
+.rq-count { color: var(--rq-mute); font-size: 13px; }
+.rq-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.rq-chip { border: 1px solid var(--rq-line); background: var(--rq-inset); color: var(--rq-mute); border-radius: 999px;
+  padding: 5px 12px; font-size: 13px; cursor: pointer; transition: all .2s; }
+.rq-chip.on { color: var(--rq-ink); border-color: var(--rq-accent); box-shadow: 0 0 0 1px var(--rq-accent) inset; }
+.rq-chip:hover { color: var(--rq-ink); }
+.rq-stores { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; margin-top: 10px; }
+.rq-store { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; background: var(--rq-inset);
+  border: 1px solid var(--rq-line); border-radius: 10px; padding: 8px 10px; font-size: 13px; }
+.rq-store b { flex-basis: 100%; }
+.rq-store label { display: inline-flex; gap: 4px; align-items: center; color: var(--rq-mute); cursor: pointer; }
+.rq-store label.on { color: var(--rq-ink); }
+.rq-card { background: var(--rq-panel); border: 1px solid var(--rq-line); border-radius: 14px; padding: 14px 16px;
+  display: grid; gap: 8px; transition: border-color .2s; }
+.rq-card:hover { border-color: var(--rq-accent); }
+.rq-card.sens { border-color: var(--rq-bad); }
+.rq-top { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 13px; color: var(--rq-mute); }
+.rq-top b { color: var(--rq-ink); font-size: 14px; }
+.rq-star { color: var(--rq-warn); font-weight: 700; }
+.rq-state { font-weight: 700; }
+.rq-state.s-검토대기, .rq-state.s-고객협의 { color: var(--rq-warn); }
+.rq-state.s-승인 { color: var(--rq-ok); }
+.rq-state.s-게시중, .rq-state.s-게시확인필요, .rq-state.s-게시실패 { color: var(--rq-info); }
+.rq-state.s-게시완료 { color: var(--rq-ok); }
+.rq-state.s-반려, .rq-state.s-보류 { color: var(--rq-mute); }
+.rq-grade { border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 700; background: var(--rq-inset); }
+.rq-grade.g-호평 { color: var(--rq-ok); }
+.rq-grade.g-낮은별점 { color: var(--rq-warn); }
+.rq-grade.g-악성 { color: var(--rq-bad); }
+.rq-grade.g-민감 { color: var(--rq-bad); background: rgba(255, 107, 107, .15); }
+.rq-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rq-box { background: var(--rq-inset); border: 1px solid var(--rq-line); border-radius: 10px; padding: 10px 12px; font-size: 13px; line-height: 1.55; }
+.rq-box .lab { display: block; color: var(--rq-mute); font-size: 11px; margin-bottom: 4px; letter-spacing: .04em; }
+.rq-box pre { margin: 0; white-space: pre-wrap; font-family: inherit; }
+.rq-ta { width: 100%; box-sizing: border-box; background: var(--rq-inset); border: 1px solid var(--rq-line); border-radius: 10px;
+  color: var(--rq-ink); padding: 10px 12px; font-size: 14px; line-height: 1.6; resize: vertical; min-height: 96px; font-family: inherit; }
+.rq-ta:focus { outline: none; border-color: var(--rq-accent); }
+.rq-in { background: var(--rq-inset); border: 1px solid var(--rq-line); border-radius: 8px; color: var(--rq-ink); padding: 8px 10px; font-size: 13px; width: 100%; box-sizing: border-box; }
+.rq-btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.rq-btn { border: none; border-radius: 8px; padding: 8px 14px; font-weight: 700; font-size: 13px; cursor: pointer; color: var(--rq-ink);
+  background: var(--rq-line); transition: transform .2s, filter .2s; }
+.rq-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+.rq-btn:disabled { opacity: .5; cursor: default; transform: none; }
+.rq-btn.ok { background: var(--rq-ok); color: var(--rq-inset); }
+.rq-btn.warn { background: var(--rq-warn); color: var(--rq-inset); }
+.rq-btn.bad { background: rgba(255, 107, 107, .25); }
+.rq-btn.acc { background: var(--rq-accent); }
+.rq-note { font-size: 13px; line-height: 1.6; }
+.rq-warnbox { border: 1px solid var(--rq-bad); background: rgba(255, 107, 107, .1); border-radius: 10px; padding: 8px 12px; font-size: 13px; }
+.rq-meta { color: var(--rq-mute); font-size: 12px; }
+.rq-empty { color: var(--rq-mute); padding: 24px; text-align: center; }
+@media (max-width: 768px) {
+  .rq-cols { grid-template-columns: 1fr; }
+  .rq-panel, .rq-card { padding: 12px; }
+}
