@@ -24,7 +24,11 @@ const WEEK_RE = /^\d{4}-W\d{2}$/;
 
 async function at(path, params) {
   const p = new URLSearchParams(params || {});
-  const url = `https://api.airtable.com/v0/${BASE}/${encodeURIComponent(path)}${p.toString() ? `?${p}` : ''}`;
+  // ⚠️ 경로를 통째로 encodeURIComponent 하면 `Campaign_DB/recXXX` 의 슬래시가 %2F 로 바뀌어
+  //    Airtable 이 404 를 준다(2026-09-09 실측 — 배포 직후 얍 PDF 가 404 였던 원인).
+  //    한글 테이블명은 인코딩이 필요하니 **구분자를 남기고 세그먼트만** 인코딩한다.
+  const seg = String(path).split('/').map(encodeURIComponent).join('/');
+  const url = `https://api.airtable.com/v0/${BASE}/${seg}${p.toString() ? `?${p}` : ''}`;
   const r = await fetch(url, { headers: { Authorization: `Bearer ${TOKEN}` } });
   if (!r.ok) throw new Error(`Airtable ${r.status}: ${(await r.text()).slice(0, 160)}`);
   return r.json();
