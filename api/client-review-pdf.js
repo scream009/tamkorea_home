@@ -67,7 +67,10 @@ export default async function handler(req, res) {
     const row = pickRow(j.records || [], week);
     if (!row) return res.status(404).json({ error: '아직 발행된 주간 리뷰 리포트가 없습니다' });
 
-    const att = (row.fields['PDF'] || [])[0];
+    // 첨부가 여러 개면 **마지막(가장 최근에 올린 것)** 을 연다.
+    // Airtable uploadAttachment 는 추가라서 재발행 시 옛 파일이 앞에 남는다(2026-09-09 실측).
+    const atts = row.fields['PDF'] || [];
+    const att = atts[atts.length - 1];
     if (!att?.url) return res.status(404).json({ error: '첨부를 찾지 못했습니다' });
     console.log('[client-review-pdf]', slug, row.fields['주차'], att.filename || '');
     res.setHeader('Location', att.url);
