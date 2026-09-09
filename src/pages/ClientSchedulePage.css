@@ -1024,3 +1024,11 @@
   .slog-k{flex-basis:3.8rem}
   .slog-v{font-size:.82rem}
 }
+
+/* 주간 리뷰 리포트 — 지난 주차 링크 줄 (2026-09-09) */
+.dprep-past{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  margin:-6px 0 14px;padding:0 4px;font-size:.78rem;color:var(--muted)}
+.dprep-past a{color:#c4b5fd;text-decoration:none;font-weight:700;
+  padding:3px 9px;border-radius:999px;border:1px solid var(--border);
+  background:rgba(255,255,255,.04);transition:all .2s}
+.dprep-past a:hover{border-color:rgba(124,58,237,.6);background:rgba(124,58,237,.16)}

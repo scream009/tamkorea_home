@@ -284,6 +284,55 @@ export const DpReportEntry = ({ report, campaignId }) => {
   );
 };
 
+/**
+ * 주간 리뷰 리포트 진입 — 리뷰서비스 매장에만 뜬다.
+ *
+ * PDF 는 Airtable 첨부이고 그 URL 은 약 2시간이면 만료된다. 그래서 여기서 URL 을 들고 있지 않고,
+ * 누를 때마다 `/api/client-review-pdf` 가 새 URL 을 받아 302 로 넘긴다(열어 둔 화면에서도 안 죽는다).
+ */
+export const ReviewWeeklyEntry = ({ weeks, campaignId }) => {
+  if (!weeks?.length) return null;
+  const [latest, ...rest] = weeks;
+  const chips = [
+    latest.total != null ? `새 리뷰 ${latest.total}건` : null,
+    latest.posted != null ? `답글 ${latest.posted}건` : null,
+    latest.avgStar != null ? `평균 ★${Number(latest.avgStar).toFixed(2)}` : null,
+  ].filter(Boolean);
+  const href = (w) => `/api/client-review-pdf?campaignId=${encodeURIComponent(campaignId || '')}`
+    + (w ? `&week=${encodeURIComponent(w)}` : '');
+  return (
+    <>
+      <a className="dprep" href={href(latest.week)} target="_blank" rel="noopener noreferrer">
+        <div className="dprep-l">
+          <div className="dprep-ic">💬</div>
+          <div>
+            <div className="dprep-tt">
+              주간 리뷰 리포트
+              {latest.week && <span className="dprep-mon">{latest.week}</span>}
+            </div>
+            <div className="dprep-ss">
+              {latest.period} · 리뷰 여론과 답글 대응
+              {latest.generatedAt && <> · {latest.generatedAt} 생성</>}
+            </div>
+            <div className="dprep-chips">
+              {chips.map((c, i) => <span key={i} className="dprep-chip">{c}</span>)}
+            </div>
+          </div>
+        </div>
+        <span className="dprep-btn">PDF 열기 →</span>
+      </a>
+      {rest.length > 0 && (
+        <div className="dprep-past">
+          지난 주차
+          {rest.map((w) => (
+            <a key={w.week} href={href(w.week)} target="_blank" rel="noopener noreferrer">{w.week}</a>
+          ))}
+        </div>
+      )}
+    </>
+  );
+};
+
 export default function ClientSchedulePage() {
   const [searchParams] = useSearchParams();
   const campaignId = searchParams.get('campaignId');
@@ -742,6 +791,7 @@ export default function ClientSchedulePage() {
         {/* ★ 신규: 주간 CPC 배너 + 따종디엔핑 월간 리포트 진입 (달력 위) */}
         <CpcBanner cpc={cpcInfo} adSet={data?.adSet} isPartner={isPartner} />
         <DpReportEntry report={dpReport} campaignId={campaignId} />
+        <ReviewWeeklyEntry weeks={data?.reviewWeekly} campaignId={campaignId} />
         {/* 따종 운영 매장에만 — 계정 문의 대응용 (Owner 2026-08-21).
             비번은 '보기'를 눌러야 서버에서 온다(StoreLoginCard 주석 참고). */}
         {isDpClient && campaignId && <StoreLoginCard campaignId={campaignId} />}

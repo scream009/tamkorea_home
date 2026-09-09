@@ -1106,6 +1106,37 @@ export default async function handler(req, res) {
       }
     }
 
+    // ── 주간 리뷰 리포트 (리뷰서비스 매장만) ─────────────────────────
+    // PDF 는 Airtable 첨부이고 그 URL 은 **약 2시간이면 만료**된다 → 여기서 URL 을 내보내지 않는다.
+    // 화면은 `/api/client-review-pdf?campaignId=…&week=…` 를 열고, 그쪽이 그때 새 URL 로 302 한다.
+    let reviewWeekly = [];
+    {
+      const rwSlug = String(cf['DP_매장코드'] || '').trim();
+      if (rwSlug && /^[A-Za-z][A-Za-z0-9_]{2,30}$/.test(rwSlug)) {
+        try {
+          const rows = await fetchAllRecords(
+            `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent('리뷰주간_DB')}`
+            + `?pageSize=100&filterByFormula=${encodeURIComponent(`{매장코드}='${rwSlug}'`)}`);
+          reviewWeekly = rows
+            .filter((r) => (r.fields['PDF'] || []).length && r.fields['발송상태'] === '완료')
+            // 주차 문자열(GGGG-Www)은 사전순이 곧 시간순이다
+            .sort((a, b) => String(b.fields['주차'] || '').localeCompare(String(a.fields['주차'] || '')))
+            .slice(0, 4)
+            .map((r) => ({
+              week: r.fields['주차'] || '',
+              period: String(r.fields['기간'] || '').replace(/~/, ' ~ '),
+              total: r.fields['신규리뷰'] ?? null,
+              posted: r.fields['게시답글수'] ?? null,
+              avgStar: r.fields['평균별점'] ?? null,
+              generatedAt: fmtKST(r.fields['생성시각']) || null,
+            }));
+        } catch (e) {
+          // 테이블이 아직 없거나 조회가 실패해도 달력은 떠야 한다
+          console.log(`[client-schedule] ${campaignId} 주간 리뷰 리포트 조회 생략: ${String(e.message).slice(0, 80)}`);
+        }
+      }
+    }
+
     return res.status(200).json({
       campaignName,
       brandName,
@@ -1121,6 +1152,7 @@ export default async function handler(req, res) {
       cpc,
       cpt,        // 달력 화면도 쓸 수 있게 최상위에도 둔다(리포트를 한 번도 안 돌린 매장 포함)
       dpReport,
+      reviewWeekly,  // 주간 리뷰 리포트 목록(최신 4주) — PDF 는 링크 라우트로만 연다
       dpClient,   // boolean 만 — 자격증명 값은 절대 내보내지 않는다
       // QR 체크인 — 시크릿 미설정이면 빈 값 → 프론트가 QR 버튼을 숨긴다 (fail-closed)
       storeCode: cf['업체명'] ? cf['업체명'][0] : '',
