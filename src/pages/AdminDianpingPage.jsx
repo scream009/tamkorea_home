@@ -806,53 +806,54 @@ function Detail({ r, months, loading, onRefresh }) {
   const busy = (r.refreshing && !stale) || r.sending;
   return (
     <div className="dpa-dt">
-      {/* ── VIP 온디맨드 — 매장이 물어봤을 때 그 시각 값을 받아 온다 ──
-          누르면 Airtable 에 요청만 남는다. 실제 수집은 PC 워커가 한다. */}
-      {r.vip && (
-        <div className="dpa-vip">
-          <div className="dpa-vip-h">
-            <b>⚡ 수시 조회</b>
-            <div className="dpa-vip-btns">
-              <button className="dpa-btn" disabled={busy}
-                      onClick={() => onRefresh && onRefresh(r, 'get')}>
-                {r.refreshing && !stale ? '조회 중…' : '🔄 지금 조회'}
-              </button>
-              <button className="dpa-btn" disabled={busy || !r.liveAt}
-                      title={r.liveAt ? '직전 조회 결과로 초안을 만듭니다'
-                                      : '먼저 한 번 조회해야 보낼 것이 생깁니다'}
-                      onClick={() => onRefresh && onRefresh(r, 'send')}>
-                {r.sending ? '준비 중…' : '📤 전송'}
-              </button>
-              <button className="dpa-btn primary" disabled={busy}
-                      title="지금 조회한 뒤 이어서 초안을 만듭니다"
-                      onClick={() => onRefresh && onRefresh(r, 'both')}>
-                ⚡ 조회+전송
-              </button>
-              {/* 미리보기를 카드에 깔면 세로 5,000px 짜리가 화면을 다 먹는다.
-                  볼 사람만 새 탭에서 본다(Owner 2026-09-13). */}
-              {r.reportImg && (
-                <a className="dpa-btn" href={r.reportImg} target="_blank" rel="noreferrer"
-                   title="마지막 조회로 만든 리포트를 새 탭에서 봅니다">🖼 이미지 보기</a>
-              )}
-            </div>
+      {/* ── 수시 조회 — 매장이 물어봤을 때 그 시각 값을 받아 온다 ──
+          누르면 Airtable 에 요청만 남는다. 실제 수집은 PC 워커가 한다.
+          ⚠️ VIP 매장만 보이게 막아 뒀다가 전 고객사로 열었다(Owner 2026-09-13).
+             막아 두면 "저 집은 왜 바로 알려주나" 가 되고, 담당자도 매번 필드를
+             켜러 Airtable 을 열어야 했다. VIP 표시는 별표로만 남긴다. */}
+      <div className="dpa-vip">
+        <div className="dpa-vip-h">
+          <b>⚡ 수시 조회{r.vip ? ' ⭐' : ''}</b>
+          <div className="dpa-vip-btns">
+            <button className="dpa-btn" disabled={busy}
+                    onClick={() => onRefresh && onRefresh(r, 'get')}>
+              {r.refreshing && !stale ? '조회 중…' : '🔄 지금 조회'}
+            </button>
+            <button className="dpa-btn" disabled={busy || !r.liveAt}
+                    title={r.liveAt ? '직전 조회 결과로 초안을 만듭니다'
+                                    : '먼저 한 번 조회해야 보낼 것이 생깁니다'}
+                    onClick={() => onRefresh && onRefresh(r, 'send')}>
+              {r.sending ? '준비 중…' : '📤 전송'}
+            </button>
+            <button className="dpa-btn primary" disabled={busy}
+                    title="지금 조회한 뒤 이어서 초안을 만듭니다"
+                    onClick={() => onRefresh && onRefresh(r, 'both')}>
+              ⚡ 조회+전송
+            </button>
+            {/* 미리보기를 카드에 깔면 세로 5,000px 짜리가 화면을 다 먹는다.
+                볼 사람만 새 탭에서 본다(Owner 2026-09-13). */}
+            {r.reportImg && (
+              <a className="dpa-btn" href={r.reportImg} target="_blank" rel="noreferrer"
+                 title="마지막 조회로 만든 리포트를 새 탭에서 봅니다">🖼 이미지 보기</a>
+            )}
           </div>
-          <div className="dpa-vip-kv">
-            <Kv k="오늘 사용" v={r.todaySpend != null
-              ? `${won(r.todaySpend)}${r.todayBudget ? ` / ${won(r.todayBudget)}` : ''}` : null} />
-            <Kv k="오늘 노출" v={r.todayImp != null ? `${n(r.todayImp)}회` : null} />
-            <Kv k="오늘 클릭" v={r.todayClick != null ? `${n(r.todayClick)}회` : null} />
-            <Kv k="클릭당 실단가" v={r.todayCpc != null ? won(r.todayCpc) : null} />
-            <Kv k="마지막 조회" v={r.liveAt ? new Date(r.liveAt).toLocaleString('ko-KR') : null} />
-          </div>
-          {r.refreshMsg && <div className="dpa-vip-msg">{r.refreshMsg}</div>}
-          {r.sendMsg && <div className="dpa-vip-msg send">{r.sendMsg}</div>}
-          {stale && r.refreshing && (
-            <div className="dpa-vip-msg warn">
-              5분이 넘도록 PC 가 집어가지 않았습니다. 따종봇이 꺼져 있는지 확인하세요.
-            </div>
-          )}
         </div>
-      )}
+        <div className="dpa-vip-kv">
+          <Kv k="오늘 사용" v={r.todaySpend != null
+            ? `${won(r.todaySpend)}${r.todayBudget ? ` / ${won(r.todayBudget)}` : ''}` : null} />
+          <Kv k="오늘 노출" v={r.todayImp != null ? `${n(r.todayImp)}회` : null} />
+          <Kv k="오늘 클릭" v={r.todayClick != null ? `${n(r.todayClick)}회` : null} />
+          <Kv k="클릭당 실단가" v={r.todayCpc != null ? won(r.todayCpc) : null} />
+          <Kv k="마지막 조회" v={r.liveAt ? new Date(r.liveAt).toLocaleString('ko-KR') : null} />
+        </div>
+        {r.refreshMsg && <div className="dpa-vip-msg">{r.refreshMsg}</div>}
+        {r.sendMsg && <div className="dpa-vip-msg send">{r.sendMsg}</div>}
+        {stale && r.refreshing && (
+          <div className="dpa-vip-msg warn">
+            5분이 넘도록 PC 가 집어가지 않았습니다. 따종봇이 꺼져 있는지 확인하세요.
+          </div>
+        )}
+      </div>
       <div className="dpa-dt-grid">
         <Kv k="포털 계정" v={r.officeId} />
         <Kv k="캠페인 ID" v={r.planId} />
