@@ -356,17 +356,7 @@
 .dpa-vip-btns { display: flex; gap: 6px; flex-wrap: wrap; }
 .dpa-vip-btns .dpa-btn.primary { background: #7a4a9a; border-color: #8a5aaa; }
 .dpa-vip-btns .dpa-btn:disabled { opacity: .45; cursor: not-allowed; }
-/* 리포트 미리보기 — 세로로 아주 긴 이미지라 높이를 잘라 보여 주고,
-   전체는 새 탭에서 본다. 여기서 다 펼치면 카드가 화면을 다 먹는다. */
-.dpa-vip-img {
-  display: block; margin-top: 10px; position: relative;
-  border: 1px solid #3b3f52; border-radius: 8px; overflow: hidden;
-  max-height: 260px; text-decoration: none;
-}
-.dpa-vip-img img { width: 100%; display: block; }
-.dpa-vip-img span {
-  position: absolute; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(transparent, rgba(20,22,34,.95) 60%);
-  color: #cbd0e0; font-size: .74rem; text-align: center; padding: 22px 0 6px;
-}
+/* a 태그를 버튼처럼 — 이미지 보기는 링크지만 줄 안에서 같은 모양이어야 한다 */
+.dpa-vip-btns a.dpa-btn { display: inline-flex; align-items: center;
+  text-decoration: none; }
 .dpa-vip-msg.send { color: #7dd3fc; }

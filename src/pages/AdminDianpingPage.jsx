@@ -828,6 +828,12 @@ function Detail({ r, months, loading, onRefresh }) {
                       onClick={() => onRefresh && onRefresh(r, 'both')}>
                 ⚡ 조회+전송
               </button>
+              {/* 미리보기를 카드에 깔면 세로 5,000px 짜리가 화면을 다 먹는다.
+                  볼 사람만 새 탭에서 본다(Owner 2026-09-13). */}
+              {r.reportImg && (
+                <a className="dpa-btn" href={r.reportImg} target="_blank" rel="noreferrer"
+                   title="마지막 조회로 만든 리포트를 새 탭에서 봅니다">🖼 이미지 보기</a>
+              )}
             </div>
           </div>
           <div className="dpa-vip-kv">
@@ -838,13 +844,6 @@ function Detail({ r, months, loading, onRefresh }) {
             <Kv k="클릭당 실단가" v={r.todayCpc != null ? won(r.todayCpc) : null} />
             <Kv k="마지막 조회" v={r.liveAt ? new Date(r.liveAt).toLocaleString('ko-KR') : null} />
           </div>
-          {r.reportImg && (
-            <a className="dpa-vip-img" href={r.reportImg} target="_blank" rel="noreferrer"
-               title="새 탭에서 원본 크기로 봅니다">
-              <img src={r.reportThumb || r.reportImg} alt="리포트 미리보기" loading="lazy" />
-              <span>클릭하면 원본으로 열립니다</span>
-            </a>
-          )}
           {r.refreshMsg && <div className="dpa-vip-msg">{r.refreshMsg}</div>}
           {r.sendMsg && <div className="dpa-vip-msg send">{r.sendMsg}</div>}
           {stale && r.refreshing && (
