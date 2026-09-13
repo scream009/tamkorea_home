@@ -18,10 +18,94 @@ import { blockedByAdminGate, escFormula } from './_admin-auth.js';
 const TOKEN = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const BASE = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
 
-async function atFetch(url) {
-  const r = await fetch(url, { headers: { Authorization: `Bearer ${TOKEN}` } });
-  if (!r.ok) throw new Error(`Airtable ${r.status}: ${(await r.text()).slice(0, 200)}`);
+async function atFetch(url, init = {}) {
+  const r = await fetch(url, {
+    ...init,
+    headers: { Authorization: `Bearer ${TOKEN}`, ...(init.body ? { 'Content-Type': 'application/json' } : {}) },
+  });
+  if (!r.ok) {
+    const e = new Error(`Airtable ${r.status}: ${(await r.text()).slice(0, 200)}`);
+    e.status = r.status;
+    throw e;
+  }
   return r.json();
+}
+
+const csUrl = (id) => `https://api.airtable.com/v0/${BASE}/CS_DB/${id}`;
+const csPatch = (id, fields) => atFetch(csUrl(id), { method: 'PATCH', body: JSON.stringify({ fields }) });
+
+// ── 수시조회 요청의 신선도 ─────────────────────────────────────────────
+// 🔴 요청 시각(DP_조회요청시각)은 **어드민만 쓴다. 워커는 읽기만 한다.**
+//    예전엔 [전송] 때 시각을 안 남겨서 전송 요청은 판정할 기준이 없었고, 워커가 없으면
+//    세 버튼이 무기한 잠겼다(2026-09-13 감사). 조회든 전송이든 요청마다 여기 기록한다.
+// 🔴 워커는 집어간 뒤 수집이 끝날 때까지 결과칸에 **아무것도 안 쓴다**. 그래서 '손대지 않음'
+//    기준이 워커 최악 지연보다 짧으면 한창 수집 중인 요청이 '응답 없음'으로 뜬다(5분이던 시절 리뷰 지적).
+//    최악 = 밤 폴링 300초(dp_worker NIGHT_SEC) + vip_collect 제한 420초 + 여유 → 15분.
+const REQ_WAIT_MS = 15 * 60 * 1000;   // 워커가 한 번도 손대지 않은 채 이만큼 → PC 가 안 집어갔다
+const REQ_DEAD_MS = 35 * 60 * 1000;   // 워커가 손댄 뒤라도 이만큼 → 멈춘 것으로 본다
+                                      // (워커는 30분 넘은 요청을 스스로 끈다 — 그 뒤 여유 5분)
+// 포털 락 대기 표식(dp_worker WAIT_MARK) — 워커가 최대 LOCK_WAIT_MAX_MIN(180분) 붙잡아 둔다
+const WAIT_MARK = '⏸ 포털 사용 중';
+const REQ_LOCKWAIT_MS = 185 * 60 * 1000;
+// stale 이 된 뒤에도 이 나이까지는 워커가 뒤늦게 결과·초안을 쓸 수 있다
+// (30분 직전에 집어가면 수집 420초 + 리포트 + 업로드). 화면은 이 동안 느리게 계속 확인한다.
+const REQ_WATCH_MS = 45 * 60 * 1000;
+const ACCEPT_GET = '요청 접수 — PC 가 집어가길 기다리는 중';
+const ACCEPT_SEND = '전송 요청 접수 — PC 가 초안을 만드는 중';
+const CANCEL_NOTE = '어드민에서 요청 취소';
+
+// 화면에서 Date.now() 를 부르면 렌더가 불순해져 lint 가 막는다(react-hooks/purity) — 서버가 계산한다.
+function reqState(f) {
+  const t = Date.parse(f['DP_조회요청시각'] || '');
+  const age = Number.isNaN(t) ? null : Date.now() - t;
+  const get = !!f['DP_조회요청'];
+  const send = !!f['DP_전송요청'];
+  // 결과 문구가 어드민이 쓴 접수 문구에서 바뀌었으면 워커가 한 번은 손댄 것이다
+  const touchedGet = String(f['DP_조회결과'] || '').trim() !== ACCEPT_GET;
+  const touchedSend = String(f['DP_전송결과'] || '').trim() !== ACCEPT_SEND;
+  // 요청 뒤에 수시확인일이 찍혔으면 워커가 조회를 끝낸 것이다(조회+전송의 전송 대기 구간)
+  const live = Date.parse(f['DP_수시확인일'] || '');
+  const doneAfter = age != null && !Number.isNaN(live) && live >= t;
+  const lockWait = String(f['DP_조회결과'] || '').startsWith(WAIT_MARK);
+  const limitOf = (touched) => (!touched ? REQ_WAIT_MS : lockWait ? REQ_LOCKWAIT_MS : REQ_DEAD_MS);
+  // 요청 시각 없이 켜진 체크(Airtable 에서 직접 켰거나 옛 판)는 잠그지 않는다 — 풀 방법이 없어진다
+  const staleOf = (touched) => age == null || age > limitOf(touched);
+  const refreshStale = get && staleOf(touchedGet);
+  // 조회+전송이면 전송은 조회 뒤에 돈다 — 조회와 같은 판정을 따른다
+  const sendStale = send && (get ? refreshStale : staleOf(touchedSend || doneAfter));
+  // 🔴 취소 직후·stale 직후에도 워커가 수집 중이었을 수 있다 — 그러면 취소 문구를 '완료'로 덮고
+  //    초안까지 만든다. 화면이 여기서 폴링을 끊으면 그걸 못 보고 다시 눌러 초안이 두 건 쌓인다.
+  //    취소 문구의 시각이 요청 시각 이후일 때만 '이 요청의 취소'로 본다 — 안 그러면 전송 취소 뒤
+  //    [지금 조회]만 끝난 매장에 남은 옛 취소 문구 때문에 45분간 헛경고·헛폴링이 돈다.
+  const reqStamp = age == null ? '' : kstStamp(new Date(t)).slice(0, 11);
+  const cancelled = !get && !send && !!reqStamp && [f['DP_조회결과'], f['DP_전송결과']].some((v) => {
+    const s = String(v || '');
+    const m = s.startsWith(CANCEL_NOTE) && s.match(/\((\d\d-\d\d \d\d:\d\d) KST\)/);
+    return !!m && m[1] >= reqStamp;
+  });
+  const watchLimit = Math.max(REQ_WATCH_MS, lockWait ? REQ_LOCKWAIT_MS : 0);
+  const recent = age != null && age <= watchLimit;
+  return {
+    refreshStale,
+    sendStale,
+    reqPickedUp: (get && touchedGet) || (send && (touchedSend || doneAfter)),
+    // 워커가 아직 뒤늦게 쓸 수 있는 구간(stale 이거나 방금 취소함) — 화면은 느리게 계속 확인한다
+    reqWatch: recent && ((refreshStale || sendStale) || cancelled),
+  };
+}
+
+// 결과 칸에 남기는 시각 — 관리자가 읽는 문구라 한국 시간으로 적는다.
+// ⚠️ 'sv-SE' 로 월·일만 뽑으면 '13/09'(일/월)로 나온다(실측) — 조각을 직접 잇는다.
+function kstStamp(d = new Date()) {
+  try {
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    }).formatToParts(d).map((x) => [x.type, x.value]));
+    return `${p.month}-${p.day} ${p.hour}:${p.minute} KST`;
+  } catch {
+    return d.toISOString();
+  }
 }
 
 async function fetchAll(table, { formula, fields } = {}) {
@@ -58,6 +142,7 @@ function cptDays(expire) {
 function toRow(f) {
   const expire = f['DP_CPT_만료일'] || null;
   const d = cptDays(expire);
+  const rq = reqState(f);
   return {
     officeId: String(f['DP-office_ID'] || ''),
     name: f['매장명_검색용'] || f['고객사명(필수)'] || '',
@@ -110,11 +195,12 @@ function toRow(f) {
     // VIP 온디맨드
     vip: !!f['VIP리포트'],
     refreshing: !!f['DP_조회요청'],
+    // 마지막 요청 시각 — 조회·전송 공용(reqState 주석 참조)
     refreshAt: f['DP_조회요청시각'] || null,
-    // 요청을 켠 지 5분이 지나도 PC 가 안 집어갔나. 화면에서 Date.now() 를 부르면
-    // 렌더가 불순해져 lint 가 막는다(react-hooks/purity) — 여기서 계산해 보낸다.
-    refreshStale: !!(f['DP_조회요청'] && f['DP_조회요청시각']
-      && Date.now() - Date.parse(f['DP_조회요청시각']) > 5 * 60 * 1000),
+    refreshStale: rq.refreshStale,
+    sendStale: rq.sendStale,
+    reqPickedUp: rq.reqPickedUp,
+    reqWatch: rq.reqWatch,
     refreshMsg: f['DP_조회결과'] || null,
     liveAt: f['DP_수시확인일'] || null,
     todaySpend: f['DP_오늘소진'] ?? null,
@@ -171,29 +257,65 @@ export default async function handler(req, res) {
     // PC 워커(dp_worker.py)가 이 체크를 보고 수집한 뒤 값을 채우고 체크를 끈다.
     // ⚠️ 계정 수정과 **분리해서** 처리한다. 같이 묶으면 조회 한 번에
     //    DP_계정수정일 이 갱신돼 "누가 계정을 건드렸나" 이력이 오염된다.
-    if (body.refresh !== undefined || body.send !== undefined) {
-      const on = body.refresh === true || body.refresh === 'true';
-      const snd = body.send === true || body.send === 'true';
+    const hasReq = body.refresh !== undefined || body.send !== undefined;
+
+    // ── 요청 취소 ───────────────────────────────────────────────────
+    // 워커가 없으면 체크가 영영 안 꺼진다. Airtable 을 직접 열지 않고 여기서 끈다.
+    // 🔴 현재 값을 먼저 읽는다 — 이미 끝난 요청을 '취소'로 덮으면 워커가 남긴 결과가 사라진다.
+    if (body.cancel !== undefined) {
+      if (body.cancel !== true) return res.status(400).json({ error: 'bad cancel' });
+      if (hasReq) return res.status(400).json({ error: 'cancel cannot be combined' });
+      try {
+        const cur = (await atFetch(csUrl(id))).fields || {};
+        const was = { get: !!cur['DP_조회요청'], send: !!cur['DP_전송요청'] };
+        if (!was.get && !was.send) return res.status(200).json({ ok: true, cancelled: [] });
+        const note = `${CANCEL_NOTE} (${kstStamp()})`;
+        const f = { 'DP_조회요청': false, 'DP_전송요청': false };
+        if (was.get) f['DP_조회결과'] = note;
+        if (was.send) f['DP_전송결과'] = note;
+        await csPatch(id, f);
+        const cancelled = [was.get && 'refresh', was.send && 'send'].filter(Boolean);
+        console.log('[admin-dianping] 요청 취소', id, cancelled.join(','));
+        return res.status(200).json({ ok: true, cancelled });
+      } catch (e) {
+        console.error('[admin-dianping] 요청 취소 실패', e.message);
+        return res.status(e.status === 404 ? 404 : 500).json({ error: e.message });
+      }
+    }
+
+    if (hasReq) {
+      // 불리언만 받는다(옛 화면의 'true'/'false' 문자열까지). 그 밖의 값은 거절 — 예전엔
+      // 아무 값이나 false 로 읽혀 요청이 조용히 꺼졌다.
+      const bool = (v) => (v === true || v === 'true' ? true : v === false || v === 'false' ? false : null);
+      const on = body.refresh === undefined ? false : bool(body.refresh);
+      const snd = body.send === undefined ? false : bool(body.send);
+      if (on === null || snd === null) return res.status(400).json({ error: 'bad refresh/send' });
       const f = {};
       if (body.refresh !== undefined) f['DP_조회요청'] = on;
       if (body.send !== undefined) f['DP_전송요청'] = snd;
-      if (on) {
-        f['DP_조회요청시각'] = new Date().toISOString();
-        f['DP_조회결과'] = '요청 접수 — PC 가 집어가길 기다리는 중';
-      }
-      if (snd) f['DP_전송결과'] = '전송 요청 접수 — PC 가 초안을 만드는 중';
       try {
-        const r = await fetch(`https://api.airtable.com/v0/${BASE}/CS_DB/${id}`, {
-          method: 'PATCH',
-          headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fields: f }),
-        });
-        if (!r.ok) throw new Error(`Airtable ${r.status}: ${(await r.text()).slice(0, 200)}`);
+        if (on || snd) {
+          // 처리 대기 중인(stale 아닌) 요청이 있으면 요청 시각을 덮지 않는다 — 두 탭·연타로
+          // 시각이 갱신되면 멈춘 요청이 영영 stale 로 안 넘어간다.
+          const cur = (await atFetch(csUrl(id))).fields || {};
+          const st = reqState(cur);
+          if ((cur['DP_조회요청'] && !st.refreshStale) || (cur['DP_전송요청'] && !st.sendStale)) {
+            return res.status(409).json({ error: '이미 처리 대기 중인 요청이 있습니다 — 끝나길 기다리거나 [요청 취소] 후 다시 누르세요.' });
+          }
+          const now = new Date();
+          f['DP_조회요청시각'] = now.toISOString();   // 조회·전송 공용 — 워커는 읽기만 한다
+          const replaced = `이전 요청은 새 요청으로 대체됨 (${kstStamp(now)})`;
+          if (on) f['DP_조회결과'] = ACCEPT_GET;
+          else if (cur['DP_조회요청'] && f['DP_조회요청'] === false) f['DP_조회결과'] = replaced;
+          if (snd) f['DP_전송결과'] = ACCEPT_SEND;
+          else if (cur['DP_전송요청'] && f['DP_전송요청'] === false) f['DP_전송결과'] = replaced;
+        }
+        await csPatch(id, f);
         console.log('[admin-dianping] 요청', id, `조회=${on} 전송=${snd}`);
         return res.status(200).json({ ok: true, refresh: on, send: snd });
       } catch (e) {
         console.error('[admin-dianping] 조회요청 실패', e.message);
-        return res.status(500).json({ error: e.message });
+        return res.status(e.status === 404 ? 404 : 500).json({ error: e.message });
       }
     }
 

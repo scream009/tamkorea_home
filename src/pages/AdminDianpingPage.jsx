@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { adminHeaders } from '../lib/adminKey';
 import './AdminDianpingPage.css';
 
@@ -480,6 +480,8 @@ export default function AdminDianpingPage() {
   const [months, setMonths] = useState({});        // officeId → 월별 이력
   const [loadingM, setLoadingM] = useState(null);
   const [view, setView] = useState('status');   // status | broadcast | register
+  // 탭이 숨겨졌나 — 숨겨진 탭은 폴링하지 않는다(아래 폴링 주석 참조)
+  const [visible, setVisible] = useState(() => typeof document === 'undefined' || !document.hidden);
 
   const reload = useCallback(async () => {
     const r = await fetch('/api/admin-dianping', { headers: adminHeaders() });
@@ -505,43 +507,90 @@ export default function AdminDianpingPage() {
   // 그래서 "요청 중인 매장이 하나라도 있을 때만" 짧게 돌고, 없으면 스스로 멈춘다.
   // ⚠️ 상시 폴링으로 만들면 관리자 화면을 열어둔 채 방치했을 때 Airtable 호출이
   //    하루 종일 나간다. 조건부로 둔다.
-  const pending = (data?.rows || []).some((x) => x.refreshing || x.sending);
+  // 🔴 stale(워커가 안 집어감) 요청까지 폴링하면 워커가 꺼진 날 탭 하나가 10초마다
+  //    CS_DB+Campaign_DB 여러 페이지를 읽는다(시간당 수천 호출 — 2026-09-13 감사).
+  //    처리 중(stale 아님)인 요청이 있으면 10초, 탭이 숨겨지면 멈춘다.
+  // 🔴 그렇다고 stale 에서 딱 끊으면 안 된다 — 워커가 수집 중인데 stale 로 뜬 경우(큐 대기·밤 폴링)
+  //    뒤늦게 온 '완료'·초안을 화면이 못 보고, 사람이 다시 눌러 초안이 두 건 쌓인다(리뷰 지적).
+  //    서버가 '아직 뒤늦게 쓸 수 있다'(reqWatch)고 하는 동안은 60초로 느리게 계속 본다.
+  const pending = (data?.rows || []).some((x) => (x.refreshing && !x.refreshStale)
+    || (x.sending && !x.sendStale));
+  const watching = (data?.rows || []).some((x) => x.reqWatch);
+  const pollRef = useRef(false);
+  useEffect(() => { pollRef.current = pending || watching; }, [pending, watching]);
   useEffect(() => {
-    if (!pending) return undefined;
+    let alive = true;
+    const onVis = () => {
+      setVisible(!document.hidden);
+      // 숨겨진 동안 놓친 결과를 다시 보이는 순간 한 번 맞춘다(요청이 걸려 있을 때만)
+      if (!document.hidden && pollRef.current) {
+        reload().then((j) => { if (alive) setData(j); }).catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => { alive = false; document.removeEventListener('visibilitychange', onVis); };
+  }, [reload]);
+  const pollMs = !visible ? 0 : pending ? 10000 : watching ? 60000 : 0;
+  useEffect(() => {
+    if (!pollMs) return undefined;
     let alive = true;
     const t = setInterval(async () => {
       try {
         const j = await reload();
         if (alive) setData(j);
       } catch { /* 일시적 실패는 다음 회차에 다시 시도한다 */ }
-    }, 6000);
+    }, pollMs);
     return () => { alive = false; clearInterval(t); };
-  }, [pending, reload]);
+  }, [pollMs, reload]);
 
-  // mode: 'get' 조회만 · 'send' 직전 결과로 초안 · 'both' 조회 후 초안
-  const askRefresh = useCallback(async (r, mode = 'get') => {
-    if (!r.id) { alert('이 매장은 레코드 ID 를 못 찾았습니다.'); return; }
-    if (mode !== 'get') {
-      const what = mode === 'both' ? '지금 조회한 뒤' : '직전 조회 결과로';
-      // 초안까지만 만든다. 승인은 사람이 한다 — 값이 어긋날 수 있는 동안의 안전장치다.
-      if (!window.confirm(`${r.name}\n${what} 단체메시지 초안을 만듭니다.\n`
-        + '바로 나가지 않습니다 — 단체메시지 탭에서 확인하고 승인해야 발송됩니다.')) return;
-    }
-    const body = { id: r.id };
-    if (mode === 'get' || mode === 'both') body.refresh = true;
-    if (mode === 'send' || mode === 'both') body.send = true;
+  // 요청이 실패해도 화면은 서버의 현재 상태로 맞춘다(409 = 이미 대기 중인 요청이 있음)
+  const patchReq = useCallback(async (body) => {
     try {
       const resp = await fetch('/api/admin-dianping', {
         method: 'PATCH',
         headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (!resp.ok) throw new Error(`요청 실패 (${resp.status})`);
-      setData(await reload());
+      if (!resp.ok) {
+        const j = await resp.json().catch(() => ({}));
+        throw new Error(j.error || `요청 실패 (${resp.status})`);
+      }
     } catch (e) {
       alert(e.message);
     }
+    try { setData(await reload()); } catch { /* 다음 조작 때 다시 읽는다 */ }
   }, [reload]);
+
+  // 걸려 있는 조회·전송 요청을 끈다. 워커가 없으면 이것 말고는 풀 방법이 없다.
+  const cancelReq = useCallback(async (r) => {
+    if (!r.id) return;
+    const live = (r.refreshing && !r.refreshStale) || (r.sending && !r.sendStale);
+    // 🔴 stale 이어도 워커가 수집 중일 수 있다(reqWatch) — 그땐 확인 없이 끄지 않는다.
+    //    취소해도 그 회차는 끝까지 돌아 '완료'로 덮고 초안까지 만든다.
+    if ((live || r.reqWatch) && !window.confirm(`${r.name}\n걸려 있는 요청을 취소합니다.\n`
+      + 'PC 가 이미 수집을 시작했다면 취소해도 그 회차는 끝까지 돌고, 전송 요청이었다면 초안도 만들어집니다.\n'
+      + '다시 누르기 전에 결과 칸과 단체메시지 탭의 \'작성중\' 초안을 먼저 확인하세요.')) return;
+    await patchReq({ id: r.id, cancel: true });
+  }, [patchReq]);
+
+  // mode: 'get' 조회만 · 'send' 직전 결과로 초안 · 'both' 조회 후 초안
+  const askRefresh = useCallback(async (r, mode = 'get') => {
+    if (!r.id) { alert('이 매장은 레코드 ID 를 못 찾았습니다.'); return; }
+    // 직전 요청(stale·취소)을 워커가 아직 처리 중일 수 있는 구간 — 다시 누르면 수집이 한 번 더 돌고
+    // 초안이 두 건 쌓일 수 있다(vip_send 에 중복 방지 없음).
+    if (r.reqWatch && !window.confirm(`${r.name}\n직전 요청${r.refreshAt ? `(${KST(r.refreshAt)} KST)` : ''}을 `
+      + 'PC 가 아직 처리 중일 수 있습니다.\n다시 요청하면 초안이 두 건 생길 수 있습니다 — '
+      + '단체메시지 탭의 \'작성중\' 초안을 먼저 확인하세요. 계속할까요?')) return;
+    if (mode !== 'get') {
+      const what = mode === 'both' ? '지금 조회한 뒤' : '직전 조회 결과로';
+      // 초안까지만 만든다. 승인은 사람이 한다 — 값이 어긋날 수 있는 동안의 안전장치다.
+      if (!window.confirm(`${r.name}\n${what} 단체메시지 초안을 만듭니다.\n`
+        + '바로 나가지 않습니다 — 단체메시지 탭에서 확인하고 승인해야 발송됩니다.')) return;
+    }
+    // 두 플래그를 항상 같이 보낸다. 한쪽만 보내면 멈춰 있던 반대쪽 요청이
+    // 새 요청 시각을 받아 되살아난다(예: 멈춘 [지금 조회] 뒤 [전송] → 수집까지 돈다).
+    await patchReq({ id: r.id, refresh: mode !== 'send', send: mode !== 'get' });
+  }, [patchReq]);
 
   // 업종 목록 — 매장 수 많은 순. 8종이라 칩으로 늘리면 지저분해 드롭다운으로 둔다.
   const cats = useMemo(() => {
@@ -703,7 +752,7 @@ export default function AdminDianpingPage() {
 
             {open === r.officeId && (
               <Detail r={r} months={months[r.officeId]} loading={loadingM === r.officeId}
-                        onRefresh={askRefresh} />
+                        onRefresh={askRefresh} onCancel={cancelReq} />
             )}
           </div>
             ))}
@@ -774,7 +823,7 @@ export default function AdminDianpingPage() {
                   <tr className="dpa-detail">
                     <td colSpan={11}>
                       <Detail r={r} months={months[r.officeId]} loading={loadingM === r.officeId}
-                        onRefresh={askRefresh} />
+                        onRefresh={askRefresh} onCancel={cancelReq} />
                     </td>
                   </tr>
                 )}
@@ -801,9 +850,13 @@ function Tile({ label, value, tone: t }) {
   );
 }
 
-function Detail({ r, months, loading, onRefresh }) {
-  const stale = !!r.refreshStale;      // 신선도 판정은 서버가 한다(위 API 주석 참조)
-  const busy = (r.refreshing && !stale) || r.sending;
+function Detail({ r, months, loading, onRefresh, onCancel }) {
+  // 신선도 판정은 서버가 한다(api/admin-dianping.js reqState 주석 참조).
+  // 🔴 전송 요청에도 stale 을 적용한다 — 예전엔 워커가 없으면 세 버튼이 무기한 잠겼다.
+  const refreshLive = r.refreshing && !r.refreshStale;
+  const sendLive = r.sending && !r.sendStale;
+  const busy = refreshLive || sendLive;
+  const hasReq = r.refreshing || r.sending;
   return (
     <div className="dpa-dt">
       {/* ── 수시 조회 — 매장이 물어봤을 때 그 시각 값을 받아 온다 ──
@@ -817,19 +870,26 @@ function Detail({ r, months, loading, onRefresh }) {
           <div className="dpa-vip-btns">
             <button className="dpa-btn" disabled={busy}
                     onClick={() => onRefresh && onRefresh(r, 'get')}>
-              {r.refreshing && !stale ? '조회 중…' : '🔄 지금 조회'}
+              {refreshLive ? '조회 중…' : '🔄 지금 조회'}
             </button>
             <button className="dpa-btn" disabled={busy || !r.liveAt}
                     title={r.liveAt ? '직전 조회 결과로 초안을 만듭니다'
                                     : '먼저 한 번 조회해야 보낼 것이 생깁니다'}
                     onClick={() => onRefresh && onRefresh(r, 'send')}>
-              {r.sending ? '준비 중…' : '📤 전송'}
+              {sendLive ? '준비 중…' : '📤 전송'}
             </button>
             <button className="dpa-btn primary" disabled={busy}
                     title="지금 조회한 뒤 이어서 초안을 만듭니다"
                     onClick={() => onRefresh && onRefresh(r, 'both')}>
               ⚡ 조회+전송
             </button>
+            {hasReq && (
+              <button className="dpa-btn"
+                      title="걸려 있는 조회·전송 요청을 끕니다"
+                      onClick={() => onCancel && onCancel(r)}>
+                ✖ 요청 취소
+              </button>
+            )}
             {/* 미리보기를 카드에 깔면 세로 5,000px 짜리가 화면을 다 먹는다.
                 볼 사람만 새 탭에서 본다(Owner 2026-09-13). */}
             {r.reportImg && (
@@ -843,14 +903,24 @@ function Detail({ r, months, loading, onRefresh }) {
             ? `${won(r.todaySpend)}${r.todayBudget ? ` / ${won(r.todayBudget)}` : ''}` : null} />
           <Kv k="오늘 노출" v={r.todayImp != null ? `${n(r.todayImp)}회` : null} />
           <Kv k="오늘 클릭" v={r.todayClick != null ? `${n(r.todayClick)}회` : null} />
-          <Kv k="클릭당 실단가" v={r.todayCpc != null ? won(r.todayCpc) : null} />
-          <Kv k="마지막 조회" v={r.liveAt ? new Date(r.liveAt).toLocaleString('ko-KR') : null} />
+          {/* 실단가는 몇 元 안팎이라 정수로 끊으면 차이가 안 보인다 — 워커가 쓴 소수 2자리 그대로 */}
+          <Kv k="클릭당 실단가" v={r.todayCpc != null ? `${Number(r.todayCpc).toFixed(2)}元` : null} />
+          <Kv k="마지막 조회" v={r.liveAt ? `${KST(r.liveAt)} KST` : null} />
         </div>
         {r.refreshMsg && <div className="dpa-vip-msg">{r.refreshMsg}</div>}
         {r.sendMsg && <div className="dpa-vip-msg send">{r.sendMsg}</div>}
-        {stale && r.refreshing && (
+        {hasReq && !busy && (
           <div className="dpa-vip-msg warn">
-            5분이 넘도록 PC 가 집어가지 않았습니다. 따종봇이 꺼져 있는지 확인하세요.
+            {r.reqPickedUp
+              ? '따종 PC 워커가 요청을 받았지만 오래 끝나지 않았습니다 — 위 상태를 확인하고, 필요하면 [요청 취소] 후 다시 시도하세요.'
+              : '따종 PC 워커가 응답하지 않습니다 — [요청 취소] 후 다시 시도하거나 PC 상태를 확인하세요.'}
+            {r.refreshAt ? ` (요청 ${KST(r.refreshAt)} KST)` : ''}
+            {r.reqWatch ? ' PC 가 수집 중이었다면 곧 결과가 올 수 있어 1분마다 다시 확인합니다.' : ''}
+          </div>
+        )}
+        {!hasReq && r.reqWatch && (
+          <div className="dpa-vip-msg warn">
+            요청을 취소했지만 PC 가 이미 수집을 시작했다면 결과·초안이 뒤늦게 올 수 있습니다 — 1분마다 다시 확인합니다.
           </div>
         )}
       </div>
