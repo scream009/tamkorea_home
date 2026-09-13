@@ -107,6 +107,21 @@ function toRow(f) {
     bad30: f['DP_악평_30일'] ?? null,
     badTotal: f['DP_악평_누적'] ?? null,
     reviewAt: f['DP_리뷰확인일'] || null,
+    // VIP 온디맨드
+    vip: !!f['VIP리포트'],
+    refreshing: !!f['DP_조회요청'],
+    refreshAt: f['DP_조회요청시각'] || null,
+    // 요청을 켠 지 5분이 지나도 PC 가 안 집어갔나. 화면에서 Date.now() 를 부르면
+    // 렌더가 불순해져 lint 가 막는다(react-hooks/purity) — 여기서 계산해 보낸다.
+    refreshStale: !!(f['DP_조회요청'] && f['DP_조회요청시각']
+      && Date.now() - Date.parse(f['DP_조회요청시각']) > 5 * 60 * 1000),
+    refreshMsg: f['DP_조회결과'] || null,
+    liveAt: f['DP_수시확인일'] || null,
+    todaySpend: f['DP_오늘소진'] ?? null,
+    todayBudget: f['DP_오늘예산'] ?? null,
+    todayImp: f['DP_오늘노출'] ?? null,
+    todayClick: f['DP_오늘클릭'] ?? null,
+    todayCpc: f['DP_실효단가'] ?? null,
   };
 }
 
@@ -122,6 +137,9 @@ const CS_FIELDS = [
   'DP_일예산', 'DP_주말할증', 'DP_피크예산', 'DP_클릭단가', 'DP_노출시간',
   'DP_주간노출시간', 'DP_캠페인ID', 'DP_설정확인일',
   'DP_CPT_만료일', 'DP_CPT_상태', 'DP_악평_7일', 'DP_악평_30일', 'DP_악평_누적', 'DP_리뷰확인일',
+  // VIP 온디맨드 — 여기 안 넣으면 GET 응답에 안 실려 화면이 영영 못 본다
+  'VIP리포트', 'DP_조회요청', 'DP_조회요청시각', 'DP_조회결과', 'DP_수시확인일',
+  'DP_오늘소진', 'DP_오늘예산', 'DP_오늘노출', 'DP_오늘클릭', 'DP_실효단가',
 ];
 
 export default async function handler(req, res) {
@@ -139,6 +157,35 @@ export default async function handler(req, res) {
     if (!/^rec[A-Za-z0-9]{14}$/.test(id)) {
       return res.status(400).json({ error: 'bad record id' });
     }
+
+    // ── 지금 조회 요청 ──────────────────────────────────────────────
+    // 웹(Vercel)에서 PC 의 파이썬을 직접 못 부른다. Airtable 을 큐로 쓴다 —
+    // 예약봇이 단체메시지_DB 를 60초 폴링하는 것과 같은 방식이고, 이미 검증된 패턴이다.
+    // PC 워커(dp_worker.py)가 이 체크를 보고 수집한 뒤 값을 채우고 체크를 끈다.
+    // ⚠️ 계정 수정과 **분리해서** 처리한다. 같이 묶으면 조회 한 번에
+    //    DP_계정수정일 이 갱신돼 "누가 계정을 건드렸나" 이력이 오염된다.
+    if (body.refresh !== undefined) {
+      const on = body.refresh === true || body.refresh === 'true';
+      const f = { 'DP_조회요청': on };
+      if (on) {
+        f['DP_조회요청시각'] = new Date().toISOString();
+        f['DP_조회결과'] = '요청 접수 — PC 가 집어가길 기다리는 중';
+      }
+      try {
+        const r = await fetch(`https://api.airtable.com/v0/${BASE}/CS_DB/${id}`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fields: f }),
+        });
+        if (!r.ok) throw new Error(`Airtable ${r.status}: ${(await r.text()).slice(0, 200)}`);
+        console.log('[admin-dianping] 조회요청', id, on ? 'ON' : 'OFF');
+        return res.status(200).json({ ok: true, refresh: on });
+      } catch (e) {
+        console.error('[admin-dianping] 조회요청 실패', e.message);
+        return res.status(500).json({ error: e.message });
+      }
+    }
+
     const fields = {};
     for (const [k, fld] of Object.entries(ALLOW)) {
       if (body[k] === undefined) continue;

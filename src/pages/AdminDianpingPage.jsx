@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { adminHeaders } from '../lib/adminKey';
 import './AdminDianpingPage.css';
 
@@ -481,20 +481,57 @@ export default function AdminDianpingPage() {
   const [loadingM, setLoadingM] = useState(null);
   const [view, setView] = useState('status');   // status | broadcast | register
 
+  const reload = useCallback(async () => {
+    const r = await fetch('/api/admin-dianping', { headers: adminHeaders() });
+    if (!r.ok) throw new Error(r.status === 404 ? '접근 권한이 없습니다.' : `불러오지 못했습니다 (${r.status})`);
+    return r.json();
+  }, []);
+
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const r = await fetch('/api/admin-dianping', { headers: adminHeaders() });
-        if (!r.ok) throw new Error(r.status === 404 ? '접근 권한이 없습니다.' : `불러오지 못했습니다 (${r.status})`);
-        const j = await r.json();
+        const j = await reload();
         if (alive) setData(j);
       } catch (e) {
         if (alive) setErr(e.message);
       }
     })();
     return () => { alive = false; };
-  }, []);
+  }, [reload]);
+
+  // ── 조회 요청 결과 폴링 ────────────────────────────────────────────
+  // 웹은 PC 를 직접 못 부른다. Airtable 이 큐고, PC 워커가 값을 채운 뒤 체크를 끈다.
+  // 그래서 "요청 중인 매장이 하나라도 있을 때만" 짧게 돌고, 없으면 스스로 멈춘다.
+  // ⚠️ 상시 폴링으로 만들면 관리자 화면을 열어둔 채 방치했을 때 Airtable 호출이
+  //    하루 종일 나간다. 조건부로 둔다.
+  const pending = (data?.rows || []).some((x) => x.refreshing);
+  useEffect(() => {
+    if (!pending) return undefined;
+    let alive = true;
+    const t = setInterval(async () => {
+      try {
+        const j = await reload();
+        if (alive) setData(j);
+      } catch { /* 일시적 실패는 다음 회차에 다시 시도한다 */ }
+    }, 6000);
+    return () => { alive = false; clearInterval(t); };
+  }, [pending, reload]);
+
+  const askRefresh = useCallback(async (r) => {
+    if (!r.id) { alert('이 매장은 레코드 ID 를 못 찾았습니다.'); return; }
+    try {
+      const resp = await fetch('/api/admin-dianping', {
+        method: 'PATCH',
+        headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: r.id, refresh: true }),
+      });
+      if (!resp.ok) throw new Error(`요청 실패 (${resp.status})`);
+      setData(await reload());
+    } catch (e) {
+      alert(e.message);
+    }
+  }, [reload]);
 
   // 업종 목록 — 매장 수 많은 순. 8종이라 칩으로 늘리면 지저분해 드롭다운으로 둔다.
   const cats = useMemo(() => {
@@ -655,7 +692,8 @@ export default function AdminDianpingPage() {
             </div>
 
             {open === r.officeId && (
-              <Detail r={r} months={months[r.officeId]} loading={loadingM === r.officeId} />
+              <Detail r={r} months={months[r.officeId]} loading={loadingM === r.officeId}
+                        onRefresh={askRefresh} />
             )}
           </div>
             ))}
@@ -725,7 +763,8 @@ export default function AdminDianpingPage() {
                 {open === r.officeId && (
                   <tr className="dpa-detail">
                     <td colSpan={11}>
-                      <Detail r={r} months={months[r.officeId]} loading={loadingM === r.officeId} />
+                      <Detail r={r} months={months[r.officeId]} loading={loadingM === r.officeId}
+                        onRefresh={askRefresh} />
                     </td>
                   </tr>
                 )}
@@ -752,9 +791,37 @@ function Tile({ label, value, tone: t }) {
   );
 }
 
-function Detail({ r, months, loading }) {
+function Detail({ r, months, loading, onRefresh }) {
+  const stale = !!r.refreshStale;      // 신선도 판정은 서버가 한다(위 API 주석 참조)
   return (
     <div className="dpa-dt">
+      {/* ── VIP 온디맨드 — 매장이 물어봤을 때 그 시각 값을 받아 온다 ──
+          누르면 Airtable 에 요청만 남는다. 실제 수집은 PC 워커가 한다. */}
+      {r.vip && (
+        <div className="dpa-vip">
+          <div className="dpa-vip-h">
+            <b>⚡ 수시 조회</b>
+            <button className="dpa-btn" disabled={r.refreshing && !stale}
+                    onClick={() => onRefresh && onRefresh(r)}>
+              {r.refreshing && !stale ? '조회 중…' : '🔄 지금 조회'}
+            </button>
+          </div>
+          <div className="dpa-vip-kv">
+            <Kv k="오늘 사용" v={r.todaySpend != null
+              ? `${won(r.todaySpend)}${r.todayBudget ? ` / ${won(r.todayBudget)}` : ''}` : null} />
+            <Kv k="오늘 노출" v={r.todayImp != null ? `${n(r.todayImp)}회` : null} />
+            <Kv k="오늘 클릭" v={r.todayClick != null ? `${n(r.todayClick)}회` : null} />
+            <Kv k="클릭당 실단가" v={r.todayCpc != null ? won(r.todayCpc) : null} />
+            <Kv k="마지막 조회" v={r.liveAt ? new Date(r.liveAt).toLocaleString('ko-KR') : null} />
+          </div>
+          {r.refreshMsg && <div className="dpa-vip-msg">{r.refreshMsg}</div>}
+          {stale && r.refreshing && (
+            <div className="dpa-vip-msg warn">
+              5분이 넘도록 PC 가 집어가지 않았습니다. 따종봇이 꺼져 있는지 확인하세요.
+            </div>
+          )}
+        </div>
+      )}
       <div className="dpa-dt-grid">
         <Kv k="포털 계정" v={r.officeId} />
         <Kv k="캠페인 ID" v={r.planId} />

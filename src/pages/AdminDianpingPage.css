@@ -324,3 +324,31 @@
 .dpa-btn:disabled { opacity: .5; cursor: default; }
 .dpa-acct-m { margin-top: 8px; font-size: 11px; color: #86efac; }
 .dpa-acct-m.dim { color: #64748b; }
+
+/* ── VIP 수시 조회 ──────────────────────────────────────────────
+   매장이 "지금 어때요?" 하고 물었을 때 그 시각 값을 받아 오는 칸.
+   상세를 펼쳤을 때 맨 위에 온다 — 제일 자주 보는 것이 제일 위다. */
+.dpa-vip {
+  border: 1px solid #3b3f52;
+  background: #23263a;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.dpa-vip-h {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin-bottom: 8px;
+}
+.dpa-vip-h b { font-size: .92rem; }
+.dpa-vip-kv {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 6px 14px;
+}
+.dpa-vip-msg {
+  margin-top: 8px; font-size: .78rem; color: #9aa0b4;
+  white-space: pre-wrap; word-break: break-all;
+}
+.dpa-vip-msg.warn { color: #fbbf24; }
+@media (max-width: 640px) {
+  .dpa-vip-h { flex-direction: column; align-items: stretch; }
+}
