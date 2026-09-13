@@ -122,6 +122,12 @@ function toRow(f) {
     todayImp: f['DP_오늘노출'] ?? null,
     todayClick: f['DP_오늘클릭'] ?? null,
     todayCpc: f['DP_실효단가'] ?? null,
+    // 첨부 URL 은 호출할 때마다 새로 발급된다(몇 시간 뒤 만료) — 그래서 저장하지 않고
+    // 화면이 그릴 때 쓰는 값으로만 내려보낸다.
+    reportImg: (f['DP_조회이미지'] || [])[0]?.url || null,
+    reportThumb: (f['DP_조회이미지'] || [])[0]?.thumbnails?.large?.url || null,
+    sending: !!f['DP_전송요청'],
+    sendMsg: f['DP_전송결과'] || null,
   };
 }
 
@@ -140,6 +146,7 @@ const CS_FIELDS = [
   // VIP 온디맨드 — 여기 안 넣으면 GET 응답에 안 실려 화면이 영영 못 본다
   'VIP리포트', 'DP_조회요청', 'DP_조회요청시각', 'DP_조회결과', 'DP_수시확인일',
   'DP_오늘소진', 'DP_오늘예산', 'DP_오늘노출', 'DP_오늘클릭', 'DP_실효단가',
+  'DP_조회이미지', 'DP_전송요청', 'DP_전송결과',
 ];
 
 export default async function handler(req, res) {
@@ -164,13 +171,17 @@ export default async function handler(req, res) {
     // PC 워커(dp_worker.py)가 이 체크를 보고 수집한 뒤 값을 채우고 체크를 끈다.
     // ⚠️ 계정 수정과 **분리해서** 처리한다. 같이 묶으면 조회 한 번에
     //    DP_계정수정일 이 갱신돼 "누가 계정을 건드렸나" 이력이 오염된다.
-    if (body.refresh !== undefined) {
+    if (body.refresh !== undefined || body.send !== undefined) {
       const on = body.refresh === true || body.refresh === 'true';
-      const f = { 'DP_조회요청': on };
+      const snd = body.send === true || body.send === 'true';
+      const f = {};
+      if (body.refresh !== undefined) f['DP_조회요청'] = on;
+      if (body.send !== undefined) f['DP_전송요청'] = snd;
       if (on) {
         f['DP_조회요청시각'] = new Date().toISOString();
         f['DP_조회결과'] = '요청 접수 — PC 가 집어가길 기다리는 중';
       }
+      if (snd) f['DP_전송결과'] = '전송 요청 접수 — PC 가 초안을 만드는 중';
       try {
         const r = await fetch(`https://api.airtable.com/v0/${BASE}/CS_DB/${id}`, {
           method: 'PATCH',
@@ -178,8 +189,8 @@ export default async function handler(req, res) {
           body: JSON.stringify({ fields: f }),
         });
         if (!r.ok) throw new Error(`Airtable ${r.status}: ${(await r.text()).slice(0, 200)}`);
-        console.log('[admin-dianping] 조회요청', id, on ? 'ON' : 'OFF');
-        return res.status(200).json({ ok: true, refresh: on });
+        console.log('[admin-dianping] 요청', id, `조회=${on} 전송=${snd}`);
+        return res.status(200).json({ ok: true, refresh: on, send: snd });
       } catch (e) {
         console.error('[admin-dianping] 조회요청 실패', e.message);
         return res.status(500).json({ error: e.message });

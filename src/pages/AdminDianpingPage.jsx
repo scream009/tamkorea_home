@@ -505,7 +505,7 @@ export default function AdminDianpingPage() {
   // 그래서 "요청 중인 매장이 하나라도 있을 때만" 짧게 돌고, 없으면 스스로 멈춘다.
   // ⚠️ 상시 폴링으로 만들면 관리자 화면을 열어둔 채 방치했을 때 Airtable 호출이
   //    하루 종일 나간다. 조건부로 둔다.
-  const pending = (data?.rows || []).some((x) => x.refreshing);
+  const pending = (data?.rows || []).some((x) => x.refreshing || x.sending);
   useEffect(() => {
     if (!pending) return undefined;
     let alive = true;
@@ -518,13 +518,23 @@ export default function AdminDianpingPage() {
     return () => { alive = false; clearInterval(t); };
   }, [pending, reload]);
 
-  const askRefresh = useCallback(async (r) => {
+  // mode: 'get' 조회만 · 'send' 직전 결과로 초안 · 'both' 조회 후 초안
+  const askRefresh = useCallback(async (r, mode = 'get') => {
     if (!r.id) { alert('이 매장은 레코드 ID 를 못 찾았습니다.'); return; }
+    if (mode !== 'get') {
+      const what = mode === 'both' ? '지금 조회한 뒤' : '직전 조회 결과로';
+      // 초안까지만 만든다. 승인은 사람이 한다 — 값이 어긋날 수 있는 동안의 안전장치다.
+      if (!window.confirm(`${r.name}\n${what} 단체메시지 초안을 만듭니다.\n`
+        + '바로 나가지 않습니다 — 단체메시지 탭에서 확인하고 승인해야 발송됩니다.')) return;
+    }
+    const body = { id: r.id };
+    if (mode === 'get' || mode === 'both') body.refresh = true;
+    if (mode === 'send' || mode === 'both') body.send = true;
     try {
       const resp = await fetch('/api/admin-dianping', {
         method: 'PATCH',
         headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: r.id, refresh: true }),
+        body: JSON.stringify(body),
       });
       if (!resp.ok) throw new Error(`요청 실패 (${resp.status})`);
       setData(await reload());
@@ -793,6 +803,7 @@ function Tile({ label, value, tone: t }) {
 
 function Detail({ r, months, loading, onRefresh }) {
   const stale = !!r.refreshStale;      // 신선도 판정은 서버가 한다(위 API 주석 참조)
+  const busy = (r.refreshing && !stale) || r.sending;
   return (
     <div className="dpa-dt">
       {/* ── VIP 온디맨드 — 매장이 물어봤을 때 그 시각 값을 받아 온다 ──
@@ -801,10 +812,23 @@ function Detail({ r, months, loading, onRefresh }) {
         <div className="dpa-vip">
           <div className="dpa-vip-h">
             <b>⚡ 수시 조회</b>
-            <button className="dpa-btn" disabled={r.refreshing && !stale}
-                    onClick={() => onRefresh && onRefresh(r)}>
-              {r.refreshing && !stale ? '조회 중…' : '🔄 지금 조회'}
-            </button>
+            <div className="dpa-vip-btns">
+              <button className="dpa-btn" disabled={busy}
+                      onClick={() => onRefresh && onRefresh(r, 'get')}>
+                {r.refreshing && !stale ? '조회 중…' : '🔄 지금 조회'}
+              </button>
+              <button className="dpa-btn" disabled={busy || !r.liveAt}
+                      title={r.liveAt ? '직전 조회 결과로 초안을 만듭니다'
+                                      : '먼저 한 번 조회해야 보낼 것이 생깁니다'}
+                      onClick={() => onRefresh && onRefresh(r, 'send')}>
+                {r.sending ? '준비 중…' : '📤 전송'}
+              </button>
+              <button className="dpa-btn primary" disabled={busy}
+                      title="지금 조회한 뒤 이어서 초안을 만듭니다"
+                      onClick={() => onRefresh && onRefresh(r, 'both')}>
+                ⚡ 조회+전송
+              </button>
+            </div>
           </div>
           <div className="dpa-vip-kv">
             <Kv k="오늘 사용" v={r.todaySpend != null
@@ -814,7 +838,15 @@ function Detail({ r, months, loading, onRefresh }) {
             <Kv k="클릭당 실단가" v={r.todayCpc != null ? won(r.todayCpc) : null} />
             <Kv k="마지막 조회" v={r.liveAt ? new Date(r.liveAt).toLocaleString('ko-KR') : null} />
           </div>
+          {r.reportImg && (
+            <a className="dpa-vip-img" href={r.reportImg} target="_blank" rel="noreferrer"
+               title="새 탭에서 원본 크기로 봅니다">
+              <img src={r.reportThumb || r.reportImg} alt="리포트 미리보기" loading="lazy" />
+              <span>클릭하면 원본으로 열립니다</span>
+            </a>
+          )}
           {r.refreshMsg && <div className="dpa-vip-msg">{r.refreshMsg}</div>}
+          {r.sendMsg && <div className="dpa-vip-msg send">{r.sendMsg}</div>}
           {stale && r.refreshing && (
             <div className="dpa-vip-msg warn">
               5분이 넘도록 PC 가 집어가지 않았습니다. 따종봇이 꺼져 있는지 확인하세요.
