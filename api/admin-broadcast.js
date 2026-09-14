@@ -92,36 +92,85 @@ async function register(body) {
     return { code: 409, error: `이미 등록됨: ${hard.fields['매장명_검색용'] || hard.id}` };
   }
 
+  // ── 이미 있는 고객사 행을 먼저 찾는다 ────────────────────────────────
+  // 예약·체험단으로 먼저 들어온 매장이 따종을 시작하면 CS_DB 행은 이미 있다.
+  // 계정번호·slug 만 보고 새 행을 만들면 한 매장이 두 줄로 갈라져
+  // 톡방명·협력사·예약은 옛 행에, 따종은 새 행에 붙는다(우아연 08-23 · 빽다방 09-14 실사고).
+  // 빽다방은 새 캠페인이 협력사 '좋아좋아' 매장을 '직영'으로 만들어 화이트라벨까지 위험했다.
+  const all = await fetchAll('CS_DB', {
+    fields: ['매장명_검색용', '고객사명(필수)', '지점명(필수)', 'DP-office_ID', 'Campain_DB'],
+  });
+  const nz = (s) => String(s || '').replace(/[\s()（）[\]·.,\-_/]/g, '').toLowerCase();
+  const full = nz(`${name}${branch}`);
+  const exact = all.filter((r) => nz(r.fields['매장명_검색용']) === full
+    || nz(`${r.fields['고객사명(필수)'] || ''}${r.fields['지점명(필수)'] || ''}`) === full);
+  // 지점명 표기만 다른 같은 매장 — '본점' ⊂ '노형본점' 처럼 한쪽이 다른 쪽을 품는 경우
+  const sameCust = all.filter((r) => !exact.includes(r)
+    && nz(r.fields['고객사명(필수)']) === nz(name)
+    && (nz(r.fields['지점명(필수)']).includes(nz(branch)) || nz(branch).includes(nz(r.fields['지점명(필수)']))));
+  const hits = exact.length ? exact : sameCust;
+  if (hits.length > 1) {
+    return { code: 409, error: `같은 매장으로 보이는 행이 ${hits.length}개 있습니다 — CS_DB 에서 먼저 정리하세요: `
+      + hits.map((r) => r.fields['매장명_검색용'] || r.id).join(', ') };
+  }
+  const existing = hits[0] || null;
+  if (existing && String(existing.fields['DP-office_ID'] || '').trim()) {
+    return { code: 409, error: `'${existing.fields['매장명_검색용']}' 은 이미 다른 따종 계정으로 연결돼 있습니다` };
+  }
+
   const now = new Date().toISOString();
-  const fields = {
+  const dp = {
     'DP-office_ID': acctId, 'DP_계정ID': acctId, 'DP_계정PW': acctPw,
     'DP_계정수정일': now, 'DP_매장코드': slug,
-    // 매장명_검색용 은 수식 필드(422) — 고객사명+지점명에서 자동 계산된다
-    '고객사명(필수)': name, '지점명(필수)': branch || name,
   };
-  const made = await at('POST', 'CS_DB', { records: [{ fields }], typecast: true });
-  const csId = made.records[0].id;
+  let csId;
+  if (existing) {
+    await at('PATCH', `CS_DB/${existing.id}`, { fields: dp });
+    csId = existing.id;
+  } else {
+    // 매장명_검색용 은 수식 필드(422) — 고객사명+지점명에서 자동 계산된다
+    const made = await at('POST', 'CS_DB', {
+      records: [{ fields: { ...dp, '고객사명(필수)': name, '지점명(필수)': branch || name } }],
+      typecast: true,
+    });
+    csId = made.records[0].id;
+  }
 
+  // ── 이번 달 캠페인: 그 행에 이미 있으면 매장코드만 붙인다 ──────────────
   const month = monthLabelKST();
   let campId = null;
-  const camp = await fetchAll('Campaign_DB', {
-    formula: `AND({DP_매장코드}='${escFormula(slug)}', {계약월}='${escFormula(month)}')`,
-    fields: ['계약월'],
+  const linked = existing ? (existing.fields['Campain_DB'] || []).filter((x) => REC_RE.test(String(x))) : [];
+  const monthCamps = await fetchAll('Campaign_DB', {
+    formula: `{계약월}='${escFormula(month)}'`,
+    fields: ['업체명', 'DP_매장코드', '협력사'],
   });
-  if (!camp.length) {
+  const mine = monthCamps.find((c) => (c.fields['업체명'] || []).includes(csId));
+  if (mine) {
+    if (!String(mine.fields['DP_매장코드'] || '').trim()) {
+      await at('PATCH', `Campaign_DB/${mine.id}`, { fields: { 'DP_매장코드': slug } });
+    }
+  } else if (!monthCamps.some((c) => String(c.fields['DP_매장코드'] || '') === slug)) {
+    // 새로 만들 때 협력사는 그 매장의 가장 최근 캠페인을 따른다. 모르면 직영.
+    let partner = '직영';
+    if (linked.length) {
+      try {
+        const last = await at('GET', `Campaign_DB/${linked[linked.length - 1]}`);
+        partner = String(last.fields['협력사'] || '') || '직영';
+      } catch { /* 못 읽으면 직영 */ }
+    }
     const c = await at('POST', 'Campaign_DB', {
       records: [{
         fields: {
           '업체명': [csId], '계약월': month, 'DP_매장코드': slug,
-          '협력사': '직영', '표출': true, '표출여부': '표출', '공유표출': true,
+          '협력사': partner, '표출': true, '표출여부': '표출', '공유표출': true,
         },
       }],
       typecast: true,
     });
     campId = c.records[0].id;
   }
-  console.log('[admin-broadcast] 신규 등록', slug, csId, campId || '(캠페인 기존)');
-  return { code: 200, ok: true, csId, campId, month };
+  console.log('[admin-broadcast] 신규 등록', slug, csId, existing ? '(기존 행)' : '(새 행)', campId || '(캠페인 기존)');
+  return { code: 200, ok: true, csId, campId, month, reused: !!existing };
 }
 
 export default async function handler(req, res) {
