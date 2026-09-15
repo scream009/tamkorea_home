@@ -309,6 +309,12 @@ export default async function handler(req, res) {
           else if (cur['DP_조회요청'] && f['DP_조회요청'] === false) f['DP_조회결과'] = replaced;
           if (snd) f['DP_전송결과'] = ACCEPT_SEND;
           else if (cur['DP_전송요청'] && f['DP_전송요청'] === false) f['DP_전송결과'] = replaced;
+          // 🔴 [조회]만 눌러도 지난 전송결과를 지운다. 워커는 조회만 할 때 이 칸을 안 쓰고
+          //    여기서도 안 건드려서, 이미 취소된 09-13 첫 초안의 "초안 생성 완료 · 09/13 12:29 →
+          //    [승인]을 눌러야 나갑니다" 가 이틀 뒤 새 조회 밑에 그대로 떴다(Owner 지적 2026-09-15).
+          //    새 요청 = 새 회차다. 지난 회차의 안내는 남기면 지금 할 일로 읽힌다.
+          //    초안 자체는 단체메시지 탭에 그대로 있으니 지워도 잃는 것이 없다.
+          else if (on && !cur['DP_전송요청']) f['DP_전송결과'] = null;
         }
         await csPatch(id, f);
         console.log('[admin-dianping] 요청', id, `조회=${on} 전송=${snd}`);
