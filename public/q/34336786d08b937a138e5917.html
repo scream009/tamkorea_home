@@ -2,6 +2,10 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
+<!-- 브라우저의 "웹사이트 어둡게 하기"가 서식을 검게 칠한 채 인쇄되는 것을 막는다.
+     2026-09-18 실측: 다크모드 켠 폰에서 인쇄 → PDF 가 검은 배경으로 저장됐다.
+     only 키워드가 있어야 브라우저의 임의 어둡게 하기를 금지한다(light 만으로는 부족). -->
+<meta name="color-scheme" content="only light">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#6440e8">
 <!-- 홈 화면에 추가했을 때 앱처럼 뜨게 하는 설정.
@@ -19,6 +23,7 @@
 /* ══════════════ 토큰 ══════════════
    문서(.q/.k)는 고객 제출용 흑백 서식이라 색을 쓰지 않는다. 아래는 조작 UI 전용. */
 :root{
+  color-scheme: only light;   /* 강제 다크모드 거부 — 위 meta 와 한 짝 */
   --tk-purple:#6b4ef0; --tk-purple-1:#7c5cf5; --tk-purple-2:#6440e8; --tk-purple-soft:#f1eeff;
   --tk-ink:#111; --tk-ink-strong:#1b1b23; --tk-ink-mid:#374151;
   --tk-muted:#6b7280; --tk-muted-2:#8a92a3; --tk-muted-3:#a5adba;
@@ -368,7 +373,7 @@ const CATALOG = {
   "계좌계약": "농협은행 301-0346-8814-11 JIN YINLIAN (탐코리아)"
  }
 };
-const VER = "260902";
+const VER = "260918";
 
 /* ── 유틸 ── */
 const $ = id => document.getElementById(id);
