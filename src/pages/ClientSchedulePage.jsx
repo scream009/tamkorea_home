@@ -285,6 +285,138 @@ export const DpReportEntry = ({ report, campaignId }) => {
 };
 
 /**
+ * 따종디엔핑 실시간 조회 — 리뷰서비스 ✓ 매장에만 뜬다.
+ *
+ * 대시보드의 CPC 숫자는 새벽 수집분이라 '어제'까지다. 사장님이 지금 궁금한 건
+ * **오늘 지금까지** 얼마 나갔는가인데, 그건 포털을 열어야 알 수 있다.
+ * 이 버튼이 PC 워커에게 그 일을 시킨다(어드민 [🔄 지금 조회]와 같은 큐).
+ *
+ * 🔴 자격 판정은 전부 서버가 한다. 여기서는 404 면 그냥 아무것도 안 그린다 —
+ *    프론트에서 조건을 판단하면 화면 코드를 고칠 때마다 게이트가 흔들린다.
+ * 🔴 누르면 PC 가 실제로 포털에 로그인한다. 연타·자동 폴링으로 두드리지 않는다:
+ *    진행 중일 때만 6초 폴링하고, 5분이 지나면 폴링을 멈춘다.
+ */
+export const DpLiveEntry = ({ campaignId }) => {
+  const [st, setSt] = useState(null);        // null = 아직 모름 / false = 자격 없음
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const timer = useRef(null);
+  const started = useRef(0);
+
+  const url = `/api/client-dp-refresh?campaignId=${encodeURIComponent(campaignId || '')}`;
+
+  const load = useCallback(async () => {
+    try {
+      const r = await fetch(url);
+      if (r.status === 404 || r.status === 503) { setSt(false); return null; }
+      if (!r.ok) return null;
+      const j = await r.json();
+      setSt(j);
+      return j;
+    } catch { return null; }
+  }, [url]);
+
+  useEffect(() => {
+    if (!campaignId) return undefined;
+    load();
+    return () => { if (timer.current) clearInterval(timer.current); };
+  }, [campaignId, load]);
+
+  // 진행 중일 때만 폴링. 끝나거나 5분이 지나면 스스로 멈춘다.
+  useEffect(() => {
+    const running = st && (st.phase === 'running' || st.phase === 'slow');
+    if (!running) {
+      if (timer.current) { clearInterval(timer.current); timer.current = null; }
+      return undefined;
+    }
+    if (!started.current) started.current = Date.now();
+    if (timer.current) return undefined;
+    timer.current = setInterval(async () => {
+      if (Date.now() - started.current > 5 * 60 * 1000) {
+        clearInterval(timer.current); timer.current = null; started.current = 0;
+        setMsg('조회가 오래 걸리고 있습니다. 잠시 뒤 다시 눌러 주세요.');
+        return;
+      }
+      const j = await load();
+      if (j && j.phase !== 'running' && j.phase !== 'slow') {
+        clearInterval(timer.current); timer.current = null; started.current = 0;
+      }
+    }, 6000);
+    return undefined;
+  }, [st, load]);
+
+  const go = async () => {
+    if (busy) return;
+    setBusy(true); setMsg('');
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaignId }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setMsg('지금은 조회할 수 없습니다.'); return; }
+      setSt((p) => ({ ...(p || {}), ...j }));
+      if (j.ok === false) setMsg(j.message || '');
+      else { started.current = Date.now(); setMsg(''); }
+    } catch {
+      setMsg('네트워크 오류입니다. 잠시 뒤 다시 시도해 주세요.');
+    } finally { setBusy(false); }
+  };
+
+  if (!st || st.enabled === false) return null;
+
+  const running = st.phase === 'running' || st.phase === 'slow';
+  const cool = (st.cooldownSec || 0) > 0;
+  const live = st.live;
+  const fmtN = (v) => (v == null ? null : Number(v).toLocaleString('ko-KR'));
+  const chips = live ? [
+    live.spend != null ? `오늘 소진 ${fmtN(live.spend)}元` : null,
+    live.budget != null ? `일예산 ${fmtN(live.budget)}元` : null,
+    live.imp != null ? `노출 ${fmtN(live.imp)}` : null,
+    live.clk != null ? `클릭 ${fmtN(live.clk)}` : null,
+    live.cpc != null ? `클릭당 ${fmtN(live.cpc)}元` : null,
+  ].filter(Boolean) : [];
+
+  const label = running ? '조회 중…' : (cool ? '방금 조회함' : '지금 조회');
+
+  return (
+    <div className="dprep dplive">
+      <div className="dprep-l">
+        <div className="dprep-ic">{running ? '⏳' : '🔎'}</div>
+        <div>
+          <div className="dprep-tt">
+            따종디엔핑 실시간 조회
+            {st.atText && <span className="dprep-mon">{st.atText} 기준</span>}
+          </div>
+          <div className="dprep-ss">
+            {running
+              ? '포털에서 오늘 값을 받아오는 중입니다 · 보통 1~2분'
+              : '오늘 지금까지의 광고 소진·노출·클릭을 바로 확인합니다'}
+          </div>
+          {chips.length > 0 && (
+            <div className="dprep-chips">
+              {chips.map((c, i) => <span key={i} className="dprep-chip">{c}</span>)}
+            </div>
+          )}
+          {(msg || (running && st.note)) && (
+            <div className="dplive-note">{msg || st.note}</div>
+          )}
+        </div>
+      </div>
+      <button
+        type="button"
+        className="dprep-btn dplive-btn"
+        onClick={go}
+        disabled={busy || running || cool}
+      >
+        {label}
+      </button>
+    </div>
+  );
+};
+
+/**
  * 주간 리뷰 리포트 진입 — 리뷰서비스 매장에만 뜬다.
  *
  * PDF 는 Airtable 첨부이고 그 URL 은 약 2시간이면 만료된다. 그래서 여기서 URL 을 들고 있지 않고,
@@ -791,6 +923,7 @@ export default function ClientSchedulePage() {
         {/* ★ 신규: 주간 CPC 배너 + 따종디엔핑 월간 리포트 진입 (달력 위) */}
         <CpcBanner cpc={cpcInfo} adSet={data?.adSet} isPartner={isPartner} />
         <DpReportEntry report={dpReport} campaignId={campaignId} />
+        <DpLiveEntry campaignId={campaignId} />
         <ReviewWeeklyEntry weeks={data?.reviewWeekly} campaignId={campaignId} />
         {/* 따종 운영 매장에만 — 계정 문의 대응용 (Owner 2026-08-21).
             비번은 '보기'를 눌러야 서버에서 온다(StoreLoginCard 주석 참고). */}
