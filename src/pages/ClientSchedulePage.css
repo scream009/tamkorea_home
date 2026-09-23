@@ -1044,6 +1044,16 @@
 .dplive-btn:hover:not(:disabled){transform:translateY(-1px)}
 .dplive-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
 .dplive-note{margin-top:8px;font-size:.78rem;color:#5eead4;line-height:1.5}
+/* [리포트 보기] + [지금 조회] 두 개가 나란히 선다. a 와 button 이 섞여 있어
+   줄맞춤을 inline-flex 로 강제한다(a 는 기본이 inline 이라 padding 이 줄을 밀어낸다). */
+.dplive-acts{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dplive-acts .dprep-btn{display:inline-flex;align-items:center;justify-content:center;
+  text-decoration:none;line-height:1}
+/* 보조 버튼 — 주 동작([지금 조회])보다 약하게 보여야 한다 */
+.dplive-btn--ghost{background:rgba(20,184,166,.14);color:#5eead4;
+  border:1px solid rgba(20,184,166,.45)}
+.dplive-btn--ghost:hover{background:rgba(20,184,166,.22);color:#99f6e4}
 @media (max-width:640px){
+  .dplive-acts{width:100%;flex-direction:column;align-items:stretch}
   .dplive-btn{width:100%}
 }

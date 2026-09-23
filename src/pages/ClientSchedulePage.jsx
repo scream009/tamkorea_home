@@ -392,7 +392,7 @@ export const DpLiveEntry = ({ campaignId }) => {
           <div className="dprep-ss">
             {running
               ? '포털에서 오늘 값을 받아오는 중입니다 · 보통 1~2분'
-              : '오늘 지금까지의 광고 소진·노출·클릭을 바로 확인합니다'}
+              : '오늘 지금까지의 광고 소진·노출·클릭을 바로 확인합니다 · 리포트는 톡방으로도 보내 드립니다'}
           </div>
           {chips.length > 0 && (
             <div className="dprep-chips">
@@ -404,14 +404,28 @@ export const DpLiveEntry = ({ campaignId }) => {
           )}
         </div>
       </div>
-      <button
-        type="button"
-        className="dprep-btn dplive-btn"
-        onClick={go}
-        disabled={busy || running || cool}
-      >
-        {label}
-      </button>
+      <div className="dplive-acts">
+        {/* 🔴 첨부 URL 은 약 2시간이면 만료된다 — 여기서 URL 을 들고 있지 않고, 누를 때마다
+            /api/client-dp-image 가 새 URL 을 받아 302 로 넘긴다(주간 리뷰 PDF 와 같은 방식). */}
+        {st.hasImage && !running && (
+          <a
+            className="dprep-btn dplive-btn dplive-btn--ghost"
+            href={`/api/client-dp-image?campaignId=${encodeURIComponent(campaignId || '')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            리포트 보기
+          </a>
+        )}
+        <button
+          type="button"
+          className="dprep-btn dplive-btn"
+          onClick={go}
+          disabled={busy || running || cool}
+        >
+          {label}
+        </button>
+      </div>
     </div>
   );
 };

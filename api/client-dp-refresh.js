@@ -4,11 +4,15 @@
  *   GET  /api/client-dp-refresh?campaignId=recXXXXXXXXXXXXXX   상태 + 마지막 조회값
  *   POST /api/client-dp-refresh  { campaignId }                조회 요청을 큐에 넣는다
  *
- * 큐 구조는 어드민 [🔄 지금 조회]와 **같다**(api/admin-dianping.js · meituan_automation/dp_worker.py).
- *   여기(웹)  →  CS_DB.DP_조회요청 ✓ + DP_조회요청시각 = now
+ * 큐 구조는 어드민 [⚡ 조회+전송]과 **같다**(api/admin-dianping.js · meituan_automation/dp_worker.py).
+ *   여기(웹)  →  CS_DB.DP_조회요청 ✓ + DP_전송요청 ✓ + DP_조회요청시각 = now
  *              ▼  PC C 워커가 낮 60초마다 본다
- *   워커      →  portal_lock → vip_collect → vip_report → CS_DB 에 숫자 기록 + 체크 해제
- *   여기(웹)  →  GET 폴링으로 그 값을 읽어 화면에 띄운다
+ *   워커      →  portal_lock → vip_collect → vip_report → CS_DB 에 숫자 기록 + PNG 첨부
+ *              →  vip_send.py --approve → 단체메시지_DB '승인' → 예약봇이 그 매장 톡방으로 발송
+ *   여기(웹)  →  GET 폴링으로 그 값을 읽어 화면에 띄우고, [리포트 보기]로 PNG 를 연다
+ *
+ * 🔴 2026-09-23 변경(Owner): 버튼 한 번이 **고객사 톡방으로 카톡을 보낸다.** 사람 확인이 없다.
+ *    되돌리려면 아래 POST 에서 `DP_전송요청` 한 줄을 빼면 조회만 한다.
  *
  * 🔴 이 엔드포인트는 **인증이 없는 공유 링크**에서 불린다(예약 톡방에 뿌린 대시보드).
  *    campaignId 는 데이터 스코핑용 공유 토큰이지 인증이 아니다. 그래서:
@@ -35,7 +39,11 @@ const RE_CAMPAIGN = /^rec[A-Za-z0-9]{14}$/;
 const RE_SLUG = /^[A-Za-z][A-Za-z0-9_]{2,30}$/;
 
 // 조회 한 번 = PC C 가 포털을 실제로 연다. 사람이 연타해도 포털은 한 번만 두드린다.
-const COOLDOWN_MIN = 10;
+// 🔴 2026-09-23 에 10 → 30 으로 올렸다. 이제 조회 한 번이 **고객사 톡방으로 카톡까지** 나간다
+//    (아래 POST 의 DP_전송요청). 10분이면 09~22시에 최대 78건이라 톡방 도배가 된다.
+//    30분이면 최대 26건. 톡방 발송만 따로 더 길게 묶으려면 CS_DB 에 '마지막 전송시각'
+//    필드가 하나 필요하다 — 지금은 없어서 조회 쿨다운이 곧 전송 쿨다운이다.
+const COOLDOWN_MIN = 30;
 // 워커가 60초마다 보는데 이만큼 지나도 안 집어가면 PC 가 꺼져 있거나 야간 배치에 막힌 것이다.
 const PICKUP_TIMEOUT_MIN = 5;
 // 워커 쪽 STALE_MIN(30분)과 같은 값 — 이보다 오래된 요청은 워커가 버린다.
@@ -131,6 +139,9 @@ function statusOf(f) {
   const spend = f['DP_오늘소진'];
   return {
     phase,
+    // 🔴 첨부 URL 자체는 내보내지 않는다 — 약 2시간이면 만료돼서 열어 둔 화면에서 죽는다.
+    //    있다/없다만 알려주고, 실제로 열 때 /api/client-dp-image 가 새 URL 로 302 한다.
+    hasImage: (f['DP_조회이미지'] || []).length > 0,
     // 워커가 남기는 안내문 — '⏸ 포털 사용 중', '🔄 수집 중', '완료 · … 기준', 실패 사유
     note: f['DP_조회결과'] || null,
     at: doneIso,
@@ -217,6 +228,11 @@ export default async function handler(req, res) {
         fields: {
           'DP_조회요청': true,
           'DP_조회요청시각': new Date().toISOString(),
+          // 🔴 전송까지 같이 요청한다(Owner 2026-09-23). 워커는 조회+전송이면
+          //    수집 → 리포트 → vip_send(--approve) 로 이어가고, 예약봇이 **그 매장 톡방 한 곳**
+          //    으로만 보낸다(대상 '개별' + 대상매장 지정). 사람 승인 단계는 없다.
+          //    ⚠️ 끄려면 이 한 줄을 지우면 된다 — 조회만 하고 카톡은 안 나간다.
+          'DP_전송요청': true,
           // 접수 문구. 워커가 집어가면 '🔄 수집 중' 으로 덮는다 — 화면은 그 변화를 보고 진행을 안다.
           'DP_조회결과': '접수됨 · 잠시만 기다려 주세요',
         },
