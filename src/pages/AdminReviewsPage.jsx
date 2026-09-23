@@ -26,16 +26,18 @@ const ALL_STATES = ['검토대기', '고객협의', '승인', '게시중', '게�
 
 function StoreSwitches({ stores, onToggle, busy }) {
   if (!stores?.length) return null;
-  const flags = [['review', '리뷰서비스', '리뷰서비스'], ['paused', '리뷰서비스_일시중지', '일시중지'],
-    ['autoGood', '선플자동게시', '선플 자동게시'], ['daily', '일일리포트', '데일리 발송']];
+  // 선플자동게시: 필드는 있지만 **읽는 코드가 없다**(post_replies·draft_replies 어디서도 안 봄, 2026-09-23 검토).
+  // 켜도 아무 일이 안 일어나는 스위치를 살아 있는 것처럼 두면 담당자가 "켰는데 왜 안 올라가지"를 겪는다.
+  const flags = [['review', '리뷰서비스', '리뷰서비스', false], ['paused', '리뷰서비스_일시중지', '일시중지', false],
+    ['autoGood', '선플자동게시', '선플 자동게시 (준비 중)', true], ['daily', '일일리포트', '데일리 발송', false]];
   return (
     <div className="rq-stores">
       {stores.map((s) => (
         <div className="rq-store" key={s.id}>
           <b>{s.name} <span className="rq-meta">{s.slug}{s.room ? '' : ' · 톡방 없음'}{s.review && s.start ? ` · 시작 ${s.start}` : ''}</span></b>
-          {flags.map(([k, field, label]) => (
-            <label key={k} className={s[k] ? 'on' : ''}>
-              <input type="checkbox" checked={!!s[k]} disabled={busy === s.id}
+          {flags.map(([k, field, label, off]) => (
+            <label key={k} className={s[k] ? 'on' : ''} title={off ? '아직 봇이 이 스위치를 읽지 않습니다' : undefined}>
+              <input type="checkbox" checked={!!s[k]} disabled={busy === s.id || off}
                      onChange={(e) => onToggle(s, field, e.target.checked)} />
               {label}
             </label>
@@ -184,6 +186,28 @@ export default function AdminReviewsPage() {
   }, [d]);
   const toggleState = (s) => setStates((prev) => { const n = new Set(prev); if (n.has(s)) n.delete(s); else n.add(s); return n; });
 
+  // 호평 일괄 승인 대상 — 지금 화면에 보이는 것 중 검토대기·호평·초안 있음. 서버가 건마다 다시 검사한다.
+  const bulkable = useMemo(() => items.filter((it) => it['상태'] === '검토대기' && it['등급'] === '호평'
+    && String(it['최종_중문'] || it['초안_중문'] || '').trim()), [items]);
+  async function approveBulk() {
+    if (!bulkable.length) return;
+    const byStore = {};
+    bulkable.forEach((it) => { byStore[it.store] = (byStore[it.store] || 0) + 1; });
+    const lines = Object.entries(byStore).map(([s, n]) => `  · ${s} ${n}건`).join('\n');
+    const msg = `호평 ${bulkable.length}건을 한 번에 승인합니다.\n${lines}\n\n`
+      + '각 건의 AI 초안이 그대로 "게시될 최종 중국어"가 되고, PC C 봇이 매장 이름으로 공개 게시합니다(수정 불가·삭제 후 재등록만).\n'
+      + '낮은별점·악성·민감은 이 버튼에 포함되지 않습니다.\n\n진행할까요?';
+    if (!window.confirm(msg)) return;
+    setBusy('bulk'); setNote('');
+    try {
+      const j = await post({ action: 'approve_bulk', ids: bulkable.map((it) => it.id) });
+      const sk = (j.skipped || []).length ? ` · 건너뜀 ${j.skipped.length}건 (${j.skipped.slice(0, 3).map((x) => x.join(':')).join(', ')}${j.skipped.length > 3 ? '…' : ''})` : '';
+      setNote(`✅ 일괄 승인 ${j.approved}건${sk}`);
+      await load();
+    } catch (e) { setNote(`❌ 일괄 승인 실패: ${e.message}`); }
+    setBusy('');
+  }
+
   if (err) return <div className="rq"><div className="rq-panel">❌ {err}</div></div>;
   if (!d) return <div className="rq"><div className="rq-panel rq-empty">불러오는 중…</div></div>;
 
@@ -198,6 +222,10 @@ export default function AdminReviewsPage() {
             {d.stores.map((s) => <option key={s.id} value={s.slug}>{s.name}</option>)}
           </select>
           <button className="rq-btn" onClick={load}>새로고침</button>
+          <button className="rq-btn ok" disabled={!bulkable.length || busy === 'bulk'} onClick={approveBulk}
+                  title="지금 화면에 보이는 검토대기·호평 건을 한 번에 승인">
+            ✅ 호평 일괄 승인 ({bulkable.length}건)
+          </button>
         </div>
         <div className="rq-filters">
           {ALL_STATES.map((s) => (
@@ -205,7 +233,9 @@ export default function AdminReviewsPage() {
           ))}
         </div>
         <div className="rq-note rq-meta" style={{ marginTop: 8 }}>
-          승인은 "이 문장을 매장 이름으로 공개해도 된다"는 서명입니다. PC C 봇이 낮 10~17시에 승인 건만 게시하고, 여기서는 게시하지 않습니다.
+          승인은 "이 문장을 매장 이름으로 공개해도 된다"는 서명입니다. 여기서는 게시하지 않습니다 —
+          {' '}<b style={{ color: 'var(--rq-ok)' }}>승인 {counts['승인'] || 0}건이 게시 대기 중</b>이고,
+          PC C 봇이 낮 10~17시에 올립니다. 호평은 톡방에 "오늘 중 달아 드립니다"로 나가 있으니 <b>승인이 미뤄지면 그 약속이 깨집니다.</b>
         </div>
         {note && <div className="rq-note" style={{ marginTop: 6 }}>{note}</div>}
       </div>

@@ -25,6 +25,8 @@ const REC_RE = /^rec[A-Za-z0-9]{14}$/;
 const SLUG_RE = /^[A-Za-z][A-Za-z0-9_]{2,30}$/;
 // 사람이 바꿀 수 있는 상태. 게시중·게시확인필요·게시완료·게시실패 는 post_replies.py 만 쓴다.
 const HUMAN_STATES = new Set(['검토대기', '고객협의', '승인', '반려', '보류', '신규']);
+// post_replies.py FORBIDDEN 과 같은 목록 — 일괄 승인은 사람이 본문을 안 보므로 서버가 한 번 더 거른다
+const FORBIDDEN_CN = ['退款', '赔偿', '赔付', '免费', '折扣', '打折', '优惠券', '律师', '法律', '保证', '承诺', '绝对', '最好', '第一', '唯一'];
 const STORE_FLAGS = new Set(['리뷰서비스', '리뷰서비스_일시중지', '선플자동게시', '일일리포트']);
 const OUT_FIELDS = ['키', '매장코드', '리뷰ID', '리뷰일시', '별점', '작성자', '원문', '번역', '사진수', '답변여부_포털',
   '등급', '대응유형', '초안_중문', '초안_한글', '최종_중문', '상태', '승인자', '승인시각', '통보시각',
@@ -108,9 +110,38 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const action = String(body.action || '');
+    const now = new Date().toISOString();
+
+    // ── 호평 일괄 승인 (2026-09-23) ──────────────────────────────────────
+    // 호평은 사장님이 판단할 대상이 아니라 위임받아 우리가 단다(톡방 문구가 그렇게 나간다).
+    // 그런데 카드마다 승인·확인 두 번씩 눌러야 해서 담당자가 23건을 미뤘다 — 게시 0건의 실제 원인.
+    // 서버가 건마다 다시 검사한다: 검토대기·등급 호평·초안 있음·금칙어 없음 만 통과. 나머지는 건너뛰고 사유를 돌려준다.
+    if (action === 'approve_bulk') {
+      const ids = (Array.isArray(body.ids) ? body.ids : []).map(String).filter((x) => REC_RE.test(x)).slice(0, 60);
+      if (!ids.length) return res.status(400).json({ error: 'ids 없음' });
+      const approved = [], skipped = [];
+      for (const rid of ids) {
+        let cur;
+        try { cur = await at('GET', `${TBL}/${rid}`); } catch { skipped.push([rid, '조회 실패']); continue; }
+        const f = cur.fields || {};
+        const st = String(f['상태'] || '');
+        const draft = String(f['최종_중문'] || f['초안_중문'] || '').trim();
+        if (st !== '검토대기') { skipped.push([f['키'] || rid, `상태 ${st || '없음'}`]); continue; }
+        if (f['등급'] !== '호평') { skipped.push([f['키'] || rid, `등급 ${f['등급'] || '없음'}`]); continue; }
+        if (!draft) { skipped.push([f['키'] || rid, '초안 없음']); continue; }
+        const hit = FORBIDDEN_CN.find((w) => draft.includes(w));
+        if (hit) { skipped.push([f['키'] || rid, `금칙어 ${hit}`]); continue; }
+        try {
+          await at('PATCH', `${TBL}/${rid}`, { fields: { '최종_중문': draft.slice(0, 2000), '상태': '승인', '승인자': who, '승인시각': now }, typecast: true });
+          approved.push(f['키'] || rid);
+        } catch (e) { skipped.push([f['키'] || rid, `저장 실패 ${String(e.message || e).slice(0, 60)}`]); }
+      }
+      console.log('[admin-reviews] approve_bulk', who, `ok=${approved.length} skip=${skipped.length}`);
+      return res.status(200).json({ ok: true, approved: approved.length, skipped });
+    }
+
     const id = String(body.id || '');
     if (!REC_RE.test(id)) return res.status(400).json({ error: 'bad id' });
-    const now = new Date().toISOString();
 
     if (action === 'store') {
       const fields = {};
