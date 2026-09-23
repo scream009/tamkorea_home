@@ -336,7 +336,9 @@ export const DpLiveEntry = ({ campaignId }) => {
     if (!started.current) started.current = Date.now();
     if (timer.current) return undefined;
     timer.current = setInterval(async () => {
-      if (Date.now() - started.current > 5 * 60 * 1000) {
+      // 8분. 워커가 밤에 300초 주기로 떨어지면 집어가는 데만 5분이 걸려 5분 상한은
+      // 정상 처리 중인 요청을 실패로 보이게 했다(2026-09-23, 접수 시간을 24시까지 연 뒤).
+      if (Date.now() - started.current > 8 * 60 * 1000) {
         clearInterval(timer.current); timer.current = null; started.current = 0;
         setMsg('조회가 오래 걸리고 있습니다. 잠시 뒤 다시 눌러 주세요.');
         return;

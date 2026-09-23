@@ -50,9 +50,14 @@ const COOLDOWN_MIN = 10;
 const PICKUP_TIMEOUT_MIN = 5;
 // 워커 쪽 STALE_MIN(30분)과 같은 값 — 이보다 오래된 요청은 워커가 버린다.
 const STALE_MIN = 30;
-// 영업시간 밖에는 받지 않는다. 02:00 야간 배치가 포털 락을 한 시간 넘게 쥔다(PC C 실측).
+// 영업시간 밖에는 받지 않는다. 02:00 야간 배치가 포털 락을 한 시간 넘게 쥔다(PC C 실측 02:00~03:06+).
+// 🔴 2026-09-23 Owner: 22 → 24. 새벽까지 여는 고객사가 있고, 21시에 광고가 꺼지므로
+//    22~24시 조회는 '그날 최종 실적 확인' 으로 쓸모가 있다.
+//    ⚠️ 이 값은 dp_worker.py 의 낮 판정(`9 <= h < 24`, 60초 주기)과 **짝이다.**
+//    워커가 23시부터 300초로 느려지면 요청을 집는 데만 5분이 걸려 화면이 먼저 포기한다.
+//    한쪽만 고치지 말 것.
 const OPEN_H = 9;
-const CLOSE_H = 22;
+const CLOSE_H = 24;
 
 const ALLOWED_HOSTS = new Set(['tamkorea.com', 'www.tamkorea.com']);
 
