@@ -302,6 +302,9 @@ export const DpLiveEntry = ({ campaignId }) => {
   const [msg, setMsg] = useState('');
   const timer = useRef(null);
   const started = useRef(0);
+  // 쿨다운이 끝나는 절대시각(ms). 서버는 남은 '초'만 주므로 받은 순간에 기준점을 박아 둔다.
+  const coolAt = useRef(0);
+  const [, setTick] = useState(0);   // 1초마다 남은 시간을 다시 그리기 위한 것
 
   const url = `/api/client-dp-refresh?campaignId=${encodeURIComponent(campaignId || '')}`;
 
@@ -311,6 +314,7 @@ export const DpLiveEntry = ({ campaignId }) => {
       if (r.status === 404 || r.status === 503) { setSt(false); return null; }
       if (!r.ok) return null;
       const j = await r.json();
+      coolAt.current = j.cooldownSec ? Date.now() + j.cooldownSec * 1000 : 0;
       setSt(j);
       return j;
     } catch { return null; }
@@ -345,6 +349,24 @@ export const DpLiveEntry = ({ campaignId }) => {
     return undefined;
   }, [st, load]);
 
+  // 🔴 쿨다운 카운트다운. 이게 없으면 30분이 지나도 버튼이 '방금 조회함' 으로 굳어 있다 —
+  //    위 폴링은 '조회 중' 일 때만 돌아서 끝난 뒤에는 아무도 상태를 다시 읽지 않는다.
+  //    끝나는 순간 한 번만 서버를 다시 읽어 버튼을 살린다(로컬 시계만 믿지 않는다).
+  //    setState 는 interval 콜백 안에서만 부른다 — effect 본문에서 부르면 eslint
+  //    react-hooks/set-state-in-effect 에 걸린다(이 저장소에 이미 같은 오류가 있다).
+  useEffect(() => {
+    if (!(st && st.cooldownSec > 0)) return undefined;
+    const id = setInterval(() => {
+      if (coolAt.current && Date.now() >= coolAt.current) {
+        clearInterval(id);
+        load();
+      } else {
+        setTick((v) => v + 1);
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [st, load]);
+
   const go = async () => {
     if (busy) return;
     setBusy(true); setMsg('');
@@ -356,6 +378,9 @@ export const DpLiveEntry = ({ campaignId }) => {
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) { setMsg('지금은 조회할 수 없습니다.'); return; }
+      if (j.cooldownSec != null) {
+        coolAt.current = j.cooldownSec ? Date.now() + j.cooldownSec * 1000 : 0;
+      }
       setSt((p) => ({ ...(p || {}), ...j }));
       if (j.ok === false) setMsg(j.message || '');
       else { started.current = Date.now(); setMsg(''); }
@@ -367,7 +392,12 @@ export const DpLiveEntry = ({ campaignId }) => {
   if (!st || st.enabled === false) return null;
 
   const running = st.phase === 'running' || st.phase === 'slow';
-  const cool = (st.cooldownSec || 0) > 0;
+  // 남은 쿨다운은 서버가 준 초가 아니라 **기준점에서 계산**한다 — 서버 값은 받은 그 순간의
+  // 값이라 그대로 쓰면 화면에서 줄지 않는다.
+  const leftSec = coolAt.current
+    ? Math.max(0, Math.ceil((coolAt.current - Date.now()) / 1000)) : 0;
+  const cool = leftSec > 0;
+  const leftTxt = leftSec >= 60 ? `${Math.ceil(leftSec / 60)}분 뒤` : `${leftSec}초 뒤`;
   const live = st.live;
   const fmtN = (v) => (v == null ? null : Number(v).toLocaleString('ko-KR'));
   const chips = live ? [
@@ -378,7 +408,8 @@ export const DpLiveEntry = ({ campaignId }) => {
     live.cpc != null ? `클릭당 ${fmtN(live.cpc)}元` : null,
   ].filter(Boolean) : [];
 
-  const label = running ? '조회 중…' : (cool ? '방금 조회함' : '지금 조회');
+  // 🔴 '방금 조회함' 만 띄우면 언제 풀리는지 알 수 없어 고장으로 보인다(Owner 2026-09-23).
+  const label = running ? '조회 중…' : (cool ? `방금 조회함 · ${leftTxt}` : '지금 조회');
 
   return (
     <div className="dprep dplive">
