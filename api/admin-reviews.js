@@ -30,7 +30,7 @@ const FORBIDDEN_CN = ['退款', '赔偿', '赔付', '免费', '折扣', '打折'
 const STORE_FLAGS = new Set(['리뷰서비스', '리뷰서비스_일시중지', '선플자동게시', '일일리포트']);
 const OUT_FIELDS = ['키', '매장코드', '리뷰ID', '리뷰일시', '별점', '작성자', '원문', '번역', '사진수', '답변여부_포털',
   '등급', '대응유형', '초안_중문', '초안_한글', '최종_중문', '상태', '승인자', '승인시각', '통보시각',
-  '고객회신', '게시시각', '게시결과', '주차', '수집일'];
+  '고객회신', '게시시각', '게시결과', '주차', '수집일', '즉시게시요청', '즉시게시요청시각'];
 
 async function at(method, path, body) {
   // 🔴 경로를 통째로 encodeURIComponent 하면 `CS_DB/recXXX` 의 슬래시가 %2F 로 바뀐다.
@@ -112,13 +112,19 @@ export default async function handler(req, res) {
     const action = String(body.action || '');
     const now = new Date().toISOString();
 
-    // ── 호평 일괄 승인 (2026-09-23) ──────────────────────────────────────
-    // 호평은 사장님이 판단할 대상이 아니라 위임받아 우리가 단다(톡방 문구가 그렇게 나간다).
-    // 그런데 카드마다 승인·확인 두 번씩 눌러야 해서 담당자가 23건을 미뤘다 — 게시 0건의 실제 원인.
+    // ── 호평 일괄 승인 ────────────────────────────────────────────────────
+    // 🔴 2026-09-24 재정의(Owner): **선플자동게시 미체크 매장**의 호평만 대상이다.
+    //    09-23 밤 정책 개정으로 체크된 매장의 호평은 승인 없이 정기 게시(12·14·16시)로 올라간다 —
+    //    거기에 일괄승인을 거는 건 의미가 없다. 승인이 실제로 필요한 쪽이 미체크 매장이다.
+    //    (09-23 판은 정반대였다 — 체크된 매장에서만 동작하고 미체크 매장에서는 막혀 있었다.)
+    // 🔴 승인 = 다음 정기 회차에 **실제로 공개 게시**된다. 한 번 누르면 여러 건이 나간다.
     // 서버가 건마다 다시 검사한다: 검토대기·등급 호평·초안 있음·금칙어 없음 만 통과. 나머지는 건너뛰고 사유를 돌려준다.
     if (action === 'approve_bulk') {
       const ids = (Array.isArray(body.ids) ? body.ids : []).map(String).filter((x) => REC_RE.test(x)).slice(0, 60);
       if (!ids.length) return res.status(400).json({ error: 'ids 없음' });
+      const csRows = await fetchAll('CS_DB', { fields: ['DP_매장코드', '선플자동게시'] });
+      const autoOk = new Set(csRows.filter((r) => r.fields['선플자동게시'])
+        .map((r) => String(r.fields['DP_매장코드'] || '').trim()).filter(Boolean));
       const approved = [], skipped = [];
       for (const rid of ids) {
         let cur;
@@ -128,6 +134,9 @@ export default async function handler(req, res) {
         const draft = String(f['최종_중문'] || f['초안_중문'] || '').trim();
         if (st !== '검토대기') { skipped.push([f['키'] || rid, `상태 ${st || '없음'}`]); continue; }
         if (f['등급'] !== '호평') { skipped.push([f['키'] || rid, `등급 ${f['등급'] || '없음'}`]); continue; }
+        if (autoOk.has(String(f['매장코드'] || '').trim())) {
+          skipped.push([f['키'] || rid, '선플자동게시 매장 — 승인 없이 정기 게시로 올라갑니다']); continue;
+        }
         if (!draft) { skipped.push([f['키'] || rid, '초안 없음']); continue; }
         const hit = FORBIDDEN_CN.find((w) => draft.includes(w));
         if (hit) { skipped.push([f['키'] || rid, `금칙어 ${hit}`]); continue; }
@@ -166,7 +175,7 @@ export default async function handler(req, res) {
     if (typeof body.finalCn === 'string') fields['최종_중문'] = body.finalCn.slice(0, 2000);
     if (typeof body.reply === 'string') fields['고객회신'] = body.reply.slice(0, 2000);
 
-    if (action === 'approve') {
+    if (action === 'approve' || action === 'approve_now') {
       const finalCn = typeof body.finalCn === 'string' ? body.finalCn.trim()
         : String(cur.fields?.['최종_중문'] || cur.fields?.['초안_중문'] || '').trim();
       if (!finalCn) return res.status(400).json({ error: '게시할 중국어 답글이 비어 있습니다' });
@@ -174,8 +183,15 @@ export default async function handler(req, res) {
       fields['상태'] = '승인';
       fields['승인자'] = who;
       fields['승인시각'] = now;
+      // ⚡ 즉시게시(Owner 2026-09-24) — 악플을 사장님과 협의해 고친 뒤 **그 한 건만** 바로 올린다.
+      //    PC C 워커가 60초 안에 집는다. 시간 제한 없음(새벽 야간 배치가 포털을 쓰는 동안만 기다린다).
+      if (action === 'approve_now') {
+        fields['즉시게시요청'] = true;
+        fields['즉시게시요청시각'] = now;
+      }
     } else if (action === 'unapprove') {
       fields['상태'] = '검토대기';
+      fields['즉시게시요청'] = false;       // 승인을 되돌리면 대기 중인 즉시게시도 같이 거둔다
     } else if (action === 'reject') {
       fields['상태'] = '반려';
     } else if (action === 'hold') {
@@ -194,7 +210,27 @@ export default async function handler(req, res) {
     if (!Object.keys(fields).length) return res.status(400).json({ error: '바꿀 내용 없음' });
     await at('PATCH', `${TBL}/${id}`, { fields, typecast: true });
     console.log('[admin-reviews]', action, who, id, cur.fields?.['키'] || '');
-    return res.status(200).json({ ok: true, state: fields['상태'] || curState });
+
+    // ⚡ 즉시게시 신호. 워커는 60초마다 **CS_DB 만** 본다 — 리뷰_DB 를 따로 폴링하면 Airtable 호출이
+    //    하루 ~1,000회 는다(월 10만 한도가 이미 병목). 그래서 매장 행에 `리뷰즉시게시` 신호를 켠다.
+    //    🔴 행을 **먼저** 저장하고 신호를 켠다(위 PATCH 가 먼저다). 반대면 워커가 신호를 보고 왔는데
+    //       행이 아직 준비 안 된 틈이 생긴다.
+    let signal = null;
+    if (action === 'approve_now') {
+      const slug = String(cur.fields?.['매장코드'] || '').trim();
+      try {
+        if (!SLUG_RE.test(slug)) throw new Error('매장코드 형식 오류');
+        const cs = await fetchAll('CS_DB', { formula: `{DP_매장코드}='${escFormula(slug)}'`, fields: ['DP_매장코드'] });
+        if (!cs.length) throw new Error('CS_DB 에 매장이 없습니다');
+        await at('PATCH', `CS_DB/${cs[0].id}`, { fields: { '리뷰즉시게시': true }, typecast: true });
+        signal = 'sent';
+      } catch (e) {
+        // 신호를 못 켜도 승인은 이미 저장됐다 → 다음 정기 게시에 올라간다. '즉시'만 안 된 것이니 그대로 알린다.
+        signal = `failed: ${String(e.message || e).slice(0, 80)}`;
+        console.error('[admin-reviews] approve_now signal', slug, signal);
+      }
+    }
+    return res.status(200).json({ ok: true, state: fields['상태'] || curState, signal });
   } catch (e) {
     console.error('[admin-reviews]', e);
     return res.status(500).json({ error: String(e.message || e).slice(0, 200) });

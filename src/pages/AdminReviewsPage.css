@@ -65,6 +65,9 @@
 .rq-btn.warn { background: var(--rq-warn); color: var(--rq-inset); }
 .rq-btn.bad { background: rgba(255, 107, 107, .25); }
 .rq-btn.acc { background: var(--rq-accent); }
+/* ⚡ 즉시게시 — 정기 승인(초록)과 한눈에 갈리게 파랑. 누르면 1~2분 안에 공개로 나간다 */
+.rq-btn.now { background: var(--rq-info); color: var(--rq-inset); }
+.rq-now { color: var(--rq-info); font-weight: 700; }
 .rq-note { font-size: 13px; line-height: 1.6; }
 .rq-warnbox { border: 1px solid var(--rq-bad); background: rgba(255, 107, 107, .1); border-radius: 10px; padding: 8px 12px; font-size: 13px; }
 .rq-meta { color: var(--rq-mute); font-size: 12px; }

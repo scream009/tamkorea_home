@@ -26,17 +26,19 @@ const ALL_STATES = ['검토대기', '고객협의', '승인', '게시중', '게�
 
 function StoreSwitches({ stores, onToggle, busy }) {
   if (!stores?.length) return null;
-  // 선플자동게시: 필드는 있지만 **읽는 코드가 없다**(post_replies·draft_replies 어디서도 안 봄, 2026-09-23 검토).
-  // 켜도 아무 일이 안 일어나는 스위치를 살아 있는 것처럼 두면 담당자가 "켰는데 왜 안 올라가지"를 겪는다.
+  // 🔴 선플자동게시 = **호평 답글을 우리가 달아도 된다는 협의가 끝났나**(2026-09-23 Owner 정의).
+  //    켜야 비로소 ① 톡방에 "오늘 중 달아 드립니다" 가 나가고 ② 봇이 호평을 게시하고 ③ 일괄 승인에 잡힌다.
+  //    끈 매장은 시범 상태 — 초안을 보여 주고 "게시를 원하시면 말씀해 주세요" 로만 나간다.
   const flags = [['review', '리뷰서비스', '리뷰서비스', false], ['paused', '리뷰서비스_일시중지', '일시중지', false],
-    ['autoGood', '선플자동게시', '선플 자동게시 (준비 중)', true], ['daily', '일일리포트', '데일리 발송', false]];
+    ['autoGood', '선플자동게시', '호평 게시 협의완료', false], ['daily', '일일리포트', '데일리 발송', false]];
   return (
     <div className="rq-stores">
       {stores.map((s) => (
         <div className="rq-store" key={s.id}>
           <b>{s.name} <span className="rq-meta">{s.slug}{s.room ? '' : ' · 톡방 없음'}{s.review && s.start ? ` · 시작 ${s.start}` : ''}</span></b>
           {flags.map(([k, field, label, off]) => (
-            <label key={k} className={s[k] ? 'on' : ''} title={off ? '아직 봇이 이 스위치를 읽지 않습니다' : undefined}>
+            <label key={k} className={s[k] ? 'on' : ''}
+                   title={k === 'autoGood' ? '사장님과 호평 답글 대행 협의가 끝난 매장만 켭니다 — 켜야 게시됩니다' : undefined}>
               <input type="checkbox" checked={!!s[k]} disabled={busy === s.id || off}
                      onChange={(e) => onToggle(s, field, e.target.checked)} />
               {label}
@@ -49,18 +51,32 @@ function StoreSwitches({ stores, onToggle, busy }) {
 }
 
 // 서버 값이 바뀌면 부모가 key 를 바꿔 다시 마운트한다(effect 로 state 를 덮지 않는다 — lint 규칙).
-function Card({ it, onAct, busy }) {
+function Card({ it, onAct, busy, autoOk = true }) {
   const [finalCn, setFinalCn] = useState(it['최종_중문'] || it['초안_중문'] || '');
   const [reply, setReply] = useState(it['고객회신'] || '');
   const st = it['상태'] || '';
   const sens = it['등급'] === '민감';
   const editable = ['검토대기', '고객협의', '승인', '보류', '초안', '신규', '게시실패', '게시확인필요'].includes(st);
   const dirty = finalCn !== (it['최종_중문'] || it['초안_중문'] || '') || reply !== (it['고객회신'] || '');
+  // 🔴 2026-09-24: 09-23 판의 "협의 전 매장은 승인해도 봇이 게시하지 않습니다" 경고를 뺐다.
+  //    09-23 밤 정책 개정으로 **승인한 건은 등급·선플자동게시와 무관하게 게시된다.** 그 문구가 남아
+  //    있으면 담당자가 "어차피 안 나간다"고 믿고 가볍게 승인한다 — 실제로는 공개로 나간다.
+  const confirmMsg = (when) => `${it.store} · ★${it['별점'] ?? '-'} ${it['작성자'] || ''}\n\n`
+    + `아래 중국어가 매장 이름으로 공개 게시됩니다(수정 불가·삭제 후 재등록만 가능).\n\n${finalCn}\n\n${when}`;
   const approve = () => {
     if (!finalCn.trim()) { window.alert('게시할 중국어 답글이 비어 있습니다'); return; }
-    const msg = `${it.store} · ★${it['별점'] ?? '-'} ${it['작성자'] || ''}\n\n아래 중국어가 매장 이름으로 공개 게시됩니다(수정 불가·삭제 후 재등록만 가능).\n\n${finalCn}\n\n승인할까요?`;
-    if (window.confirm(msg)) onAct(it.id, 'approve', { finalCn, reply });
+    if (window.confirm(confirmMsg('승인하면 다음 정기 게시(12·14·16시)에 올라갑니다. 승인할까요?'))) {
+      onAct(it.id, 'approve', { finalCn, reply });
+    }
   };
+  // ⚡ 즉시게시(Owner 2026-09-24) — 악플을 사장님과 협의해 고친 뒤 그 한 건만 바로 올린다. 시간 제한 없음.
+  const approveNow = () => {
+    if (!finalCn.trim()) { window.alert('게시할 중국어 답글이 비어 있습니다'); return; }
+    if (window.confirm(confirmMsg('⚡ 지금 바로 게시합니다 — PC C 가 1~2분 안에 올립니다. 진행할까요?'))) {
+      onAct(it.id, 'approve_now', { finalCn, reply });
+    }
+  };
+  const waitingNow = !!it['즉시게시요청'];
   return (
     <div className={`rq-card${sens ? ' sens' : ''}`}>
       <div className="rq-top">
@@ -73,9 +89,15 @@ function Card({ it, onAct, busy }) {
         {it['통보시각'] && <span className="rq-meta">통보 {KST(it['통보시각'])}</span>}
         {it['승인자'] && <span className="rq-meta">승인 {it['승인자']} {KST(it['승인시각'])}</span>}
         {it['답변여부_포털'] && <span className="rq-meta">포털에 답글 있음</span>}
+        {waitingNow && <span className="rq-meta rq-now">⚡ 즉시게시 대기 {KST(it['즉시게시요청시각'])}</span>}
       </div>
       {sens && (
-        <div className="rq-warnbox">🚫 민감 등급(보상·환불·차별·위생·법적 언급) — 승인해도 자동 게시되지 않습니다. 사장님과 협의 후 담당자가 직접 올립니다.</div>
+        // 🔴 2026-09-24 문구 정정: 예전엔 "승인해도 자동 게시되지 않습니다" 였다. Owner 결정(09-23)으로
+        //    민감도 악플과 같은 선이 됐다 — **승인하면 공개 게시된다.** 옛 문구가 제일 위험했다.
+        <div className="rq-warnbox">🚫 민감 등급(보상·환불·차별·위생·법적 언급) — <b>승인하면 그대로 공개 게시됩니다.</b> 반드시 사장님 협의가 끝난 뒤에 승인하세요.</div>
+      )}
+      {!sens && autoOk && it['등급'] === '호평' && st === '검토대기' && (
+        <div className="rq-note rq-meta">선플자동게시 매장 — 승인하지 않아도 다음 정기 게시(12·14·16시)에 올라갑니다. 막으려면 반려하세요.</div>
       )}
       <div className="rq-cols">
         <div className="rq-box"><span className="lab">중국어 원문</span><pre>{it['원문'] || ''}</pre></div>
@@ -94,7 +116,12 @@ function Card({ it, onAct, busy }) {
           <input className="rq-in" placeholder="사장님 회신 요지 (톡방에서 읽은 것)" value={reply} onChange={(e) => setReply(e.target.value)} />
           <div className="rq-btns">
             {st !== '승인' && (
-              <button className="rq-btn ok" disabled={busy === it.id} onClick={approve}>✅ 승인 (게시 대상화)</button>
+              <button className="rq-btn ok" disabled={busy === it.id} onClick={approve}>✅ 승인 (정기 게시)</button>
+            )}
+            {!waitingNow && (
+              <button className="rq-btn now" disabled={busy === it.id} onClick={approveNow}>
+                {st === '승인' ? '⚡ 지금 바로 게시' : '⚡ 승인하고 바로 게시'}
+              </button>
             )}
             {st === '승인' && (
               <button className="rq-btn" disabled={busy === it.id} onClick={() => onAct(it.id, 'unapprove')}>⏸ 승인 취소</button>
@@ -147,7 +174,11 @@ export default function AdminReviewsPage() {
     setBusy(id); setNote('');
     try {
       const j = await post({ action, id, ...extra });
-      setNote(`✅ ${action} → ${j.state || '저장됨'}`);
+      // 즉시게시는 신호(CS_DB 리뷰즉시게시)를 켜야 워커가 본다. 신호가 실패해도 승인은 저장됐으니
+      // 다음 정기 게시에 올라간다 — '즉시'만 안 된 것이라 그대로 알린다.
+      const now = j.signal === 'sent' ? ' · ⚡ PC C 가 1~2분 안에 올립니다 (새로고침으로 결과 확인)'
+        : (j.signal ? ` · ⚠️ 즉시게시 신호 실패 — 다음 정기 게시에 올라갑니다 (${j.signal})` : '');
+      setNote(`✅ ${action} → ${j.state || '저장됨'}${now}`);
       await load();
     } catch (e) { setNote(`❌ ${action} 실패: ${e.message}`); }
     setBusy('');
@@ -187,15 +218,20 @@ export default function AdminReviewsPage() {
   const toggleState = (s) => setStates((prev) => { const n = new Set(prev); if (n.has(s)) n.delete(s); else n.add(s); return n; });
 
   // 호평 일괄 승인 대상 — 지금 화면에 보이는 것 중 검토대기·호평·초안 있음. 서버가 건마다 다시 검사한다.
+  // 🔴 2026-09-24 재정의: **선플자동게시 미체크 매장**의 호평만. 체크된 매장의 호평은 승인 없이
+  //    정기 게시로 올라가니 여기 넣을 이유가 없다(09-23 판은 정반대로 체크된 매장만 잡았다).
+  const autoSet = useMemo(() => new Set((d?.stores || []).filter((s) => s.autoGood).map((s) => s.slug)), [d]);
   const bulkable = useMemo(() => items.filter((it) => it['상태'] === '검토대기' && it['등급'] === '호평'
-    && String(it['최종_중문'] || it['초안_중문'] || '').trim()), [items]);
+    && !autoSet.has(it['매장코드'])
+    && String(it['최종_중문'] || it['초안_중문'] || '').trim()), [items, autoSet]);
   async function approveBulk() {
     if (!bulkable.length) return;
     const byStore = {};
     bulkable.forEach((it) => { byStore[it.store] = (byStore[it.store] || 0) + 1; });
     const lines = Object.entries(byStore).map(([s, n]) => `  · ${s} ${n}건`).join('\n');
     const msg = `호평 ${bulkable.length}건을 한 번에 승인합니다.\n${lines}\n\n`
-      + '각 건의 AI 초안이 그대로 "게시될 최종 중국어"가 되고, PC C 봇이 매장 이름으로 공개 게시합니다(수정 불가·삭제 후 재등록만).\n'
+      + '각 건의 AI 초안이 그대로 "게시될 최종 중국어"가 되고, 다음 정기 게시(12·14·16시)에 '
+      + 'PC C 봇이 매장 이름으로 공개 게시합니다(수정 불가·삭제 후 재등록만).\n'
       + '낮은별점·악성·민감은 이 버튼에 포함되지 않습니다.\n\n진행할까요?';
     if (!window.confirm(msg)) return;
     setBusy('bulk'); setNote('');
@@ -223,7 +259,7 @@ export default function AdminReviewsPage() {
           </select>
           <button className="rq-btn" onClick={load}>새로고침</button>
           <button className="rq-btn ok" disabled={!bulkable.length || busy === 'bulk'} onClick={approveBulk}
-                  title="지금 화면에 보이는 검토대기·호평 건을 한 번에 승인">
+                  title="선플자동게시 미체크 매장의 검토대기·호평 건을 한 번에 승인 — 다음 정기 게시에 올라갑니다">
             ✅ 호평 일괄 승인 ({bulkable.length}건)
           </button>
         </div>
@@ -233,9 +269,11 @@ export default function AdminReviewsPage() {
           ))}
         </div>
         <div className="rq-note rq-meta" style={{ marginTop: 8 }}>
-          승인은 "이 문장을 매장 이름으로 공개해도 된다"는 서명입니다. 여기서는 게시하지 않습니다 —
-          {' '}<b style={{ color: 'var(--rq-ok)' }}>승인 {counts['승인'] || 0}건이 게시 대기 중</b>이고,
-          PC C 봇이 낮 10~17시에 올립니다. 호평은 톡방에 "오늘 중 달아 드립니다"로 나가 있으니 <b>승인이 미뤄지면 그 약속이 깨집니다.</b>
+          승인은 "이 문장을 매장 이름으로 공개해도 된다"는 서명입니다 —
+          {' '}<b style={{ color: 'var(--rq-ok)' }}>승인 {counts['승인'] || 0}건이 게시 대기 중</b>입니다.
+          <b>✅ 승인</b>은 다음 정기 게시(12·14·16시)에, <b>⚡ 바로 게시</b>는 PC C 가 1~2분 안에 올립니다(시간 제한 없음).
+          <b>호평 게시 협의완료</b> ✓ 매장의 호평은 승인 없이 정기 게시로 올라가고, 그 매장에만 톡방에 "오늘 중 달아 드립니다"가 나갑니다.
+          미체크 매장은 호평도 승인해야 올라갑니다. 낮은별점·악성·민감은 매장과 무관하게 <b>사장님 협의 후 승인</b>해야 올라갑니다.
         </div>
         {note && <div className="rq-note" style={{ marginTop: 6 }}>{note}</div>}
       </div>
@@ -248,7 +286,8 @@ export default function AdminReviewsPage() {
       {items.length === 0 ? (
         <div className="rq-panel rq-empty">표시할 항목이 없습니다 (상태 칩으로 범위를 넓혀 보세요)</div>
       ) : items.map((it) => (
-        <Card key={`${it.id}|${it['상태'] || ''}|${it['최종_중문'] || ''}|${it['고객회신'] || ''}`} it={it} onAct={act} busy={busy} />
+        <Card key={`${it.id}|${it['상태'] || ''}|${it['최종_중문'] || ''}|${it['고객회신'] || ''}`}
+              it={it} onAct={act} busy={busy} autoOk={autoSet.has(it['매장코드'])} />
       ))}
     </div>
   );
