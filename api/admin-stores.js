@@ -118,8 +118,17 @@ function nowKST() {
 }
 
 /* ── 목록 ── */
+/* 협력사 선택지 — Campaign_DB 에서 실제로 쓰이는 값. singleSelect 라 typecast:false 로 쓰려면
+   이미 있는 옵션이어야 한다(새 협력사는 Airtable 에서 옵션을 먼저 만든다). */
+async function partnerChoices() {
+  const recs = await fetchAll(T_CAMPAIGN, { fields: ['협력사'] });
+  const set = new Set(recs.map((r) => one(r.fields['협력사'])).filter(Boolean));
+  set.delete('직영');
+  return ['직영', ...[...set].sort((a, b) => a.localeCompare(b, 'ko'))];
+}
+
 async function listStores() {
-  const recs = await fetchAll(T_STORE, { fields: STORE_FIELDS });
+  const [recs, partners] = await Promise.all([fetchAll(T_STORE, { fields: STORE_FIELDS }), partnerChoices()]);
   const stores = recs.map((r) => {
     const g = r.fields;
     return {
@@ -152,7 +161,7 @@ async function listStores() {
       || `${a.client} ${a.branch}`.localeCompare(`${b.client} ${b.branch}`, 'ko'));
   return {
     stores,
-    options: { rest: REST_DAYS, cls: CLS, regions: REGIONS, areas: AREAS, editors: EDITORS },
+    options: { rest: REST_DAYS, cls: CLS, regions: REGIONS, areas: AREAS, editors: EDITORS, partners },
   };
 }
 
@@ -160,7 +169,7 @@ async function listStores() {
 async function listContracts(storeId) {
   const recs = await fetchAll(T_CAMPAIGN, {
     fields: ['계약월', '업체명', '계약유형', '인플_목표', '체험_목표', '기자_목표', '총예산',
-      '인플_방문', '체험_방문', '기자_실적', '목표수정이력'],
+      '인플_방문', '체험_방문', '기자_실적', '목표수정이력', '협력사', '공유표출'],
   });
   const contracts = recs
     .filter((r) => (r.fields['업체명'] || []).includes(storeId))
@@ -176,6 +185,8 @@ async function listContracts(storeId) {
       expVis: num(r.fields['체험_방문']),
       repDone: num(r.fields['기자_실적']),
       hist: one(r.fields['목표수정이력']).split('\n').filter(Boolean).slice(-1)[0] || '',
+      partner: one(r.fields['협력사']),
+      share: !!r.fields['공유표출'],
     }))
     .sort((a, b) => b.month.localeCompare(a.month));
   return { contracts };
@@ -268,9 +279,36 @@ async function upsertContract(body) {
   const sameMonth = await fetchAll(T_CAMPAIGN, {
     formula: `{계약월}='${escFormula(month)}'`,
     fields: ['업체명', '계약유형', '인플_목표', '체험_목표', '기자_목표', '총예산',
-      '(원)인플_목표', '(원)체험_목표', '(원)기자_목표', '(원)총예산', '목표수정이력'],
+      '(원)인플_목표', '(원)체험_목표', '(원)기자_목표', '(원)총예산', '목표수정이력', '협력사', '공유표출'],
   });
   const exist = sameMonth.find((r) => (r.fields['업체명'] || []).includes(storeId));
+
+  // ── 협력사·공유표출 (Owner 2026-09-24: "협력사 매장을 추가해도 대시보드에 안 뜬다 — 반복") ──
+  // 🔴 예전엔 이 화면이 두 칸을 **아예 쓰지 않았다** → 새로 등록한 협력사 매장(비유비베이커리)이
+  //    협력사 링크에서 빠졌다. 협력사 화면은 `{협력사}=이름 AND {공유표출}` 로 고른다.
+  //    body.partner 가 오면 그 값, 안 오면 이 매장의 **가장 최근 계약**에서 이어받는다(ensure_month_records 와 같은 규칙).
+  let partnerF = null;
+  if (body.partner !== undefined && body.partner !== null && String(body.partner).trim() !== '') {
+    partnerF = String(body.partner).trim();
+    if (!(await partnerChoices()).includes(partnerF)) {
+      throw Object.assign(new Error(`'${partnerF}' 는 등록된 협력사가 아닙니다. Airtable 협력사 선택지에 먼저 추가하세요.`), { status: 400 });
+    }
+  }
+  const shareF = body.share === undefined || body.share === null ? null : !!body.share;
+  let carry = {};
+  if (partnerF === null && !exist) {
+    const hist = await fetchAll(T_CAMPAIGN, { fields: ['업체명', '계약월', '협력사', '공유표출'] });
+    const mk = (m) => { const p = parseMonth(one(m)); return p ? Number(p[1]) * 100 + Number(p[2]) : 0; };
+    const latest = hist.filter((r) => (r.fields['업체명'] || []).includes(storeId))
+      .sort((a, b) => mk(b.fields['계약월']) - mk(a.fields['계약월']))[0];
+    if (latest && one(latest.fields['협력사'])) {
+      carry = { 협력사: one(latest.fields['협력사']), 공유표출: !!latest.fields['공유표출'] };
+    }
+  }
+  // 협력사를 고르고 표시 여부를 따로 안 주면: 협력사 매장은 표시(✓), 직영은 해제
+  const partnerFields = partnerF !== null
+    ? { 협력사: partnerF, 공유표출: shareF !== null ? shareF : partnerF !== '직영' }
+    : (shareF !== null ? { ...carry, 공유표출: shareF } : carry);
 
   if (exist) {
     const f = exist.fields;
@@ -290,6 +328,14 @@ async function upsertContract(body) {
     if (!one(f['계약유형'])) {
       patch['계약유형'] = '월계약';
       parts.push('빈 계약 되살림');
+    }
+    if (partnerFields.협력사 !== undefined && partnerFields.협력사 !== one(f['협력사'])) {
+      patch['협력사'] = partnerFields.협력사;
+      parts.push(`협력사 ${one(f['협력사']) || '빈칸'}→${partnerFields.협력사}`);
+    }
+    if (partnerFields.공유표출 !== undefined && partnerFields.공유표출 !== !!f['공유표출']) {
+      patch['공유표출'] = partnerFields.공유표출;
+      parts.push(`협력사 화면 표시 ${partnerFields.공유표출 ? '켬' : '끔'}`);
     }
     if (!parts.length) return { ok: true, id: exist.id, mode: 'unchanged' };
 
@@ -316,8 +362,11 @@ async function upsertContract(body) {
           계약월: month,
           계약유형: '월계약',
           ...goals,
+          ...partnerFields,
           총예산: budget,
-          목표수정이력: `${stamp} ${by} · ${month} 계약 생성 (고객사 등록화면)${memo ? ` (${memo})` : ''}`,
+          목표수정이력: `${stamp} ${by} · ${month} 계약 생성 (고객사 등록화면)`
+            + (partnerFields.협력사 ? ` · 협력사 ${partnerFields.협력사}${partnerFields.공유표출 ? '(화면 표시)' : ''}` : '')
+            + (memo ? ` (${memo})` : ''),
           목표수정자: by,
           목표수정일: new Date().toISOString(),
         },

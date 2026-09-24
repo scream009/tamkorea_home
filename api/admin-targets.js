@@ -380,7 +380,7 @@ async function ensureCampaign(body) {
 
   // 같은 매장의 계약 전부 (달 무관) — 껍데기까지 포함해서 본다
   const all = await fetchAll(T_CAMPAIGN, {
-    fields: ['고객사명', '지점명', '계약월', '계약유형', '업체명', '목표수정이력'],
+    fields: ['고객사명', '지점명', '계약월', '계약유형', '업체명', '목표수정이력', '협력사', '공유표출', '지역구분'],
   });
   const mine = all.filter((c) => storeKey(c.fields['고객사명'], c.fields['지점명']) === name);
   if (!mine.length) throw Object.assign(new Error(`'${name}' 계약을 찾을 수 없습니다.`), { status: 404 });
@@ -417,6 +417,11 @@ async function ensureCampaign(body) {
         fields: {
           업체명: src.fields['업체명'],
           계약월: month,
+          // 🔴 2026-09-24: 예전엔 업체명만 복사해 협력사·공유표출이 빠졌다 → 새 달 계약이 협력사 대시보드에서 사라졌다.
+          //    직전 계약의 협력사·표시·지역을 이어받는다(ensure_month_records CARRY 와 같은 규칙).
+          ...(one(src.fields['협력사']) ? { 협력사: one(src.fields['협력사']) } : {}),
+          ...(src.fields['공유표출'] ? { 공유표출: true } : {}),
+          ...(one(src.fields['지역구분']) ? { 지역구분: one(src.fields['지역구분']) } : {}),
           계약유형: '월계약',
           총예산: 0,
           인플_목표: 0,

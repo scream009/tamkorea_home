@@ -46,7 +46,7 @@ export default function AdminStoresPage() {
 
   const [contracts, setContracts] = useState(null);
   const [cBusy, setCBusy] = useState(false);
-  const [cForm, setCForm] = useState({ month: monthChoices()[1], infl: 0, exp: 0, rep: 0, budget: 0, by: '', memo: '' });
+  const [cForm, setCForm] = useState({ month: monthChoices()[1], infl: 0, exp: 0, rep: 0, budget: 0, by: '', memo: '', partner: '', share: null });
 
   const load = useCallback(async () => {
     setError('');
@@ -104,6 +104,7 @@ export default function AdminStoresPage() {
   function pick(s) {
     setSel(s.id);
     setForm({ ...EMPTY, ...s });
+    setCForm((f) => ({ ...f, partner: '', share: null }));   // 매장이 바뀌면 협력사는 그 매장 계약에서 다시 읽는다
     setTab('contract');   // 월초 목표 등록이 주 업무 — 계약 탭을 먼저 보여준다
     loadContracts(s.id);
   }
@@ -154,6 +155,14 @@ export default function AdminStoresPage() {
     }
   }
 
+  // ── 협력사 (Owner 2026-09-24: 협력사 매장을 추가해도 협력사 대시보드에 안 뜨던 문제) ──
+  // 기본값 = 이 매장의 가장 최근 계약. 계약이 없거나 협력사가 빈 매장은 **반드시 고르게** 한다 —
+  // 기본값을 '직영' 으로 두면 협력사 매장을 등록하면서 또 빠뜨린다.
+  const latestC = contracts && contracts.length ? contracts[0] : null;
+  const partnerVal = cForm.partner || (latestC && latestC.partner) || '';
+  const shareVal = cForm.share !== null && cForm.share !== undefined ? cForm.share
+    : (latestC && latestC.partner === partnerVal ? latestC.share : partnerVal !== '' && partnerVal !== '직영');
+
   async function saveContract() {
     if (!sel) return;
     setCBusy(true);
@@ -162,7 +171,11 @@ export default function AdminStoresPage() {
       const res = await fetch('/api/admin-stores', {
         method: 'POST',
         headers: adminHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ action: 'contract', storeId: sel, ...cForm }),
+        body: JSON.stringify({
+          action: 'contract', storeId: sel, ...cForm,
+          // 협력사·화면 표시는 **화면에 보이는 값** 그대로 보낸다(기본값 = 직전 계약)
+          partner: partnerVal, share: partnerVal && partnerVal !== '직영' ? shareVal : false,
+        }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `계약 저장 실패 (${res.status})`);
@@ -348,7 +361,7 @@ export default function AdminStoresPage() {
                   {contracts && contracts.length > 0 && (
                     <table className="cst-ctable">
                       <thead>
-                        <tr><th>계약월</th><th>인플</th><th>체험</th><th>기자</th><th className="num">총예산</th><th>최근 수정</th></tr>
+                        <tr><th>계약월</th><th>협력사</th><th>인플</th><th>체험</th><th>기자</th><th className="num">총예산</th><th>최근 수정</th></tr>
                       </thead>
                       <tbody>
                         {contracts.map((c) => (
@@ -357,10 +370,13 @@ export default function AdminStoresPage() {
                             className={c.month === cForm.month ? 'on' : ''}
                             onClick={() => setCForm((f) => ({
                               ...f, month: c.month, infl: c.infl, exp: c.exp, rep: c.rep, budget: c.budget,
+                              partner: c.partner || '', share: c.partner ? c.share : null,
                             }))}
                             title="클릭하면 아래 폼에 불러옵니다"
                           >
                             <td>{c.month}{!c.ct && <em className="cst-ghost-tag">유형없음</em>}</td>
+                            <td>{c.partner || <em className="cst-ghost-tag">빈칸</em>}
+                              {c.partner && c.partner !== '직영' && (c.share ? ' ✓' : <em className="cst-ghost-tag">화면 미표시</em>)}</td>
                             <td>{c.infl} <s>/{c.inflVis}</s></td>
                             <td>{c.exp} <s>/{c.expVis}</s></td>
                             <td>{c.rep} <s>/{c.repDone}</s></td>
@@ -400,13 +416,30 @@ export default function AdminStoresPage() {
                       </label>
                     ))}
                   </div>
+                  <div className="cst-r3">
+                    <label>협력사 <b className="rq">*</b>
+                      <select value={partnerVal}
+                        onChange={(e) => setCForm((f) => ({ ...f, partner: e.target.value, share: null }))}>
+                        <option value="">선택</option>
+                        {(opts?.partners || ['직영']).map((x) => <option key={x} value={x}>{x}</option>)}
+                      </select>
+                    </label>
+                    {partnerVal && partnerVal !== '직영' && (
+                      <label className="cst-check" title="끄면 이 달 계약이 협력사 대시보드에서 빠집니다">
+                        <input type="checkbox" checked={!!shareVal}
+                          onChange={(e) => setCForm((f) => ({ ...f, share: e.target.checked }))} />
+                        협력사 대시보드에 표시
+                      </label>
+                    )}
+                  </div>
                   <label className="cst-block">메모 (이력에 남음)
                     <input value={cForm.memo} onChange={(e) => setCForm((f) => ({ ...f, memo: e.target.value }))} />
                   </label>
-                  <button className="cst-primary" disabled={cBusy || !cForm.by} onClick={saveContract}>
+                  <button className="cst-primary" disabled={cBusy || !cForm.by || !partnerVal} onClick={saveContract}>
                     {cBusy ? '저장 중…' : '계약·목표 저장'}
                   </button>
                   {!cForm.by && <span className="cst-hint"> 수정자를 선택해야 저장됩니다</span>}
+                  {!partnerVal && <span className="cst-hint"> 협력사(직영 포함)를 선택해야 저장됩니다</span>}
                 </>
               )}
             </>
