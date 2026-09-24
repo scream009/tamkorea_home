@@ -1118,10 +1118,11 @@ export default async function handler(req, res) {
             `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent('리뷰주간_DB')}`
             + `?pageSize=100&filterByFormula=${encodeURIComponent(`{매장코드}='${rwSlug}'`)}`);
           reviewWeekly = rows
-            .filter((r) => (r.fields['PDF'] || []).length && r.fields['발송상태'] === '완료')
+            // 숨김 ✓ = 잘못 나간 리포트를 거둔 것(Owner 2026-09-24) — 목록·링크 모두에서 뺀다
+            .filter((r) => (r.fields['PDF'] || []).length && r.fields['발송상태'] === '완료' && !r.fields['숨김'])
             // 주차 문자열(GGGG-Www)은 사전순이 곧 시간순이다
             .sort((a, b) => String(b.fields['주차'] || '').localeCompare(String(a.fields['주차'] || '')))
-            .slice(0, 4)
+            .slice(0, 5)   // 약 한 달 치(Owner 2026-09-24: 4~5개 이전 리포트)
             .map((r) => ({
               week: r.fields['주차'] || '',
               period: String(r.fields['기간'] || '').replace(/~/, ' ~ '),
@@ -1152,7 +1153,7 @@ export default async function handler(req, res) {
       cpc,
       cpt,        // 달력 화면도 쓸 수 있게 최상위에도 둔다(리포트를 한 번도 안 돌린 매장 포함)
       dpReport,
-      reviewWeekly,  // 주간 리뷰 리포트 목록(최신 4주) — PDF 는 링크 라우트로만 연다
+      reviewWeekly,  // 주간 리뷰 리포트 목록(최신 5주) — PDF 는 링크 라우트로만 연다
       dpClient,   // boolean 만 — 자격증명 값은 절대 내보내지 않는다
       // QR 체크인 — 시크릿 미설정이면 빈 값 → 프론트가 QR 버튼을 숨긴다 (fail-closed)
       storeCode: cf['업체명'] ? cf['업체명'][0] : '',

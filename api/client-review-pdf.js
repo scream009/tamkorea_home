@@ -37,7 +37,7 @@ async function at(path, params) {
 /** 최신 우선 정렬 — 주차 문자열(GGGG-Www)은 사전순이 곧 시간순이다. */
 function pickRow(rows, week) {
   const done = rows
-    .filter((r) => (r.fields['PDF'] || []).length && r.fields['발송상태'] === '완료')
+    .filter((r) => (r.fields['PDF'] || []).length && r.fields['발송상태'] === '완료' && !r.fields['숨김'])
     .sort((a, b) => String(b.fields['주차'] || '').localeCompare(String(a.fields['주차'] || '')));
   if (week) return done.find((r) => String(r.fields['주차'] || '') === week) || null;
   return done[0] || null;

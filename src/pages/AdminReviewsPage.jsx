@@ -85,6 +85,34 @@ function StoreSwitches({ stores, onToggle, busy }) {
   );
 }
 
+// 주간 리뷰 리포트(Owner 2026-09-24) — 매주 금요일 자동 생성·톡방 안내. 잘못 나간 것은 '숨김' 으로 거둔다
+// (고객 대시보드·PDF 링크·다음 금요일 메시지에서 빠진다. 행은 지우지 않는다).
+function WeeklyList({ rows, onHide, busy }) {
+  if (!rows?.length) return <div className="rq-meta">아직 만들어진 주간 리포트가 없습니다 — 매주 금요일 11시 무렵 자동 생성됩니다.</div>;
+  return (
+    <div className="rq-weekly">
+      {rows.map((w) => (
+        <div key={w.id} className={`rq-wk${w.hidden ? ' hidden' : ''}`}>
+          <b>{String(w.period || w.week).replace(/(\d{4})-(\d{2})-(\d{2})/g, (_, y, m, d) => `${+m}/${+d}`)}</b>
+          {w.first && <span className="rq-pill">첫 주</span>}
+          <span className={`rq-pill${w.status === '완료' ? ' auto' : ' bad'}`}>{w.status || '?'}</span>
+          <span className="rq-meta">{w.notifiedAt ? `톡방 안내 ${KST(w.notifiedAt)}` : '톡방 안내 안 됨'}</span>
+          <span className="rq-spacer" />
+          {w.pdf && <a className="rq-btn" href={w.pdf} target="_blank" rel="noopener noreferrer">PDF</a>}
+          <button className={`rq-btn${w.hidden ? ' ok' : ' bad'}`} disabled={busy === w.id}
+                  onClick={() => {
+                    const msg = w.hidden ? '이 주간 리포트를 다시 고객에게 보이게 할까요?'
+                      : '이 주간 리포트를 고객 대시보드·링크에서 숨길까요? (이미 톡방에 나간 링크도 열리지 않게 됩니다)';
+                    if (window.confirm(msg)) onHide(w.id, !w.hidden);
+                  }}>
+            {w.hidden ? '다시 보이기' : '숨김'}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // 서버 값이 바뀌면 부모가 key 를 바꿔 다시 마운트한다(effect 로 state 를 덮지 않는다 — lint 규칙).
 function Card({ it, onAct, busy, autoOk = true }) {
   const [finalCn, setFinalCn] = useState(it['최종_중문'] || it['초안_중문'] || '');
@@ -292,6 +320,15 @@ export default function AdminReviewsPage() {
     };
     setTimeout(tick, 15000);
   }
+  async function hideWeekly(id, hide) {
+    setBusy(id); setNote('');
+    try {
+      const j = await post({ action: 'weekly_hide', id, hide });
+      setNote(`✅ 주간 리포트 → ${j.state}`);
+      await load();
+    } catch (e) { setNote(`❌ 주간 리포트 숨김 실패: ${e.message}`); }
+    setBusy('');
+  }
   async function toggleStore(s, field, on) {
     setBusy(s.id); setNote('');
     try {
@@ -476,6 +513,10 @@ export default function AdminReviewsPage() {
               <details className="rq-fold">
                 <summary>매장 스위치</summary>
                 <StoreSwitches stores={[cur]} onToggle={toggleStore} busy={busy} />
+              </details>
+              <details className="rq-fold">
+                <summary>주간 리포트 ({(d.weekly?.[store] || []).length})</summary>
+                <WeeklyList rows={d.weekly?.[store]} onHide={hideWeekly} busy={busy} />
               </details>
             </div>
           )}

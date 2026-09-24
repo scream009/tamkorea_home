@@ -204,3 +204,10 @@
   .rq-search { width: 100%; margin-left: 0; }
   .rq-row-flags { margin-left: 0; }
 }
+
+/* 주간 리포트 목록 (2026-09-24) — 숨긴 것은 흐리게 */
+.rq-weekly { display: grid; gap: 6px; margin-top: 8px; }
+.rq-wk { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; background: var(--rq-inset);
+  border: 1px solid var(--rq-line); border-radius: 10px; padding: 8px 10px; font-size: 13px; transition: opacity .2s; }
+.rq-wk.hidden { opacity: .55; }
+.rq-wk a.rq-btn { text-decoration: none; }

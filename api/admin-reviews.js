@@ -135,13 +135,17 @@ export default async function handler(req, res) {
       // 끝난 것(게시완료·반려)은 최근 N일만 — 큐가 이력으로 무거워지지 않게
       const formula = `AND(${slug ? `{매장코드}='${escFormula(slug)}', ` : ''}`
         + `OR(NOT(OR({상태}='게시완료', {상태}='반려')), IS_AFTER({리뷰일시}, DATEADD(TODAY(), -${days}, 'days'))))`;
-      const [rows, stores, allRows] = await Promise.all([
+      const [rows, stores, allRows, weeklyRows] = await Promise.all([
         fetchAll(TBL, { formula, fields: OUT_FIELDS }),
         fetchAll('CS_DB', { fields: ['매장명_검색용', '고객사명(필수)', 'DP_매장코드', '톡방명', '리뷰서비스',
           '리뷰서비스_시작일', '리뷰서비스_일시중지', '선플자동게시', '일일리포트'] }),
         // 실적 집계용 — 위 큐는 끝난 건을 최근 N일로 자르므로 누적을 셀 수 없다. 칸 4개만 받는다.
         fetchAll(TBL, { fields: ['매장코드', '상태', '게시시각', '리뷰일시'],
           formula: slug ? `{매장코드}='${escFormula(slug)}'` : '' }),
+        // 주간 리포트(Owner 2026-09-24) — 매장별 최근 6주. 잘못 나간 것을 '숨김' 으로 거둘 수 있게.
+        // 실패해도 승인 화면은 떠야 한다 → 빈 목록으로.
+        fetchAll('리뷰주간_DB', { fields: ['매장코드', '주차', '기간', '발송상태', '숨김', '첫주', '안내발송시각', '생성시각', 'PDF'] })
+          .catch(() => []),
       ]);
       const names = {};
       stores.forEach((s) => { const c = String(s.fields['DP_매장코드'] || '').trim(); if (c) names[c] = s.fields['매장명_검색용'] || s.fields['고객사명(필수)'] || c; });
@@ -157,7 +161,21 @@ export default async function handler(req, res) {
           paused: !!s.fields['리뷰서비스_일시중지'], autoGood: !!s.fields['선플자동게시'], daily: !!s.fields['일일리포트'],
         }))
         .sort((a, b) => (b.review - a.review) || (b.daily - a.daily) || a.name.localeCompare(b.name, 'ko'));
-      return res.status(200).json({ items, stores: storeRows, who, stats: replyStats(allRows, names) });
+      const weekly = {};
+      weeklyRows
+        .sort((a, b) => String(b.fields['주차'] || '').localeCompare(String(a.fields['주차'] || '')))
+        .forEach((r) => {
+          const f = r.fields || {};
+          const k = String(f['매장코드'] || '');
+          if (!k || (weekly[k] || []).length >= 6) return;
+          (weekly[k] = weekly[k] || []).push({
+            id: r.id, week: f['주차'] || '', period: f['기간'] || '', status: f['발송상태'] || '',
+            hidden: !!f['숨김'], first: !!f['첫주'], notifiedAt: f['안내발송시각'] || '', createdAt: f['생성시각'] || '',
+            // 관리자 화면이라 첨부 URL 을 그대로 준다(약 2시간 만료 — 화면을 새로고침하면 새 URL)
+            pdf: ((f['PDF'] || [])[0] || {}).url || '',
+          });
+        });
+      return res.status(200).json({ items, stores: storeRows, who, stats: replyStats(allRows, names), weekly });
     }
 
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -204,6 +222,14 @@ export default async function handler(req, res) {
 
     const id = String(body.id || '');
     if (!REC_RE.test(id)) return res.status(400).json({ error: 'bad id' });
+
+    // 주간 리포트 숨김/복원 — 고객 대시보드·PDF 링크·금요일 메시지에서 뺀다(행은 지우지 않는다)
+    if (action === 'weekly_hide') {
+      const f = { '숨김': !!body.hide };
+      await at('PATCH', `리뷰주간_DB/${id}`, { fields: f });
+      console.log('[admin-reviews] weekly_hide', who, id, f['숨김']);
+      return res.status(200).json({ ok: true, state: f['숨김'] ? '숨김' : '공개' });
+    }
 
     if (action === 'store') {
       const fields = {};

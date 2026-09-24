@@ -469,6 +469,12 @@ export const DpLiveEntry = ({ campaignId }) => {
  * PDF 는 Airtable 첨부이고 그 URL 은 약 2시간이면 만료된다. 그래서 여기서 URL 을 들고 있지 않고,
  * 누를 때마다 `/api/client-review-pdf` 가 새 URL 을 받아 302 로 넘긴다(열어 둔 화면에서도 안 죽는다).
  */
+// '2026-09-18 ~ 2026-09-24' → '9/18~9/24'. 고객은 ISO 주차 코드(2026-W39)를 읽지 못한다(2026-09-24).
+const shortPeriod = (p, fallback) => {
+  const m = String(p || '').match(/(\d{4})-(\d{2})-(\d{2})\s*~\s*(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${+m[2]}/${+m[3]}~${+m[5]}/${+m[6]}` : (fallback || '');
+};
+
 export const ReviewWeeklyEntry = ({ weeks, campaignId }) => {
   if (!weeks?.length) return null;
   const [latest, ...rest] = weeks;
@@ -487,7 +493,7 @@ export const ReviewWeeklyEntry = ({ weeks, campaignId }) => {
           <div>
             <div className="dprep-tt">
               주간 리뷰 리포트
-              {latest.week && <span className="dprep-mon">{latest.week}</span>}
+              {latest.period && <span className="dprep-mon">{shortPeriod(latest.period, latest.week)}</span>}
             </div>
             <div className="dprep-ss">
               {latest.period} · 리뷰 여론과 답글 대응
@@ -504,7 +510,7 @@ export const ReviewWeeklyEntry = ({ weeks, campaignId }) => {
         <div className="dprep-past">
           지난 주차
           {rest.map((w) => (
-            <a key={w.week} href={href(w.week)} target="_blank" rel="noopener noreferrer">{w.week}</a>
+            <a key={w.week} href={href(w.week)} target="_blank" rel="noopener noreferrer">{shortPeriod(w.period, w.week)}</a>
           ))}
         </div>
       )}
