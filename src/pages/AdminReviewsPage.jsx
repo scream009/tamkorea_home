@@ -138,7 +138,19 @@ function Card({ it, onAct, busy, autoOk = true }) {
         </>
       )}
       {(it['게시결과'] || it['게시시각']) && (
-        <div className="rq-note rq-meta">게시 {KST(it['게시시각'])} · {it['게시결과'] || ''}</div>
+        <div className="rq-note rq-meta">
+          게시 {KST(it['게시시각'])} · {it['게시결과'] || ''}
+          {/* 포털답글ID = 우리 답글을 나중에 찾거나 지울 때의 열쇠(followNoteId) */}
+          {it['포털답글ID'] && <> · 답글ID <b>{it['포털답글ID']}</b></>}
+          {it['게시시도'] ? <> · 시도 {it['게시시도']}회</> : null}
+        </div>
+      )}
+      {it['게시이력'] && (
+        // 최신이 맨 위. 못 찾음·입력창 실패처럼 예전엔 흔적이 안 남던 결과도 여기 남는다.
+        <details className="rq-log">
+          <summary>게시 이력 {String(it['게시이력']).split('\n').length}줄</summary>
+          <pre>{it['게시이력']}</pre>
+        </details>
       )}
     </div>
   );
@@ -158,7 +170,8 @@ export default function AdminReviewsPage() {
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
       setD(j); setErr('');
-    } catch (e) { setErr(String(e.message || e)); }
+      return j;
+    } catch (e) { setErr(String(e.message || e)); return null; }
   }, [slug]);
   useEffect(() => { load(); }, [load]);
 
@@ -180,8 +193,26 @@ export default function AdminReviewsPage() {
         : (j.signal ? ` · ⚠️ 즉시게시 신호 실패 — 다음 정기 게시에 올라갑니다 (${j.signal})` : '');
       setNote(`✅ ${action} → ${j.state || '저장됨'}${now}`);
       await load();
+      if (action === 'approve_now' && j.signal === 'sent') watchNow(id);
     } catch (e) { setNote(`❌ ${action} 실패: ${e.message}`); }
     setBusy('');
+  }
+  // ⚡ 뒤 자동 새로고침. 🔴 09-24 첫 시도에 결과는 1분 안에 나와 있었는데 화면이 안 바뀌어 "반응 없음" 으로 보였다.
+  //    15초마다 다시 읽고, 그 건의 즉시게시 요청이 풀리면(게시완료·실패 사유 기록) 멈춘다. 최대 3분.
+  function watchNow(id) {
+    let n = 0;
+    const tick = async () => {
+      n += 1;
+      const j = await load();
+      const it = (j?.items || []).find((x) => x.id === id);
+      if (it && !it['즉시게시요청']) {
+        setNote(`⚡ 처리됨 → ${it['상태'] || ''} · ${it['게시결과'] || ''}`);
+        return;
+      }
+      if (n < 12) setTimeout(tick, 15000);
+      else setNote('⚡ 3분 동안 결과가 안 나왔습니다 — PC C 워커가 꺼져 있거나 포털이 다른 작업 중일 수 있습니다. 새로고침으로 확인하세요.');
+    };
+    setTimeout(tick, 15000);
   }
   async function toggleStore(s, field, on) {
     setBusy(s.id); setNote('');
@@ -277,6 +308,36 @@ export default function AdminReviewsPage() {
         </div>
         {note && <div className="rq-note" style={{ marginTop: 6 }}>{note}</div>}
       </div>
+
+      {d.stats?.rows?.length > 0 && (
+        // 매장별 답글 실적(Owner 2026-09-24). '이번 주 게시' 는 게시시각 기준 — 주간 리포트와 같은 기준이다.
+        <div className="rq-panel">
+          <div className="rq-head">
+            <b>📊 답글 실적</b>
+            <span className="rq-count">이번 주 = {d.stats.weekStart}(월)부터 · 게시시각 기준 · 응답은 최근 30일 중앙값</span>
+          </div>
+          <div className="rq-stats-wrap">
+            <table className="rq-stats">
+              <thead>
+                <tr><th>매장</th><th>이번 주 게시</th><th>누적 게시</th><th>승인·게시 대기</th><th>검토 대기</th><th>확인필요</th><th>응답(중앙)</th></tr>
+              </thead>
+              <tbody>
+                {d.stats.rows.map((s) => (
+                  <tr key={s.slug}>
+                    <td>{s.name}</td>
+                    <td><b>{s.week}</b></td>
+                    <td>{s.total}</td>
+                    <td>{s.approved}</td>
+                    <td>{s.waiting}</td>
+                    <td className={s.check ? 'bad' : ''}>{s.check}</td>
+                    <td>{s.lagH != null ? `${s.lagH}시간` : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="rq-panel">
         <div className="rq-head"><b>🏪 매장 스위치</b><span className="rq-count">리뷰서비스 대상·일시중지·선플 자동게시·데일리 발송 (CS_DB)</span></div>

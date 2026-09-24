@@ -30,7 +30,57 @@ const FORBIDDEN_CN = ['退款', '赔偿', '赔付', '免费', '折扣', '打折'
 const STORE_FLAGS = new Set(['리뷰서비스', '리뷰서비스_일시중지', '선플자동게시', '일일리포트']);
 const OUT_FIELDS = ['키', '매장코드', '리뷰ID', '리뷰일시', '별점', '작성자', '원문', '번역', '사진수', '답변여부_포털',
   '등급', '대응유형', '초안_중문', '초안_한글', '최종_중문', '상태', '승인자', '승인시각', '통보시각',
-  '고객회신', '게시시각', '게시결과', '주차', '수집일', '즉시게시요청', '즉시게시요청시각'];
+  '고객회신', '게시시각', '게시결과', '주차', '수집일', '즉시게시요청', '즉시게시요청시각',
+  // 게시 로그(Owner 2026-09-24: "로그가 남아야 나중에 추적 가능") — PC C post_replies 가 쓴다
+  '게시이력', '포털답글ID', '게시시도'];
+
+// 한국 날짜(YYYY-MM-DD). Airtable dateTime 은 UTC 라 그대로 자르면 KST 00~09시가 전날로 간다.
+const KST_MS = 9 * 3600 * 1000;
+const kstDay = (iso) => {
+  const t = Date.parse(iso || '');
+  return Number.isNaN(t) ? '' : new Date(t + KST_MS).toISOString().slice(0, 10);
+};
+
+/**
+ * 매장별 답글 실적(Owner 2026-09-24: "답글 단 결과를 우리가 확인하고 집계할 수 있어야").
+ * 이번 주 = 한국 시간 월요일 0시부터. '이번 주 게시' 는 **게시시각** 기준이다(리뷰가 언제 쓰였든) —
+ * 주간 리포트의 '이번 주 올린 답글' 과 같은 기준이어야 화면과 리포트 숫자가 맞는다.
+ */
+function replyStats(all, names) {
+  const nowK = new Date(Date.now() + KST_MS);
+  const mon = new Date(nowK);
+  mon.setUTCDate(nowK.getUTCDate() - ((nowK.getUTCDay() + 6) % 7));
+  const weekStart = mon.toISOString().slice(0, 10);
+  const since30 = new Date(Date.now() - 30 * 86400000).toISOString();
+  const by = {};
+  for (const r of all) {
+    const f = r.fields || {};
+    const slug = String(f['매장코드'] || '').trim();
+    if (!slug) continue;
+    const s = by[slug] || (by[slug] = { slug, name: names[slug] || slug, week: 0, total: 0,
+      waiting: 0, approved: 0, check: 0, lags: [] });
+    const st = String(f['상태'] || '');
+    if (st === '게시완료') {
+      s.total += 1;
+      if (kstDay(f['게시시각']) >= weekStart) s.week += 1;
+      // 응답 시간은 최근 30일 게시분만 — 오래된 밀린 리뷰가 평균을 끌어올리지 않게
+      const a = Date.parse(f['리뷰일시'] || ''), b = Date.parse(f['게시시각'] || '');
+      if (!Number.isNaN(a) && !Number.isNaN(b) && String(f['게시시각']) >= since30 && b >= a) {
+        s.lags.push((b - a) / 3600000);
+      }
+    } else if (st === '검토대기' || st === '고객협의') s.waiting += 1;
+    else if (st === '승인') s.approved += 1;
+    else if (st === '게시확인필요' || st === '게시실패') s.check += 1;
+  }
+  return {
+    weekStart,
+    rows: Object.values(by).map(({ lags, ...s }) => {
+      lags.sort((x, y) => x - y);
+      const lagH = lags.length ? Math.round(lags[Math.floor(lags.length / 2)]) : null;   // 중앙값
+      return { ...s, lagH };
+    }).sort((x, y) => (y.week - x.week) || (y.total - x.total) || x.name.localeCompare(y.name, 'ko')),
+  };
+}
 
 async function at(method, path, body) {
   // 🔴 경로를 통째로 encodeURIComponent 하면 `CS_DB/recXXX` 의 슬래시가 %2F 로 바뀐다.
@@ -85,10 +135,13 @@ export default async function handler(req, res) {
       // 끝난 것(게시완료·반려)은 최근 N일만 — 큐가 이력으로 무거워지지 않게
       const formula = `AND(${slug ? `{매장코드}='${escFormula(slug)}', ` : ''}`
         + `OR(NOT(OR({상태}='게시완료', {상태}='반려')), IS_AFTER({리뷰일시}, DATEADD(TODAY(), -${days}, 'days'))))`;
-      const [rows, stores] = await Promise.all([
+      const [rows, stores, allRows] = await Promise.all([
         fetchAll(TBL, { formula, fields: OUT_FIELDS }),
         fetchAll('CS_DB', { fields: ['매장명_검색용', '고객사명(필수)', 'DP_매장코드', '톡방명', '리뷰서비스',
           '리뷰서비스_시작일', '리뷰서비스_일시중지', '선플자동게시', '일일리포트'] }),
+        // 실적 집계용 — 위 큐는 끝난 건을 최근 N일로 자르므로 누적을 셀 수 없다. 칸 4개만 받는다.
+        fetchAll(TBL, { fields: ['매장코드', '상태', '게시시각', '리뷰일시'],
+          formula: slug ? `{매장코드}='${escFormula(slug)}'` : '' }),
       ]);
       const names = {};
       stores.forEach((s) => { const c = String(s.fields['DP_매장코드'] || '').trim(); if (c) names[c] = s.fields['매장명_검색용'] || s.fields['고객사명(필수)'] || c; });
@@ -104,7 +157,7 @@ export default async function handler(req, res) {
           paused: !!s.fields['리뷰서비스_일시중지'], autoGood: !!s.fields['선플자동게시'], daily: !!s.fields['일일리포트'],
         }))
         .sort((a, b) => (b.review - a.review) || (b.daily - a.daily) || a.name.localeCompare(b.name, 'ko'));
-      return res.status(200).json({ items, stores: storeRows, who });
+      return res.status(200).json({ items, stores: storeRows, who, stats: replyStats(allRows, names) });
     }
 
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
