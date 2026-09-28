@@ -377,3 +377,10 @@ button.stb-cnum:hover{border-color:var(--accent);background:rgba(139,92,246,.12)
 .stb-blk-press:hover{border-color:var(--accent);color:var(--ink)}
 .stb-blk-press.sel{border-style:solid;border-color:var(--accent);background:rgba(139,92,246,.18)}
 .stb-blk-press b{color:var(--ink)}
+/* 기자단 줄 옆 '＋링크' — 이 칸(고객사×월)으로 기자단 링크 등록 화면을 연다 (2026-09-28) */
+.stb-blk-pressrow{display:flex;align-items:center;gap:.3rem;flex-wrap:wrap}
+.stb-blk-pressrow .stb-blk-press{margin-top:.15rem}
+.stb-blk-pressadd{margin-top:.15rem;padding:.22rem .5rem;border-radius:6px;font-size:.68rem;font-weight:700;
+  color:var(--accent2);text-decoration:none;border:1px solid rgba(139,92,246,.45);background:rgba(139,92,246,.1);
+  white-space:nowrap;transition:.13s}
+.stb-blk-pressadd:hover{background:rgba(139,92,246,.24);color:var(--ink);transform:translateY(-1px)}

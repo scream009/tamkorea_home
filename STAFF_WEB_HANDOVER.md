@@ -262,6 +262,14 @@ Campaign_DB ±1개월 + 계약이 문 진행 건 + CS_DB 정보 조인.
 - `confirmChange` (변경요청에서만) / `cancel {kind: 취소_방문자|취소_고객사|노쇼, memo?}`
 - `remove` — 예약요청&미발송 + 자식 전원 예약요청일 때만, 자식 동반 삭제
 
+### GET·POST `/api/staff-press` — 기자단 링크 대량등록 (2026-09-28)
+관리자판 `/api/admin-press` 와 **본체 공용**(`api/_press.js`), 게이트만 다르다(담당자 키로 관리자 입구는 404).
+- GET → 고객사+계약 `{stores[{id,client,branch,use,press,contracts[{id,month,goal,done,twin}]}]}`
+- POST `{action:'preview', campaignId, text}` → 줄별 판정(신규·입력중복·이미있음·제외), 쓰기 없음
+- POST `{action:'create', campaignId, text, expect}` → 서버 재판정, 신규만 진행_DB_OLD 생성 + **귀속 정산월 직결**. 신규 수가 expect 와 다르면 409
+- 화면 `/staff/press` (메뉴 진행관리 › ＋ 기자단 등록) · 보드 칸의 '＋링크' = `/staff/press?c=<계약ID>` (보드 월 칸에 `cid` 추가)
+- 판정 규칙·함정: `TRAPS.md` "기자단 수동입력"
+
 공통: 월 표기 `"2026. 8월"` · KST↔UTC 변환 서버 처리 · rate limit 대응 = 80건 청크 × 동시 4
 · CORS 헤더 없음(같은 오리진 전용) · choice/option 오류는 "옵션을 먼저 추가하라"로 번역
 

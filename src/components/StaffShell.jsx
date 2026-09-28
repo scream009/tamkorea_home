@@ -16,7 +16,11 @@ import './StaffShell.css';
 const SECTIONS = [
   {
     key: 'board', label: '진행관리', icon: '📊',
-    items: [{ to: '/staff', label: '진도 보드', match: (p) => p === '/staff' }],
+    items: [
+      { to: '/staff', label: '진도 보드', match: (p) => p === '/staff' },
+      // 기자단은 예약이 없는 완료 영상 — 예약관리가 아니라 실적(진도) 쪽이다 (2026-09-28)
+      { to: '/staff/press', label: '＋ 기자단 등록', match: (p) => p.startsWith('/staff/press') },
+    ],
   },
   {
     key: 'resv', label: '예약관리', icon: '📤',

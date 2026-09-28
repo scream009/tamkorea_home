@@ -805,11 +805,22 @@ function Expand({ row, months, el, sel, setSel, scope, initMgr, memoEdits, onSav
                   (대기·지연 개념 없음). 누르면 기자 목록 (Owner 2026-08-24) */}
               {scope !== '인플' && (cell.t?.기자?.[0] > 0 || cell.t?.기자?.[1] > 0
                 || (cell.d || []).some((x) => typeOf(x) === '기자')) && (
-                <button
-                  type="button"
-                  className={`stb-blk-press ${active && sel?.type === '기자' ? 'sel' : ''}`}
-                  onClick={() => setSel({ month: m, type: '기자', bucket: null })}
-                >기자단 <b>{cell.t?.기자?.[1] || 0}</b>건{cell.t?.기자?.[0] > 0 ? ` / 목표 ${cell.t.기자[0]}` : ''} · 목록</button>
+                <div className="stb-blk-pressrow">
+                  <button
+                    type="button"
+                    className={`stb-blk-press ${active && sel?.type === '기자' ? 'sel' : ''}`}
+                    onClick={() => setSel({ month: m, type: '기자', bucket: null })}
+                  >기자단 <b>{cell.t?.기자?.[1] || 0}</b>건{cell.t?.기자?.[0] > 0 ? ` / 목표 ${cell.t.기자[0]}` : ''} · 목록</button>
+                  {/* 이 고객사·이 달로 골라진 채 기자단 링크 등록 화면을 연다 (2026-09-28) */}
+                  {cell.cid && (
+                    <Link
+                      className="stb-blk-pressadd"
+                      to={`/staff/press?c=${cell.cid}`}
+                      title={`${m} 기자단 링크 등록`}
+                      onClick={(e) => e.stopPropagation()}
+                    >＋링크</Link>
+                  )}
+                </div>
               )}
             </div>
           );

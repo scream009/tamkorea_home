@@ -333,6 +333,7 @@ async function buildBoard(month) {
       });
 
     row.m[mon] = {
+      cid: c.id,   // Campaign 레코드 ID — 기자단 등록(/staff/press?c=…) 진입에 쓴다
       ct: one(f['계약유형']),
       memo: one(f['비고']),
       add: f['추가체험단'] ? 1 : 0,   // 목표량 넘어도 추가 섭외 가능

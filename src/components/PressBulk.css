@@ -120,3 +120,12 @@
   .apr-tr{grid-template-columns:26px 64px minmax(0,1fr) 28px;gap:6px}
   .apr-card{padding:14px}
 }
+
+/* 담당자 셸(/staff/press) 안 — StaffShell 은 배경을 깔지 않고 각 staff 페이지 루트가 깐다(.srv-root 등과 같은 값) */
+.apr-staff{
+  --bg:#0E1016;
+  background:var(--bg);min-height:100vh;
+  font-family:"Pretendard","Pretendard Variable",-apple-system,BlinkMacSystemFont,"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+}
+.apr-staff .apr-grid{max-width:1180px;margin:0 auto}
+.apr-staff .apr-side{top:100px;max-height:calc(100vh - 116px)}   /* 상단 고정 메뉴(2단 84px) 아래로 */
