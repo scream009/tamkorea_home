@@ -758,6 +758,10 @@ function Expand({ row, months, el, sel, setSel, scope, initMgr, memoEdits, onSav
           const cell = row.m[m];
           if (!cell) return <div key={m} className="stb-blk stb-blk-none"><b>{m}</b><span className="stb-mut">계약 없음</span></div>;
           const active = sel?.month === m;
+          // 기자단 줄: 목표·실적·기자 건 중 하나라도 있을 때. 없으면 계약만 열린 칸에 '＋ 기자단 링크'만 둔다
+          // (목표 없이 계약만 열어 둔 달이 많다 — 목표가 없어도 등록·실적 집계는 된다, Owner 2026-09-28)
+          const pressOn = scope !== '인플' && (cell.t?.기자?.[0] > 0 || cell.t?.기자?.[1] > 0
+            || (cell.d || []).some((x) => typeOf(x) === '기자'));
           return (
             <div key={m} className={`stb-blk ${active ? 'on' : ''}`}>
               <div className="stb-blk-h">
@@ -803,8 +807,7 @@ function Expand({ row, months, el, sel, setSel, scope, initMgr, memoEdits, onSav
                 })}
               {/* 기자단 — 가끔 있으니 목표·실적·예약 중 하나라도 있을 때만 건수 한 줄
                   (대기·지연 개념 없음). 누르면 기자 목록 (Owner 2026-08-24) */}
-              {scope !== '인플' && (cell.t?.기자?.[0] > 0 || cell.t?.기자?.[1] > 0
-                || (cell.d || []).some((x) => typeOf(x) === '기자')) && (
+              {pressOn && (
                 <div className="stb-blk-pressrow">
                   <button
                     type="button"
@@ -821,6 +824,14 @@ function Expand({ row, months, el, sel, setSel, scope, initMgr, memoEdits, onSav
                     >＋링크</Link>
                   )}
                 </div>
+              )}
+              {!pressOn && scope !== '인플' && cell.cid && (
+                <Link
+                  className="stb-blk-pressadd stb-blk-pressadd-solo"
+                  to={`/staff/press?c=${cell.cid}`}
+                  title={`${m} 기자단 링크 등록 (기자 목표 없어도 됨)`}
+                  onClick={(e) => e.stopPropagation()}
+                >＋ 기자단 링크</Link>
               )}
             </div>
           );

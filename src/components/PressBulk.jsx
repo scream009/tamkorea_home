@@ -148,7 +148,6 @@ export default function PressBulk({ apiPath, headers, variant = 'admin' }) {
       `${preview.camp.client} ${preview.camp.branch} · ${preview.camp.month}`,
       `기자단 링크 ${n}건을 등록합니다.`,
       over ? `\n⚠️ 목표 ${preview.camp.goal}건을 넘습니다 (등록 후 ${after}건).` : '',
-      preview.camp.goal === 0 ? '\n⚠️ 이 계약에는 기자 목표가 없습니다.' : '',
     ].join('\n');
     if (!window.confirm(msg)) return;
 
@@ -264,8 +263,9 @@ export default function PressBulk({ apiPath, headers, variant = 'admin' }) {
                     <span className="apr-sum-t">총 {c.total}개 인식</span>
                   </div>
                   <p className={`apr-goal${preview.camp.goal > 0 && after > preview.camp.goal ? ' over' : ''}`}>
-                    기자 목표 <b>{preview.camp.goal || '없음'}</b> · 현재 <b>{preview.camp.done}</b> → 등록 후 <b>{after}</b>
+                    기자 목표 <b>{preview.camp.goal || '미설정'}</b> · 현재 <b>{preview.camp.done}</b> → 등록 후 <b>{after}</b>
                     {preview.camp.goal > 0 && after > preview.camp.goal && ' — 목표 초과'}
+                    {!preview.camp.goal && ' — 목표가 없어도 등록되고 실적에 잡힙니다'}
                   </p>
                   {preview.note && <p className="apr-warn">{preview.note}</p>}
 

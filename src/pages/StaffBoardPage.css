@@ -383,4 +383,6 @@ button.stb-cnum:hover{border-color:var(--accent);background:rgba(139,92,246,.12)
 .stb-blk-pressadd{margin-top:.15rem;padding:.22rem .5rem;border-radius:6px;font-size:.68rem;font-weight:700;
   color:var(--accent2);text-decoration:none;border:1px solid rgba(139,92,246,.45);background:rgba(139,92,246,.1);
   white-space:nowrap;transition:.13s}
+/* 기자 목표·실적이 없는 칸 — 눈에 덜 띄게 (점선) */
+.stb-blk-pressadd-solo{display:inline-block;width:fit-content;border-style:dashed;background:transparent;color:var(--muted);font-weight:600}
 .stb-blk-pressadd:hover{background:rgba(139,92,246,.24);color:var(--ink);transform:translateY(-1px)}
