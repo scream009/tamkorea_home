@@ -40,6 +40,7 @@ import AdminClientCardPage from './pages/AdminClientCardPage';
 import AdminToolsPage from './pages/AdminToolsPage';
 import AdminFlyerPage from './pages/AdminFlyerPage';
 import AdminReviewsPage from './pages/AdminReviewsPage';
+import AdminPressPage from './pages/AdminPressPage';
 import './components/AdminShell.css';
 import './App.css';
 
@@ -78,6 +79,7 @@ function App() {
           <Route path="/admin/dianping" element={<AdminGate><AdminShell><AdminDianpingPage /></AdminShell></AdminGate>} />
           <Route path="/admin/reviews" element={<AdminGate><AdminShell><AdminReviewsPage /></AdminShell></AdminGate>} />
           <Route path="/admin/board" element={<AdminGate><AdminShell><AdminBoardPage /></AdminShell></AdminGate>} />
+          <Route path="/admin/press" element={<AdminGate><AdminShell><AdminPressPage /></AdminShell></AdminGate>} />
           <Route path="/admin/tools" element={<AdminGate><AdminShell><AdminToolsPage /></AdminShell></AdminGate>} />
           <Route path="/admin/tools/flyer" element={<AdminGate><AdminShell><AdminFlyerPage /></AdminShell></AdminGate>} />
 

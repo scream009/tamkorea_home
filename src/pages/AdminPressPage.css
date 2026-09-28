@@ -1,0 +1,122 @@
+/* 기자단 링크 등록 — admin 계열 팔레트 (AdminShell 본문 안에서 렌더).
+   ⚠️ 클래스에 ad/ads 를 쓰지 않는다 — 애드블록이 화면을 숨긴 실사고(TRAPS). 접두어 apr- */
+.apr{
+  --panel:#161922;--line:#252A37;--line2:#2F3646;--ink:#E9EBF2;--ink2:#B7BCCB;
+  --muted:#7F8598;--accent:#8B5CF6;--accent2:#C4B5FD;
+  --ok:#34D399;--ok-bg:rgba(16,185,129,.12);--warn:#FBBF24;--warn-bg:rgba(245,158,11,.12);
+  --bad:#F87171;--bad-bg:rgba(239,68,68,.12);
+  --mono:ui-monospace,"Cascadia Code","SFMono-Regular",Consolas,monospace;
+  color:var(--ink);font-size:14px;padding:18px 22px 40px;
+}
+.apr-grid{display:grid;grid-template-columns:minmax(14rem,18rem) minmax(0,1fr);gap:16px;align-items:start}
+
+/* ── 고객사 목록 ── */
+.apr-side{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;
+  position:sticky;top:16px;max-height:calc(100vh - 32px);display:flex;flex-direction:column}
+.apr-search{display:flex;align-items:center;gap:8px;padding:10px;border-bottom:1px solid var(--line)}
+.apr-search input{flex:1;min-width:0;background:#12151D;border:1px solid var(--line2);border-radius:8px;
+  color:var(--ink);padding:8px 10px;font-size:13px;outline:none;font-family:inherit;transition:border-color .2s}
+.apr-search input:focus{border-color:var(--accent)}
+.apr-cnt{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.apr-rows{overflow-y:auto}
+.apr-row{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:left;
+  background:transparent;border:0;border-bottom:1px solid #1C202B;color:var(--ink);
+  padding:9px 12px;cursor:pointer;font-family:inherit;transition:background .2s}
+.apr-row:hover{background:#191D28}
+.apr-row.on{background:#1D1830;box-shadow:inset 3px 0 0 var(--accent)}
+.apr-row.off{opacity:.5}
+.apr-row b{font-size:13px}
+.apr-row span{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.apr-row em{font-style:normal;font-size:10px;color:var(--accent2);border:1px solid rgba(139,92,246,.45);
+  border-radius:999px;padding:0 6px;line-height:16px}
+
+/* ── 본문 ── */
+.apr-main{display:flex;flex-direction:column;gap:14px;min-width:0}
+/* 전역 h1/h2 색(밝은 사이트용)이 어두운 배경에 묻힌다 — 여기서 명시 */
+.apr-head h1{margin:0 0 4px;font-size:18px;font-weight:800;letter-spacing:-.01em;color:var(--ink)}
+.apr-head p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.6}
+
+.apr-card{background:linear-gradient(180deg,rgba(139,92,246,.05),transparent 120px),var(--panel);
+  border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.apr-card h2{display:flex;align-items:center;gap:8px;margin:0 0 12px;font-size:13.5px;font-weight:700;color:var(--ink2)}
+.apr-card h2 i{font-style:normal;width:20px;height:20px;border-radius:50%;display:inline-grid;place-items:center;
+  font-size:11px;font-weight:800;color:#fff;background:linear-gradient(135deg,#8B5CF6,#A855F7)}
+.apr-placeholder{color:var(--muted);text-align:center;padding:48px 18px}
+
+/* 계약 칩 */
+.apr-chips{display:flex;flex-wrap:wrap;gap:8px}
+.apr-chip{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:108px;
+  background:#12151D;border:1px solid var(--line2);border-radius:10px;padding:8px 12px;
+  color:var(--ink);cursor:pointer;font-family:inherit;transition:border-color .2s,background .2s,transform .2s}
+.apr-chip:hover{border-color:#4B4F66;transform:translateY(-1px)}
+.apr-chip b{font-size:13px}
+.apr-chip span{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.apr-chip.on{border-color:var(--accent);background:linear-gradient(135deg,rgba(139,92,246,.24),rgba(168,85,247,.1))}
+.apr-chip.on span{color:var(--accent2)}
+.apr-chip.twin{border-style:dashed}
+
+/* 입력 */
+.apr textarea{width:100%;box-sizing:border-box;resize:vertical;min-height:170px;
+  background:#0F1219;border:1px solid var(--line2);border-radius:10px;color:var(--ink);
+  padding:12px 14px;font-size:13px;line-height:1.6;font-family:var(--mono);outline:none;transition:border-color .2s}
+.apr textarea:focus{border-color:var(--accent)}
+.apr-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;flex-wrap:wrap}
+.apr-hint{font-size:12px;color:var(--muted)}
+.apr-btn{background:#232838;border:1px solid var(--line2);border-radius:9px;color:var(--ink);
+  font-weight:700;font-size:13px;padding:9px 16px;cursor:pointer;font-family:inherit;transition:all .2s}
+.apr-btn:hover:not(:disabled){border-color:var(--accent);transform:translateY(-1px)}
+.apr-btn.primary{background:linear-gradient(135deg,#8B5CF6,#A855F7);border-color:transparent;color:#fff;
+  box-shadow:0 6px 18px rgba(139,92,246,.28)}
+.apr-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* 확인 결과 */
+.apr-sum{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:10px}
+.apr-sum span{font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px}
+.apr-sum .ok{color:var(--ok);background:var(--ok-bg)}
+.apr-sum .warn{color:var(--warn);background:var(--warn-bg)}
+.apr-sum .bad{color:var(--bad);background:var(--bad-bg)}
+.apr-sum .apr-sum-t{color:var(--muted);font-weight:600;padding-left:4px}
+.apr-goal{margin:0 0 12px;font-size:12.5px;color:var(--ink2)}
+.apr-goal b{font-family:var(--mono);color:var(--ink)}
+.apr-goal.over{color:var(--warn)}
+
+.apr-table{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.apr-tr{display:grid;grid-template-columns:34px 76px minmax(0,1fr) 30px;align-items:center;gap:8px;
+  padding:8px 10px;border-bottom:1px solid #1C202B;transition:background .2s}
+.apr-tr:last-child{border-bottom:0}
+.apr-tr:hover{background:#191D28}
+.apr-tr.dupDb,.apr-tr.bad,.apr-tr.dupPaste{opacity:.72}
+.apr-no{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right}
+.apr-st{font-size:11px;font-weight:700;border-radius:6px;padding:2px 0;text-align:center}
+.apr-st.ok{color:var(--ok);background:var(--ok-bg)}
+.apr-st.warn{color:var(--warn);background:var(--warn-bg)}
+.apr-st.bad{color:var(--bad);background:var(--bad-bg)}
+.apr-link{display:flex;flex-direction:column;gap:2px;min-width:0}
+.apr-link a{font-family:var(--mono);font-size:12px;color:var(--accent2);text-decoration:none;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.apr-link a:hover{text-decoration:underline}
+.apr-link small{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.apr-tr.dupDb small,.apr-tr.bad small{color:#FCA5A5}
+.apr-x{width:26px;height:26px;border-radius:7px;border:1px solid transparent;background:transparent;
+  color:var(--muted);font-size:16px;line-height:1;cursor:pointer;transition:all .2s}
+.apr-x:hover:not(:disabled){color:var(--bad);border-color:rgba(239,68,68,.45);background:var(--bad-bg)}
+
+.apr-warn{margin:10px 0 0;font-size:12px;color:var(--warn);line-height:1.6}
+.apr-error{padding:10px 14px;border:1px solid rgba(239,68,68,.5);background:rgba(239,68,68,.08);
+  border-radius:10px;color:#FCA5A5;font-size:13px;line-height:1.6}
+.apr-empty{padding:16px;color:var(--muted);font-size:12px}
+.apr-done{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border-radius:12px;
+  border:1px solid rgba(16,185,129,.45);background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(16,185,129,.04))}
+.apr-done b{color:#6EE7B7;font-size:14px}
+.apr-done span{font-size:12px;color:var(--ink2)}
+.apr-done code{font-family:var(--mono);font-size:11.5px;color:var(--ink)}
+.apr-done a{font-size:12.5px;color:var(--accent2);font-weight:700;text-decoration:none;margin-top:2px}
+.apr-done a:hover{text-decoration:underline}
+
+@media (max-width: 780px){
+  .apr{padding:14px 12px 32px}
+  .apr-grid{grid-template-columns:1fr}
+  .apr-side{position:static;max-height:260px}
+  .apr-tr{grid-template-columns:26px 64px minmax(0,1fr) 28px;gap:6px}
+  .apr-card{padding:14px}
+}

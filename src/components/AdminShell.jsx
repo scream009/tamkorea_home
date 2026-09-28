@@ -21,6 +21,7 @@ const MENU = [
   { to: '/admin/dashboard', label: '담당자별 실적', desc: '월실적 조정', icon: '📊' },
   { to: '/admin/stores', label: '고객사 등록', desc: 'CS·계약 목표', icon: '🏪' },
   { to: '/admin/board', label: '예약 보드', desc: '순서 조정', icon: '🗂️' },
+  { to: '/admin/press', label: '기자단 등록', desc: '링크 대량입력·중복 차단', icon: '📰' },
   { to: '/admin/tools', label: '도구', desc: '전단·견적 생성기', icon: '🛠️' },
 ];
 
