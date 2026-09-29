@@ -262,6 +262,13 @@ Campaign_DB ±1개월 + 계약이 문 진행 건 + CS_DB 정보 조인.
 - `confirmChange` (변경요청에서만) / `cancel {kind: 취소_방문자|취소_고객사|노쇼, memo?}`
 - `remove` — 예약요청&미발송 + 자식 전원 예약요청일 때만, 자식 동반 삭제
 
+### GET `/api/staff-queue?mode=results[&fresh=1]` — 인플별 결과 링크 현황 (2026-09-29)
+`{at, kids{팀키(공백 제거): [{id,infl,name,st,x,d,y,nx,nd}]}}` — 진행_DB_OLD 를 팀명생성기로 묶은 것. 60초 서버 캐시(fresh=1 이면 건너뜀).
+화면은 목록의 `team`·`inflIds` 로 팀에 붙인다. **목록의 60초 자동 새로고침에는 태우지 않는다**(≈15회 호출) — 처음·⟳·저장 후만.
+### POST `/api/staff-queue` `{action:'result', id(진행_DB_OLD), rx?, rd?, ry?, force?}` — 결과 링크 저장
+규칙은 진도 보드 `result` 와 공용(`api/_result-links.js`): 빈 칸=유지 · '-'=지움 · 공유 문구에서 URL 추출 · 칸 뒤바뀜·프로필 400 ·
+다른 인플/같은 매장·월 중복 409(`dup` 동봉, force 로 저장).
+
 ### GET·POST `/api/staff-press` — 기자단 링크 대량등록 (2026-09-28)
 관리자판 `/api/admin-press` 와 **본체 공용**(`api/_press.js`), 게이트만 다르다(담당자 키로 관리자 입구는 404).
 - GET → 고객사+계약 `{stores[{id,client,branch,use,press,contracts[{id,month,goal,done,twin}]}]}`

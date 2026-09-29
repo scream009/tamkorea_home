@@ -263,16 +263,25 @@ export default function StaffBoardPage() {
      보드 전체 reload 는 무겁고, 방금 적은 링크가 안 보이면 저장이 안 된 줄 안다. */
   const [resEdits, setResEdits] = useState({});
   const saveResult = useCallback(async (id, vals) => {
-    const r = await fetch('/api/staff-board', {
+    const post = (extra) => fetch('/api/staff-board', {
       method: 'POST',
       headers: staffHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ action: 'result', id, ...vals }),
+      body: JSON.stringify({ action: 'result', id, ...vals, ...extra }),
     });
-    const j = await r.json().catch(() => ({}));
+    let r = await post();
+    let j = await r.json().catch(() => ({}));
+    // 같은 링크가 다른 건에 이미 있으면 서버가 409 로 멈춘다(2026-09-29 공용 규칙) —
+    // 두 사람이 한 게시물을 올린 경우가 있어 막지는 않고, 확인받고 저장한다
+    if (r.status === 409 && j.dup && window.confirm(`${j.error}\n\n그래도 저장할까요?`)) {
+      r = await post({ force: true });
+      j = await r.json().catch(() => ({}));
+    }
     if (!r.ok) throw new Error(j.error || `저장 실패 (${r.status})`);
     setResEdits((p) => {
       const cur = { ...(p[id] || {}) };
       for (const k of ['rx', 'rd', 'ry']) {
+        // 서버가 정리한 값(공유 문구에서 뽑은 URL)을 우선 보여준다
+        if (j.values && j.values[k] !== undefined) { cur[k] = j.values[k]; continue; }
         const v = String(vals[k] ?? '').trim();
         if (v === '') continue;
         cur[k] = v === '-' ? '' : v;

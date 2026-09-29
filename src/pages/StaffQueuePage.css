@@ -12,7 +12,7 @@
 
 .stq-head{display:flex;flex-wrap:wrap;align-items:center;gap:.7rem;margin-bottom:.8rem}
 .stq-title{display:flex;align-items:center;gap:.5rem}
-.stq-title h1{margin:0;font-size:1.05rem;font-weight:800}
+.stq-title h1{margin:0;font-size:1.05rem;font-weight:800;color:var(--ink)}   /* 전역 h1 색이 어두운 배경에 묻힌다 */
 .stq-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent)}
 .stq-scope{font-size:.64rem;color:var(--muted);border:1px solid var(--line2);border-radius:999px;padding:.1rem .5rem}
 .stq-who{font-family:var(--mono);font-size:.68rem;font-weight:700;color:var(--accent2);
@@ -102,7 +102,7 @@
 /* 버튼 열은 고정 폭 — auto 로 두면 버튼 없는 행(취소·노쇼)에서 열이 접혀 행마다 정렬이 깨진다 */
 /* 열 7개: 상태·매장·메타·일시·건수·인플·버튼 —
    인플 열을 추가할 때 이 template 을 안 늘리면 버튼이 다음 줄로 밀린다(2026-08-24 실측) */
-.stq-row{display:grid;grid-template-columns:5.4rem minmax(7rem,1.1fr) minmax(6.5rem,.9fr) minmax(8.5rem,.9fr) minmax(6.5rem,.8fr) minmax(5.5rem,.8fr) 17rem;
+.stq-row{display:grid;grid-template-columns:5.4rem minmax(7rem,1.1fr) minmax(6.5rem,.9fr) minmax(8.5rem,.9fr) minmax(6.5rem,.8fr) minmax(9rem,1.3fr) 17rem;   /* 인플 열: 아이디 아래 결과 블록이 붙어 넓힘 (2026-09-29) */
   gap:.6rem;align-items:center;padding:.45rem .8rem;cursor:pointer;transition:.12s}
 .stq-row:hover{background:#191D28}
 .stq-row-store{font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -187,3 +187,56 @@
 .stq-tabs button.urgent{border-color:rgba(248,113,113,.55);color:#FCA5A5}
 .stq-tabs button.urgent b{color:#FCA5A5}
 .stq-tabs button.urgent.on{border-color:#F87171;background:rgba(248,113,113,.16);color:#FECACA}
+
+/* ── 인플별 결과 링크 블록 (2026-09-29) — 아이디 아래 3칸: 小 샤오홍슈 · 大 따종 · 抖 틱톡 ── */
+.stq-mems{display:flex;flex-wrap:wrap;gap:.25rem .6rem;white-space:normal;overflow:visible}
+.stq-mem{display:inline-flex;flex-direction:column;align-items:flex-start;gap:.14rem;min-width:0;max-width:9rem}
+.stq-mem-id{font-size:.72rem;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:9rem}
+.stq-mem.off .stq-mem-id{text-decoration:line-through;color:var(--muted)}
+.stq-dots{display:inline-flex;gap:2px;background:transparent;border:1px solid transparent;border-radius:6px;
+  padding:1px;cursor:pointer;transition:border-color .2s,background .2s}
+.stq-dots:hover{border-color:var(--accent);background:rgba(139,92,246,.14)}
+.stq-dots:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.stq-d{display:inline-grid;place-items:center;width:1.1rem;height:1rem;border-radius:4px;font-style:normal;
+  font-size:.56rem;font-weight:800;line-height:1;border:1px solid transparent}
+.stq-d.done{background:rgba(16,185,129,.22);color:#6EE7B7;border-color:rgba(16,185,129,.55)}
+.stq-d.need{background:rgba(249,115,22,.2);color:#FDBA74;border-color:rgba(249,115,22,.6)}
+.stq-d.wait{background:transparent;color:var(--muted);border-color:var(--line2);border-style:dashed}
+.stq-d.na,.stq-d.off{background:transparent;color:#3E4458;border-color:#23283A}
+.stq-d.off{text-decoration:line-through}
+
+/* 범례 — 목록 위 한 줄 */
+.stq-legend{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem .8rem;margin:0 0 .45rem;font-size:.68rem;color:var(--muted)}
+.stq-legend span{display:inline-flex;align-items:center;gap:.25rem}
+.stq-legend .stq-d:empty{width:.75rem;height:.75rem}
+.stq-legend-sep{color:var(--line2)}
+.stq-legend-hint{color:var(--accent2)}
+
+/* 결과 링크 입력칸 — 행 아래 펼침 */
+.stq-res{margin:0 .6rem .55rem;padding:.6rem .7rem;border:1px solid rgba(139,92,246,.35);border-radius:10px;
+  background:linear-gradient(180deg,rgba(139,92,246,.08),transparent 70%),#10131C;display:flex;flex-direction:column;gap:.35rem}
+.stq-res-h{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;font-size:.72rem;color:var(--ink2)}
+.stq-res-h b{color:var(--ink);font-size:.78rem}
+.stq-res-hint{color:var(--muted);font-size:.66rem}
+.stq-res-x{margin-left:auto;padding:.15rem .5rem}
+.stq-res-row{display:grid;grid-template-columns:minmax(6rem,9rem) repeat(3,minmax(0,1fr)) auto;gap:.4rem;
+  align-items:center;padding:.3rem .35rem;border-radius:8px}
+.stq-res-row.focus{background:rgba(139,92,246,.1)}
+.stq-res-row.off{opacity:.5}
+.stq-res-name{font-size:.74rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  display:flex;gap:.3rem;align-items:center}
+.stq-res-name em{font-style:normal;font-size:.6rem;color:var(--muted);border:1px solid var(--line2);border-radius:999px;padding:0 .35rem}
+.stq-res-f{display:flex;align-items:center;gap:.3rem;min-width:0;background:#12151D;border:1px solid var(--line2);
+  border-radius:7px;padding:.12rem .35rem;transition:border-color .2s}
+.stq-res-f:focus-within{border-color:var(--accent)}
+.stq-res-f input{flex:1;min-width:0;background:transparent;border:0;outline:none;color:var(--ink);
+  font-family:var(--mono);font-size:.68rem;padding:.22rem 0}
+.stq-res-save{padding:.3rem .75rem;font-size:.7rem}
+.stq-res-msg{font-size:.68rem;color:#6EE7B7}
+@media (max-width:900px){
+  .stq-res-row{grid-template-columns:1fr}
+  .stq-mem,.stq-mem-id{max-width:12rem}
+}
+
+/* 변경일시는 둘째 줄로 — 인플 열을 넓힌 뒤(2026-09-29) '변경 09.29 14:00' 이 옆 칸(인원)과 겹쳤다 */
+.stq-row-when .stq-chg{display:block;font-size:.66rem}

@@ -19,6 +19,7 @@
 
 import { staffIdentity } from './_staff-auth.js';
 import { escFormula } from './_admin-auth.js';
+import { saveResultLinks } from './_result-links.js';
 
 const KEY = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const BASE = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
@@ -171,6 +172,7 @@ async function buildQueue() {
       storeId: (f['매장코드'] || [])[0] || '',
       inflIds: f['XHS_ID_'] || [],
       leadId: (f['대표인플'] || [])[0] || '',
+      team: one(f['팀명생성기']),   // 진행_DB_OLD(인플별 건)와 잇는 유일한 키 — 결과 링크 표시·입력에 쓴다
     };
   });
 
@@ -395,6 +397,50 @@ async function actRemove(body) {
   return { ok: true, removedChildren };
 }
 
+/* ── 인플별 결과 링크 현황 (2026-09-29) ──────────────────────────────
+   예약발송 목록은 팀(예약입력_DB) 단위지만 결과 링크는 인플별 건(진행_DB_OLD)에 있다.
+   둘을 잇는 건 팀명생성기 문자열뿐이라, 인플별 건을 키로 묶어 내려주고 화면이 팀에 붙인다.
+   ⚠️ 호출 비용: 인플별 건 3개월치 ≈ 1,500건 = 15회 호출. 목록의 60초 자동 새로고침에는
+   태우지 않는다(화면이 열 때·⟳·저장 후에만 부른다). 여러 담당자가 동시에 열어도
+   한 번만 읽게 60초 캐시를 둔다 — fresh=1 이면 캐시를 건너뛴다. */
+const RES_TTL = 60 * 1000;
+let resCache = null;   // { at, data }
+const nospace = (v) => String(v || '').replace(/\s/g, '');
+
+async function buildResults(fresh) {
+  if (!fresh && resCache && Date.now() - resCache.at < RES_TTL) return resCache.data;
+  // 인플별 건의 정산월은 팀과 다를 수 있다 — 이월·당김으로 개인 건만 앞달로 옮긴 경우(8월 팀의 7월 건 36개 실측).
+  // 그래서 팀 목록보다 한 달 앞까지 읽는다.
+  const m3 = currentMonths3();
+  const prev = MONTH_RE.exec(m3[0]);
+  const months = [prev ? fmtMonth(Number(prev[1]), Number(prev[2]) - 1) : '', ...m3].filter(Boolean);
+  const formula = `AND({팀명생성기}!='',OR(${months.map((m) => `{정산월}='${escFormula(m)}'`).join(',')},IS_AFTER({예약일시},NOW())))`;
+  const recs = await fetchAll(T_PROGRESS, {
+    formula,
+    fields: ['팀명생성기', 'XHS_ID_', 'XHS_ID', '진행상태', 'XHS_Result', 'DP_Result', 'DY_Result', 'XHS_건수', 'DP_건수'],
+  });
+  const kids = {};
+  recs.forEach((r) => {
+    const f = r.fields;
+    const key = nospace(one(f['팀명생성기']));
+    if (!key) return;
+    (kids[key] = kids[key] || []).push({
+      id: r.id,
+      infl: (f['XHS_ID_'] || [])[0] || '',   // INFL_DB 레코드 ID — 팀의 inflIds 와 맞춰 키 겹침(같은 매장·날·대표인플)을 가른다
+      name: one(f['XHS_ID']),
+      st: one(f['진행상태']),
+      x: one(f['XHS_Result']),
+      d: one(f['DP_Result']),
+      y: one(f['DY_Result']),
+      nx: Number(f['XHS_건수']) || 0,
+      nd: Number(f['DP_건수']) || 0,
+    });
+  });
+  const data = { at: new Date().toISOString(), kids };
+  resCache = { at: Date.now(), data };
+  return data;
+}
+
 /* ── 핸들러 ── */
 export default async function handler(req, res) {
   const who = staffIdentity(req, res);
@@ -407,6 +453,10 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
+      if (req.query?.mode === 'results') {
+        res.status(200).json(await buildResults(req.query?.fresh === '1'));
+        return;
+      }
       res.status(200).json({ ...(await buildQueue()), who });
       return;
     }
@@ -421,6 +471,12 @@ export default async function handler(req, res) {
         confirmChange: actConfirmChange,
         cancel: actCancel,
         remove: actRemove,
+        // 결과 링크 저장 — 인플별 건(진행_DB_OLD)에 쓴다. 규칙은 진도 보드와 공용(_result-links.js)
+        result: async (b) => {
+          const out = await saveResultLinks({ at, fetchAll, table: T_PROGRESS, body: b });
+          resCache = null;   // 방금 쓴 값이 다음 조회에 바로 보이게
+          return out;
+        },
       };
       const fn = map[body.action];
       if (!fn) { res.status(400).json({ error: '알 수 없는 요청입니다.' }); return; }
@@ -431,6 +487,6 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'GET, POST');
     res.status(405).json({ error: 'Method Not Allowed' });
   } catch (e) {
-    res.status(e.status || 500).json({ error: e.message || '처리 중 오류가 발생했습니다.' });
+    res.status(e.status || 500).json({ error: e.message || '처리 중 오류가 발생했습니다.', dup: e.dup });
   }
 }

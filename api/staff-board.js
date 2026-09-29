@@ -24,6 +24,7 @@
 
 import { staffIdentity } from './_staff-auth.js';
 import { escFormula } from './_admin-auth.js';
+import { saveResultLinks } from './_result-links.js';
 
 const KEY = process.env.TAMLINK_API_KEY || process.env.AIRTABLE_API_KEY;
 const BASE = process.env.TAMLINK_BASE_ID || 'appdsAV2ewZWCkyIa';
@@ -477,35 +478,10 @@ export default async function handler(req, res) {
 
       /* 결과물 링크 직접 입력 (Owner 2026-08-24) — 전달링크로 안 오고 담당자가
          받아 적는 경우가 많다. 진행_DB_OLD 의 Result 3필드에 쓴다.
-         '제출상태'는 formula 라 XHS_Result 가 차면 자동으로 제출완료가 된다.
-         규칙: 빈 칸 = 안 건드림, '-' = 지움(null), 그 외 = http(s) URL 만 허용. */
+         규칙·검사는 _result-links.js 공용 (2026-09-29 — 예약발송 화면과 같은 규칙):
+         빈 칸 = 유지, '-' = 지움, 공유 문구에서 URL 추출, 칸 뒤바뀜·프로필 차단, 중복은 409(force 로 저장). */
       if (body.action === 'result') {
-        const id = String(body.id || '');
-        if (!/^rec[A-Za-z0-9]{14}$/.test(id)) {
-          res.status(400).json({ error: '레코드가 올바르지 않습니다.' });
-          return;
-        }
-        const MAP = { rx: 'XHS_Result', rd: 'DP_Result', ry: 'DY_Result' };
-        const fields = {};
-        for (const [k, fname] of Object.entries(MAP)) {
-          if (body[k] === undefined) continue;
-          const v = String(body[k] || '').trim();
-          if (v === '') continue;                    // 빈 칸 = 기존 값 유지
-          if (v === '-') { fields[fname] = null; continue; }   // '-' = 지움
-          if (!/^https?:\/\//.test(v)) {
-            res.status(400).json({ error: `${fname}: http(s) 로 시작하는 링크만 저장할 수 있습니다. (지우려면 - 입력)` });
-            return;
-          }
-          fields[fname] = v.slice(0, 1000);
-        }
-        if (!Object.keys(fields).length) {
-          res.status(400).json({ error: '저장할 링크가 없습니다.' });
-          return;
-        }
-        await at(`/${encodeURIComponent(T_PROGRESS)}/${id}`, {
-          method: 'PATCH', body: JSON.stringify({ fields, typecast: false }),
-        });
-        res.status(200).json({ ok: true, saved: Object.keys(fields) });
+        res.status(200).json(await saveResultLinks({ at, fetchAll, table: T_PROGRESS, body }));
         return;
       }
 
@@ -516,6 +492,6 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'GET, POST');
     res.status(405).json({ error: 'Method Not Allowed' });
   } catch (e) {
-    res.status(e.status || 500).json({ error: e.message || '처리 중 오류가 발생했습니다.' });
+    res.status(e.status || 500).json({ error: e.message || '처리 중 오류가 발생했습니다.', dup: e.dup });
   }
 }

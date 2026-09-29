@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { staffHeaders } from '../lib/staffKey';
 import DateTime30 from '../components/DateTime30';
@@ -31,6 +31,55 @@ const TABS = [
 function platTag(plat, dflt) {
   if (!plat || plat === '샤오홍슈' || plat === '따종디엔핑') return dflt;
   return ({ 인스타그램: '인스타', 틱톡: '틱톡', 유튜브: '유튜브' }[plat] || plat);
+}
+
+/* ── 인플별 결과 링크 표시 (2026-09-29, Owner 설계) ─────────────────────
+   목록은 팀 단위지만 결과 링크는 인플별 건에 있다 → 아이디마다 아래에 3칸 블록:
+   1칸 샤오홍슈(XHS_Result) · 2칸 따종(DP_Result) · 3칸 틱톡/더우인(DY_Result).
+   블록을 누르면 행 아래에 그 팀 인플 전원의 입력칸이 펼쳐진다.
+   아이디 자체는 누르게 하지 않는다 — 담당자가 아이디를 복사해 위챗·샤오홍슈에서 찾기 때문. */
+const RES_KEYS = ['x', 'd', 'y'];
+const RES_API = { x: 'rx', d: 'rd', y: 'ry' };
+const RES_NAME = { x: '샤오홍슈', d: '따종', y: '틱톡' };
+
+/** 블록 칸 글자 — 기본은 小·大·抖, 계약 플랫폼이 바뀌었으면 첫 글자(인·틱·유) */
+function dotLabel(k, it) {
+  if (k === 'y') return '抖';
+  const plat = k === 'x' ? it.platX : it.platD;
+  if (!plat || plat === '샤오홍슈' || plat === '따종디엔핑') return k === 'x' ? '小' : '大';
+  return ({ 인스타그램: '인', 틱톡: '틱', 유튜브: '유' }[plat] || plat.slice(0, 1));
+}
+
+/** 칸 상태 — done 업로드 · need 방문 지났는데 비어 있음 · wait 방문 전 · na 해당 없음 · off 취소·노쇼 */
+function dotState(m, k, it) {
+  if (CANCELLED.includes(m.st)) return 'off';
+  if (m[k]) return 'done';
+  const need = k === 'x' ? (m.nx || Number(it.nx) || 0) > 0
+    : k === 'd' ? (m.nd || Number(it.nd) || 0) > 0
+      : false;   // 틱톡(더우인)은 건수 필드가 없다 — 들어오면 초록, 아니면 해당 없음
+  if (!need) return 'na';
+  const t = Date.parse(it.whenRaw || '');
+  return Number.isFinite(t) && t > Date.now() ? 'wait' : 'need';
+}
+const DOT_WORD = { done: '업로드됨', need: '미업로드', wait: '방문 전', na: '해당 없음', off: '취소·노쇼' };
+
+// 서버(api/_press.js extractLinks)와 같은 규칙 — 붙여넣은 공유 문구에서 URL 만
+const URL_RE = /https?:\/\/[A-Za-z0-9\-._~:/?#[\]@!$&*+,;=%]+/g;
+function urlsIn(text) {
+  const out = [];
+  for (const m of String(text || '').replace(/\s/g, ' ').matchAll(URL_RE)) {
+    m[0].split(/(?=https?:\/\/)/).forEach((u) => { const c = u.replace(/[.,;:!?*]+$/, ''); if (c.length > 10) out.push(c); });
+  }
+  return out;
+}
+/** 도메인으로 본 칸 — 서버 _result-links.js platformOf 와 같은 판정 */
+function resKeyOf(url) {
+  let h = '';
+  try { h = new URL(url).hostname.toLowerCase(); } catch { return ''; }
+  if (/(^|\.)xhslink\.(cn|com)$/.test(h) || /(^|\.)xiaohongshu\.com$/.test(h)) return 'x';
+  if (/(^|\.)dpurl\.cn$/.test(h) || /(^|\.)dianping\.com$/.test(h) || /(^|\.)meituan\.com$/.test(h)) return 'd';
+  if (/(^|\.)douyin\.com$/.test(h) || /(^|\.)iesdouyin\.com$/.test(h)) return 'y';
+  return '';
 }
 
 function tabOf(it) {
@@ -85,6 +134,62 @@ export default function StaffQueuePage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  /* 인플별 결과 링크 현황 — 인플별 건(진행_DB_OLD) 3개월치라 호출이 무겁다(≈15회).
+     그래서 처음 열 때·⟳·저장 후에만 부른다. 아래 60초 자동 새로고침에는 태우지 않는다. */
+  const [kids, setKids] = useState(null);   // { 팀키(공백 제거): [인플별 건] } | null(불러오는 중·실패)
+  const loadResults = useCallback(async (fresh) => {
+    try {
+      const res = await fetch(`/api/staff-queue?mode=results${fresh ? '&fresh=1' : ''}`, { headers: staffHeaders() });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) setKids(body.kids || {});
+    } catch { /* 실패하면 아이디만 글자로 보인다 — 발송 업무는 막지 않는다 */ }
+  }, []);
+  useEffect(() => { loadResults(false); }, [loadResults]);
+
+  /** 팀 → 인플별 건. 팀키만으로는 같은 매장·날·대표인플인 다른 팀과 겹친다(3.4% 실측) → 인플 ID 로 가른다 */
+  const membersOf = useCallback((it) => {
+    if (!kids || !it.team) return null;
+    const all = kids[it.team.replace(/\s/g, '')] || [];
+    if (!all.length) return null;
+    const ids = it.inflIds || [];
+    const mine = all.filter((k) => ids.includes(k.infl));
+    const list = mine.length ? mine : all;
+    return [...list].sort((a, b) => ids.indexOf(a.infl) - ids.indexOf(b.infl));
+  }, [kids]);
+
+  /** 결과 링크 저장 — 중복이면 서버가 409 로 멈춘다. 확인받고 force 로 다시 보낸다 */
+  const saveResult = useCallback(async (childId, vals) => {
+    const post = (extra) => fetch('/api/staff-queue', {
+      method: 'POST',
+      headers: staffHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ action: 'result', id: childId, ...vals, ...extra }),
+    });
+    let r = await post();
+    let j = await r.json().catch(() => ({}));
+    if (r.status === 409 && j.dup && window.confirm(`${j.error}
+
+그래도 저장할까요?`)) {
+      r = await post({ force: true });
+      j = await r.json().catch(() => ({}));
+    }
+    if (!r.ok) throw new Error(j.error || `저장 실패 (${r.status})`);
+    // 방금 쓴 값을 바로 반영 — 전체를 다시 읽지 않는다(무겁다)
+    setKids((prev) => {
+      if (!prev) return prev;
+      const next = {};
+      for (const [key, arr] of Object.entries(prev)) {
+        next[key] = arr.map((m) => {
+          if (m.id !== childId) return m;
+          const upd = { ...m };
+          RES_KEYS.forEach((k) => { if (j.values && j.values[RES_API[k]] !== undefined) upd[k] = j.values[RES_API[k]]; });
+          return upd;
+        });
+      }
+      return next;
+    });
+    return j;
+  }, []);
 
   // 60초 자동 새로고침 — 봇 대기가 안 빠지는 걸(봇 에러) 사람이 바로 보게.
   // 탭이 백그라운드면 쉰다.
@@ -213,7 +318,7 @@ export default function StaffQueuePage() {
             {data?.who && <span className="stq-who">{data.who}</span>}
           </div>
           <div className="stq-nav">
-            <button className="stq-ghost" onClick={load} title="새로고침">⟳</button>
+            <button className="stq-ghost" onClick={() => { load(); loadResults(true); }} title="새로고침 (결과 링크 현황 포함)">⟳</button>
           </div>
         </header>
 
@@ -266,11 +371,26 @@ export default function StaffQueuePage() {
           // 내 차례·봇 대기 = 발송문 중심 카드 / 확정·진행·취소·전체 = 컴팩트 행
           (tab === 'ok' || tab === 'cancel' || tab === 'all')
             ? (
-              <div className="stq-rows">
-                {items.map((it) => (
-                  <ListRow key={it.id} it={it} busy={busyId === it.id} h={handlersFor(it)} />
-                ))}
-              </div>
+              <>
+                <div className="stq-legend">
+                  <span><i className="stq-d done">小</i>샤오홍슈</span>
+                  <span><i className="stq-d done">大</i>따종</span>
+                  <span><i className="stq-d done">抖</i>틱톡</span>
+                  <span className="stq-legend-sep">—</span>
+                  <span><i className="stq-d done" />업로드</span>
+                  <span><i className="stq-d need" />방문 후 미업로드</span>
+                  <span><i className="stq-d wait" />방문 전</span>
+                  <span><i className="stq-d na" />해당 없음</span>
+                  <span className="stq-legend-hint">아이디 아래 블록을 누르면 링크 입력</span>
+                  {!kids && <span className="stq-legend-hint">· 결과 현황 불러오는 중…</span>}
+                </div>
+                <div className="stq-rows">
+                  {items.map((it) => (
+                    <ListRow key={it.id} it={it} busy={busyId === it.id} h={handlersFor(it)}
+                      members={membersOf(it)} onSaveResult={saveResult} />
+                  ))}
+                </div>
+              </>
             )
             : (
               <div className="stq-grid">
@@ -421,8 +541,9 @@ function ActionButtons({ t, it, busy, h }) {
 }
 
 /* 컴팩트 행 — 확정·진행처럼 "볼 일 많고 액션 적은" 상태용. 클릭하면 발송문 펼침 */
-function ListRow({ it, busy, h }) {
+function ListRow({ it, busy, h, members, onSaveResult }) {
   const [open, setOpen] = useState(false);
+  const [resFocus, setResFocus] = useState('');   // 결과 입력칸 — 연 경우 처음 누른 인플별 건 ID
   const t = tabOf(it);
   const msg = msgOf(it);
   return (
@@ -438,12 +559,37 @@ function ListRow({ it, busy, h }) {
         <span className="stq-row-cnt">
           {it.pax !== '' ? `${it.pax}명` : '—'} · {platTag(it.platX, '小')}{it.nx === '' ? 0 : it.nx} {platTag(it.platD, '大')}{it.nd === '' ? 0 : it.nd}
         </span>
-        {/* 인플 아이디를 접기 전에도 보여 준다 — 취소·변경 대상을 여기서 바로 고른다 */}
-        <span className="stq-row-infl" title={it.infls}>{it.infls || '—'}</span>
+        {/* 인플 아이디를 접기 전에도 보여 준다 — 취소·변경 대상을 여기서 바로 고른다.
+            결과 현황을 불러왔으면 아이디마다 아래에 3칸 블록(小·大·抖)을 붙인다 */}
+        {members ? (
+          <span className="stq-row-infl stq-mems">
+            {members.map((m) => (
+              <span key={m.id} className={`stq-mem ${CANCELLED.includes(m.st) ? 'off' : ''}`}>
+                <span className="stq-mem-id" title={m.name}>{m.name || '—'}</span>
+                <button
+                  type="button"
+                  className="stq-dots"
+                  title={RES_KEYS.map((k) => `${RES_NAME[k]}: ${DOT_WORD[dotState(m, k, it)]}`).join(' · ') + ' — 눌러서 링크 입력'}
+                  onClick={(e) => { e.stopPropagation(); setResFocus(m.id); }}
+                >
+                  {RES_KEYS.map((k) => (
+                    <i key={k} className={`stq-d ${dotState(m, k, it)}`}>{dotLabel(k, it)}</i>
+                  ))}
+                </button>
+              </span>
+            ))}
+          </span>
+        ) : (
+          <span className="stq-row-infl" title={it.infls}>{it.infls || '—'}</span>
+        )}
         <span className="stq-row-btns" onClick={(e) => e.stopPropagation()}>
           <ActionButtons t={t} it={it} busy={busy} h={h} />
         </span>
       </div>
+      {resFocus && members && (
+        <ResultPanel it={it} members={members} focusId={resFocus} onSave={onSaveResult}
+          onClose={() => setResFocus('')} />
+      )}
       {open && (
         <div className="stq-row-detail">
           {it.infls && <div className="stq-infls">{it.infls}</div>}
@@ -451,6 +597,110 @@ function ListRow({ it, busy, h }) {
           {msg && <pre className="stq-row-msg">{msg}</pre>}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── 결과 링크 입력칸 — 행 아래에 펼친다(모달이 아니라서 여러 팀을 연달아 넣어도 목록 위치를 안 잃는다) ──
+   칸에 이미 있는 링크를 채워 보여주고, 바뀐 칸만 보낸다. 비우면 지움(확인 후).
+   공유 문구를 통째로 붙여넣으면 URL 만 뽑아 도메인대로 샤오홍슈·따종·틱톡 칸에 나눠 넣는다. */
+function ResultPanel({ it, members, focusId, onSave, onClose }) {
+  const [drafts, setDrafts] = useState(() => Object.fromEntries(
+    members.map((m) => [m.id, { x: m.x || '', d: m.d || '', y: m.y || '' }]),
+  ));
+  const [busy, setBusy] = useState('');
+  const [msg, setMsg] = useState('');
+  const refs = useRef({});
+
+  // 누른 인플의 첫 빈 칸으로 커서 — 이미 열려 있을 때 다른 인플 블록을 눌러도 그쪽으로 옮긴다
+  useEffect(() => {
+    const d = drafts[focusId] || {};
+    const k = RES_KEYS.find((x) => !d[x]) || 'x';
+    refs.current[`${focusId}:${k}`]?.focus();
+    // drafts 는 일부러 뺀다 — 입력할 때마다 커서가 튀면 안 된다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusId]);
+
+  const setVal = (mid, k, v) => setDrafts((p) => ({ ...p, [mid]: { ...p[mid], [k]: v } }));
+
+  function onPaste(e, mid, k) {
+    const urls = urlsIn(e.clipboardData?.getData('text') || '');
+    if (!urls.length) return;              // 링크가 아니면 브라우저 기본 붙여넣기
+    e.preventDefault();
+    const routed = {};
+    urls.forEach((u) => { const p = resKeyOf(u); if (p && !routed[p]) routed[p] = u; });
+    const next = { ...drafts[mid] };
+    if (Object.keys(routed).length) Object.assign(next, routed);
+    else next[k] = urls[0];                 // 모르는 도메인(인스타 등) = 누른 칸에
+    setDrafts((p) => ({ ...p, [mid]: next }));
+    const moved = Object.keys(routed).filter((x) => x !== k);
+    setMsg(moved.length ? `${moved.map((x) => RES_NAME[x]).join('·')} 칸으로 나눠 넣었습니다 — 확인 후 저장` : '');
+  }
+
+  async function save(m) {
+    const d = drafts[m.id];
+    const vals = {};
+    const cleared = [];
+    RES_KEYS.forEach((k) => {
+      const now = String(d[k] || '').trim();
+      if (now === String(m[k] || '')) return;
+      if (now === '') { vals[RES_API[k]] = '-'; cleared.push(RES_NAME[k]); } else vals[RES_API[k]] = now;
+    });
+    if (!Object.keys(vals).length) return;
+    if (cleared.length && !window.confirm(`${m.name} — ${cleared.join('·')} 링크를 지웁니다.`)) return;
+    setBusy(m.id); setMsg('');
+    try {
+      const j = await onSave(m.id, vals);
+      // 서버가 정리한 값(공유 문구에서 뽑은 URL)으로 칸을 맞춘다
+      setDrafts((p) => {
+        const cur = { ...p[m.id] };
+        RES_KEYS.forEach((k) => { if (j.values && j.values[RES_API[k]] !== undefined) cur[k] = j.values[RES_API[k]]; });
+        return { ...p, [m.id]: cur };
+      });
+      setMsg(`${m.name || '저장'} ✓ 저장했습니다`);
+    } catch (e) {
+      window.alert(e.message);
+    } finally {
+      setBusy('');
+    }
+  }
+
+  return (
+    <div className="stq-res" onClick={(e) => e.stopPropagation()}>
+      <div className="stq-res-h">
+        <b>결과 링크</b>
+        <span>{it.store} · {it.when || '—'}</span>
+        <span className="stq-res-hint">공유 문구를 통째로 붙여넣어도 됩니다 — 링크만 뽑아 칸을 나눠 넣습니다</span>
+        <button type="button" className="stq-ghost stq-res-x" onClick={onClose} title="닫기">✕</button>
+      </div>
+      {members.map((m) => {
+        const d = drafts[m.id] || {};
+        const changed = RES_KEYS.some((k) => String(d[k] || '').trim() !== String(m[k] || ''));
+        const off = CANCELLED.includes(m.st);
+        return (
+          <div key={m.id} className={`stq-res-row ${m.id === focusId ? 'focus' : ''} ${off ? 'off' : ''}`}>
+            <span className="stq-res-name" title={m.name}>{m.name || '—'}{off && <em>{m.st}</em>}</span>
+            {RES_KEYS.map((k) => (
+              <label key={k} className={`stq-res-f ${dotState(m, k, it)}`}>
+                <i className={`stq-d ${dotState(m, k, it)}`}>{dotLabel(k, it)}</i>
+                <input
+                  ref={(el) => { refs.current[`${m.id}:${k}`] = el; }}
+                  value={d[k] || ''}
+                  placeholder={`${RES_NAME[k]} 링크`}
+                  onChange={(e) => setVal(m.id, k, e.target.value)}
+                  onPaste={(e) => onPaste(e, m.id, k)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') save(m); }}
+                  spellCheck={false}
+                />
+              </label>
+            ))}
+            <button type="button" className="stq-primary stq-res-save" disabled={!changed || busy === m.id} onClick={() => save(m)}>
+              {busy === m.id ? '저장 중…' : '저장'}
+            </button>
+          </div>
+        );
+      })}
+      {msg && <div className="stq-res-msg">{msg}</div>}
     </div>
   );
 }
