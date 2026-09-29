@@ -262,6 +262,11 @@ Campaign_DB ±1개월 + 계약이 문 진행 건 + CS_DB 정보 조인.
 - `confirmChange` (변경요청에서만) / `cancel {kind: 취소_방문자|취소_고객사|노쇼, memo?}`
 - `remove` — 예약요청&미발송 + 자식 전원 예약요청일 때만, 자식 동반 삭제
 
+### GET `/api/staff-queue?since=<ISO>` — 변경분 새로고침 (2026-09-29)
+`IS_AFTER(LAST_MODIFIED_TIME(), since)` 로 그 뒤 바뀐 예약입력_DB 만 → `{delta:true, at, items[+inWindow]}` (보통 0건·1회 호출).
+화면: 60초마다 이것(since 2분 겹침), 15분마다·⟳ 는 전체(`at` 동봉). 삭제·lookup 변경은 전체에서만 맞춰진다.
+목록은 지우지 않고 바뀐 행만 교체(같은 내용은 이전 객체 유지 → 행 memo), 화면엔 150건씩.
+
 ### GET `/api/staff-queue?mode=results[&fresh=1]` — 인플별 결과 링크 현황 (2026-09-29)
 `{at, kids{팀키(공백 제거): [{id,infl,name,st,x,d,y,nx,nd}]}}` — 진행_DB_OLD 를 팀명생성기로 묶은 것. 60초 서버 캐시(fresh=1 이면 건너뜀).
 화면은 목록의 `team`·`inflIds` 로 팀에 붙인다. **목록의 60초 자동 새로고침에는 태우지 않는다**(≈15회 호출) — 처음·⟳·저장 후만.

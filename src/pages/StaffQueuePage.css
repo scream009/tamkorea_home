@@ -240,3 +240,13 @@
 
 /* 변경일시는 둘째 줄로 — 인플 열을 넓힌 뒤(2026-09-29) '변경 09.29 14:00' 이 옆 칸(인원)과 겹쳤다 */
 .stq-row-when .stq-chg{display:block;font-size:.66rem}
+
+/* 갱신 표시 · 더 보기 (2026-09-29) — 새로고침 때 목록을 지우지 않으니 '지금 맞춘 시각'을 작게 보여준다 */
+.stq-nav{display:flex;align-items:center;gap:.5rem}
+.stq-upd{font-size:.66rem;color:var(--muted);font-family:var(--mono)}
+.stq-more{display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;margin-top:.5rem;
+  padding:.55rem;background:var(--panel);border:1px dashed var(--line2);border-radius:10px;color:var(--ink2);
+  font-size:.76rem;font-weight:700;cursor:pointer;font-family:inherit;transition:border-color .2s,color .2s}
+.stq-more:hover{border-color:var(--accent);color:var(--ink)}
+.stq-more b{color:var(--accent2)}
+.stq-more span{font-weight:500;color:var(--muted);font-size:.68rem}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, memo, useDeferredValue } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { staffHeaders } from '../lib/staffKey';
 import DateTime30 from '../components/DateTime30';
@@ -105,6 +105,59 @@ function isoToLocal(iso) {
   return new Date(t.getTime() + 9 * 3600 * 1000).toISOString().slice(0, 16);
 }
 
+/* ── 새로고침·렌더 부하 줄이기 (2026-09-29) ─────────────────────────────
+   실측: 60초마다 전체(708건·8회 호출·553KB)를 받아 목록을 지웠다 다시 그렸다 → 화면 멈춤 332~430ms,
+   보이는 탭 하나가 시간당 Airtable 480회. → 60초는 '바뀐 것만'(보통 0건·1회), 15분마다 전체.
+   화면엔 150건씩만 그리고, 바뀌지 않은 행은 같은 객체를 유지해 다시 그리지 않는다. */
+const FULL_EVERY = 15 * 60 * 1000;   // 전체 새로고침 주기 — 삭제·다른 테이블 값 변경은 변경분으로 안 잡혀 이걸로 맞춘다
+const OVERLAP = 2 * 60 * 1000;       // 변경분 조회를 2분 겹쳐 묻는다 — 조회 사이 틈 방지
+const PAGE = 150;                    // 한 번에 그리는 행 수
+const NO_KIDS = [];
+const nospace = (v) => String(v || '').replace(/\s/g, '');
+
+/** 전체 조회 결과를 받되, 내용이 같은 건은 이전 객체를 그대로 — 그 행은 다시 그리지 않는다 */
+function keepSame(prev, next) {
+  if (!prev?.items) return next;
+  const old = new Map(prev.items.map((x) => [x.id, x]));
+  const items = (next.items || []).map((x) => {
+    const o = old.get(x.id);
+    return o && JSON.stringify(o) === JSON.stringify(x) ? o : x;
+  });
+  return { ...next, items };
+}
+
+/** 변경분을 합친다 — 목록 범위를 벗어난 건(inWindow=false)은 뺀다. 아무것도 안 바뀌면 prev 그대로(재렌더 없음) */
+function mergeDelta(prev, delta) {
+  if (!prev?.items) return prev;
+  const map = new Map(prev.items.map((x) => [x.id, x]));
+  let changed = false;
+  delta.forEach(({ inWindow, ...it }) => {
+    const o = map.get(it.id);
+    if (!inWindow) { if (o) { map.delete(it.id); changed = true; } return; }
+    if (o && JSON.stringify(o) === JSON.stringify(it)) return;
+    map.set(it.id, it);
+    changed = true;
+  });
+  if (!changed) return prev;
+  const items = [...map.values()].sort((a, b) => String(b.created).localeCompare(String(a.created)));
+  return { ...prev, items };
+}
+
+/** 행 하나에 쓸 버튼 동작 — actions(한 번만 만든 것)에 이 행을 묶는다 */
+function bindActions(actions, it) {
+  const h = {};
+  Object.keys(actions).forEach((k) => { h[k] = () => actions[k](it); });
+  return h;
+}
+
+/** 팀 → 인플별 건. 팀키만으로는 같은 매장·날·대표인플인 다른 팀과 겹친다(3.4% 실측) → 인플 ID 로 가른다 */
+function pickMembers(it, arr) {
+  if (!arr || !arr.length) return null;
+  const ids = it.inflIds || [];
+  const mine = arr.filter((k) => ids.includes(k.infl));
+  const list = mine.length ? mine : arr;
+  return [...list].sort((a, b) => ids.indexOf(a.infl) - ids.indexOf(b.infl));
+}
 export default function StaffQueuePage() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
@@ -117,21 +170,53 @@ export default function StaffQueuePage() {
   const [busyId, setBusyId] = useState('');
   const [modal, setModal] = useState(null);   // {kind:'modify'|'cancel', item}
   const [toast, setToast] = useState('');
+  const [refreshing, setRefreshing] = useState(false);   // 뒤에서 갱신 중 — 목록은 그대로 둔다
+  const [updatedAt, setUpdatedAt] = useState('');        // 마지막으로 서버와 맞춘 시각(표시용)
+  const lastAt = useRef('');    // 서버 기준 마지막 조회 시각(ISO) — 변경분 조회의 기준
+  const lastFull = useRef(0);   // 마지막 전체 조회(브라우저 시각)
 
+  /* 전체 조회 — 처음·⟳·15분마다. ⚠️ 목록을 지우지 않는다(2026-09-29): 예전엔 60초마다 목록 708행을
+     '불러오는 중…'으로 지웠다가 다시 그려 화면이 멈추고, 펼쳐 둔 결과 입력칸·쓰던 링크가 날아갔다.
+     바뀌지 않은 건은 이전 객체를 그대로 둬서(keepSame) 그 행은 다시 그리지 않는다. */
   const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
+    setRefreshing(true);
     try {
       const res = await fetch('/api/staff-queue', { headers: staffHeaders() });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `서버 오류 (${res.status})`);
-      setData(body);
+      setData((prev) => keepSame(prev, body));
+      lastAt.current = body.at || '';
+      lastFull.current = Date.now();
+      setUpdatedAt(new Date().toTimeString().slice(0, 5));
+      setError('');
     } catch (e) {
       setError(e.message || '불러오지 못했습니다.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
+
+  /* 변경분 조회 — 60초마다. '그 뒤로 바뀐 것만' 1회 호출(보통 0건). 15분 지났거나 기준 시각이 없으면 전체로.
+     조회 사이 틈은 2분 겹쳐 묻는다(같은 건이 또 와도 내용이 같으면 무시). 실패해도 목록은 그대로 두고 다음 회차에 다시. */
+  const refresh = useCallback(async () => {
+    if (!lastAt.current || Date.now() - lastFull.current > FULL_EVERY) { await load(); return; }
+    setRefreshing(true);
+    try {
+      const since = new Date(Date.parse(lastAt.current) - OVERLAP).toISOString();
+      const res = await fetch(`/api/staff-queue?since=${encodeURIComponent(since)}`, { headers: staffHeaders() });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `서버 오류 (${res.status})`);
+      lastAt.current = body.at || lastAt.current;
+      if ((body.items || []).length) setData((prev) => mergeDelta(prev, body.items));
+      setUpdatedAt(new Date().toTimeString().slice(0, 5));
+      setError('');
+    } catch (e) {
+      setError(`자동 새로고침 실패 — 목록은 마지막 상태입니다 (${e.message || '연결 오류'})`);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [load]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -147,16 +232,6 @@ export default function StaffQueuePage() {
   }, []);
   useEffect(() => { loadResults(false); }, [loadResults]);
 
-  /** 팀 → 인플별 건. 팀키만으로는 같은 매장·날·대표인플인 다른 팀과 겹친다(3.4% 실측) → 인플 ID 로 가른다 */
-  const membersOf = useCallback((it) => {
-    if (!kids || !it.team) return null;
-    const all = kids[it.team.replace(/\s/g, '')] || [];
-    if (!all.length) return null;
-    const ids = it.inflIds || [];
-    const mine = all.filter((k) => ids.includes(k.infl));
-    const list = mine.length ? mine : all;
-    return [...list].sort((a, b) => ids.indexOf(a.infl) - ids.indexOf(b.infl));
-  }, [kids]);
 
   /** 결과 링크 저장 — 중복이면 서버가 409 로 멈춘다. 확인받고 force 로 다시 보낸다 */
   const saveResult = useCallback(async (childId, vals) => {
@@ -177,16 +252,16 @@ export default function StaffQueuePage() {
     // 방금 쓴 값을 바로 반영 — 전체를 다시 읽지 않는다(무겁다)
     setKids((prev) => {
       if (!prev) return prev;
-      const next = {};
       for (const [key, arr] of Object.entries(prev)) {
-        next[key] = arr.map((m) => {
-          if (m.id !== childId) return m;
-          const upd = { ...m };
-          RES_KEYS.forEach((k) => { if (j.values && j.values[RES_API[k]] !== undefined) upd[k] = j.values[RES_API[k]]; });
-          return upd;
-        });
+        const i = arr.findIndex((m) => m.id === childId);
+        if (i < 0) continue;
+        const upd = { ...arr[i] };
+        RES_KEYS.forEach((k) => { if (j.values && j.values[RES_API[k]] !== undefined) upd[k] = j.values[RES_API[k]]; });
+        const na = arr.slice();
+        na[i] = upd;
+        return { ...prev, [key]: na };   // 이 팀 배열만 새 것 — 나머지 행은 그대로(다시 안 그림)
       }
-      return next;
+      return prev;
     });
     return j;
   }, []);
@@ -195,10 +270,10 @@ export default function StaffQueuePage() {
   // 탭이 백그라운드면 쉰다.
   useEffect(() => {
     const t = setInterval(() => {
-      if (document.visibilityState === 'visible') load();
+      if (document.visibilityState === 'visible') refresh();
     }, 60000);
     return () => clearInterval(t);
-  }, [load]);
+  }, [refresh]);
 
   function flash(msg) {
     setToast(msg);
@@ -217,13 +292,16 @@ export default function StaffQueuePage() {
       if (!res.ok) throw new Error(body.error || `처리 실패 (${res.status})`);
       flash(doneMsg);
       setModal(null);
-      await load();
+      if (payload.action === 'remove') {
+        setData((prev) => (prev ? { ...prev, items: prev.items.filter((x) => x.id !== payload.id) } : prev));
+      }
+      await refresh();
     } catch (e) {
       window.alert(e.message);
     } finally {
       setBusyId('');
     }
-  }, [load]);
+  }, [refresh]);
 
   const counts = useMemo(() => {
     const c = { todo: 0, bot: 0, ok: 0, cancel: 0, all: 0 };
@@ -240,6 +318,8 @@ export default function StaffQueuePage() {
      대신 발송대기(=지금 내 차례)가 남아 있으면 탭을 빨갛게 띄워 '까먹음'을 막는다 —
      그 안전장치가 이 화면의 존재 이유라서 숫자만 조용히 두지 않는다. */
 
+  const dSearch = useDeferredValue(search);
+  const dSearch2 = useDeferredValue(search2);
   const items = useMemo(() => {
     // 조건 두 개를 AND 로 건다 — '인플 + 매장' 같은 교차 필터가 필요하다(Owner 2026-08-21).
     // 각 조건은 매장·인플·예약ID 어디에 걸려도 통과시킨다(어느 칸에 뭘 넣을지 고민 안 하게).
@@ -247,20 +327,26 @@ export default function StaffQueuePage() {
       || it.store.toLowerCase().includes(q)
       || it.infls.toLowerCase().includes(q)
       || it.sid.toLowerCase().includes(q);
-    const q1 = search.trim().toLowerCase();
-    const q2 = search2.trim().toLowerCase();
+    const q1 = dSearch.trim().toLowerCase();
+    const q2 = dSearch2.trim().toLowerCase();
     return (data?.items || [])
       .filter((it) => !mgr || it.mgr === mgr)
       .filter((it) => tab === 'all' || tabOf(it) === tab)
       .filter((it) => hit(it, q1) && hit(it, q2));
-  }, [data, tab, mgr, search, search2]);
+  }, [data, tab, mgr, dSearch, dSearch2]);
 
-  /* 카드·행이 같은 액션을 쓴다 */
-  function handlersFor(it) {
-    return {
+  /* 화면에는 150건씩만 그린다 — 데이터는 전부 있어서 검색·탭은 전체에서 찾는다(날짜로 자르지 않는 이유:
+     결과 링크는 방문 2~6주 뒤 들어오는 게 많아 오래된 건도 찾아야 한다). 조건이 바뀌면 150으로 돌아간다. */
+  const viewKey = `${tab}|${mgr}|${dSearch}|${dSearch2}`;
+  const [lim, setLim] = useState({ key: '', n: PAGE });
+  const limit = lim.key === viewKey ? lim.n : PAGE;
+  const shown = items.slice(0, limit);
+
+  /* 카드·행이 같은 액션을 쓴다 — 한 번만 만든다(매 렌더 새 함수면 행 memo 가 무력해져 전 행을 다시 그린다) */
+  const actions = useMemo(() => ({
       // 예약 복사 — 팀 구성(매장·인플·담당·유형·인원·건수)을 신규입력 폼으로 가져간다.
       // 일시는 비워서 새로 찍게 한다. 같은 매장·날짜·인플 재접수는 서버 중복 가드가 잡는다.
-      copy: () => {
+      copy: (it) => {
         try {
           sessionStorage.setItem('tk_resv_copy', JSON.stringify({
             storeId: it.storeId, mgr: it.mgr, ty: it.ty,
@@ -272,15 +358,15 @@ export default function StaffQueuePage() {
         } catch { /* 저장 실패 시 빈 폼으로 열린다 */ }
         navigate('/staff/new?copy=1');
       },
-      send: () => {
+      send: (it) => {
         if (window.confirm(`[${it.store}] 예약 메시지를 발송할까요?\n예약봇이 다음 폴링에서 카톡을 보냅니다.`)) {
           act({ action: 'send', id: it.id }, '발송 대기열에 올렸습니다');
         }
       },
-      edit: () => setModal({ kind: 'edit', item: it }),
-      modify: () => setModal({ kind: 'modify', item: it }),
-      cancel: () => setModal({ kind: 'cancel', item: it }),
-      confirmChange: () => {
+      edit: (it) => setModal({ kind: 'edit', item: it }),
+      modify: (it) => setModal({ kind: 'modify', item: it }),
+      cancel: (it) => setModal({ kind: 'cancel', item: it }),
+      confirmChange: (it) => {
         // 참고: 봇은 변경 안내를 발송하면 자동으로 변경확정까지 처리한다(V6.3).
         // 이 버튼은 "안내 발송 없이" 확정만 할 때 쓴다.
         if (window.confirm(
@@ -290,12 +376,12 @@ export default function StaffQueuePage() {
           act({ action: 'confirmChange', id: it.id }, '변경확정 처리했습니다 (발송 없음)');
         }
       },
-      remove: () => {
+      remove: (it) => {
         if (window.confirm(`[${it.store}] 이 예약을 삭제할까요?\n발송된 적 없는 예약요청 건만 삭제되며, 분할된 진행 건도 함께 지워집니다.`)) {
           act({ action: 'remove', id: it.id }, '삭제했습니다');
         }
       },
-      unsend: () => {
+      unsend: (it) => {
         if (window.confirm(
           `[${it.store}] 발송 대기를 취소하고 되돌릴까요?\n\n`
           + `⚠️ 봇이 방금 집어간 직후라면 취소가 무시되고 발송될 수 있습니다.\n`
@@ -304,8 +390,7 @@ export default function StaffQueuePage() {
           act({ action: 'unsend', id: it.id }, '발송 대기에서 내렸습니다 — 확정·진행 탭으로 넘어가지 않는지 확인하세요');
         }
       },
-    };
-  }
+  }), [navigate, act]);
 
   return (
     <div className="stq-root">
@@ -318,7 +403,8 @@ export default function StaffQueuePage() {
             {data?.who && <span className="stq-who">{data.who}</span>}
           </div>
           <div className="stq-nav">
-            <button className="stq-ghost" onClick={() => { load(); loadResults(true); }} title="새로고침 (결과 링크 현황 포함)">⟳</button>
+            <span className="stq-upd">{refreshing ? '갱신 중…' : updatedAt ? `${updatedAt} 갱신` : ''}</span>
+            <button className="stq-ghost" onClick={() => { load(); loadResults(true); }} title="전체 새로고침 (결과 링크 현황 포함)">⟳</button>
           </div>
         </header>
 
@@ -362,12 +448,12 @@ export default function StaffQueuePage() {
         </div>
 
         {error && <div className="stq-error">{error}<button onClick={load}>다시 시도</button></div>}
-        {loading && <div className="stq-loading">불러오는 중…</div>}
-        {!loading && !error && items.length === 0 && (
+        {loading && !data && <div className="stq-loading">불러오는 중…</div>}
+        {data && items.length === 0 && (
           <div className="stq-empty">이 탭에 해당하는 건이 없습니다.</div>
         )}
 
-        {!loading && !error && items.length > 0 && (
+        {data && items.length > 0 && (
           // 내 차례·봇 대기 = 발송문 중심 카드 / 확정·진행·취소·전체 = 컴팩트 행
           (tab === 'ok' || tab === 'cancel' || tab === 'all')
             ? (
@@ -385,17 +471,23 @@ export default function StaffQueuePage() {
                   {!kids && <span className="stq-legend-hint">· 결과 현황 불러오는 중…</span>}
                 </div>
                 <div className="stq-rows">
-                  {items.map((it) => (
-                    <ListRow key={it.id} it={it} busy={busyId === it.id} h={handlersFor(it)}
-                      members={membersOf(it)} onSaveResult={saveResult} />
+                  {shown.map((it) => (
+                    <ListRow key={it.id} it={it} busy={busyId === it.id} actions={actions}
+                      kidsArr={kids ? (kids[nospace(it.team)] || NO_KIDS) : null} onSaveResult={saveResult} />
                   ))}
                 </div>
+                {items.length > shown.length && (
+                  <button type="button" className="stq-more" onClick={() => setLim({ key: viewKey, n: limit + PAGE })}>
+                    더 보기 <b>+{Math.min(PAGE, items.length - shown.length)}</b>
+                    <span>{items.length.toLocaleString()}건 중 {shown.length.toLocaleString()}건 표시</span>
+                  </button>
+                )}
               </>
             )
             : (
               <div className="stq-grid">
-                {items.map((it) => (
-                  <QueueCard key={it.id} it={it} busy={busyId === it.id} h={handlersFor(it)} />
+                {shown.map((it) => (
+                  <QueueCard key={it.id} it={it} busy={busyId === it.id} actions={actions} />
                 ))}
               </div>
             )
@@ -404,7 +496,7 @@ export default function StaffQueuePage() {
         <footer className="stq-foot">
           📤 발송대기 = 사람이 눌러야 할 것 (미발송 예약 + 차단·회수된 변경요청) ·
           🤖 봇 대기 = 자동발송체크 켜진 전부, 오래 머물면 예약봇 확인 ·
-          취소·노쇼 안내도 발송 전엔 봇 대기에 보임 · 60초마다 자동 새로고침 ·
+          취소·노쇼 안내도 발송 전엔 봇 대기에 보임 · 60초마다 바뀐 것만 새로고침(15분마다 전체) · 150건씩 표시, 검색은 전체에서 ·
           삭제 = 발송 전 예약요청만
         </footer>
       </div>
@@ -446,7 +538,8 @@ function msgOf(it) {
     ? it.chgMsg : it.msg;
 }
 
-function QueueCard({ it, busy, h }) {
+const QueueCard = memo(function QueueCard({ it, busy, actions }) {
+  const h = useMemo(() => bindActions(actions, it), [actions, it]);
   const [openMsg, setOpenMsg] = useState(false);
   const t = tabOf(it);
   const msg = msgOf(it);
@@ -483,7 +576,7 @@ function QueueCard({ it, busy, h }) {
       </div>
     </div>
   );
-}
+});
 
 /* 상태별 액션 — 분류는 "누구 차례"(todo/bot), 버튼은 진행상태로 세분한다.
    발송 전 예약엔 변경·취소가 아니라 전체 수정·삭제 (고객에게 나간 적 없음 — Owner 확정) */
@@ -541,7 +634,9 @@ function ActionButtons({ t, it, busy, h }) {
 }
 
 /* 컴팩트 행 — 확정·진행처럼 "볼 일 많고 액션 적은" 상태용. 클릭하면 발송문 펼침 */
-function ListRow({ it, busy, h, members, onSaveResult }) {
+const ListRow = memo(function ListRow({ it, busy, actions, kidsArr, onSaveResult }) {
+  const h = useMemo(() => bindActions(actions, it), [actions, it]);
+  const members = useMemo(() => pickMembers(it, kidsArr), [it, kidsArr]);
   const [open, setOpen] = useState(false);
   const [resFocus, setResFocus] = useState('');   // 결과 입력칸 — 연 경우 처음 누른 인플별 건 ID
   const t = tabOf(it);
@@ -599,7 +694,7 @@ function ListRow({ it, busy, h, members, onSaveResult }) {
       )}
     </div>
   );
-}
+});
 
 /* ── 결과 링크 입력칸 — 행 아래에 펼친다(모달이 아니라서 여러 팀을 연달아 넣어도 목록 위치를 안 잃는다) ──
    칸에 이미 있는 링크를 채워 보여주고, 바뀐 칸만 보낸다. 비우면 지움(확인 후).

@@ -137,48 +137,76 @@ async function buildQueue() {
     + `{진행상태}='예약요청',{진행상태}='긴급예약',{진행상태}='변경요청',`
     + `IS_AFTER({예약일시},NOW()),`
     + `{자동발송체크}=TRUE())`;   // 봇 대기(체크된 것)는 상태·월 무관 전부 — 봇 차례 탭의 완전성
+  const at = new Date().toISOString();   // 이 시각 이후 바뀐 것만 다음 번에 묻는다(변경분 새로고침)
   const recs = await fetchAll(T_ENTRY, { formula, fields: ENTRY_FIELDS });
-
-  const items = recs.map((r) => {
-    const f = r.fields;
-    return {
-      id: r.id,
-      sid: one(f['Shoot_ID']),
-      mgr: one(f['예약_ID']),
-      ty: one(f['유형']),
-      st: one(f['진행상태']),
-      mon: one(f['정산월']),
-      store: `${one(f['고객명'])} ${one(f['지점명'])}`.trim() || one(f['매장코드_텍스트']),
-      when: kstDT(f['예약일시']),
-      whenRaw: f['예약일시'] || '',   // 수정 모달 프리필용 (ISO)
-      chgWhen: kstDT(f['변경일시']),
-      chgWhenRaw: f['변경일시'] || '',   // 변경 모달 프리필용 (ISO) — 이미 변경된 건은 이걸 기준으로 다시 고친다
-      pax: f['총인원'] ?? '',
-      chgPax: f['변경인원'] ?? '',
-      nx: f['XHS_건수'] ?? '',
-      platX: one(f['XHS_플랫폼']) || '',
-      platD: one(f['DP_플랫폼']) || '',
-      nd: f['DP_건수'] ?? '',
-      infls: allJoin(f['XHS_ID']).slice(0, 120),
-      leadWc: one(f['WC_ID (from 대표인플)']),
-      paxMemo: one(f['인원메모']),
-      clientMemo: one(f['고객전달메모']),
-      note: one(f['비고']),
-      msg: String(f['예약메시지'] || ''),
-      chgMsg: String(f['변경메시지'] || ''),
-      sent: f['자동발송체크'] ? 1 : 0,
-      created: f['Created time'] || '',
-      // 복사(프리필)용 링크 ID
-      storeId: (f['매장코드'] || [])[0] || '',
-      inflIds: f['XHS_ID_'] || [],
-      leadId: (f['대표인플'] || [])[0] || '',
-      team: one(f['팀명생성기']),   // 진행_DB_OLD(인플별 건)와 잇는 유일한 키 — 결과 링크 표시·입력에 쓴다
-    };
-  });
-
+  const items = recs.map(toItem);
   // 최근 만든 것 먼저 — 발송 대기는 보통 방금 입력한 건이다
   items.sort((a, b) => String(b.created).localeCompare(String(a.created)));
-  return { months, items };
+  return { months, items, at };
+}
+
+/** 위 목록 조회식과 같은 판정을 JS 로 — 변경분 중 목록 범위를 벗어난 건을 화면에서 빼기 위해 */
+function inWindow(f, months) {
+  const st = one(f['진행상태']);
+  const when = Date.parse(f['예약일시'] || '');
+  return months.includes(one(f['정산월']))
+    || ['예약요청', '긴급예약', '변경요청'].includes(st)
+    || (Number.isFinite(when) && when > Date.now())
+    || !!f['자동발송체크'];
+}
+
+/* ── 변경분 새로고침 (2026-09-29) ─────────────────────────────
+   60초마다 목록 전체(≈700건 = 8회 호출·553KB)를 다시 받던 것을 '그 뒤로 바뀐 것만'으로 바꾼다 — 보통 0~몇 건, 1회 호출.
+   예약입력_DB 변경은 하루 수 건(실측: 24시간 4건 · 72시간 14건)이라 거의 빈 응답이다.
+   한계: ① 삭제는 '바뀐 건'으로 안 잡힌다 ② 다른 테이블 값(매장명 lookup 등) 변경도 안 잡힌다
+   → 화면이 15분마다 전체를 한 번 다시 받는다. 조회 사이 틈은 화면이 since 를 2분 앞당겨 겹쳐 묻는다. */
+const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
+async function buildDelta(since) {
+  if (!ISO_RE.test(since)) throw Object.assign(new Error('since 형식이 올바르지 않습니다.'), { status: 400 });
+  const months = currentMonths3();
+  const at = new Date().toISOString();
+  const recs = await fetchAll(T_ENTRY, {
+    formula: `IS_AFTER(LAST_MODIFIED_TIME(), DATETIME_PARSE('${escFormula(since)}'))`,
+    fields: ENTRY_FIELDS,
+  });
+  return { delta: true, at, items: recs.map((r) => ({ ...toItem(r), inWindow: inWindow(r.fields, months) })) };
+}
+
+function toItem(r) {
+  const f = r.fields;
+  return {
+    id: r.id,
+    sid: one(f['Shoot_ID']),
+    mgr: one(f['예약_ID']),
+    ty: one(f['유형']),
+    st: one(f['진행상태']),
+    mon: one(f['정산월']),
+    store: `${one(f['고객명'])} ${one(f['지점명'])}`.trim() || one(f['매장코드_텍스트']),
+    when: kstDT(f['예약일시']),
+    whenRaw: f['예약일시'] || '',   // 수정 모달 프리필용 (ISO)
+    chgWhen: kstDT(f['변경일시']),
+    chgWhenRaw: f['변경일시'] || '',   // 변경 모달 프리필용 (ISO) — 이미 변경된 건은 이걸 기준으로 다시 고친다
+    pax: f['총인원'] ?? '',
+    chgPax: f['변경인원'] ?? '',
+    nx: f['XHS_건수'] ?? '',
+    platX: one(f['XHS_플랫폼']) || '',
+    platD: one(f['DP_플랫폼']) || '',
+    nd: f['DP_건수'] ?? '',
+    infls: allJoin(f['XHS_ID']).slice(0, 120),
+    leadWc: one(f['WC_ID (from 대표인플)']),
+    paxMemo: one(f['인원메모']),
+    clientMemo: one(f['고객전달메모']),
+    note: one(f['비고']),
+    msg: String(f['예약메시지'] || ''),
+    chgMsg: String(f['변경메시지'] || ''),
+    sent: f['자동발송체크'] ? 1 : 0,
+    created: f['Created time'] || '',
+    // 복사(프리필)용 링크 ID
+    storeId: (f['매장코드'] || [])[0] || '',
+    inflIds: f['XHS_ID_'] || [],
+    leadId: (f['대표인플'] || [])[0] || '',
+    team: one(f['팀명생성기']),   // 진행_DB_OLD(인플별 건)와 잇는 유일한 키 — 결과 링크 표시·입력에 쓴다
+  };
 }
 
 /* ── 액션 공통 ── */
@@ -455,6 +483,10 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       if (req.query?.mode === 'results') {
         res.status(200).json(await buildResults(req.query?.fresh === '1'));
+        return;
+      }
+      if (req.query?.since) {
+        res.status(200).json({ ...(await buildDelta(String(req.query.since))), who });
         return;
       }
       res.status(200).json({ ...(await buildQueue()), who });
