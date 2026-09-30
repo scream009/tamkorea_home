@@ -42,6 +42,7 @@ import AdminFlyerPage from './pages/AdminFlyerPage';
 import AdminReviewsPage from './pages/AdminReviewsPage';
 import AdminPressPage from './pages/AdminPressPage';
 import StaffPressPage from './pages/StaffPressPage';
+import StaffDocPage from './pages/StaffDocPage';
 import './components/AdminShell.css';
 import './App.css';
 
@@ -68,6 +69,7 @@ function App() {
           <Route path="/staff/casting" element={<StaffGate><StaffShell><StaffCastingPage /></StaffShell></StaffGate>} />
           <Route path="/staff/cards" element={<StaffGate><StaffShell><StaffCardsPage /></StaffShell></StaffGate>} />
           <Route path="/staff/press" element={<StaffGate><StaffShell><StaffPressPage /></StaffShell></StaffGate>} />
+          <Route path="/staff/doc/:key" element={<StaffGate><StaffShell><StaffDocPage /></StaffShell></StaffGate>} />
           {/* 정산·계약 데이터 화면은 게이트 뒤에 둔다. 서버(_admin-auth.js)가 실제로 막고,
               이 래퍼는 키 입력 UI 를 준다. /admin/clients-link 는 자체 키 폼이 이미 있다. */}
           {/* 관리자 화면은 AdminShell(왼쪽 메뉴) 안에 둔다 — 화면이 늘어도 네비는 한 곳에서만 정의된다 */}

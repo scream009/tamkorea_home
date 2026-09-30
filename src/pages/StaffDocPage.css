@@ -1,0 +1,16 @@
+/* 담당자 문서 뷰어 — StaffShell 상단 메뉴(2단, 약 84px) 아래를 문서가 채운다.
+   색은 StaffShell 의 --snv-* 팔레트를 쓴다. 문서 자체 배경은 iframe 안 문서가 정한다. */
+.sdoc { width: 100%; }
+.sdoc-frame {
+  display: block;
+  width: 100%;
+  height: calc(100dvh - 84px);
+  border: 0;
+  background: var(--snv-bg);
+}
+.sdoc-msg { padding: 32px 16px; text-align: center; color: var(--snv-muted); font-size: 15px; }
+.sdoc-err { color: var(--snv-ink2); }
+
+@media (max-width: 640px) {
+  .sdoc-frame { height: calc(100dvh - 76px); }
+}
