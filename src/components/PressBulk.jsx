@@ -64,6 +64,18 @@ function whereText(list, total) {
 }
 
 const REC_RE = /^rec[A-Za-z0-9]{14}$/;
+// 서버 등록 태그 `[기자 대량등록 2026-10-01 14:20 who]` → 등록된 링크 목록의 묶음 키(api/_press.js registered 와 같은 규칙)
+const TAG_RE = /\[기자 대량등록 (\d{4}-\d{2}-\d{2} \d{2}:\d{2}) ([^\]]*)\]/;
+const groupOfTag = (tag) => { const m = TAG_RE.exec(String(tag || '')); return m ? `bulk:${m[1]} ${m[2]}` : ''; };
+
+/** 새 탭으로 여는 링크 — 눌리는 링크로 보이게 밑줄·↗ (담당자가 텍스트로 알고 안 눌렀다, 2026-10-01) */
+function Ext({ href, children }) {
+  return (
+    <a href={href} target="_blank" rel="noreferrer" title="새 탭에서 열기">
+      <span>{children}</span><i aria-hidden="true">↗</i>
+    </a>
+  );
+}
 
 export default function PressBulk({ apiPath, headers, variant = 'admin' }) {
   const [params] = useSearchParams();
@@ -82,6 +94,9 @@ export default function PressBulk({ apiPath, headers, variant = 'admin' }) {
   const [busy, setBusy] = useState('');             // '' | 'preview' | 'create'
   const [err, setErr] = useState('');
   const [done, setDone] = useState(null);
+  const [reg, setReg] = useState(null);             // 이 계약에 이미 등록된 링크 { campaignId, items }
+  const [regErr, setRegErr] = useState('');
+  const regWant = useRef('');                        // 계약을 빨리 바꿔 누르면 늦게 온 옛 응답을 버린다
 
   const load = useCallback(async () => {
     setLoadErr('');
@@ -101,6 +116,30 @@ export default function PressBulk({ apiPath, headers, variant = 'admin' }) {
 
   const store = useMemo(() => (stores || []).find((s) => s.id === storeId) || null, [stores, storeId]);
   const camp = useMemo(() => (store?.contracts || []).find((c) => c.id === campId) || null, [store, campId]);
+
+  // 담당자 요청(2026-10-01): "누구까지 업로드했는지 몰라 다시 돌아가서 찾아봐야 한다"
+  // → 정산월을 고르면 그 계약에 이미 걸린 기자 링크를 바로 보여준다. 등록 직후에도 다시 읽는다.
+  const loadReg = useCallback(async (id) => {
+    regWant.current = id;
+    setRegErr('');
+    if (!id) { setReg(null); return; }
+    try {
+      const d = await api('POST', { action: 'registered', campaignId: id });
+      if (regWant.current === id) setReg(d);
+    } catch (e) {
+      if (regWant.current === id) { setReg(null); setRegErr(e.message); }
+    }
+  }, [api]);
+  useEffect(() => { loadReg(campId); }, [campId, loadReg]);
+
+  // 최신 묶음이 위 — 서버가 등록순으로 번호를 매겨 보내므로 묶음 순서만 뒤집는다
+  const regGroups = useMemo(() => {
+    if (!reg || reg.campaignId !== campId) return null;
+    const g = new Map();
+    reg.items.forEach((x) => { if (!g.has(x.group)) g.set(x.group, []); g.get(x.group).push(x); });
+    return [...g].map(([key, items]) => ({ key, items })).reverse();
+  }, [reg, campId]);
+  const justGroup = done && done.camp.id === campId ? groupOfTag(done.tag) : '';
 
   const shown = useMemo(() => {
     const k = q.replace(/\s/g, '').toLowerCase();
@@ -157,9 +196,10 @@ export default function PressBulk({ apiPath, headers, variant = 'admin' }) {
       setDone(d);
       setText(''); resetCheck();
       load();   // 실적(rollup) 새로 읽기
+      loadReg(camp.id);   // 방금 넣은 묶음이 '등록된 링크' 맨 위에 보이게
     } catch (e) {
       setErr(e.message);
-      if (e.data?.created) { setPreview(null); load(); }
+      if (e.data?.created) { setPreview(null); load(); loadReg(camp.id); }
     } finally {
       setBusy('');
     }
@@ -233,6 +273,55 @@ export default function PressBulk({ apiPath, headers, variant = 'admin' }) {
                 )}
               </div>
 
+              {camp && (
+                <div className="apr-card">
+                  <h2>
+                    이 달 등록된 링크
+                    {regGroups && <span className="apr-reg-n">{reg.items.length}건</span>}
+                  </h2>
+                  {regErr && <div className="apr-error">{regErr}</div>}
+                  {!regGroups && !regErr && <div className="apr-empty">불러오는 중…</div>}
+                  {regGroups && !regGroups.length && <div className="apr-empty">아직 등록된 링크가 없습니다.</div>}
+                  {regGroups && regGroups.length > 0 && (
+                    <>
+                      <div className="apr-reg">
+                        {regGroups.map((g) => {
+                          const h = g.items[0];
+                          const just = g.key === justGroup;
+                          const range = g.items.length > 1 ? `${g.items[0].n}~${g.items[g.items.length - 1].n}번` : `${h.n}번`;
+                          return (
+                            <div key={g.key}>
+                              <div className={`apr-reg-gh${just ? ' just' : ''}`}>
+                                <span>
+                                  {just && <b>방금 등록 · </b>}
+                                  {h.bulkAt ? `${h.bulkAt.slice(5)} 등록${h.by ? ` · ${h.by}` : ''}` : `${(h.at || '').slice(5, 10) || '날짜 없음'} 직접 입력`}
+                                </span>
+                                <span>{range} · {g.items.length}건</span>
+                              </div>
+                              {g.items.map((x) => (
+                                <div key={x.id} className={`apr-reg-tr${just ? ' just' : ''}`}>
+                                  <span className="apr-no">{x.n}</span>
+                                  <span className="apr-link">
+                                    {x.url ? <Ext href={x.url}>{x.url.replace(/^https?:\/\//, '')}</Ext> : <small>링크 없음</small>}
+                                  </span>
+                                  <span className="apr-reg-meta">
+                                    {x.posted && `게시 ${x.posted.slice(5)}`}
+                                    {x.status && x.status !== '촬영완료' && <em>{x.status}</em>}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <p className="apr-hint apr-reg-tip">
+                        받은 목록을 통째로 다시 붙여넣어도 됩니다 — 여기 있는 링크는 확인 단계에서 '이미 있음'으로 빠집니다.
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+
               <div className="apr-card">
                 <h2><i>2</i> 링크 붙여넣기</h2>
                 <textarea
@@ -275,7 +364,7 @@ export default function PressBulk({ apiPath, headers, variant = 'admin' }) {
                         <span className="apr-no">{x.i}</span>
                         <span className={`apr-st ${STATUS[x.status].cls}`}>{STATUS[x.status].label}</span>
                         <span className="apr-link">
-                          <a href={x.url} target="_blank" rel="noreferrer">{x.url}</a>
+                          <Ext href={x.url}>{x.url}</Ext>
                           <small>
                             {x.status === 'dupDb' && whereText(x.where, x.whereN)}
                             {x.status === 'dupPaste' && `${x.firstAt}번 줄과 같은 영상`}

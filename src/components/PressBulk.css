@@ -92,14 +92,35 @@
 .apr-st.warn{color:var(--warn);background:var(--warn-bg)}
 .apr-st.bad{color:var(--bad);background:var(--bad-bg)}
 .apr-link{display:flex;flex-direction:column;gap:2px;min-width:0}
-.apr-link a{font-family:var(--mono);font-size:12px;color:var(--accent2);text-decoration:none;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.apr-link a:hover{text-decoration:underline}
+/* 링크는 눌리는 것처럼 보여야 한다 — 밑줄(옅게)+↗. 긴 주소는 글자만 말줄임, ↗ 는 남긴다 */
+.apr-link a{display:inline-flex;align-items:center;gap:5px;align-self:flex-start;max-width:100%;
+  font-family:var(--mono);font-size:12px;color:var(--accent2);text-decoration:none}
+.apr-link a span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  text-decoration:underline;text-decoration-color:rgba(196,181,253,.35);text-underline-offset:3px;transition:text-decoration-color .2s}
+.apr-link a i{font-style:normal;font-size:11px;opacity:.65;flex:none}
+.apr-link a:hover span{text-decoration-color:currentColor}
+.apr-link a:hover i{opacity:1}
 .apr-link small{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
 .apr-tr.dupDb small,.apr-tr.bad small{color:#FCA5A5}
 .apr-x{width:26px;height:26px;border-radius:7px;border:1px solid transparent;background:transparent;
   color:var(--muted);font-size:16px;line-height:1;cursor:pointer;transition:all .2s}
 .apr-x:hover:not(:disabled){color:var(--bad);border-color:rgba(239,68,68,.45);background:var(--bad-bg)}
+
+/* 이 달 등록된 링크 — 묶음 머리줄은 스크롤해도 위에 붙는다. 방금 등록한 묶음은 초록 */
+.apr-reg-n{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--accent2);
+  background:rgba(139,92,246,.14);border-radius:999px;padding:1px 9px}
+.apr-reg{max-height:340px;overflow-y:auto;border:1px solid var(--line);border-radius:10px}
+.apr-reg-gh{position:sticky;top:0;z-index:1;display:flex;justify-content:space-between;gap:10px;
+  padding:7px 12px;background:#1A1E29;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--ink2)}
+.apr-reg-gh span:last-child{font-family:var(--mono);color:var(--muted);white-space:nowrap}
+.apr-reg-gh.just{background:#14271F;color:var(--ok)}
+.apr-reg-tr{display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:8px;
+  padding:6px 12px;border-bottom:1px solid #1C202B;transition:background .2s}
+.apr-reg-tr:hover{background:#191D28}
+.apr-reg-tr.just{background:rgba(52,211,153,.05)}
+.apr-reg-meta{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);white-space:nowrap}
+.apr-reg-meta em{font-style:normal;color:var(--warn);background:var(--warn-bg);border-radius:6px;padding:0 6px}
+.apr-reg-tip{margin:10px 0 0;line-height:1.6}
 
 .apr-warn{margin:10px 0 0;font-size:12px;color:var(--warn);line-height:1.6}
 .apr-error{padding:10px 14px;border:1px solid rgba(239,68,68,.5);background:rgba(239,68,68,.08);
@@ -118,6 +139,7 @@
   .apr-grid{grid-template-columns:1fr}
   .apr-side{position:static;max-height:260px}
   .apr-tr{grid-template-columns:26px 64px minmax(0,1fr) 28px;gap:6px}
+  .apr-reg-tr{grid-template-columns:26px minmax(0,1fr) auto;gap:6px;padding:6px 10px}
   .apr-card{padding:14px}
 }
 

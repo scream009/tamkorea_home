@@ -16,6 +16,7 @@
  * GET                        → 고객사 목록 + 매장별 계약(월·기자 목표·실적)
  * POST {action:'preview', campaignId, text}          → 추출·판정 결과 (쓰기 없음)
  * POST {action:'create',  campaignId, text, expect}  → 같은 판정을 서버에서 다시 돌려 '신규'만 생성
+ * POST {action:'registered', campaignId}             → 이 계약에 이미 걸린 기자 링크 (쓰기 없음)
  *
  * 쓰는 필드 (진행_DB_OLD) — 기존 수동 입력 관례(기자 585건 실측)를 따른다:
  *   매장코드·정산월·**귀속 정산월(캠페인 직결)**·유형=기자·진행상태=촬영완료·예약_ID=FB·XHS_Result·비고(등록 태그)
@@ -325,7 +326,8 @@ async function create(body, who) {
   if (!fresh.length) throw Object.assign(new Error('등록할 신규 링크가 없습니다.'), { status: 400 });
 
   const tag = `[기자 대량등록 ${kstStamp()} ${who}]`;
-  const records = fresh.map((x) => ({
+  // 태그 뒤 #순번 = 붙여넣은 순서. 생성 시각이 초 단위라 한 묶음이 같은 시각이 되어 순서가 사라진다(2026-10-01 실측)
+  const records = fresh.map((x, k) => ({
     fields: {
       매장코드: [a.camp.storeId],
       정산월: a.camp.month,
@@ -334,7 +336,7 @@ async function create(body, who) {
       진행상태: '촬영완료',
       예약_ID: 'FB',
       XHS_Result: x.url,
-      비고: tag,
+      비고: `${tag} #${k + 1}`,
     },
   }));
 
@@ -355,6 +357,58 @@ async function create(body, who) {
     }
   }
   return { ok: true, created: created.length, camp: a.camp, tag };
+}
+
+/* ══════════════ 이 계약에 이미 등록된 기자 링크 ══════════════
+   담당자 요청(2026-10-01): "누구까지 올렸는지 몰라 다시 돌아가서 찾아봐야 한다" — 등록하면 입력칸이 비워지고
+   건수만 남아서다. 실적 숫자(기자_실적 rollup)와 같은 기준으로 보여준다 = '귀속 정산월' 로 이 계약에 걸린 기자 레코드.
+   Campaign_DB 의 역링크(진행_DB_OLD)로 찾는다 — 인플·체험도 섞여 있어 유형으로 한 번 더 거른다.
+   묶음(group) = 대량등록 태그 단위. 태그 없는 옛 직접 입력은 등록 날짜 단위. */
+const TAG_RE = /\[기자 대량등록 (\d{4}-\d{2}-\d{2} \d{2}:\d{2}) ([^\]]*)\]/;
+const SEQ_RE = /\]\s*#(\d+)/;      // 태그 뒤 붙여넣은 순번 (2026-10-01 이후 등록분만 — 그 전 묶음 안 순서는 복구 불가)
+const LINK_CHUNK = 40;
+
+async function registered(campaignId) {
+  if (!isRec(campaignId)) throw Object.assign(new Error('계약을 선택해 주세요.'), { status: 400 });
+  const d = await at(`/${encodeURIComponent(T_CAMPAIGN)}/${campaignId}`);
+  const ids = (Array.isArray(d.fields?.[T_PROGRESS]) ? d.fields[T_PROGRESS] : []).filter(isRec);
+
+  const chunks = [];
+  for (let k = 0; k < ids.length; k += LINK_CHUNK) chunks.push(ids.slice(k, k + LINK_CHUNK));
+  const recs = (await mapLimit(chunks, 3, (ch) => fetchAll(T_PROGRESS, {
+    formula: `AND(OR(${ch.map((id) => `RECORD_ID()='${id}'`).join(',')}), OR({유형}&''='기자', {유형}&''='기자단'))`,
+    fields: ['XHS_Result', 'Created time', '비고', '진행상태'],
+  }))).flat();
+
+  const items = recs.map((r) => {
+    const f = r.fields;
+    const link = extractLinks(f['XHS_Result'])[0] || '';
+    const c = link ? classify(link) : null;
+    const memo = String(f['비고'] || '');
+    const tag = TAG_RE.exec(memo);
+    const created = String(f['Created time'] || '');
+    return {
+      id: r.id,
+      url: c && !c.bad ? c.url : link,
+      posted: c?.note ? postedAt(c.note) : '',        // 긴 주소만 — 단축링크는 풀어야 알아서 목록에선 생략
+      created,
+      at: created ? kstStamp(new Date(created)) : '',
+      group: tag ? `bulk:${tag[1]} ${tag[2]}` : `day:${created ? kstDate(created) : '?'}`,
+      by: tag ? tag[2] : '',
+      bulkAt: tag ? tag[1] : '',
+      status: one(f['진행상태']),
+      seq: Number(SEQ_RE.exec(memo)?.[1]) || 0,
+    };
+  });
+  // 등록 순서대로 번호를 매긴다 — "몇 번째까지 올렸나"를 번호로 말할 수 있게.
+  // 묶음은 첫 생성 시각 순. 묶음 안은 생성 시각(10건씩 차례로 만들어 뒤 조각이 늦다) → 같은 초면 붙여넣은 순번.
+  // 시각을 먼저 보는 이유: 같은 분에 두 번 등록하면 묶음 키가 같아져 순번 1 이 둘이 된다
+  const first = new Map();
+  items.forEach((x) => { if (!first.has(x.group) || x.created < first.get(x.group)) first.set(x.group, x.created); });
+  items.sort((p, q) => first.get(p.group).localeCompare(first.get(q.group)) || p.group.localeCompare(q.group)
+    || p.created.localeCompare(q.created) || p.seq - q.seq || p.id.localeCompare(q.id));
+  items.forEach((x, k) => { x.n = k + 1; delete x.seq; });
+  return { campaignId, items };
 }
 
 /* ══════════════ 목록 ══════════════ */
@@ -408,6 +462,7 @@ export async function pressHandler(req, res, who) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
       if (body.action === 'preview') { res.status(200).json(await analyze(body.campaignId, body.text)); return; }
       if (body.action === 'create') { res.status(200).json(await create(body, who)); return; }
+      if (body.action === 'registered') { res.status(200).json(await registered(body.campaignId)); return; }
       res.status(400).json({ error: '알 수 없는 요청입니다.' });
       return;
     }
