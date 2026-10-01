@@ -39,8 +39,39 @@ const OUT_FIELDS = ['키', '매장코드', '리뷰ID', '리뷰일시', '별점',
   '손님댓글수', '손님댓글_구조', '댓글대응', '질문상태', '질문_원문', '질문_한글', '질문_답글안', '질문_답글안_한글',
   '사장님답변', '질문_최종중문', '질문_최종한글', '질문통보시각',
   // 담당자 교정(2026-10-01 Owner: "교정 전후를 저장해 정기적으로 읽어 와 번역·추천답글 만들 때 참고")
-  '교정전_중문', '번역_수정', '교정메모', '교정처리'];
+  '교정전_중문', '번역_수정', '교정메모', '교정처리', '교정요약', '교정반영일', '교정자'];
 const normCn = (s) => String(s || '').replace(/\s+/g, '');
+// 교정 규칙 표(답글규칙_DB) — 상태만 여기서 바꾼다. 사용 = 다음 초안의 AI 지시에 들어간다(PC C 가 회차마다 읽음).
+const RULE_TBL = '답글규칙_DB';
+const RULE_STATES = new Set(['사용', '초안', '폐기']);
+const LEARN_FIELDS = ['키', '매장코드', '작성자', '등급', '상태', '리뷰일시', '승인자', '승인시각', '교정자', '교정메모',
+  '교정처리', '교정요약', '교정반영일', '교정전_중문', '초안_중문', '최종_중문', '번역', '번역_수정'];
+
+/**
+ * 교정 반영 현황(Owner 2026-10-01: "교정에 반영되는 내용도 요약되어서 시스템에서 같이 볼 수 있도록").
+ * 반영 = PC C 가 하루 한 번(02:00, 초안 전) AI 원안과 비교해 요약을 적은 것. 대기 = 고쳤지만 아직 그 회차 전.
+ */
+function learningOf(ruleRows, rows, days = 60) {
+  const corrections = rows.map((r) => ({ id: r.id, ...r.fields }))
+    .filter((f) => f['교정전_중문'] || f['번역_수정'] || (f['최종_중문'] && f['초안_중문'] && normCn(f['최종_중문']) !== normCn(f['초안_중문'])))
+    .map((f) => ({
+      id: f.id, key: f['키'], slug: f['매장코드'], who: f['교정자'] || f['승인자'] || '', grade: f['등급'] || '',
+      at: f['승인시각'] || f['리뷰일시'] || '', reflectedAt: f['교정반영일'] || '', status: f['교정처리'] || '',
+      summary: f['교정요약'] || '', memo: f['교정메모'] || '',
+      before: f['교정전_중문'] || f['초안_중문'] || '', after: f['최종_중문'] || '',
+      trBefore: f['번역_수정'] ? (f['번역'] || '') : '', trAfter: f['번역_수정'] || '',
+    }))
+    .sort((a, b) => String(b.reflectedAt || '9999').localeCompare(String(a.reflectedAt || '9999')) || String(b.at).localeCompare(String(a.at)));
+  const rules = ruleRows.map((r) => ({
+    id: r.id, rid: r.fields['규칙ID'] || '', state: r.fields['상태'] || '', use: r.fields['적용'] || '',
+    slug: r.fields['매장코드'] || '', grade: r.fields['등급'] || '', kind: r.fields['종류'] || '',
+    text: r.fields['지시'] || '', terms: r.fields['바꿀말'] || '', ban: r.fields['금지말'] || '',
+    exBefore: r.fields['예시_원안'] || '', exAfter: r.fields['예시_수정'] || '',
+    evidence: String(r.fields['근거'] || '').split('\n').filter((x) => x.trim()).length,
+    by: r.fields['등록자'] || '', day: r.fields['등록일'] || '', memo: r.fields['메모'] || '',
+  })).sort((a, b) => String(a.rid).localeCompare(String(b.rid)));
+  return { days, corrections, rules };
+}
 
 // ── 손님 질문 답글 (2026-10-01 · Owner 지시: ★3.5 이하 리뷰처럼 답글안 → 사장님 확인 → 승인 → 게시) ──
 //   사장님확인중 ─(사장님 답을 한글로 입력)→ 답변받음 ─(PC C 가 중문 채움)→ 중문확인 ─(승인)→ 승인
@@ -170,6 +201,15 @@ export default async function handler(req, res) {
         fetchAll('리뷰주간_DB', { fields: ['매장코드', '주차', '기간', '발송상태', '숨김', '첫주', '안내발송시각', '생성시각', 'PDF'] })
           .catch(() => []),
       ]);
+      // 교정 반영 현황 — 실패해도 승인 화면은 떠야 한다(표가 없거나 칸이 없으면 null)
+      const learning = await Promise.all([
+        fetchAll(RULE_TBL, {}),
+        fetchAll(TBL, {
+          fields: LEARN_FIELDS,
+          formula: `AND(${slug ? `{매장코드}='${escFormula(slug)}', ` : ''}IS_AFTER({리뷰일시}, DATEADD(TODAY(), -60, 'days')), `
+            + `OR({교정전_중문}!='', {번역_수정}!='', AND({최종_중문}!='', {초안_중문}!='')))`,
+        }),
+      ]).then(([ru, co]) => learningOf(ru, co)).catch((e) => { console.error('[admin-reviews] learning', e); return null; });
       const names = {};
       stores.forEach((s) => { const c = String(s.fields['DP_매장코드'] || '').trim(); if (c) names[c] = s.fields['매장명_검색용'] || s.fields['고객사명(필수)'] || c; });
       const items = rows.map((r) => ({ id: r.id, store: names[r.fields['매장코드']] || r.fields['매장코드'], ...r.fields }));
@@ -198,7 +238,7 @@ export default async function handler(req, res) {
             pdf: ((f['PDF'] || [])[0] || {}).url || '',
           });
         });
-      return res.status(200).json({ items, stores: storeRows, who, stats: replyStats(allRows, names), weekly });
+      return res.status(200).json({ items, stores: storeRows, who, stats: replyStats(allRows, names), weekly, learning });
     }
 
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -245,6 +285,18 @@ export default async function handler(req, res) {
 
     const id = String(body.id || '');
     if (!REC_RE.test(id)) return res.status(400).json({ error: 'bad id' });
+
+    // 교정 규칙 상태 — 사용으로 바꾸면 다음 초안부터 AI 지시에 들어간다(PC C 가 회차마다 표를 읽는다)
+    if (action === 'rule_state') {
+      const state = String(body.state || '');
+      if (!RULE_STATES.has(state)) return res.status(400).json({ error: 'state 는 사용·초안·폐기' });
+      const cur = await at('GET', `${RULE_TBL}/${id}`);
+      const memo = String(cur.fields?.['메모'] || '');
+      await at('PATCH', `${RULE_TBL}/${id}`, { fields: { '상태': state,
+        '메모': `${memo}${memo ? '\n' : ''}${kstDay(now)} ${who}: ${cur.fields?.['상태'] || '?'} → ${state}`.slice(-2000) }, typecast: true });
+      console.log('[admin-reviews] rule_state', who, cur.fields?.['규칙ID'], state);
+      return res.status(200).json({ ok: true, state });
+    }
 
     // 주간 리포트 숨김/복원 — 고객 대시보드·PDF 링크·금요일 메시지에서 뺀다(행은 지우지 않는다)
     if (action === 'weekly_hide') {
@@ -379,8 +431,20 @@ export default async function handler(req, res) {
       const draft = String(cur.fields?.['초안_중문'] || '');
       if (draft && normCn(fields['최종_중문']) !== normCn(draft) && !cur.fields?.['교정전_중문']) {
         fields['교정전_중문'] = draft;
+        fields['교정자'] = who;           // 처음 고친 사람 — 승인자와 다를 수 있다(예전엔 남지 않았다)
         if (!cur.fields?.['교정처리']) fields['교정처리'] = '미검토';
       }
+      // 이미 하루 반영을 거친 교정을 다시 고쳤으면 다음 회차에 다시 반영되게 반영일을 비운다
+      if (cur.fields?.['교정반영일'] && normCn(fields['최종_중문']) !== normCn(cur.fields?.['최종_중문'])) {
+        fields['교정반영일'] = null;
+      }
+    }
+    if (typeof fields['번역_수정'] === 'string' && cur.fields?.['교정반영일']
+        && normCn(fields['번역_수정']) !== normCn(cur.fields?.['번역_수정'])) {
+      fields['교정반영일'] = null;
+      if (!cur.fields?.['교정자']) fields['교정자'] = who;
+    } else if (typeof fields['번역_수정'] === 'string' && fields['번역_수정'] && !cur.fields?.['교정자']) {
+      fields['교정자'] = who;
     }
     if (!Object.keys(fields).length) return res.status(400).json({ error: '바꿀 내용 없음' });
     await at('PATCH', `${TBL}/${id}`, { fields, typecast: true });

@@ -237,3 +237,27 @@
 .rq-linkbtn b { color: var(--rq-info); }
 /* 리뷰 키 — 한 번 누르면 통째로 선택된다(목록 한 줄은 버튼이라 드래그 복사가 안 된다) */
 .rq-key { user-select: all; font-family: ui-monospace, Consolas, monospace; cursor: text; }
+/* 저장 안 된 수정 — 승인하면 같이 저장된다는 걸 알려 준다(별도 저장 단계 불필요) */
+.rq-dirty { font-size: 12px; color: var(--rq-warn); }
+/* 교정 반영 패널 (2026-10-01) — AI 가 배우는 것 */
+.rq-learn { display: grid; gap: 10px; margin-top: 10px; }
+.rq-learn-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 0; }
+.rq-learn-kpis b.warn { color: var(--rq-warn); }
+.rq-learn-h { margin: 6px 0 0; font-size: 14px; display: flex; gap: 8px; align-items: baseline; }
+.rq-rules, .rq-cors { display: grid; gap: 6px; }
+.rq-rule { background: var(--rq-inset); border: 1px solid var(--rq-line); border-left: 3px solid var(--rq-line); border-radius: 10px;
+  padding: 8px 10px; display: grid; gap: 4px; transition: border-color .2s; }
+.rq-rule.s-사용 { border-left-color: var(--rq-ok); }
+.rq-rule.s-초안 { border-left-color: var(--rq-warn); }
+.rq-rule.s-폐기 { opacity: .55; }
+.rq-rule-top { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.rq-rule-text { font-size: 13px; line-height: 1.55; }
+.rq-pill.r-사용 { color: var(--rq-ok); border-color: rgba(44, 201, 133, .45); }
+.rq-pill.r-초안 { color: var(--rq-warn); border-color: rgba(232, 163, 61, .45); }
+.rq-cor { background: var(--rq-inset); border: 1px solid var(--rq-line); border-radius: 10px; padding: 6px 10px; }
+.rq-cor.wait { border-style: dashed; }
+.rq-cor > summary { cursor: pointer; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 13px; list-style: none; }
+.rq-cor > summary::-webkit-details-marker { display: none; }
+.rq-cor-sum { flex-basis: 100%; color: var(--rq-ink); }
+.rq-cor-pre { margin: 6px 0; white-space: pre-wrap; font-family: inherit; font-size: 12px; color: var(--rq-mute); }
+@media (max-width: 768px) { .rq-learn-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

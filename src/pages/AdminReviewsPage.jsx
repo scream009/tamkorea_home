@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { adminHeaders } from '../lib/adminKey';
 import './AdminReviewsPage.css';
@@ -234,6 +234,86 @@ function WeeklyList({ rows, onHide, busy }) {
 }
 
 // 서버 값이 바뀌면 부모가 key 를 바꿔 다시 마운트한다(effect 로 state 를 덮지 않는다 — lint 규칙).
+// ── 교정 반영 (Owner 2026-10-01: "담당자 수정을 AI 추천글과 비교해 하루 한 번 교정에 반영 · 반영 내용도 요약해서 시스템에서") ──
+// PC C 가 매일 02:00(답글 초안 전) 새 교정을 AI 원안과 비교해 요약을 적는다(reply_rules.py daily).
+//   반영됨 = 그날 밤 초안부터 같은 매장·등급 사례로 AI 에 들어간다 · 대기 = 고쳤지만 아직 그 회차 전.
+// 규칙은 '사용' 만 AI 지시에 들어간다. 자동으로 생긴 규칙은 늘 '초안' — 여기서 사람이 사용으로 바꾼다.
+const RULE_STATE_ORDER = { 사용: 0, 초안: 1, 폐기: 2 };
+function LearningPanel({ data, store, onRule, busy, names }) {
+  if (!data) return <div className="rq-meta">교정 반영 현황을 불러오지 못했습니다(표·칸이 없거나 일시 오류).</div>;
+  const cors = data.corrections.filter((c) => !store || c.slug === store);
+  const done = cors.filter((c) => c.reflectedAt);
+  const wait = cors.filter((c) => !c.reflectedAt);
+  const rules = [...data.rules].filter((r) => !store || !r.slug || r.slug === store)
+    .sort((a, b) => (RULE_STATE_ORDER[a.state] ?? 9) - (RULE_STATE_ORDER[b.state] ?? 9) || a.rid.localeCompare(b.rid));
+  const live = rules.filter((r) => r.state === '사용').length;
+  const draft = rules.filter((r) => r.state === '초안').length;
+  return (
+    <div className="rq-learn">
+      <div className="rq-kpis rq-learn-kpis">
+        <div><span>AI 지시에 들어가는 규칙</span><b>{live}</b></div>
+        <div><span>확인 기다리는 규칙 초안</span><b className={draft ? 'warn' : ''}>{draft}</b></div>
+        <div><span>반영된 교정(최근 {data.days}일)</span><b>{done.length}</b></div>
+        <div><span>반영 대기(다음 02시)</span><b>{wait.length}</b></div>
+      </div>
+      <div className="rq-meta">반영된 교정은 같은 매장 → 같은 등급 → 최근 순으로 3건씩 다음 초안의 참고 사례가 됩니다. 수정하고 바로 승인하면 그대로 기록됩니다(따로 저장할 필요 없음).</div>
+
+      <h4 className="rq-learn-h">규칙 {rules.length}개</h4>
+      <div className="rq-rules">
+        {rules.map((r) => (
+          <div key={r.id} className={`rq-rule s-${r.state}`}>
+            <div className="rq-rule-top">
+              <span className={`rq-pill r-${r.state}`}>{r.state}</span>
+              <b>{r.rid}</b>
+              <span className="rq-meta">{r.kind} · {r.use}{r.slug ? ` · ${names[r.slug] || r.slug}` : ' · 전 매장'}{r.grade ? ` · ${r.grade}` : ''} · 근거 {r.evidence}건 · {r.by}</span>
+              <span className="rq-spacer" />
+              {r.state !== '사용' && (
+                <button className="rq-btn ok" disabled={busy === r.id}
+                        onClick={() => { if (window.confirm(`${r.rid} 를 사용합니다 — 다음 초안부터 AI 지시에 들어갑니다.\n\n${r.text}`)) onRule(r.id, '사용'); }}>사용으로</button>
+              )}
+              {r.state === '사용' && <button className="rq-btn" disabled={busy === r.id} onClick={() => onRule(r.id, '초안')}>초안으로</button>}
+              {r.state !== '폐기' && <button className="rq-btn bad" disabled={busy === r.id} onClick={() => onRule(r.id, '폐기')}>폐기</button>}
+            </div>
+            <div className="rq-rule-text">{r.text}</div>
+            {(r.exBefore || r.exAfter) && <div className="rq-meta">예: 「{r.exBefore}」 → 「{r.exAfter}」</div>}
+            {r.terms && <div className="rq-meta">코드가 바꾸는 말: {r.terms.split('\n').join(' · ')}</div>}
+          </div>
+        ))}
+      </div>
+
+      <h4 className="rq-learn-h">교정 {cors.length}건 <span className="rq-meta">반영 {done.length} · 대기 {wait.length}</span></h4>
+      <div className="rq-cors">
+        {cors.slice(0, 60).map((c) => (
+          <details key={c.id} className={`rq-cor${c.reflectedAt ? '' : ' wait'}`}>
+            <summary>
+              <span className={`rq-pill${c.reflectedAt ? ' r-사용' : ''}`}>{c.reflectedAt ? `반영 ${c.reflectedAt.slice(5)}` : '반영 대기'}</span>
+              {c.status && <span className="rq-meta">{c.status}</span>}
+              <b>{names[c.slug] || c.slug}</b>
+              <span className="rq-meta">{c.grade} · {c.who || '?'} · {c.key}</span>
+              <span className="rq-cor-sum">{(c.summary.split('\n')[0] || c.memo || '(아직 요약 전 — 다음 02시 반영 때 요약됩니다)')}</span>
+            </summary>
+            {c.summary && <pre className="rq-cor-pre">{c.summary}</pre>}
+            {c.memo && <div className="rq-meta">담당자 메모: {c.memo}</div>}
+            {c.after && (
+              <div className="rq-cols">
+                <div className="rq-box"><span className="lab">AI 원안</span><pre>{c.before}</pre></div>
+                <div className="rq-box"><span className="lab">담당자 수정</span><pre>{c.after}</pre></div>
+              </div>
+            )}
+            {c.trAfter && (
+              <div className="rq-cols">
+                <div className="rq-box"><span className="lab">AI 번역</span><pre>{c.trBefore}</pre></div>
+                <div className="rq-box"><span className="lab">고친 번역</span><pre>{c.trAfter}</pre></div>
+              </div>
+            )}
+          </details>
+        ))}
+        {cors.length === 0 && <div className="rq-meta">최근 {data.days}일 교정이 없습니다.</div>}
+      </div>
+    </div>
+  );
+}
+
 // 리뷰를 카톡 등으로 따로 주고받을 때 붙일 식별 정보. 목록 한 줄은 버튼이라 드래그 복사가 안 된다(Owner 2026-10-01).
 // 매장+닉네임만으로는 못 찾는 경우가 있다 — 597건 중 '(익명)' 52건, 같은 닉네임 재방문 — 그래서 리뷰 키를 같이 붙인다.
 const reviewTag = (it) => `[리뷰] ${it.store} · ${it['작성자'] || '(익명)'} · ${KST(it['리뷰일시'])} · ★${it['별점'] ?? '-'}\n키: ${it['키']}`;
@@ -242,7 +322,7 @@ async function copyText(t) {
 }
 const sameCn = (a, b) => String(a || '').replace(/\s+/g, '') === String(b || '').replace(/\s+/g, '');
 
-function Card({ it, onAct, busy, autoOk = true }) {
+function Card({ it, onAct, busy, autoOk = true, onDirty }) {
   const [finalCn, setFinalCn] = useState(it['최종_중문'] || it['초안_중문'] || '');
   const [reply, setReply] = useState(it['고객회신'] || '');
   // 담당자 교정(2026-10-01) — 고친 이유 · 고친 한글 번역. PC C 가 다음 초안·번역을 만들 때 이 짝을 사례로 읽는다.
@@ -259,6 +339,8 @@ function Card({ it, onAct, busy, autoOk = true }) {
     || fixMemo !== (it['교정메모'] || '') || trDirty;
   // 저장·승인 때 교정 정보도 같이 보낸다(번역은 고치기를 연 경우에만)
   const extra = () => ({ finalCn, reply, fixMemo, ...(showTr ? { trFix } : {}) });
+  // 저장 안 된 수정을 부모에 알린다 — 카드를 닫거나 창을 떠날 때 경고하려고(setState 아님, ref 갱신)
+  useEffect(() => { onDirty?.(it.id, dirty); return () => onDirty?.(it.id, false); }, [dirty, it.id, onDirty]);
   // 🔴 2026-09-24: "협의 전 매장은 승인해도 봇이 게시하지 않습니다" 경고는 뺐다 — 09-23 밤 정책 개정으로
   //    **승인한 건은 등급·선플자동게시와 무관하게 게시된다.** 옛 문구가 남으면 담당자가 가볍게 승인한다.
   const confirmMsg = (when) => `${it.store} · ★${it['별점'] ?? '-'} ${it['작성자'] || ''}\n\n`
@@ -351,14 +433,19 @@ function Card({ it, onAct, busy, autoOk = true }) {
             )}
             <button className="rq-btn" disabled={busy === it.id || !dirty} onClick={() => onAct(it.id, 'edit', extra())}>💾 저장만</button>
             {st !== '고객협의' && (
-              <button className="rq-btn warn" disabled={busy === it.id} onClick={() => onAct(it.id, 'consult', { reply })}>🗣 고객 협의중</button>
+              <button className="rq-btn warn" disabled={busy === it.id} onClick={() => onAct(it.id, 'consult', extra())}>🗣 고객 협의중</button>
             )}
-            <button className="rq-btn" disabled={busy === it.id} onClick={() => onAct(it.id, 'hold', { reply })}>⏳ 보류</button>
-            <button className="rq-btn" disabled={busy === it.id} onClick={() => onAct(it.id, 'redraft')}>🔁 초안 다시</button>
+            <button className="rq-btn" disabled={busy === it.id} onClick={() => onAct(it.id, 'hold', extra())}>⏳ 보류</button>
+            <button className="rq-btn" disabled={busy === it.id}
+                    onClick={() => { if (!edited || window.confirm('고친 최종 중국어를 지우고 AI 초안을 새로 만듭니다.\n아직 하루 반영(02시) 전이면 이 교정은 학습 기록에 남지 않습니다. 진행할까요?')) onAct(it.id, 'redraft'); }}>🔁 초안 다시</button>
             <button className="rq-btn bad" disabled={busy === it.id}
                     onClick={() => { if (window.confirm('반려하면 이 리뷰에는 답글을 달지 않습니다. 진행할까요?')) onAct(it.id, 'reject'); }}>✖ 반려</button>
           </div>
         </>
+      )}
+      {editable && dirty && (
+        // 저장 흐름(Owner 2026-10-01 검토): 승인·⚡바로 게시·협의중·보류·저장만 — 어느 것을 눌러도 고친 내용이 함께 저장된다.
+        <div className="rq-dirty">⚠️ 저장 안 된 수정이 있습니다 — 바로 [승인]해도 수정본 그대로 저장됩니다. 승인 전이면 💾 저장만.</div>
       )}
       {(it['게시결과'] || it['게시시각']) && (
         <div className="rq-note rq-meta">
@@ -426,6 +513,16 @@ export default function AdminReviewsPage() {
   const [busy, setBusy] = useState('');
   const [note, setNote] = useState('');
   const [openId, setOpenId] = useState('');
+  // 저장 안 된 수정이 있는 카드(id) — 카드를 닫거나 필터를 바꾸면 수정이 사라지므로 묻는다(Owner 2026-10-01 저장 흐름 검토)
+  const dirtyRef = useRef(new Set());
+  const onDirty = useCallback((id, v) => { if (v) dirtyRef.current.add(id); else dirtyRef.current.delete(id); }, []);
+  const okToLeave = () => !dirtyRef.current.size
+    || window.confirm('저장 안 된 수정이 있습니다. 닫으면 사라집니다.\n(승인·💾 저장만·협의중·보류 중 하나를 누르면 저장됩니다)\n\n그래도 닫을까요?');
+  useEffect(() => {
+    const h = (e) => { if (dirtyRef.current.size) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('beforeunload', h);
+    return () => window.removeEventListener('beforeunload', h);
+  }, []);
   const [sel, setSel] = useState(() => new Set());
   const [limit, setLimit] = useState(PAGE);
   const [sp, setSp] = useSearchParams();
@@ -436,6 +533,7 @@ export default function AdminReviewsPage() {
   const sort = sp.get('sort') || 'new';
   const q = sp.get('q') || '';
   const setParam = (k, v) => {
+    if (!okToLeave()) return;
     const n = new URLSearchParams(sp);
     if (v) n.set(k, v); else n.delete(k);
     setSp(n, { replace: true });
@@ -494,6 +592,15 @@ export default function AdminReviewsPage() {
       else setNote('⚡ 3분 동안 결과가 안 나왔습니다 — PC C 워커가 꺼져 있거나 포털이 다른 작업 중일 수 있습니다. 새로고침으로 확인하세요.');
     };
     setTimeout(tick, 15000);
+  }
+  async function ruleState(id, state) {
+    setBusy(id); setNote('');
+    try {
+      await post({ action: 'rule_state', id, state });
+      setNote(`✅ 규칙 → ${state}${state === '사용' ? ' · 다음 초안부터 AI 지시에 들어갑니다' : ''}`);
+      await load();
+    } catch (e) { setNote(`❌ 규칙 변경 실패: ${e.message}`); }
+    setBusy('');
   }
   async function hideWeekly(id, hide) {
     setBusy(id); setNote('');
@@ -762,12 +869,12 @@ export default function AdminReviewsPage() {
                   <h3 className="rq-day-h">{dayLabel(g.day)} <span>{dayTotals[g.day]}건</span></h3>
                   {g.rows.map((it) => (
                     <div key={it.id} className="rq-item">
-                      <Row it={it} open={openId === it.id} onToggle={(id) => setOpenId((p) => (p === id ? '' : id))}
+                      <Row it={it} open={openId === it.id} onToggle={(id) => { if (okToLeave()) setOpenId((p) => (p === id ? '' : id)); }}
                            showStore={!store} auto={autoSet.has(it['매장코드'])}
                            selectable={isSelectable(it)} selected={sel.has(it.id)} onSelect={onSelect} />
                       {openId === it.id && (
                         <Card key={`${it.id}|${it['상태'] || ''}|${it['최종_중문'] || ''}|${it['고객회신'] || ''}|${it['질문상태'] || ''}|${it['질문_최종중문'] || ''}|${it['사장님답변'] || ''}`}
-                              it={it} onAct={act} busy={busy} autoOk={autoSet.has(it['매장코드'])} />
+                              it={it} onAct={act} busy={busy} autoOk={autoSet.has(it['매장코드'])} onDirty={onDirty} />
                       )}
                     </div>
                   ))}
@@ -811,6 +918,13 @@ export default function AdminReviewsPage() {
               <StoreSwitches stores={d.stores} onToggle={toggleStore} busy={busy} />
             </details>
           )}
+          <details className="rq-panel rq-fold">
+            <summary>📚 교정 반영 — AI 가 배우는 것 <span className="rq-meta">담당자 수정은 매일 02시에 AI 원안과 비교·요약되어 다음 초안의 참고가 됩니다</span>
+              {(d.learning?.rules || []).some((r) => r.state === '초안') && <span className="rq-pill c-참고">확인할 규칙 초안 {(d.learning.rules || []).filter((r) => r.state === '초안').length}</span>}
+            </summary>
+            <LearningPanel data={d.learning} store={store} onRule={ruleState} busy={busy}
+                           names={Object.fromEntries((d.stores || []).map((s) => [s.slug, s.name]))} />
+          </details>
           <details className="rq-panel rq-fold">
             <summary>ⓘ 게시 규칙</summary>
             <div className="rq-note rq-meta">
