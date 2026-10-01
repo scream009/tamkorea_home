@@ -211,3 +211,27 @@
   border: 1px solid var(--rq-line); border-radius: 10px; padding: 8px 10px; font-size: 13px; transition: opacity .2s; }
 .rq-wk.hidden { opacity: .55; }
 .rq-wk a.rq-btn { text-decoration: none; }
+
+/* 손님 댓글·질문 (2026-10-01) — 분류 칩: 기록(회색)·참고(주황)·답변필요(파랑)·위험(빨강) */
+.rq-notes { display: grid; gap: 6px; }
+.rq-nt { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; padding: 4px 0; border-top: 1px dashed var(--rq-line); }
+.rq-nt:first-of-type { border-top: none; }
+.rq-nt.c-기록 { opacity: .7; }
+.rq-nt-who { color: var(--rq-ink); font-weight: 600; }
+.rq-nt-body { flex-basis: 100%; }
+.rq-nt-body em { font-style: normal; }
+.rq-cls { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--rq-line); color: var(--rq-mute); }
+.rq-cls.c-참고, .rq-pill.c-참고 { color: var(--rq-warn); border-color: rgba(232, 163, 61, .45); }
+.rq-cls.c-답변필요 { color: var(--rq-info); background: rgba(90, 169, 255, .15); }
+.rq-cls.c-위험, .rq-pill.c-위험 { color: var(--rq-bad); border-color: rgba(255, 107, 107, .45); }
+.rq-q { display: grid; gap: 8px; border: 1px solid rgba(90, 169, 255, .45); background: rgba(90, 169, 255, .06);
+  border-radius: 12px; padding: 10px 12px; transition: border-color .2s; }
+.rq-q.s-게시완료, .rq-q.s-기한종료, .rq-q.s-처리안함 { border-color: var(--rq-line); background: transparent; }
+.rq-q-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.rq-pill.q-사장님확인중, .rq-pill.q-답변받음 { color: var(--rq-info); border-color: rgba(90, 169, 255, .45); }
+.rq-pill.q-중문확인, .rq-pill.q-수동게시필요 { color: var(--rq-warn); border-color: rgba(232, 163, 61, .45); }
+.rq-pill.q-승인, .rq-pill.q-게시완료 { color: var(--rq-ok); border-color: rgba(44, 201, 133, .45); }
+.rq-ta.warn { border-color: var(--rq-warn); }
+.rq-rail i.q, .rq-rail-legend i.q { background: rgba(90, 169, 255, .2); color: var(--rq-info); }
+.rq-linkbtn { background: none; border: none; padding: 0; color: var(--rq-info); font: inherit; cursor: pointer; text-decoration: underline; }
+.rq-linkbtn b { color: var(--rq-info); }

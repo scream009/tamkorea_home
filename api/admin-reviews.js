@@ -13,6 +13,8 @@
  *   · 승인 시 최종_중문 이 비면 거부(빈 답글 게시 방지) · 등급=민감 은 승인해도 봇이 드롭한다(자동게시 영구 금지) — 화면이 경고
  *   · 게시는 이 API 가 하지 않는다. 여기는 명세를 쓰는 곳.
  *
+ * 손님 질문(action=q_answer·q_approve·q_skip·q_manual_done, 2026-10-01): 사장님답변·질문_최종중문·질문상태만 쓴다.
+ *   빈칸（？）·금칙어가 남은 질문 답은 승인 거부. 승인하면 CS_DB 리뷰_FAQ 에 한 줄 쌓는다(다음 답글안의 근거).
  * 매장 스위치(action=store): CS_DB 의 리뷰서비스·리뷰서비스_일시중지·선플자동게시·일일리포트 만.
  * 인증 _admin-auth.js(404 은폐). CORS 헤더 없음(같은 오리진 전용).
  */
@@ -32,7 +34,23 @@ const OUT_FIELDS = ['키', '매장코드', '리뷰ID', '리뷰일시', '별점',
   '등급', '대응유형', '초안_중문', '초안_한글', '최종_중문', '상태', '승인자', '승인시각', '통보시각',
   '고객회신', '게시시각', '게시결과', '주차', '수집일', '즉시게시요청', '즉시게시요청시각',
   // 게시 로그(Owner 2026-09-24: "로그가 남아야 나중에 추적 가능") — PC C post_replies 가 쓴다
-  '게시이력', '포털답글ID', '게시시도'];
+  '게시이력', '포털답글ID', '게시시도',
+  // 손님 댓글·질문(2026-10-01) — PC C 가 분류하고 질문 답글안을 만든다. 담당자는 여기서 사장님 답을 넣고 승인한다.
+  '손님댓글수', '손님댓글_구조', '댓글대응', '질문상태', '질문_원문', '질문_한글', '질문_답글안', '질문_답글안_한글',
+  '사장님답변', '질문_최종중문', '질문_최종한글', '질문통보시각'];
+
+// ── 손님 질문 답글 (2026-10-01 · Owner 지시: ★3.5 이하 리뷰처럼 답글안 → 사장님 확인 → 승인 → 게시) ──
+//   사장님확인중 ─(사장님 답을 한글로 입력)→ 답변받음 ─(PC C 가 중문 채움)→ 중문확인 ─(승인)→ 승인
+//   사장님확인중 ─(담당자가 중문을 직접 완성해 승인)───────────────────────────→ 승인
+//   승인 → PC C 가 본 답글에 합쳐 게시. 본 답글이 이미 나갔으면 수동게시필요(담당자가 포털에서 직접).
+// 🔴 질문 답은 사실(메뉴·부위·영업시간) 답이다 — AI 가 지어낸 빈칸（？）이 남은 문안은 승인하지 않는다.
+const Q_OPEN = new Set(['사장님확인중', '답변받음', '중문확인', '기한종료', '처리안함', '승인']);
+const Q_BLANK = /[（(]\s*[？?]\s*[）)]/;
+// review_notes.FORBIDDEN_Q 와 같은 목록 — 사실 답에 필요한 免费·元 은 허용, 확약·보상·연락 유도는 막는다
+const FORBIDDEN_Q = ['退款', '赔偿', '赔付', '律师', '法律', '保证', '承诺', '绝对', '最好', '第一', '唯一',
+  '微信', '加V', 'VX', '联系我们', '补偿', '赠送', '小礼'];
+// 본 답글이 이 상태면 질문 답을 본 답글에 실을 수 없다 → 담당자가 포털에서 직접 단다
+const MAIN_GONE = new Set(['게시완료', '게시중', '게시확인필요', '반려', '보류']);
 
 // 한국 날짜(YYYY-MM-DD). Airtable dateTime 은 UTC 라 그대로 자르면 KST 00~09시가 전날로 간다.
 const KST_MS = 9 * 3600 * 1000;
@@ -132,9 +150,11 @@ export default async function handler(req, res) {
       const slug = String(req.query?.slug || '');
       if (slug && !SLUG_RE.test(slug)) return res.status(400).json({ error: 'bad slug' });
       const days = Math.min(90, Math.max(1, Number(req.query?.days) || 14));
-      // 끝난 것(게시완료·반려)은 최근 N일만 — 큐가 이력으로 무거워지지 않게
+      // 끝난 것(게시완료·반려)은 최근 N일만 — 큐가 이력으로 무거워지지 않게.
+      // 단 손님 질문이 진행 중인 행은 리뷰가 오래돼도 보여 준다(본 답글은 끝났어도 질문 답이 남았을 수 있다).
       const formula = `AND(${slug ? `{매장코드}='${escFormula(slug)}', ` : ''}`
-        + `OR(NOT(OR({상태}='게시완료', {상태}='반려')), IS_AFTER({리뷰일시}, DATEADD(TODAY(), -${days}, 'days'))))`;
+        + `OR(NOT(OR({상태}='게시완료', {상태}='반려')), IS_AFTER({리뷰일시}, DATEADD(TODAY(), -${days}, 'days')),`
+        + ` {질문상태}='사장님확인중', {질문상태}='답변받음', {질문상태}='중문확인', {질문상태}='승인', {질문상태}='수동게시필요'))`;
       const [rows, stores, allRows, weeklyRows] = await Promise.all([
         fetchAll(TBL, { formula, fields: OUT_FIELDS }),
         fetchAll('CS_DB', { fields: ['매장명_검색용', '고객사명(필수)', 'DP_매장코드', '톡방명', '리뷰서비스',
@@ -247,6 +267,63 @@ export default async function handler(req, res) {
     // 답글 행 — 현재 상태를 읽어 봇 전용 상태면 손대지 않는다
     const cur = await at('GET', `${TBL}/${id}`);
     const curState = String(cur.fields?.['상태'] || '');
+
+    // ── 손님 질문 답 — 본 답글 상태와 무관하게 다룬다(본 답글이 이미 게시됐어도 질문 답은 남는다) ──
+    if (action.startsWith('q_')) {
+      const cf = cur.fields || {};
+      const qs = String(cf['질문상태'] || '');
+      const owner = typeof body.ownerAnswer === 'string' ? body.ownerAnswer.trim().slice(0, 1000) : null;
+      const qFinal = typeof body.qFinal === 'string' ? body.qFinal.trim().slice(0, 600) : null;
+      const qf = {};
+      if (action === 'q_answer') {
+        // 사장님 답(한글)만 받았다 → PC C 가 다음 회차(매일 11시 무렵)에 답글안 빈칸을 채워 '중문확인' 으로 올린다
+        if (!Q_OPEN.has(qs) || qs === '승인') return res.status(409).json({ error: `질문상태 '${qs || '없음'}' 에서는 답을 받을 수 없습니다` });
+        if (!owner) return res.status(400).json({ error: '사장님 답이 비어 있습니다' });
+        Object.assign(qf, { '사장님답변': owner, '질문상태': '답변받음', '질문_최종중문': '', '질문_최종한글': '' });
+      } else if (action === 'q_approve') {
+        if (!Q_OPEN.has(qs)) return res.status(409).json({ error: `질문상태 '${qs || '없음'}' 에서는 승인할 수 없습니다` });
+        if (!qFinal) return res.status(400).json({ error: '게시할 중국어 질문 답이 비어 있습니다' });
+        if (Q_BLANK.test(qFinal)) return res.status(400).json({ error: '빈칸（？）이 남아 있습니다 — 사장님 답으로 채운 뒤 승인하세요' });
+        const hit = FORBIDDEN_Q.find((w) => qFinal.includes(w));
+        if (hit) return res.status(400).json({ error: `금칙어 ${hit} — 보상·확약·연락 유도는 공개 답에 쓰지 않습니다` });
+        Object.assign(qf, { '질문_최종중문': qFinal, '질문상태': MAIN_GONE.has(curState) ? '수동게시필요' : '승인' });
+        if (owner !== null) qf['사장님답변'] = owner;
+      } else if (action === 'q_skip') {
+        if (['게시완료'].includes(qs)) return res.status(409).json({ error: '이미 게시된 질문 답입니다' });
+        Object.assign(qf, { '질문상태': '처리안함', '댓글통보대기': false });
+      } else if (action === 'q_manual_done') {
+        if (qs !== '수동게시필요') return res.status(409).json({ error: `질문상태 '${qs || '없음'}' — 수동 게시 대상이 아닙니다` });
+        qf['질문상태'] = '게시완료';
+      } else {
+        return res.status(400).json({ error: 'unknown action' });
+      }
+      await at('PATCH', `${TBL}/${id}`, { fields: qf, typecast: true });
+      console.log('[admin-reviews]', action, who, id, cf['키'] || '', qf['질문상태'] || '');
+
+      // 승인한 질문 답은 매장 FAQ 에 한 줄 쌓는다 → 다음에 같은 질문이 오면 PC C 가 빈칸 없이 답글안을 만든다.
+      // 실패해도 승인은 이미 저장됐다(FAQ 는 다음 답글안의 근거일 뿐) → 경고만 돌려준다.
+      let faq = null;
+      const ans = String(qf['사장님답변'] ?? cf['사장님답변'] ?? '').trim();
+      if (action === 'q_approve' && ans) {
+        const slugQ = String(cf['매장코드'] || '').trim();
+        try {
+          if (!SLUG_RE.test(slugQ)) throw new Error('매장코드 형식 오류');
+          const cs = await fetchAll('CS_DB', { formula: `{DP_매장코드}='${escFormula(slugQ)}'`, fields: ['DP_매장코드', '리뷰_FAQ'] });
+          if (!cs.length) throw new Error('CS_DB 에 매장이 없습니다');
+          const qText = String(cf['질문_한글'] || '').split('\n').map((l) => l.replace(/^[^:]{1,30}:\s*/, '').trim()).filter(Boolean).join(' / ');
+          const line = `${kstDay(new Date().toISOString())} Q: ${qText || '(질문)'} → A: ${ans.replace(/\s+/g, ' ')}`;
+          const prev = String(cs[0].fields['리뷰_FAQ'] || '');
+          if (!prev.includes(`→ A: ${ans.replace(/\s+/g, ' ')}`)) {
+            await at('PATCH', `CS_DB/${cs[0].id}`, { fields: { '리뷰_FAQ': (prev ? `${prev}\n` : '') + line }, typecast: true });
+          }
+          faq = 'saved';
+        } catch (e) {
+          faq = `failed: ${String(e.message || e).slice(0, 80)}`;
+          console.error('[admin-reviews] faq', slugQ, faq);
+        }
+      }
+      return res.status(200).json({ ok: true, state: curState, qState: qf['질문상태'] || qs, faq });
+    }
     if (['게시중', '게시완료'].includes(curState)) {
       return res.status(409).json({ error: `상태 '${curState}' 은 봇 전용이라 여기서 바꿀 수 없습니다` });
     }

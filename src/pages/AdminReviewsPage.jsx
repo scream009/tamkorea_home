@@ -41,9 +41,12 @@ const dayLabel = (d) => {
 const VIEWS = [
   { key: 'todo', label: '처리 필요', states: ['검토대기', '고객협의'] },
   { key: 'queued', label: '게시 대기', states: ['승인', '게시중'] },
-  { key: 'check', label: '확인 필요', states: ['게시확인필요', '게시실패'] },
+  // '확인 필요' → '게시 미확인'(2026-10-01): 손님 질문과 헷갈렸다(Owner 질문). 실제 뜻은 '올렸는데 포털에서 확인이 안 됨'
+  { key: 'check', label: '게시 미확인', states: ['게시확인필요', '게시실패'] },
   { key: 'done', label: '게시 완료', states: ['게시완료'] },
   { key: 'parked', label: '보류·반려', states: ['보류', '반려', '신규', '초안'] },
+  // 손님 질문 — 본 답글 상태와 따로 센다(본 답글이 게시완료여도 질문 답은 남을 수 있다)
+  { key: 'question', label: '손님 질문', states: null, q: true },
   { key: 'all', label: '전체', states: null },
 ];
 const GRADES = [
@@ -58,6 +61,123 @@ const BULK_MAX = 60;     // 서버 approve_bulk 상한과 같다
 
 const gradeOf = (it) => GRADES.find((g) => g.test && g.test(it['등급']))?.key || 'etc';
 const viewOf = (st) => VIEWS.find((v) => v.states && v.states.includes(st))?.key || 'parked';
+
+// ── 손님 댓글·질문 (2026-10-01) ──────────────────────────────────────────
+// PC C 가 리뷰 아래 댓글을 구조(누가→누구에게)·의도로 나눈다. 담당자가 할 일은 '답변필요' 질문뿐 —
+// 칭찬 덧글·손님끼리 대화는 '기록'(톡방에 안 나감), 불만 덧글은 '참고'(사장님께 알림, 답글 X).
+const Q_ACTIVE = ['사장님확인중', '답변받음', '중문확인', '승인', '수동게시필요'];
+const Q_TODO = ['사장님확인중', '중문확인', '수동게시필요'];       // 담당자 손이 필요한 질문 상태
+const Q_HOLD = ['사장님확인중', '답변받음', '중문확인'];           // 이 동안 PC C 는 본 답글을 게시하지 않는다(post_replies HOLD_Q)
+// 보류 표시는 질문이 톡방에 실제로 나간 뒤에만 — 질문통보시각은 새 PC C 코드만 찍는다. 옛 코드가 도는 동안엔
+// 본 답글이 그대로 게시되므로 '보류' 라고 쓰면 거짓말이 된다(2026-10-01 설치 전환기).
+const held = (it) => Q_HOLD.includes(it['질문상태']) && !!it['질문통보시각'];
+const Q_HINT = {
+  사장님확인중: '톡방으로 사장님께 물어본 상태 — 사장님 답을 받으면 아래에 넣으세요',
+  답변받음: 'PC C 가 다음 회차(매일 11시 무렵)에 빈칸을 채워 "중문확인"으로 올립니다',
+  중문확인: 'PC C 가 사장님 답으로 채운 중문 — 한글 대역을 보고 승인하세요',
+  승인: '본 답글과 함께 다음 정기 게시에 올라갑니다',
+  수동게시필요: '본 답글이 이미 나가서 같이 실을 수 없습니다 — 포털에서 그 댓글에 직접 답한 뒤 "직접 달았음"',
+  게시완료: '본 답글과 함께 게시됐습니다',
+  기한종료: '3일 동안 사장님 회신이 없어 닫혔습니다 — 늦게 답이 오면 여기서 다시 처리할 수 있습니다',
+  처리안함: '답하지 않기로 했습니다',
+};
+const KIND = { W: '작성자 덧글', R: '작성자 답', T: '다른 손님', O: '손님끼리', M: '매장 답글에' };
+const Q_BLANK = /[（(]\s*[？?]\s*[）)]/;
+const notesOf = (it) => {
+  try {
+    const j = JSON.parse(it['손님댓글_구조'] || '[]');
+    return Array.isArray(j) ? j : [];
+  } catch { return []; }
+};
+
+function NotesPanel({ it }) {
+  const notes = notesOf(it);
+  if (!notes.length) return null;
+  return (
+    <div className="rq-box rq-notes">
+      <span className="lab">손님 댓글 {notes.length}건 — 분류 {it['댓글대응'] || '전(다음 회차)'}</span>
+      {notes.map((n, i) => (
+        <div key={n.id || i} className={`rq-nt c-${n.cls || '미분류'}`}>
+          <span className={`rq-cls c-${n.cls || '미분류'}`}>{n.cls || '미분류'}</span>
+          <span className="rq-meta">{KIND[n.kind] || '손님'}{n.resolved ? ' · 이미 답함' : ''}</span>
+          <span className="rq-nt-who">{n.who || '손님'}</span>
+          <span className="rq-nt-body">{n.ko || n.body}<em className="rq-meta">{n.ko ? ` · ${n.body}` : ''}</em></span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function QuestionPanel({ it, onAct, busy }) {
+  const qs = it['질문상태'] || '';
+  const [owner, setOwner] = useState(it['사장님답변'] || '');
+  const [qFinal, setQFinal] = useState(it['질문_최종중문'] || it['질문_답글안'] || '');
+  if (!qs) return null;
+  const blank = Q_BLANK.test(qFinal);
+  const canEdit = !['게시완료'].includes(qs);
+  const approve = () => {
+    if (!qFinal.trim()) { window.alert('게시할 중국어 질문 답이 비어 있습니다'); return; }
+    if (blank) { window.alert('빈칸（？）이 남아 있습니다 — 사장님 답으로 채운 뒤 승인하세요.\n중국어가 어려우면 "사장님 답 저장"을 누르면 PC C 가 채웁니다.'); return; }
+    const gone = ['게시완료', '게시중', '게시확인필요', '반려', '보류'].includes(it['상태']);
+    const msg = `${it.store} · 손님 질문 답\n\n아래 중국어가 매장 이름으로 공개됩니다.\n\n${qFinal}\n\n`
+      + (gone ? '본 답글이 이미 나갔거나 게시하지 않는 건이라, 승인하면 "수동게시필요"가 됩니다(포털에서 직접 답해야 함).'
+        : '본 답글과 합쳐 다음 정기 게시에 올라갑니다.') + '\n승인할까요?';
+    if (window.confirm(msg)) onAct(it.id, 'q_approve', { qFinal, ownerAnswer: owner });
+  };
+  return (
+    <div className={`rq-q s-${qs}`}>
+      <div className="rq-q-head">
+        <b>❓ 손님 질문</b>
+        <span className={`rq-pill q-${qs}`}>{qs}</span>
+        {it['질문통보시각'] && <span className="rq-meta">톡방 {KST(it['질문통보시각'])}</span>}
+        <span className="rq-meta">{qs === '사장님확인중' && !it['질문통보시각']
+          ? '아직 톡방에 안 나갔습니다 — 다음 데일리(11:33)에 사장님께 물어봅니다' : (Q_HINT[qs] || '')}</span>
+      </div>
+      <div className="rq-cols">
+        <div className="rq-box"><span className="lab">질문 (한글)</span><pre>{it['질문_한글'] || it['질문_원문'] || ''}</pre></div>
+        <div className="rq-box"><span className="lab">사장님께 보낸 답글안 — 빈칸 ( ? ) 을 사장님이 채운다</span><pre>{it['질문_답글안_한글'] || '(답글안 없음 — 질문만 보냄)'}</pre></div>
+      </div>
+      {it['질문_최종한글'] && (
+        <div className={`rq-box${String(it['질문_최종한글']).startsWith('⚠') ? ' rq-warnbox' : ''}`}>
+          <span className="lab">PC C 가 채운 중문의 한글 대역</span><pre>{it['질문_최종한글']}</pre>
+        </div>
+      )}
+      {canEdit && (
+        <>
+          <input className="rq-in" placeholder="사장님 답 (톡방에서 받은 그대로, 예: 목살·오겹살)" value={owner}
+                 onChange={(e) => setOwner(e.target.value)} />
+          <div>
+            <span className="rq-meta">게시될 질문 답 (중국어) — 본 답글 뒤에 붙습니다{blank ? ' · ⚠️ 빈칸（？）이 남아 있습니다' : ''}</span>
+            <textarea className={`rq-ta${blank ? ' warn' : ''}`} value={qFinal} onChange={(e) => setQFinal(e.target.value)} />
+          </div>
+          <div className="rq-btns">
+            {qs !== '수동게시필요' && (
+              <button className="rq-btn ok" disabled={busy === it.id || blank || !qFinal.trim()} onClick={approve}
+                      title={blank ? '빈칸을 채워야 승인할 수 있습니다' : undefined}>✅ 질문 답 승인</button>
+            )}
+            {qs !== '승인' && qs !== '수동게시필요' && (
+              <button className="rq-btn" disabled={busy === it.id || !owner.trim()}
+                      onClick={() => onAct(it.id, 'q_answer', { ownerAnswer: owner })}
+                      title="중국어는 PC C 가 채웁니다(다음 회차). 채운 뒤 여기서 승인">💾 사장님 답 저장 → 중문은 PC C 가</button>
+            )}
+            {qs === '수동게시필요' && (
+              <button className="rq-btn ok" disabled={busy === it.id}
+                      onClick={() => { if (window.confirm('포털에서 그 손님 댓글에 직접 답을 달았나요?')) onAct(it.id, 'q_manual_done'); }}>
+                ✔ 포털에 직접 달았음
+              </button>
+            )}
+            {!['처리안함', '수동게시필요'].includes(qs) && (
+              <button className="rq-btn bad" disabled={busy === it.id}
+                      onClick={() => { if (window.confirm('이 질문에는 답하지 않습니다. 붙잡아 둔 본 답글은 다음 게시에 나갑니다. 진행할까요?')) onAct(it.id, 'q_skip'); }}>
+                ✖ 답하지 않음
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 function StoreSwitches({ stores, onToggle, busy }) {
   if (!stores?.length) return null;
@@ -152,13 +272,18 @@ function Card({ it, onAct, busy, autoOk = true }) {
         // 🔴 2026-09-24 문구 정정: 민감도 악플과 같은 선이 됐다(Owner 09-23) — **승인하면 공개 게시된다.**
         <div className="rq-warnbox">🚫 민감 등급(보상·환불·차별·위생·법적 언급) — <b>승인하면 그대로 공개 게시됩니다.</b> 반드시 사장님 협의가 끝난 뒤에 승인하세요.</div>
       )}
-      {!sens && autoOk && it['등급'] === '호평' && st === '검토대기' && (
+      {!sens && autoOk && it['등급'] === '호평' && st === '검토대기' && !held(it) && (
         <div className="rq-note rq-meta">호평 자동게시 매장 — 승인하지 않아도 다음 정기 게시(12·14·16시)에 이 초안이 올라갑니다. 고치려면 고친 뒤 승인, 막으려면 반려하세요.</div>
       )}
       <div className="rq-cols">
         <div className="rq-box"><span className="lab">중국어 원문</span><pre>{it['원문'] || ''}</pre></div>
         <div className="rq-box"><span className="lab">한글 번역</span><pre>{it['번역'] || '(번역 없음)'}</pre></div>
       </div>
+      <NotesPanel it={it} />
+      <QuestionPanel it={it} onAct={onAct} busy={busy} />
+      {held(it) && (
+        <div className="rq-note rq-meta">❓ 손님 질문 답을 기다리는 동안 이 리뷰의 본 답글은 게시하지 않습니다(답을 받아 같이 올림 · 3일 지나면 풀림).</div>
+      )}
       <div className="rq-cols">
         <div className="rq-box"><span className="lab">AI 초안 (중문)</span><pre>{it['초안_중문'] || '(초안 없음)'}</pre></div>
         <div className="rq-box"><span className="lab">초안 한글 대역 · 메모</span><pre>{it['초안_한글'] || ''}</pre></div>
@@ -216,7 +341,8 @@ function Card({ it, onAct, busy, autoOk = true }) {
 function Row({ it, open, onToggle, showStore, auto, selectable, selected, onSelect }) {
   const g = gradeOf(it);
   const st = it['상태'] || '';
-  const autoPending = auto && it['등급'] === '호평' && st === '검토대기';
+  // 손님 질문 답을 기다리는 동안은 자동게시도 붙잡힌다 — '자동게시 예정' 이라고 쓰면 거짓말이 된다
+  const autoPending = auto && it['등급'] === '호평' && st === '검토대기' && !held(it);
   const star = it['별점'] != null ? Number(it['별점']) : null;
   return (
     <div className={`rq-row g-${g}${open ? ' open' : ''}`}>
@@ -235,6 +361,11 @@ function Row({ it, open, onToggle, showStore, auto, selectable, selected, onSele
           <span className="rq-meta">{kstTime(it['리뷰일시'])}</span>
           {Number(it['사진수']) > 0 && <span className="rq-meta">📷{it['사진수']}</span>}
           <span className="rq-row-flags">
+            {it['질문상태'] && <span className={`rq-pill q-${it['질문상태']}`}>❓ 질문 {it['질문상태']}</span>}
+            {held(it) && ['검토대기', '승인'].includes(st) && <span className="rq-pill">답글 보류(질문 답 대기)</span>}
+            {!it['질문상태'] && ['참고', '위험'].includes(it['댓글대응']) && (
+              <span className={`rq-pill c-${it['댓글대응']}`}>💬 댓글 {it['댓글대응']}</span>
+            )}
             {it['즉시게시요청'] && <span className="rq-pill now">⚡ 즉시게시 대기</span>}
             {autoPending && <span className="rq-pill auto">자동게시 예정</span>}
             {st !== '검토대기' && <span className={`rq-pill s-${st}`}>{st}</span>}
@@ -297,7 +428,9 @@ export default function AdminReviewsPage() {
       // 다음 정기 게시에 올라간다 — '즉시'만 안 된 것이라 그대로 알린다.
       const now = j.signal === 'sent' ? ' · ⚡ PC C 가 1~2분 안에 올립니다 (결과는 자동으로 갱신)'
         : (j.signal ? ` · ⚠️ 즉시게시 신호 실패 — 다음 정기 게시에 올라갑니다 (${j.signal})` : '');
-      setNote(`✅ ${action} → ${j.state || '저장됨'}${now}`);
+      // 질문 답은 본 답글 상태가 아니라 질문상태를 알려 준다. FAQ 저장 실패는 승인과 별개라 경고만.
+      const faq = j.faq && j.faq !== 'saved' ? ` · ⚠️ 매장 FAQ 저장 실패(승인은 됨): ${j.faq}` : (j.faq === 'saved' ? ' · 매장 FAQ 에 한 줄 저장' : '');
+      setNote(`✅ ${action} → ${j.qState ? `질문 ${j.qState}` : (j.state || '저장됨')}${now}${faq}`);
       await load();
       if (action === 'approve_now' && j.signal === 'sent') watchNow(id);
     } catch (e) { setNote(`❌ ${action} 실패: ${e.message}`); }
@@ -362,10 +495,10 @@ export default function AdminReviewsPage() {
   const storeBy = useMemo(() => Object.fromEntries((d?.stores || []).map((s) => [s.slug, s])), [d]);
   const statBy = useMemo(() => Object.fromEntries((d?.stats?.rows || []).map((s) => [s.slug, s])), [d]);
 
-  // 매장 레일 — 처리 필요 건수(그중 악평·민감), 게시 대기, 확인 필요
+  // 매장 레일 — 손님 질문, 처리 필요 건수(그중 악평·민감), 게시 대기, 게시 미확인
   const rail = useMemo(() => {
     const by = {};
-    const bump = (slug, name) => (by[slug] || (by[slug] = { slug, name, todo: 0, hot: 0, queued: 0, check: 0 }));
+    const bump = (slug, name) => (by[slug] || (by[slug] = { slug, name, todo: 0, hot: 0, queued: 0, check: 0, q: 0 }));
     (d?.stores || []).filter((s) => s.review).forEach((s) => bump(s.slug, s.name));
     all.forEach((it) => {
       const r = bump(it['매장코드'], it.store);
@@ -373,21 +506,26 @@ export default function AdminReviewsPage() {
       if (v === 'todo') { r.todo += 1; if (gradeOf(it) !== 'good') r.hot += 1; }
       if (v === 'queued') r.queued += 1;
       if (v === 'check') r.check += 1;
+      if (Q_TODO.includes(it['질문상태'])) r.q += 1;
     });
-    return Object.values(by).sort((a, b) => (b.hot - a.hot) || (b.todo - a.todo) || (b.check - a.check)
+    return Object.values(by).sort((a, b) => (b.q - a.q) || (b.hot - a.hot) || (b.todo - a.todo) || (b.check - a.check)
       || String(a.name).localeCompare(String(b.name), 'ko'));
   }, [d, all]);
-  const tot = useMemo(() => rail.reduce((a, r) => ({ todo: a.todo + r.todo, hot: a.hot + r.hot, check: a.check + r.check }),
-    { todo: 0, hot: 0, check: 0 }), [rail]);
+  const tot = useMemo(() => rail.reduce((a, r) => ({ todo: a.todo + r.todo, hot: a.hot + r.hot, check: a.check + r.check, q: a.q + r.q }),
+    { todo: 0, hot: 0, check: 0, q: 0 }), [rail]);
 
   // 필터 단계: 매장 → (탭 건수) → 탭 → (등급 건수) → 등급·기간·검색
   const inStore = useMemo(() => all.filter((it) => !store || it['매장코드'] === store), [all, store]);
   const viewCounts = useMemo(() => {
-    const c = { all: inStore.length };
-    inStore.forEach((it) => { const v = viewOf(it['상태']); c[v] = (c[v] || 0) + 1; });
+    const c = { all: inStore.length, question: 0 };
+    inStore.forEach((it) => {
+      const v = viewOf(it['상태']); c[v] = (c[v] || 0) + 1;
+      if (Q_ACTIVE.includes(it['질문상태'])) c.question += 1;
+    });
     return c;
   }, [inStore]);
   const inView = useMemo(() => {
+    if (view === 'question') return inStore.filter((it) => Q_ACTIVE.includes(it['질문상태']));
     const vs = VIEWS.find((v) => v.key === view)?.states;
     return inStore.filter((it) => !vs || vs.includes(it['상태']));
   }, [inStore, view]);
@@ -460,7 +598,9 @@ export default function AdminReviewsPage() {
       <div className="rq-panel rq-bar">
         <div className="rq-head">
           <b>오늘 할 일</b>
-          <span className="rq-count">처리 필요 <b>{tot.todo}</b>건 (악평·민감 <b className="hot">{tot.hot}</b>) · 확인 필요 {tot.check}건</span>
+          <span className="rq-count">처리 필요 <b>{tot.todo}</b>건 (악평·민감 <b className="hot">{tot.hot}</b>) · 게시 미확인 {tot.check}건
+            {tot.q > 0 && <> · <button type="button" className="rq-linkbtn" onClick={() => setParam('view', 'question')}>❓ 손님 질문 <b>{tot.q}</b>건</button></>}
+          </span>
           <span className="rq-spacer" />
           <button className="rq-btn" onClick={load}>↻ 새로고침</button>
         </div>
@@ -476,16 +616,17 @@ export default function AdminReviewsPage() {
           </button>
           {rail.map((r) => (
             <button key={r.slug} className={`rq-rail-item${store === r.slug ? ' on' : ''}`} onClick={() => setParam('store', r.slug)}
-                    title={`처리 필요 ${r.todo}(악평·민감 ${r.hot}) · 게시 대기 ${r.queued} · 확인 필요 ${r.check}`}>
+                    title={`처리 필요 ${r.todo}(악평·민감 ${r.hot}) · 게시 대기 ${r.queued} · 게시 미확인 ${r.check} · 손님 질문 ${r.q}`}>
               <span className="nm">{r.name}{autoSet.has(r.slug) && <em className="auto" title="호평 자동게시">자동</em>}</span>
               <span className="bd">
+                {r.q > 0 && <i className="q">?{r.q}</i>}
                 {r.hot > 0 && <i className="hot">{r.hot}</i>}
                 {r.todo - r.hot > 0 && <i className="todo">{r.todo - r.hot}</i>}
                 {r.check > 0 && <i className="chk">!{r.check}</i>}
               </span>
             </button>
           ))}
-          <div className="rq-rail-legend"><i className="hot">n</i> 악평·민감 <i className="todo">n</i> 호평 <i className="chk">!n</i> 확인</div>
+          <div className="rq-rail-legend"><i className="q">?n</i> 손님 질문 <i className="hot">n</i> 악평·민감 <i className="todo">n</i> 호평 <i className="chk">!n</i> 게시 미확인</div>
         </nav>
 
         <main className="rq-main">
@@ -506,7 +647,7 @@ export default function AdminReviewsPage() {
                   <div><span>누적 게시</span><b>{curStat.total}</b></div>
                   <div><span>게시 대기</span><b>{curStat.approved}</b></div>
                   <div><span>검토 대기</span><b>{curStat.waiting}</b></div>
-                  <div className={curStat.check ? 'bad' : ''}><span>확인 필요</span><b>{curStat.check}</b></div>
+                  <div className={curStat.check ? 'bad' : ''}><span>게시 미확인</span><b>{curStat.check}</b></div>
                   <div><span>응답 중앙값</span><b>{curStat.lagH != null ? `${curStat.lagH}h` : '—'}</b></div>
                 </div>
               )}
@@ -568,7 +709,9 @@ export default function AdminReviewsPage() {
           {/* ── 날짜별 목록 ── */}
           {items.length === 0 ? (
             <div className="rq-panel rq-empty">
-              {view === 'todo' && !grade && !q ? '🎉 처리할 리뷰가 없습니다' : '조건에 맞는 리뷰가 없습니다 — 탭·등급·기간을 바꿔 보세요'}
+              {view === 'todo' && !grade && !q ? '🎉 처리할 리뷰가 없습니다'
+                : view === 'question' && !grade && !q ? '❓ 진행 중인 손님 질문이 없습니다 — 칭찬 덧글·손님끼리 대화는 질문으로 세지 않습니다'
+                  : '조건에 맞는 리뷰가 없습니다 — 탭·등급·기간을 바꿔 보세요'}
             </div>
           ) : (
             <div className="rq-list">
@@ -581,7 +724,7 @@ export default function AdminReviewsPage() {
                            showStore={!store} auto={autoSet.has(it['매장코드'])}
                            selectable={isSelectable(it)} selected={sel.has(it.id)} onSelect={onSelect} />
                       {openId === it.id && (
-                        <Card key={`${it.id}|${it['상태'] || ''}|${it['최종_중문'] || ''}|${it['고객회신'] || ''}`}
+                        <Card key={`${it.id}|${it['상태'] || ''}|${it['최종_중문'] || ''}|${it['고객회신'] || ''}|${it['질문상태'] || ''}|${it['질문_최종중문'] || ''}|${it['사장님답변'] || ''}`}
                               it={it} onAct={act} busy={busy} autoOk={autoSet.has(it['매장코드'])} />
                       )}
                     </div>
@@ -601,7 +744,7 @@ export default function AdminReviewsPage() {
               <div className="rq-stats-wrap">
                 <table className="rq-stats">
                   <thead>
-                    <tr><th>매장</th><th>이번 주 게시</th><th>누적 게시</th><th>승인·게시 대기</th><th>검토 대기</th><th>확인필요</th><th>응답(중앙)</th></tr>
+                    <tr><th>매장</th><th>이번 주 게시</th><th>누적 게시</th><th>승인·게시 대기</th><th>검토 대기</th><th>게시 미확인</th><th>응답(중앙)</th></tr>
                   </thead>
                   <tbody>
                     {d.stats.rows.map((s) => (
