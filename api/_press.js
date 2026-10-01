@@ -114,11 +114,16 @@ const kstDate = (iso) => (iso ? kstStamp(new Date(iso)).slice(0, 10) : '');
    URL 문자는 ASCII 로 한정해서 공백·\xa0·한자(复制本条信息)·전각 문장부호에서 저절로 끊긴다.
    제목 줄("모찌롱 7월 기자단")·빈 줄은 URL 이 아니라 자연히 빠진다. */
 const URL_RE = /https?:\/\/[A-Za-z0-9\-._~:/?#[\]@!$&*+,;=%]+/g;
+// https:// \uc5c6\uc774 \ub4e4\uc5b4\uc628 \uc0e4\uc624\ud64d\uc288 \uc8fc\uc18c\uc5d0 \ubd99\uc5ec \uc900\ub2e4 \u2014 \ub4f1\ub85d \ubaa9\ub85d \ud654\uba74\uc774 \uc8fc\uc18c\ub97c \uc9e7\uac8c \ubcf4\uc5ec \uc918\uc11c \uadf8\uac78 \ubcf5\uc0ac\ud558\uba74
+// 'xhslink.cn/o/\u2026' \ub9cc \ub4e4\uc5b4\uc628\ub2e4(2026-10-01 Owner \ud14c\uc2a4\ud2b8\uc5d0\uc11c 0\uac1c \uc778\uc2dd \u2192 \ud655\uc778 \ubc84\ud2bc \uaebc\uc9d0).
+// \uc55e \uae00\uc790\ub97c \uc7a1\uc544 \ub450\ub294 \ubc29\uc2dd \u2014 lookbehind \ub294 \uc61b iOS Safari \uc5d0\uc11c \ubc88\ub4e4 \uc804\uccb4\uac00 \uc8fd\ub294\ub2e4. PressBulk.jsx \uc640 \uac19\uc740 \uaddc\uce59.
+const BARE_XHS_RE = /(^|[^A-Za-z0-9\-._~:/])((?:xhslink\.(?:cn|com)|(?:www\.|m\.)?xiaohongshu\.com)\/)/gi;
 
 export function extractLinks(text) {
   const s = String(text || '')
     .slice(0, MAX_TEXT)
-    .replace(/[\s\u200b-\u200d]/g, ' ');
+    .replace(/[\s\u200b-\u200d]/g, ' ')
+    .replace(BARE_XHS_RE, '$1https://$2');
   const out = [];
   for (const m of s.matchAll(URL_RE)) {
     // 두 링크가 공백 없이 붙어 들어온 경우 — 'http' 앞에서 끊는다

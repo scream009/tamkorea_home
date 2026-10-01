@@ -27,8 +27,10 @@ const STATUS = {
 
 // 서버(api/_press.js extractLinks)와 같은 규칙 — 입력 중 '몇 개 인식' 힌트용
 const URL_RE = /https?:\/\/[A-Za-z0-9\-._~:/?#[\]@!$&*+,;=%]+/g;
+// https:// \uc5c6\ub294 \uc0e4\uc624\ud64d\uc288 \uc8fc\uc18c \u2014 \uc544\ub798 '\ub4f1\ub85d\ub41c \ub9c1\ud06c' \ubaa9\ub85d\uc740 \uc8fc\uc18c\ub97c \uc9e7\uac8c \ubcf4\uc5ec \uc918\uc11c \ubcf5\uc0ac\ud558\uba74 \uc774\ub807\uac8c \ub4e4\uc5b4\uc628\ub2e4
+const BARE_XHS_RE = /(^|[^A-Za-z0-9\-._~:/])((?:xhslink\.(?:cn|com)|(?:www\.|m\.)?xiaohongshu\.com)\/)/gi;
 function countLinks(text) {
-  const s = String(text || '').replace(/[\s\u200b-\u200d]/g, ' ');
+  const s = String(text || '').replace(/[\s\u200b-\u200d]/g, ' ').replace(BARE_XHS_RE, '$1https://$2');
   let n = 0;
   for (const m of s.matchAll(URL_RE)) n += m[0].split(/(?=https?:\/\/)/).filter((u) => u.length > 10).length;
   return n;
@@ -45,10 +47,12 @@ async function call(apiPath, headers, method, body) {
   return data;
 }
 
-/** 본문에서 링크 하나를 지운다 — 뒤에 URL 문자가 이어지면(더 긴 다른 링크) 건드리지 않는다 */
+/** 본문에서 링크 하나를 지운다 — 뒤에 URL 문자가 이어지면(더 긴 다른 링크) 건드리지 않는다.
+ *  서버가 돌려준 raw 엔 https:// 가 붙어 있어도 본문엔 없을 수 있다(BARE_XHS_RE) — 프로토콜은 있든 없든 지운다 */
 function removeLink(text, raw) {
-  const esc = raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return text.replace(new RegExp(`${esc}(?![A-Za-z0-9\\-._~:/?#\\[\\]@!$&*+,;=%])`, 'g'), ' ');
+  const esc = raw.replace(/^https?:\/\//i, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // 'i' 금지 — 단축링크 코드는 대소문자를 가린다(ARvfj… ≠ arvfj…)
+  return text.replace(new RegExp(`(?:https?://)?${esc}(?![A-Za-z0-9\\-._~:/?#\\[\\]@!$&*+,;=%])`, 'g'), ' ');
 }
 
 /** "모찌롱 신라면세점 · 2026. 7월 — 08-31, 09-19, 09-24 등록 (총 3번)" — 같은 계약은 한 덩어리로 */
@@ -332,7 +336,12 @@ export default function PressBulk({ apiPath, headers, variant = 'admin' }) {
                   spellCheck={false}
                 />
                 <div className="apr-bar">
-                  <span className="apr-hint">{linkCount ? `링크 ${linkCount}개 인식` : '위챗·카톡에서 받은 그대로 붙여넣어도 됩니다'}</span>
+                  {/* 버튼이 말없이 꺼져 있으면 왜 안 눌리는지 모른다(2026-10-01) — 글은 있는데 링크가 0개면 이유를 말한다 */}
+                  <span className={`apr-hint${text.trim() && !linkCount ? ' warn' : ''}`}>
+                    {linkCount ? `링크 ${linkCount}개 인식`
+                      : text.trim() ? '링크를 찾지 못했습니다 — 샤오홍슈 주소(xhslink.cn/… 또는 https://…)를 넣어 주세요'
+                        : '위챗·카톡에서 받은 그대로 붙여넣어도 됩니다'}
+                  </span>
                   <button type="button" className="apr-btn" disabled={!camp || !linkCount || !!busy} onClick={() => runPreview()}>
                     {busy === 'preview' ? '확인 중…' : '확인하기'}
                   </button>
