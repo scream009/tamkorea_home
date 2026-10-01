@@ -235,3 +235,5 @@
 .rq-rail i.q, .rq-rail-legend i.q { background: rgba(90, 169, 255, .2); color: var(--rq-info); }
 .rq-linkbtn { background: none; border: none; padding: 0; color: var(--rq-info); font: inherit; cursor: pointer; text-decoration: underline; }
 .rq-linkbtn b { color: var(--rq-info); }
+/* 리뷰 키 — 한 번 누르면 통째로 선택된다(목록 한 줄은 버튼이라 드래그 복사가 안 된다) */
+.rq-key { user-select: all; font-family: ui-monospace, Consolas, monospace; cursor: text; }

@@ -37,7 +37,10 @@ const OUT_FIELDS = ['키', '매장코드', '리뷰ID', '리뷰일시', '별점',
   '게시이력', '포털답글ID', '게시시도',
   // 손님 댓글·질문(2026-10-01) — PC C 가 분류하고 질문 답글안을 만든다. 담당자는 여기서 사장님 답을 넣고 승인한다.
   '손님댓글수', '손님댓글_구조', '댓글대응', '질문상태', '질문_원문', '질문_한글', '질문_답글안', '질문_답글안_한글',
-  '사장님답변', '질문_최종중문', '질문_최종한글', '질문통보시각'];
+  '사장님답변', '질문_최종중문', '질문_최종한글', '질문통보시각',
+  // 담당자 교정(2026-10-01 Owner: "교정 전후를 저장해 정기적으로 읽어 와 번역·추천답글 만들 때 참고")
+  '교정전_중문', '번역_수정', '교정메모', '교정처리'];
+const normCn = (s) => String(s || '').replace(/\s+/g, '');
 
 // ── 손님 질문 답글 (2026-10-01 · Owner 지시: ★3.5 이하 리뷰처럼 답글안 → 사장님 확인 → 승인 → 게시) ──
 //   사장님확인중 ─(사장님 답을 한글로 입력)→ 답변받음 ─(PC C 가 중문 채움)→ 중문확인 ─(승인)→ 승인
@@ -330,6 +333,13 @@ export default async function handler(req, res) {
     const fields = {};
     if (typeof body.finalCn === 'string') fields['최종_중문'] = body.finalCn.slice(0, 2000);
     if (typeof body.reply === 'string') fields['고객회신'] = body.reply.slice(0, 2000);
+    // ── 담당자 교정 기록 — PC C 가 다음 초안·번역을 만들 때 이 짝을 사례로 읽는다(review_service/reply_rules.py) ──
+    if (typeof body.fixMemo === 'string') fields['교정메모'] = body.fixMemo.trim().slice(0, 500);
+    if (typeof body.trFix === 'string') {
+      // 원래 번역과 같으면 비운다 — '고친 번역' 이 아닌데 사례로 읽히면 안 된다
+      const tr = body.trFix.trim().slice(0, 4000);
+      fields['번역_수정'] = normCn(tr) === normCn(cur.fields?.['번역']) ? '' : tr;
+    }
 
     if (action === 'approve' || action === 'approve_now') {
       const finalCn = typeof body.finalCn === 'string' ? body.finalCn.trim()
@@ -363,6 +373,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'unknown action' });
     }
     if (fields['상태'] && !HUMAN_STATES.has(fields['상태'])) return res.status(400).json({ error: 'bad state' });
+    // 처음 고친 순간의 AI 원안을 따로 찍는다 — 나중에 '초안 다시'로 초안이 바뀌어도 교정 전후 짝이 남게.
+    // 이미 찍혀 있으면 덮지 않는다(담당자가 두 번 고쳐도 비교 기준은 AI 원안이다).
+    if (typeof fields['최종_중문'] === 'string' && fields['최종_중문'] && action !== 'redraft') {
+      const draft = String(cur.fields?.['초안_중문'] || '');
+      if (draft && normCn(fields['최종_중문']) !== normCn(draft) && !cur.fields?.['교정전_중문']) {
+        fields['교정전_중문'] = draft;
+        if (!cur.fields?.['교정처리']) fields['교정처리'] = '미검토';
+      }
+    }
     if (!Object.keys(fields).length) return res.status(400).json({ error: '바꿀 내용 없음' });
     await at('PATCH', `${TBL}/${id}`, { fields, typecast: true });
     console.log('[admin-reviews]', action, who, id, cur.fields?.['키'] || '');

@@ -234,13 +234,31 @@ function WeeklyList({ rows, onHide, busy }) {
 }
 
 // 서버 값이 바뀌면 부모가 key 를 바꿔 다시 마운트한다(effect 로 state 를 덮지 않는다 — lint 규칙).
+// 리뷰를 카톡 등으로 따로 주고받을 때 붙일 식별 정보. 목록 한 줄은 버튼이라 드래그 복사가 안 된다(Owner 2026-10-01).
+// 매장+닉네임만으로는 못 찾는 경우가 있다 — 597건 중 '(익명)' 52건, 같은 닉네임 재방문 — 그래서 리뷰 키를 같이 붙인다.
+const reviewTag = (it) => `[리뷰] ${it.store} · ${it['작성자'] || '(익명)'} · ${KST(it['리뷰일시'])} · ★${it['별점'] ?? '-'}\n키: ${it['키']}`;
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); return true; } catch { window.prompt('복사해서 쓰세요', t); return false; }
+}
+const sameCn = (a, b) => String(a || '').replace(/\s+/g, '') === String(b || '').replace(/\s+/g, '');
+
 function Card({ it, onAct, busy, autoOk = true }) {
   const [finalCn, setFinalCn] = useState(it['최종_중문'] || it['초안_중문'] || '');
   const [reply, setReply] = useState(it['고객회신'] || '');
+  // 담당자 교정(2026-10-01) — 고친 이유 · 고친 한글 번역. PC C 가 다음 초안·번역을 만들 때 이 짝을 사례로 읽는다.
+  const [fixMemo, setFixMemo] = useState(it['교정메모'] || '');
+  const [trFix, setTrFix] = useState(it['번역_수정'] || it['번역'] || '');
+  const [showTr, setShowTr] = useState(!!it['번역_수정']);
+  const [copied, setCopied] = useState(false);
   const st = it['상태'] || '';
   const sens = it['등급'] === '민감';
   const editable = ['검토대기', '고객협의', '승인', '보류', '초안', '신규', '게시실패', '게시확인필요'].includes(st);
-  const dirty = finalCn !== (it['최종_중문'] || it['초안_중문'] || '') || reply !== (it['고객회신'] || '');
+  const edited = !!it['초안_중문'] && !sameCn(finalCn, it['교정전_중문'] || it['초안_중문']);
+  const trDirty = showTr && trFix !== (it['번역_수정'] || it['번역'] || '');
+  const dirty = finalCn !== (it['최종_중문'] || it['초안_중문'] || '') || reply !== (it['고객회신'] || '')
+    || fixMemo !== (it['교정메모'] || '') || trDirty;
+  // 저장·승인 때 교정 정보도 같이 보낸다(번역은 고치기를 연 경우에만)
+  const extra = () => ({ finalCn, reply, fixMemo, ...(showTr ? { trFix } : {}) });
   // 🔴 2026-09-24: "협의 전 매장은 승인해도 봇이 게시하지 않습니다" 경고는 뺐다 — 09-23 밤 정책 개정으로
   //    **승인한 건은 등급·선플자동게시와 무관하게 게시된다.** 옛 문구가 남으면 담당자가 가볍게 승인한다.
   const confirmMsg = (when) => `${it.store} · ★${it['별점'] ?? '-'} ${it['작성자'] || ''}\n\n`
@@ -248,20 +266,25 @@ function Card({ it, onAct, busy, autoOk = true }) {
   const approve = () => {
     if (!finalCn.trim()) { window.alert('게시할 중국어 답글이 비어 있습니다'); return; }
     if (window.confirm(confirmMsg('승인하면 다음 정기 게시(12·14·16시)에 올라갑니다. 승인할까요?'))) {
-      onAct(it.id, 'approve', { finalCn, reply });
+      onAct(it.id, 'approve', extra());
     }
   };
   // ⚡ 즉시게시(Owner 2026-09-24) — 악플을 사장님과 협의해 고친 뒤 그 한 건만 바로 올린다. 시간 제한 없음.
   const approveNow = () => {
     if (!finalCn.trim()) { window.alert('게시할 중국어 답글이 비어 있습니다'); return; }
     if (window.confirm(confirmMsg('⚡ 지금 바로 게시합니다 — PC C 가 1~2분 안에 올립니다. 진행할까요?'))) {
-      onAct(it.id, 'approve_now', { finalCn, reply });
+      onAct(it.id, 'approve_now', extra());
     }
   };
   const waitingNow = !!it['즉시게시요청'];
   return (
     <div className={`rq-card${sens ? ' sens' : ''}`}>
       <div className="rq-top">
+        <span className="rq-meta rq-key" title="리뷰 키 — 이 리뷰를 찾는 고유 번호">{it['키']}</span>
+        <button type="button" className="rq-linkbtn" onClick={async () => { await copyText(reviewTag(it)); setCopied(true); }}>
+          {copied ? '✔ 복사됨' : '📋 리뷰 정보 복사'}
+        </button>
+        {it['교정전_중문'] && <span className="rq-pill c-참고" title="담당자가 AI 초안을 고친 리뷰 — 다음 초안의 참고 사례">✍ 교정됨{it['교정처리'] ? ` · ${it['교정처리']}` : ''}</span>}
         {it['통보시각'] && <span className="rq-meta">통보 {KST(it['통보시각'])}</span>}
         {it['승인자'] && <span className="rq-meta">승인 {it['승인자']} {KST(it['승인시각'])}</span>}
         {it['답변여부_포털'] && <span className="rq-meta">포털에 답글 있음</span>}
@@ -277,8 +300,23 @@ function Card({ it, onAct, busy, autoOk = true }) {
       )}
       <div className="rq-cols">
         <div className="rq-box"><span className="lab">중국어 원문</span><pre>{it['원문'] || ''}</pre></div>
-        <div className="rq-box"><span className="lab">한글 번역</span><pre>{it['번역'] || '(번역 없음)'}</pre></div>
+        <div className="rq-box">
+          <span className="lab">한글 번역{it['번역_수정'] ? ' — 담당자가 고친 번역' : ''}
+            {' '}<button type="button" className="rq-linkbtn" onClick={() => setShowTr((v) => !v)}>{showTr ? '닫기' : '✏️ 번역 고치기'}</button>
+          </span>
+          <pre>{it['번역_수정'] || it['번역'] || '(번역 없음)'}</pre>
+        </div>
       </div>
+      {showTr && (
+        <div>
+          <span className="rq-meta">고친 한글 번역 — 저장하면 다음 번역이 이 표현을 참고합니다(이미 나간 톡방 문구는 안 바뀝니다)</span>
+          <textarea className="rq-ta" value={trFix} onChange={(e) => setTrFix(e.target.value)} />
+          {!editable && (
+            <div className="rq-btns"><button className="rq-btn" disabled={busy === it.id || !trDirty}
+              onClick={() => onAct(it.id, 'edit', { trFix, fixMemo })}>💾 번역 저장</button></div>
+          )}
+        </div>
+      )}
       <NotesPanel it={it} />
       <QuestionPanel it={it} onAct={onAct} busy={busy} />
       {held(it) && (
@@ -294,6 +332,10 @@ function Card({ it, onAct, busy, autoOk = true }) {
             <span className="rq-meta">게시될 최종 중국어 — 이 칸이 그대로 올라갑니다</span>
             <textarea className="rq-ta" value={finalCn} onChange={(e) => setFinalCn(e.target.value)} />
           </div>
+          {(edited || fixMemo) && (
+            <input className="rq-in" value={fixMemo} onChange={(e) => setFixMemo(e.target.value)}
+                   placeholder="✍ 고친 이유 한 줄 (예: 손님이 말 안 한 火候 약속 삭제 / 客人→顾客 더 자연스러움) — 다음 초안이 배웁니다" />
+          )}
           <input className="rq-in" placeholder="사장님 회신 요지 (톡방에서 읽은 것)" value={reply} onChange={(e) => setReply(e.target.value)} />
           <div className="rq-btns">
             {st !== '승인' && (
@@ -307,7 +349,7 @@ function Card({ it, onAct, busy, autoOk = true }) {
             {st === '승인' && (
               <button className="rq-btn" disabled={busy === it.id} onClick={() => onAct(it.id, 'unapprove')}>⏸ 승인 취소</button>
             )}
-            <button className="rq-btn" disabled={busy === it.id || !dirty} onClick={() => onAct(it.id, 'edit', { finalCn, reply })}>💾 저장만</button>
+            <button className="rq-btn" disabled={busy === it.id || !dirty} onClick={() => onAct(it.id, 'edit', extra())}>💾 저장만</button>
             {st !== '고객협의' && (
               <button className="rq-btn warn" disabled={busy === it.id} onClick={() => onAct(it.id, 'consult', { reply })}>🗣 고객 협의중</button>
             )}
