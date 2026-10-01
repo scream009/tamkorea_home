@@ -394,9 +394,16 @@ function Card({ it, onAct, busy, autoOk = true, onDirty }) {
           <span className="rq-meta">고친 한글 번역 — 저장하면 다음 번역이 이 표현을 참고합니다(이미 나간 톡방 문구는 안 바뀝니다)</span>
           <textarea className="rq-ta" value={trFix} onChange={(e) => setTrFix(e.target.value)} />
           {!editable && (
-            <div className="rq-btns"><button className="rq-btn" disabled={busy === it.id || !trDirty}
-              onClick={() => onAct(it.id, 'edit', { trFix, fixMemo })}>💾 번역 저장</button></div>
+            // 게시완료 등 답글 편집 칸이 없는 카드 — 번역 고친 이유는 여기서 받는다
+            <input className="rq-in" value={fixMemo} onChange={(e) => setFixMemo(e.target.value)}
+                   placeholder="✍ 고친 이유 한 줄 (예: 萝卜瘦肉汤은 '무 살코기탕'이 아니라 '무 소고기국') — 다음 번역이 배웁니다" />
           )}
+          <div className="rq-btns">
+            {/* 번역만 저장 — 본 답글 상태와 무관(게시완료여도 된다). 승인 버튼도 고친 번역을 같이 저장한다. */}
+            <button className="rq-btn" disabled={busy === it.id || !(trDirty || fixMemo !== (it['교정메모'] || ''))}
+                    onClick={() => onAct(it.id, 'tr_save', { trFix, fixMemo })}>💾 번역 저장</button>
+            <span className="rq-meta">저장된 번역은 매일 02시에 AI 번역과 비교돼 다음 번역의 참고가 됩니다</span>
+          </div>
         </div>
       )}
       <NotesPanel it={it} />
@@ -414,7 +421,7 @@ function Card({ it, onAct, busy, autoOk = true, onDirty }) {
             <span className="rq-meta">게시될 최종 중국어 — 이 칸이 그대로 올라갑니다</span>
             <textarea className="rq-ta" value={finalCn} onChange={(e) => setFinalCn(e.target.value)} />
           </div>
-          {(edited || fixMemo) && (
+          {(edited || fixMemo || trDirty) && (
             <input className="rq-in" value={fixMemo} onChange={(e) => setFixMemo(e.target.value)}
                    placeholder="✍ 고친 이유 한 줄 (예: 손님이 말 안 한 火候 약속 삭제 / 客人→顾客 더 자연스러움) — 다음 초안이 배웁니다" />
           )}
@@ -500,7 +507,7 @@ function Row({ it, open, onToggle, showStore, auto, selectable, selected, onSele
             {st !== '검토대기' && <span className={`rq-pill s-${st}`}>{st}</span>}
           </span>
         </span>
-        <span className="rq-row-text">{it['번역'] || it['원문'] || ''}</span>
+        <span className="rq-row-text">{it['번역_수정'] || it['번역'] || it['원문'] || ''}</span>
       </button>
       <span className="rq-row-chev" aria-hidden>{open ? '▴' : '▾'}</span>
     </div>
@@ -688,7 +695,7 @@ export default function AdminReviewsPage() {
     const needle = q.trim().toLowerCase();
     const out = inView.filter((it) => (!grade || gradeOf(it) === grade)
       && (!since || kstDay(it['리뷰일시']) >= since)
-      && (!needle || [it['작성자'], it['원문'], it['번역'], it['초안_중문'], it['최종_중문'], it['키'], it.store]
+      && (!needle || [it['작성자'], it['원문'], it['번역'], it['번역_수정'], it['초안_중문'], it['최종_중문'], it['키'], it.store]
         .some((x) => String(x || '').toLowerCase().includes(needle))));
     out.sort((a, b) => (sort === 'old' ? 1 : -1) * String(a['리뷰일시'] || '').localeCompare(String(b['리뷰일시'] || '')));
     return out;

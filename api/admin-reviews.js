@@ -323,6 +323,23 @@ export default async function handler(req, res) {
     const cur = await at('GET', `${TBL}/${id}`);
     const curState = String(cur.fields?.['상태'] || '');
 
+    // ── 한글 번역 교정 — 본 답글 상태와 무관(게시완료 리뷰의 번역도 고친다) ──
+    // 🔴 2026-10-01 점검: 번역 저장이 일반 'edit' 경로를 타서 게시중·게시완료 리뷰는 아래 409 에 막혔다.
+    //    자동호평은 금방 게시완료가 되니 번역을 고치는 대부분의 경우였다. 번역·고친 이유만 쓰므로 게시와 무관하다.
+    if (action === 'tr_save') {
+      if (typeof body.trFix !== 'string') return res.status(400).json({ error: '고친 번역이 없습니다' });
+      const tr = body.trFix.trim().slice(0, 4000);
+      const same = normCn(tr) === normCn(cur.fields?.['번역']);
+      const tf = { '번역_수정': same ? '' : tr };
+      if (typeof body.fixMemo === 'string') tf['교정메모'] = body.fixMemo.trim().slice(0, 500);
+      if (!same && !cur.fields?.['교정자']) tf['교정자'] = who;
+      // 이미 하루 반영을 거친 뒤 번역을 또 고쳤으면 다음 02시에 다시 반영되게
+      if (cur.fields?.['교정반영일'] && normCn(tf['번역_수정']) !== normCn(cur.fields?.['번역_수정'])) tf['교정반영일'] = null;
+      await at('PATCH', `${TBL}/${id}`, { fields: tf, typecast: true });
+      console.log('[admin-reviews] tr_save', who, id, cur.fields?.['키'] || '', same ? '(원래 번역과 같음 → 비움)' : '');
+      return res.status(200).json({ ok: true, state: curState, tr: same ? 'cleared' : 'saved' });
+    }
+
     // ── 손님 질문 답 — 본 답글 상태와 무관하게 다룬다(본 답글이 이미 게시됐어도 질문 답은 남는다) ──
     if (action.startsWith('q_')) {
       const cf = cur.fields || {};
