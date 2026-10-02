@@ -661,9 +661,13 @@ export default function ClientPartnerPage() {
   }, [partnerName, monthParam, shareToken]);
 
   // 파트너사에 따른 브라우저 탭 및 파비콘 동적 변경 (화이트라벨링)
+  // 🔴 판정은 shownName(API 가 확정한 협력사)으로 한다. 실제로 뿌리는 링크는 `?t=토큰` 이라
+  //    URL 에 name 이 없다 — partnerName(URL 값)으로 보면 늘 비어서 **모든 협력사 보드의
+  //    탭 제목이 '탐코리아 - …'** 였다(2026-10-02 유한국제 링크 검수에서 발견). 카톡·위챗
+  //    인앱 브라우저는 상단 바에 제목을 띄운다. 협력사 전용 화면이라 이름을 모를 때도 중립 제목.
   useEffect(() => {
-    if (partnerName && partnerName !== '탐코리아' && partnerName.toUpperCase() !== 'TAMKOREA') {
-      document.title = `${shownName || partnerName} - 캠페인 성과 대시보드`;
+    if (shownName && shownName !== '탐코리아' && shownName.toUpperCase() !== 'TAMKOREA') {
+      document.title = `${shownName} - 캠페인 성과 대시보드`;
       let link = document.querySelector("link[rel~='icon']");
       if (!link) {
         link = document.createElement('link');
@@ -672,9 +676,9 @@ export default function ClientPartnerPage() {
       }
       link.href = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
     } else {
-      document.title = `탐코리아 - 캠페인 성과 대시보드`;
+      document.title = '캠페인 성과 대시보드';
     }
-  }, [partnerName]);
+  }, [shownName]);
 
   if (loading) return (
     <div className="schedule-page flex items-center justify-center">
