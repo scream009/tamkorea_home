@@ -278,7 +278,8 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
       </div>
 
       {/* 3. View Toggles */}
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginBottom: '1.5rem', position: 'relative' }}>
+      {/* 배치는 CSS(.partner-view-row) — 좁은 화면에서 CSV 버튼이 탭 위에 겹치던 것(아이폰 실측) */}
+      <div className="partner-view-row">
         <div className="view-tabs" style={{ marginBottom: 0 }}>
           <button className={`view-tab ${viewMode === 'calendar' ? 'active' : ''}`} onClick={() => setViewMode('calendar')}>
             <CalendarIcon className="w-4 h-4" /> 달력 뷰
@@ -287,11 +288,10 @@ const CampaignDashboardBlock = ({ camp, partnerName }) => {
             <List className="w-4 h-4" /> 리스트 뷰
           </button>
         </div>
-        <button 
+        <button
+          className="csv-btn"
           onClick={handleDownloadCSV}
           style={{
-            position: 'absolute',
-            right: 0,
             background: 'rgba(168, 85, 247, 0.1)',
             border: '1px solid rgba(168, 85, 247, 0.3)',
             color: '#d8b4fe',

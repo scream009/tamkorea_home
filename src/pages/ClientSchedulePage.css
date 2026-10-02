@@ -179,6 +179,28 @@
   color: var(--text);
 }
 
+/* 협력사 보드 — 탭은 가운데, CSV 버튼은 오른쪽 끝.
+   🔴 CSV 를 absolute 로 띄우면 폰 폭에선 가운데 탭 위에 올라탄다(2026-10-02 아이폰 실측).
+   좁은 화면에선 흐름 배치로 돌려 탭 아래 줄로 내린다. */
+.partner-view-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+.partner-view-row .csv-btn {
+  position: absolute;
+  right: 0;
+}
+@media (max-width: 720px) {
+  .partner-view-row .csv-btn {
+    position: static;
+  }
+}
+
 .view-tab.active {
   background: var(--purple-dim);
   border-color: var(--purple);
